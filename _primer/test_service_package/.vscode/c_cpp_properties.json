@@ -1,0 +1,23 @@
+{
+    "configurations": [
+        {
+            "browse": {
+                "databaseFilename": "",
+                "limitSymbolsToIncludedHeaders": true
+            },
+            "includePath": [
+                "/opt/ros/melodic/include/**",
+                "/home/pi/ros_ws/src/test_service_package/include/**",
+                "/home/pi/ros_ws/src/**",
+                "/home/pi/ros_ws/devel/include/test_service/**",
+                "${workspaceFolder}/../../devel/include",
+                "${workspaceFolder}/**",
+                "/usr/include/**"
+            ],
+            "name": "ROS",
+            "compileCommands": "${workspaceFolder}/build/compile_commands.json",
+            "configurationProvider": "ms-vscode.cmake-tools"
+        }
+    ],
+    "version": 4
+}

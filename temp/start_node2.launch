@@ -1,0 +1,6 @@
+<launch>
+  <include file="$(find rplidar_ros)/launch/rplidar.launch" />
+  <node pkg="data" type="data_node" name="data_node" output ="screen"/>
+  <node pkg="head" type="head_node" name="head_node" output ="screen"/>
+  <node pkg="tf" type="static_transform_publisher" name="static_laser_broadcaster" args="0 0 0 0 0 0 base_link laser 50" /> <!--http://wiki.ros.org/tf-->
+</launch>
