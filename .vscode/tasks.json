@@ -12,7 +12,10 @@
                 "-DCMAKE_BUILD_TYPE=Debug"
             ],
             "problemMatcher": [],
-            "group": "build"
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
         },
         {
             "label": "ROS: catkin_make Data",
@@ -70,7 +73,7 @@
             "type": "catkin_make",
             "args": [
                 "--directory",
-                "/home/pi/WS7/ArRobot_ws6",
+                "/home/pi/RoboBIM-Linux",
                 "-DCMAKE_BUILD_TYPE=RelWithDebInfo"
             ],
             "problemMatcher": [
@@ -116,10 +119,7 @@
             "problemMatcher": [
                 "$gcc"
             ],
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            },
+            "group": "build",
             "detail": "Задача создана отладчиком."
         },
         {

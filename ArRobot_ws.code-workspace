@@ -1,0 +1,23 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"python.autoComplete.extraPaths": [
+			"/opt/ros/melodic/lib/python2.7/dist-packages"
+		],
+		"files.associations": {
+			"*.tcc": "cpp",
+			"bitset": "cpp",
+			"fstream": "cpp",
+			"random": "cpp",
+			"chrono": "cpp",
+			"cmath": "cpp"
+		},
+		"python.analysis.extraPaths": [
+			"/opt/ros/melodic/lib/python2.7/dist-packages"
+		]
+	}
+}

@@ -38,7 +38,7 @@ int main(int argc, char **argv)
 {
 
     ROS_INFO("%s -------------------------------------------------", NN);
-    ROS_WARN("%s START Data Module HighLevel  Raspberry Pi 4B !888! ", NN);
+    ROS_WARN("%s START Data Module HighLevel  Raspberry Pi 4B !6677! ", NN);
     ROS_ERROR("%s -------------------------------------------------", NN);
 
     // MyClass myClass; // Объявляем свою локальную перемнную класса и дальше работаем внутри этого класса
