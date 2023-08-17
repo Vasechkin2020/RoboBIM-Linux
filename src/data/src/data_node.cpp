@@ -38,7 +38,7 @@ int main(int argc, char **argv)
 {
 
     ROS_INFO("%s -------------------------------------------------", NN);
-    ROS_WARN("%s START Data Module HighLevel  Raspberry Pi 4B !6677! ", NN);
+    ROS_WARN("%s START Data Module HighLevel  Raspberry Pi 4B !123! ", NN);
     ROS_ERROR("%s -------------------------------------------------", NN);
 
     // MyClass myClass; // Объявляем свою локальную перемнную класса и дальше работаем внутри этого класса
@@ -90,39 +90,39 @@ int main(int argc, char **argv)
         // wiringPiI2CWriteReg8(fd, REG_POWER_CTL, 0b00001000);
         // wiringPiI2CWrite(fd, 0b00001111);
 
-        //----------------------------------------------------------------------------------------------------------
-        Collect_Data2Iot(); //Собираем рабочие данные в структуру для передачи считывая из топиков
-        // printData_To_Control();                                            // Выводим на печать то что отправляем в Control
-        rez_data = sendData2Iot(SPI_CHANNAL_0, Iot2Data, Data2Iot); //
-        data_Iot_all++;
-        // printDataFrom_Control();
-        if (rez_data) // Если пришли хорошие данные то обрабатываем их и публикуем данные в ROS
-        {
-            digitalWrite(PIN_LED_GREEN, 0); // Гасим светодиод пришли хорошие данные
-            // ROS_INFO("Data ok! ");
-            dataProcessing_Control();                  // Обрабатываем данные
-            str_pub_data_iot_info.publish(msg_iot_info_send); //Публикация полученных данных
-            str_pub_data_iot_distance.publish(msg_iot_distance_send); //Публикация полученных данных
-        }
-        if (!rez_data) // Если пришли плохие данные то выводим ошибку
-        {
-            digitalWrite(PIN_LED_GREEN, 1); // Включаем светодиод пришли плохие данныеc
+        // //----------------------------------------------------------------------------------------------------------
+        // Collect_Data2Iot(); //Собираем рабочие данные в структуру для передачи считывая из топиков
+        // // printData_To_Control();                                            // Выводим на печать то что отправляем в Control
+        // rez_data = sendData2Iot(SPI_CHANNAL_0, Iot2Data, Data2Iot); //
+        // data_Iot_all++;
+        // // printDataFrom_Control();
+        // if (rez_data) // Если пришли хорошие данные то обрабатываем их и публикуем данные в ROS
+        // {
+        //     digitalWrite(PIN_LED_GREEN, 0); // Гасим светодиод пришли хорошие данные
+        //     // ROS_INFO("Data ok! ");
+        //     dataProcessing_Control();                  // Обрабатываем данные
+        //     str_pub_data_iot_info.publish(msg_iot_info_send); //Публикация полученных данных
+        //     str_pub_data_iot_distance.publish(msg_iot_distance_send); //Публикация полученных данных
+        // }
+        // if (!rez_data) // Если пришли плохие данные то выводим ошибку
+        // {
+        //     digitalWrite(PIN_LED_GREEN, 1); // Включаем светодиод пришли плохие данныеc
 
-            ROS_WARN("%s Flag_bedData chek_sum BED Iot", NN);
-        }
+        //     ROS_WARN("%s Flag_bedData chek_sum BED Iot", NN);
+        // }
 
-        ROS_INFO("%s 0 channal data_Iot_all =    %i, data_Iot_bed    = %i", NN, data_Iot_all, data_Iot_bed);
-        //----------------------------------------------------------------------------------------------------------
+        // ROS_INFO("%s 0 channal data_Iot_all =    %i, data_Iot_bed    = %i", NN, data_Iot_all, data_Iot_bed);
+        // //----------------------------------------------------------------------------------------------------------
 
         Collect_Data2Driver(); //Собираем рабочие данные в структуру для передачи считывая данные из топика ноды Head
         //printData_To_Body();
         rez_data = sendData2Driver(SPI_CHANNAL_1, Driver2Data, Data2Driver); ////  Отправляем данные на нижний уровень
         data_driver_all++;
-        // printDataFrom_Body();
+        printData_From_Driver();
 
         if (rez_data) // Если пришли хорошие данные то обрабатываем их и публикуем данные в ROS
         {
-            digitalWrite(PIN_LED_GREEN, 0); // Гасим светодиод пришли хорошие данные
+            //digitalWrite(PIN_LED_GREEN, 0); // Гасим светодиод пришли хорошие данные
             // ROS_INFO("Data ok! ");
             dataProcessing_Body(); // Обрабатываем данные
                                    // setOdomToTf(nh, odom_broadcaster, current_time); // Функция которая одометрию пищет куда нужно, передаем этой функции все переменные котороые создали в гласной функции main
@@ -136,7 +136,7 @@ int main(int argc, char **argv)
         if (!rez_data) // Если пришли плохие данные то выводим ошибку
         {
             data_driver_bed++;
-            digitalWrite(PIN_LED_GREEN, 1); // Включаем светодиод пришли плохие данные
+            //digitalWrite(PIN_LED_GREEN, 1); // Включаем светодиод пришли плохие данные
             ROS_WARN("%s Flag_bedData chek_sum BED Driver", NN);
         }
         ROS_INFO("%s 1 channal data_Driver_all = %i, data_Driver_bed = %i", NN, data_driver_all, data_driver_bed);
@@ -145,7 +145,7 @@ int main(int argc, char **argv)
         r.sleep();       // Интеллектуальная задержка на указанную частоту
     }
     // softPwmStop (PIN_PWM);
-    digitalWrite(PIN_LED_GREEN, 0); // Выключаем светодиоды при выходе
+    //digitalWrite(PIN_LED_GREEN, 0); // Выключаем светодиоды при выходе
     digitalWrite(PIN_LED_BLUE, 0);
     return 0;
 }

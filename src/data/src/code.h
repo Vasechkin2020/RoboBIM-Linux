@@ -20,15 +20,15 @@ uint16_t getMax_size_Struct(uint16_t stru1_, uint16_t stru2_)
 //Настройка светодиодов
 void set_PIN_Led()
 {
-	pinMode(PIN_LED_GREEN, OUTPUT); // Зеленый светодиод
+	//pinMode(PIN_LED_GREEN, OUTPUT); // Зеленый светодиод
 	pinMode(PIN_LED_BLUE, OUTPUT);	// Красный светодиод
-	pullUpDnControl(PIN_LED_GREEN, PUD_DOWN);
+	//pullUpDnControl(PIN_LED_GREEN, PUD_DOWN);
 	pullUpDnControl(PIN_LED_BLUE, PUD_DOWN);
 
-	digitalWrite(PIN_LED_GREEN, 1);
+	//digitalWrite(PIN_LED_GREEN, 1);
 	digitalWrite(PIN_LED_BLUE, 1);
 	delay(1000);
-	digitalWrite(PIN_LED_GREEN, 0);
+	//digitalWrite(PIN_LED_GREEN, 0);
 	digitalWrite(PIN_LED_BLUE, 0);
 }
 

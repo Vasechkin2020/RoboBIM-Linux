@@ -10,7 +10,24 @@ struct DateTime {
     uint8_t month;
     uint16_t year;
 };
-
+//*********************************************************************
+//Структура для температурного датчика BMP280
+struct Struct_BME
+{
+  float temperature = 0;
+  float pressure = 0;
+  float humidity = 0;
+  float loc = 0;
+};
+//Структура для датчика напряжения INA219
+struct Struct_INA
+{
+  float busVoltage_V = 0;
+  float shuntVoltage_mV = 0;
+  float current_mA = 0;
+  float power_mW = 0;
+};
+//*********************************************************************
 // Структура передаваемых данных из Data к Iot
 struct Struct_Data2Iot 
 {
@@ -19,7 +36,7 @@ struct Struct_Data2Iot
   float odom_R = 0;     // Пройденный путь правым колесом
   float speed_L = 0;    // Скорость левого колеса
   float speed_R = 0;    // Скорость правого колеса
-  Struct_RPY bno055;    // Данные с датчика BNO055
+  //Struct_RPY bno055;    // Данные с датчика BNO055
   Struct_INA ina_driver;       // Данные с датчика INA219
 
   uint32_t connect_flag; // Флаг связи с пультом ручного управления

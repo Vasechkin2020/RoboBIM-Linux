@@ -1,0 +1,47 @@
+bluetoothctl trust 3A:EF:42:4C:C9:D6
+#bluetoothctl disconnect 3A:EF:42:4C:C9:D6
+bluetoothctl connect 3A:EF:42:4C:C9:D6
+
+//-----------------------------------------------------------------
+Скрипт: (сохраните его как /home/username/connect_speaker.sh)
+
+#!/usr/bin/bash
+bluetoothctl trust MAC-address
+bluetoothctl disconnect MAC-address
+bluetoothctl connect MAC-address
+
+//-----------------------------------------------------------------
+
+Я написал простой скрипт, который будет продолжать переподключать устройство при перезагрузке компьютера или когда устройство переключит статус Bluetooth или потеряет сигнал на некоторое время.
+
+#!/bin/bash
+
+MAC="E0:CC:F8:E8:87:5D"
+
+powered() {
+    echo "show" | bluetoothctl | grep "Powered" | cut -d " " -f 2
+}
+
+connected() {
+    echo "info ${MAC}" | bluetoothctl | grep "Connected" | cut -d " " -f 2
+}
+
+while true
+do
+    sleep 1
+    if [ $(powered) = yes ] && [ $(connected) = no ]; then
+        echo "connect ${MAC}" | bluetoothctl
+        sleep 5
+    fi
+done
+Обновите переменную MAC MAC-адресом вашего устройства. (динамик, смартфон ...)
+echo "devices" | bluetoothctl | grep Device
+Сохраните скрипт, например, как ~/.bt-autoconnect.sh
+Сделайте это исполняемым chmod +x ~/.bt-autoconnect.sh
+Запустите его при входе в систему echo "~/.bt-autoconnect.sh &" >> "~/.xprofile"
+
+Update MAC variable with your device's MAC address. (speaker, smartphone...)
+echo "devices" | bluetoothctl | grep Device
+Save the script for example as a ~/.bt-autoconnect.sh
+Make it executable chmod +x ~/.bt-autoconnect.sh
+Run it at login echo "~/.bt-autoconnect.sh &" >> "~/.xprofile"

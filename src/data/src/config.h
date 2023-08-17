@@ -1,11 +1,11 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#define RATE 10 // Частота обмена с нижним уровнев в Герц
+#define RATE 2 // Частота обмена с нижним уровнев в Герц
 //---------------------------------------------------------------------------------------
 // Посмотреть пины командой <gpio readall> Пины имеют соответсвие между BMC и wiringpi
-#define PIN_LED_BLUE 21  // Мигает в цикле что работает 
-#define PIN_LED_GREEN 22   // Ошибки при передаче или еще где
+#define PIN_LED_BLUE 4  // Мигает в цикле что работает 
+//#define PIN_LED_GREEN 22   // Ошибки при передаче или еще где
 
 //#define PIN_PWM 26
 //---------------------------------------------------------------------------------------
@@ -36,72 +36,7 @@ MyKalman uzi;
 MyKalman mpu9250_x;
 MyKalman mpu9250_y;
 
-//*********************************************************************
-// //Структура для углов наклонов
-// struct Struct_XYZ
-// {
-//   float roll = 0;
-//   float pitch = 0;
-//   float yaw = 0;
-// };
-//Структура для температурного датчика BMP280
-struct Struct_BME
-{
-  float temperature = 0;
-  float pressure = 0;
-  float humidity = 0;
-  float loc = 0;
-};
-//Структура для датчика напряжения INA219
-struct Struct_INA
-{
-  float busVoltage_V = 0;
-  float shuntVoltage_mV = 0;
-  float current_mA = 0;
-  float power_mW = 0;
-};
 
-
-
-
-
-//Структура для углов наклонов
-struct Struct_RPY
-{
-  float roll = 0;  // Крен в право  влево
-  float pitch = 0; // Тангаж вверх или вних
-  float yaw = 0;   // Поворот по часовой мом против часовой
-
-  Struct_RPY &operator=(const Struct_RPY &source) // Специальный оператор, как функция в структуре, позволяет копировать одинаковые структуры просто знаком равно
-  {
-    roll = source.roll;
-    pitch = source.pitch;
-    yaw = source.yaw;
-    return *this;
-  }
-};
-
-//Структура одометрии
-struct Struct_Odom
-{
-  float x = 0;      // Координата по Х
-  float y = 0;      // Координата по Y
-  float th = 0;     // Направление носа
-  float vel_x = 0;  // Линейная скорость движения робота по оси X
-  float vel_y = 0;  // Линейная скорость движения робота по оси Y 
-  float vel_th = 0; // Угловая скорость вращения робота
-  
-  Struct_Odom &operator=(const Struct_Odom &source) // Специальный оператор, как функция в структуре, позволяет копировать одинаковые структуры просто знаком равно
-  {
-    x = source.x;
-    y = source.y;
-    th = source.th;
-    vel_x = source.vel_x;
-    vel_y = source.vel_y;
-    vel_th = source.vel_th;
-    return *this;
-  }
-};
 
 //Функция возвращает контрольную сумму структуры без последних 4 байтов
 template <typename T>
