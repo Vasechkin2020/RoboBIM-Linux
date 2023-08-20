@@ -108,7 +108,7 @@ void init_SPI(int channel_, int speed_)
 }
 
 // Обратный вызов при опросе топика Control
-void message_callback_Command(const my_msgs::Command &msg)
+void message_callback_Command(const data::Command &msg)
 {
 	msg_head_receive = msg; // Копируем структуру в глобальную переменную для дальнейшей работы с ней.
 	// ROS_INFO("message_callback_Command.");

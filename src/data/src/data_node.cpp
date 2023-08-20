@@ -3,12 +3,12 @@
 #include <tf/transform_broadcaster.h>
 
 #include <nav_msgs/Odometry.h>
-#include <my_msgs/data_driver_info.h>
-#include <my_msgs/data_driver_control.h>
-#include <my_msgs/data_driver_odometr.h>
-#include <my_msgs/Command.h>
-#include <my_msgs/data_iot_info.h>
-#include <my_msgs/data_iot_distance.h>
+#include <data/Command.h>
+#include <data/data_driver_info.h>
+#include <data//data_driver_control.h>
+#include <data/data_driver_odometr.h>
+#include <data/data_iot_info.h>
+#include <data/data_iot_distance.h>
 
 #include <wiringPi.h>
 #include <wiringPiSPI.h>
@@ -17,21 +17,21 @@
 #include <softPwm.h>
 
 nav_msgs::Odometry odom;
-my_msgs::Command msg_head_receive; // Полученное сообщение из топика
+data::Command msg_head_receive; // Полученное сообщение из топика
 
-my_msgs::data_iot_info msg_iot_info_send;         // Сообщение которое публикуем в Топик
-my_msgs::data_iot_distance msg_iot_distance_send; // Сообщение которое публикуем в Топик
+data::data_iot_info msg_iot_info_send;         // Сообщение которое публикуем в Топик
+data::data_iot_distance msg_iot_distance_send; // Сообщение которое публикуем в Топик
 
-my_msgs::data_driver_info msg_driver_info_send;       // Сообщение которое публикуем в Топик
-my_msgs::data_driver_control msg_driver_control_send; // Сообщение которое публикуем в Топик
-my_msgs::data_driver_odometr msg_driver_odometr_send; // Сообщение которое публикуем в Топик
+data::data_driver_info msg_driver_info_send;       // Сообщение которое публикуем в Топик
+data::data_driver_control msg_driver_control_send; // Сообщение которое публикуем в Топик
+data::data_driver_odometr msg_driver_odometr_send; // Сообщение которое публикуем в Топик
 
-#include "MyKalman.h"
-#include "config.h"
-#include "data2driver.h"
-#include "data2iot.h"
-#include "code.h"
-//#include "MyClass.h"
+#include "data_code/MyKalman.h"
+#include "data_code/config.h"
+#include "data_code/data2driver.h"
+#include "data_code/data2iot.h"
+#include "data_code/code.h"
+//#include "data_code/MyClass.h"
 // ssh key 22
 
 int main(int argc, char **argv)
@@ -45,11 +45,11 @@ int main(int argc, char **argv)
 
     ros::init(argc, argv, "data_node");
     ros::NodeHandle nh;
-    ros::Publisher str_pub_data_driver_info = nh.advertise<my_msgs::data_driver_info>("data_driver_info", 16);          //Это мы публикуем структуру
-    ros::Publisher str_pub_data_driver_control = nh.advertise<my_msgs::data_driver_control>("data_driver_control", 16); //Это мы публикуем структуру
-    ros::Publisher str_pub_data_driver_odometr = nh.advertise<my_msgs::data_driver_odometr>("data_driver_odometr", 16); //Это мы публикуем структуру
-    ros::Publisher str_pub_data_iot_info = nh.advertise<my_msgs::data_iot_info>("data_iot_info", 16);                         //Это мы публикуем структуру
-    ros::Publisher str_pub_data_iot_distance = nh.advertise<my_msgs::data_iot_distance>("data_iot_distance", 16);                  //Это мы публикуем структуру
+    ros::Publisher str_pub_data_driver_info = nh.advertise<data::data_driver_info>("data_driver_info", 16);          //Это мы публикуем структуру
+    ros::Publisher str_pub_data_driver_control = nh.advertise<data::data_driver_control>("data_driver_control", 16); //Это мы публикуем структуру
+    ros::Publisher str_pub_data_driver_odometr = nh.advertise<data::data_driver_odometr>("data_driver_odometr", 16); //Это мы публикуем структуру
+    ros::Publisher str_pub_data_iot_info = nh.advertise<data::data_iot_info>("data_iot_info", 16);                         //Это мы публикуем структуру
+    ros::Publisher str_pub_data_iot_distance = nh.advertise<data::data_iot_distance>("data_iot_distance", 16);                  //Это мы публикуем структуру
 
     ros::Publisher odom_pub = nh.advertise<nav_msgs::Odometry>("odom", 50);
     ros::Subscriber command_sub = nh.subscribe("command_topic", 16, message_callback_Command); // Это мы подписываемся на то что публигует Главная нода для Body
