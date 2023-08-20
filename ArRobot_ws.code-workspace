@@ -14,7 +14,8 @@
 			"fstream": "cpp",
 			"random": "cpp",
 			"chrono": "cpp",
-			"cmath": "cpp"
+			"cmath": "cpp",
+			"thread": "cpp"
 		},
 		"python.analysis.extraPaths": [
 			"/opt/ros/melodic/lib/python2.7/dist-packages"

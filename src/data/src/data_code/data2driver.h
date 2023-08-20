@@ -127,73 +127,70 @@ struct Struct_Data2Driver
 };
 
 Struct_Data2Driver Data2Driver; // Экземпляр структуры отправлемых данных
+
 // ************************************************************* Struct_Data2Driver *********************
 
-// Обработка полученных данных и копирование их куда надо
-void dataProcessing_Body()
+// Копирование полученных данных в структуру для публикации в топике
+void processing_Driver2Data()
 {
 	// Копируем полученные по SPI данные в сообщение которое потом опубликуем
-	msg_driver_odometr_send.id = Driver2Data.id;
+	msg_Driver2Data.id = Driver2Data.id;
 
-	msg_driver_odometr_send.odom_enc.x = Driver2Data.odom_enc.x;
-	msg_driver_odometr_send.odom_enc.y = Driver2Data.odom_enc.y;
-	msg_driver_odometr_send.odom_enc.th = Driver2Data.odom_enc.th;
-	msg_driver_odometr_send.odom_enc.vel_x = Driver2Data.odom_enc.vel_x;
-	msg_driver_odometr_send.odom_enc.vel_y = Driver2Data.odom_enc.vel_y;
-	msg_driver_odometr_send.odom_enc.vel_th = Driver2Data.odom_enc.vel_th;
+	msg_Driver2Data.car.radius = Driver2Data.car.radius;
+	msg_Driver2Data.car.speed = Driver2Data.car.speed;
+	msg_Driver2Data.car.way = Driver2Data.car.way;
+	
+	msg_Driver2Data.motorLeft.rps = Driver2Data.motorLeft.rps;
+	msg_Driver2Data.motorLeft.way = Driver2Data.motorLeft.way;
+	
+	msg_Driver2Data.motorRight.rps = Driver2Data.motorRight.rps;
+	msg_Driver2Data.motorRight.way = Driver2Data.motorRight.way;
 
-	msg_driver_odometr_send.odom_imu.x = Driver2Data.bno055.x;
-	msg_driver_odometr_send.odom_imu.y = Driver2Data.bno055.y;
-	msg_driver_odometr_send.odom_imu.th = Driver2Data.bno055.th;
-	msg_driver_odometr_send.odom_imu.vel_x = Driver2Data.bno055.vel_x;
-	msg_driver_odometr_send.odom_imu.vel_y = Driver2Data.bno055.vel_y;
-	msg_driver_odometr_send.odom_imu.vel_th = Driver2Data.bno055.vel_th;
+	msg_Driver2Data.odom_enc.x = Driver2Data.odom_enc.x;
+	msg_Driver2Data.odom_enc.y = Driver2Data.odom_enc.y;
+	msg_Driver2Data.odom_enc.th = Driver2Data.odom_enc.th;
+	msg_Driver2Data.odom_enc.vel_x = Driver2Data.odom_enc.vel_x;
+	msg_Driver2Data.odom_enc.vel_y = Driver2Data.odom_enc.vel_y;
+	msg_Driver2Data.odom_enc.vel_th = Driver2Data.odom_enc.vel_th;
+	
+	msg_Driver2Data.bno055.x = Driver2Data.bno055.x;
+	msg_Driver2Data.bno055.y = Driver2Data.bno055.y;
+	msg_Driver2Data.bno055.th = Driver2Data.bno055.th;
+	msg_Driver2Data.bno055.vel_x = Driver2Data.bno055.vel_x;
+	msg_Driver2Data.bno055.vel_y = Driver2Data.bno055.vel_y;
+	msg_Driver2Data.bno055.vel_th = Driver2Data.bno055.vel_th;
+	msg_Driver2Data.bno055.roll = Driver2Data.bno055.roll;
+	msg_Driver2Data.bno055.pitch = Driver2Data.bno055.pitch;
+	msg_Driver2Data.bno055.yaw = Driver2Data.bno055.yaw;
+	
+	msg_Driver2Data.servo1.position = Driver2Data.servo1.position;
+	msg_Driver2Data.servo2.position = Driver2Data.servo2.position;
 
-	// Данные по одометрии принимаем как есть
-	msg_driver_odometr_send.odom_L = Driver2Data.motorLeft.rps;
-	msg_driver_odometr_send.odom_R = Driver2Data.motorRight.rps;
+	msg_Driver2Data.lazer1.distance = Driver2Data.lazer1.distance;
+	msg_Driver2Data.lazer2.distance = Driver2Data.lazer2.distance;
 
-	msg_driver_info_send.id = Driver2Data.id;
-	// Данные по датчику BNO055 принимаем как есть
-	msg_driver_info_send.bno055.roll = Driver2Data.bno055.roll;
-	msg_driver_info_send.bno055.pitch = Driver2Data.bno055.pitch;
-	msg_driver_info_send.bno055.yaw = Driver2Data.bno055.yaw;
-
-	// msg_driver_info_send.ina.busVoltage_V = Driver2Data.ina.busVoltage_V;
-	// msg_driver_info_send.ina.shuntVoltage_mV = Driver2Data.ina.shuntVoltage_mV;
-	// msg_driver_info_send.ina.current_mA = Driver2Data.ina.current_mA;
-	// msg_driver_info_send.ina.power_mW = Driver2Data.ina.power_mW;
-
-	msg_driver_info_send.obmen_all = data_driver_all;
-	msg_driver_info_send.obmen_bed = data_driver_bed;
-
-	msg_driver_control_send.id = Driver2Data.id;
-	// msg_driver_control_send.status_wifi = Driver2Data.status_wifi;
-	// msg_driver_control_send.connect_flag = Driver2Data.connect_flag;
-	// msg_driver_control_send.startStop = Driver2Data.startStop;
-	// msg_driver_control_send.radius = Driver2Data.radius;
-	// msg_driver_control_send.speed = Driver2Data.speed;
-	// msg_driver_control_send.angle_camera = Driver2Data.angle_camera;
-	// msg_driver_control_send.led = Driver2Data.led;
-	// msg_driver_control_send.servo = Driver2Data.servo;
-	// msg_driver_control_send.posServoL = Driver2Data.posServoL;
-	// msg_driver_control_send.posServoR = Driver2Data.posServoR;
+	msg_Driver2Data.uzi1.distance = Driver2Data.uzi1.distance;
+	msg_Driver2Data.uzi2.distance = Driver2Data.uzi2.distance;
 }
 
 // Копирование данных из сообщения в топике в структуру для передачи по SPI
-void Collect_Data2Driver() // Данные для передачи на низкий уровень
+void collect_Data2Driver() // Данные для передачи с Data на Driver
 {
 	Data2Driver.id++; //= 0x1F1F1F1F;
-	// Data2Driver.startStop = 0;
-	// Data2Driver.radius = 0;
-	// Data2Driver.speed = 0;
-	// Data2Driver.angle_camera = 0;
-	Data2Driver.led.num_program = Data2Driver.led.num_program + 3;
-	// Data2Driver.servo = 0;
-	// Data2Driver.posServoL = 0;
-	// Data2Driver.posServoR = 0;
-	// Data2Driver.timeServoL = 0;
-	// Data2Driver.timeServoR = 0;
+
+	Data2Driver.control.startStop = msg_Head2Data.control.startStop;
+	Data2Driver.control.radius = msg_Head2Data.control.radius;
+	Data2Driver.control.speed = msg_Head2Data.control.speed;
+	
+	Data2Driver.servo1.time = msg_Head2Data.servo1.time;
+	Data2Driver.servo1.position = msg_Head2Data.servo1.position;
+
+	Data2Driver.servo2.time = msg_Head2Data.servo2.time;
+	Data2Driver.servo2.position = msg_Head2Data.servo2.position;
+	
+	Data2Driver.led.num_program = msg_Head2Data.led.num_program;
+	//Data2Driver.led.num_program = Data2Driver.led.num_program + 3;
+
 	Data2Driver.cheksum = measureCheksum(Data2Driver); // Считаем контрольную сумму отправляемой структуры
 													   // printf("Отправляем: Id %i, чек= %i  ", Data2Driver.id, Data2Driver.cheksum);
 }

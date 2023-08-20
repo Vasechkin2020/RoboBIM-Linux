@@ -4,9 +4,9 @@
 // #include <my_msgs/Body.h>
 // #include <my_msgs/Control.h>
 // #include <my_msgs/Command.h>
-#include <data/Rpy.h>
+// #include <data/Rpy.h>
 
-data::Rpy aaa;
+// data::Rpy aaa;
 
 
 

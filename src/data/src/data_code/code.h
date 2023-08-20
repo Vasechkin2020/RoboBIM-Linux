@@ -107,10 +107,10 @@ void init_SPI(int channel_, int speed_)
 	}
 }
 
-// Обратный вызов при опросе топика Control
-void message_callback_Command(const data::Command &msg)
+// Обратный вызов при опросе топика Head2Data
+void callback_Head2Data(const data::Struct_Data2Driver &msg)
 {
-	msg_head_receive = msg; // Копируем структуру в глобальную переменную для дальнейшей работы с ней.
+	msg_Head2Data = msg; // Копируем структуру в глобальную переменную для дальнейшей работы с ней.
 	// ROS_INFO("message_callback_Command.");
 }
 

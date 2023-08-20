@@ -12,6 +12,20 @@ find_package(catkin REQUIRED COMPONENTS
 add_message_files(
   DIRECTORY msg
   FILES
+
+  Struct_Car.msg
+  Struct_Control.msg
+  Struct_Encoder.msg
+  Struct_IMU.msg
+  Struct_Led.msg
+  Struct_Odom.msg
+  Struct_Sensor.msg
+  Struct_Servo.msg
+  Struct_ServoOut.msg
+  
+  Struct_Data2Driver.msg
+  Struct_Driver2Data.msg
+  
   Rpy.msg
   Bme.msg
   Command.msg
