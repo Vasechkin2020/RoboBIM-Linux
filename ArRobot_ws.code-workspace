@@ -15,7 +15,11 @@
 			"random": "cpp",
 			"chrono": "cpp",
 			"cmath": "cpp",
-			"thread": "cpp"
+			"thread": "cpp",
+			"system_error": "cpp",
+			"array": "cpp",
+			"string": "cpp",
+			"string_view": "cpp"
 		},
 		"python.analysis.extraPaths": [
 			"/opt/ros/melodic/lib/python2.7/dist-packages"

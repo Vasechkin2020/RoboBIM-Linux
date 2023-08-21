@@ -1,6 +1,13 @@
 #ifndef CODE_H
 #define CODE_H
 
+void callback_Joy(sensor_msgs::Joy msg)
+{
+    // joy = msg;
+    joy.data = msg;
+
+}
+
 // // Обратный вызов при опросе топика Body
 // void message_callback_Body(const my_msgs::Body &msg)
 // {
@@ -119,13 +126,13 @@
 //     {
 //         g_my_position.speed.fact = 0;
 //     }
-    
+
 //     float radius = map(Control_msg.radius, -100, 100, -MAX_RADIUS * 1000, MAX_RADIUS * 1000) / 1000.0; //Преобразуем диапазон из Remote XY от -100 до 100 в допустимый диапазон, только челые числа функция использует
-//     if (radius > 0 ) 
+//     if (radius > 0 )
 //     {
 //        radius = MAX_RADIUS - radius + 0.01; // Прибавляем чуть-чуть чтобы радиус не получался 0 на краях
 //     }
-//     if (radius < 0 ) 
+//     if (radius < 0 )
 //     {
 //        radius = -MAX_RADIUS - radius - 0.01; // Отнимаем чуть-чуть чтобы радиус не получался 0 на краях
 //     }
@@ -162,7 +169,7 @@
 //     }
 //     Command_msg.speed = speed;
 //     ROS_INFO_THROTTLE(3,"%s Command_msg.speed= %f",NN, Command_msg.speed);
-    
+
 //     //ROS_INFO("newSpeed = %.3f", speed);
 //     //INFO ROS_INFO("-------------- ");
 //     //-----------------------------------------------------------
@@ -171,7 +178,7 @@
 #endif
 
 /*
-начать считать фактическое положение по одометрии и по ускорению от IMU в ноде Body 
+начать считать фактическое положение по одометрии и по ускорению от IMU в ноде Body
 
 проверить настройки лазерного датчика, а то больно сильно скачут значения
 

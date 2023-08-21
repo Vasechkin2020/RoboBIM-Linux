@@ -22,9 +22,6 @@
 
 #include <wiringPi.h>
 #include <wiringPiSPI.h>
-// #include <wiringPiI2C.h>
-
-// #include <softPwm.h>
 
 nav_msgs::Odometry odom;
 
@@ -45,9 +42,9 @@ data::Struct_Data2Driver msg_Head2Data; // Полученное сообщени
 int main(int argc, char **argv)
 {
 
-    ROS_INFO("%s -------------------------------------------------", NN);
-    ROS_WARN("%s START Data Module HighLevel  Raspberry Pi 4B !123! ", NN);
-    ROS_ERROR("%s -------------------------------------------------", NN);
+    ROS_INFO("%s -------------------------------------------------------", NN);
+    ROS_WARN("%s START Data Module HighLevel  Raspberry Pi 4B ver. 1.00 ", NN);
+    ROS_ERROR("%s -------------------------------------------------------", NN);
 
     // MyClass myClass; // Объявляем свою локальную перемнную класса и дальше работаем внутри этого класса
 
@@ -74,31 +71,10 @@ int main(int argc, char **argv)
     init_SPI(SPI_CHANNAL_0, SPI_SPEED); // Инициализация нужного канала SPI
     init_SPI(SPI_CHANNAL_1, SPI_SPEED); // Инициализация нужного канала SPI
 
-    // Setup I2C communication
-    // int fd = wiringPiI2CSetup(DEVICE_ID_STM);
-    // if (fd == -1)
-    // {
-    //     ROS_WARN("%s Failed to init I2C communication = %i.", NN, fd);
-    //     return -1;
-    // }
-    // ROS_INFO("%s I2C communication successfully setup = %i.", NN, fd);
-
-    // laser.setParametr1 (1, 0.1);
-    // laser.setParametr2(5, 0.1); // Установка параетров фильтрации в фидьтре Каламан. Можно подбирать как получится
-    // // uzi.setParametr1 (0.5, 0.1);
-    // uzi.setParametr2(5, 0.1);
-
-    // SoftPwmCreate(PIN_PWM, 96, 100);
-    // softPwmStop (PIN_PWM);
-
     while (ros::ok())
     {
         Led_Blink(PIN_LED_BLUE, 1000); // Мигание светодиодом, что цикл работает
         ros::spinOnce();               // Обновление в данных в ядре ROS, по этой команде происходит вызов функции обратного вызова
-
-        //----------------------------------------------------------------------------------------------------------
-        // wiringPiI2CWriteReg8(fd, REG_POWER_CTL, 0b00001000);
-        // wiringPiI2CWrite(fd, 0b00001111);
 
         // //----------------------------------------------------------------------------------------------------------
         // Collect_Data2Iot(); //Собираем рабочие данные в структуру для передачи считывая из топиков

@@ -22,6 +22,7 @@ add_message_files(
   Struct_Sensor.msg
   Struct_Servo.msg
   Struct_ServoOut.msg
+  Struct_Joy.msg
   
   Struct_Data2Driver.msg
   Struct_Driver2Data.msg
