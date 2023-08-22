@@ -103,6 +103,8 @@ struct Struct_Control
 	uint32_t startStop = 0; // Стоим или двигаемся
 	float radius = 0;		// Радиус по которому нужно двигаться
 	float speed = 0;		// Скорость с которой нужно двигаться`
+	uint32_t command1 = 0;		// Дополнительная команда
+	uint32_t command2 = 0;		// Дополнительная команда
 };
 // Структура управления сервомотором
 struct Struct_Servo
@@ -181,6 +183,8 @@ void collect_Data2Driver() // Данные для передачи с Data на 
 	Data2Driver.control.startStop = msg_Head2Data.control.startStop;
 	Data2Driver.control.radius = msg_Head2Data.control.radius;
 	Data2Driver.control.speed = msg_Head2Data.control.speed;
+	Data2Driver.control.command1 = msg_Head2Data.control.command1;
+	Data2Driver.control.command2 = msg_Head2Data.control.command2;
 	
 	Data2Driver.servo1.time = msg_Head2Data.servo1.time;
 	Data2Driver.servo1.position = msg_Head2Data.servo1.position;
@@ -196,16 +200,14 @@ void collect_Data2Driver() // Данные для передачи с Data на 
 }
 
 // Выводим на экран данные команды которую отправляем
-void printData_To_Body()
+void printData2Driver()
 {
 	printf(" SEND id = %i", Data2Driver.id);
-	// printf(" command = %i", stru_body_send.command);
-	// printf(" napravlenie = %i", msg_head_receive.napravlenie);
-	// printf(" radius = %f", stru_body_send.radius);
-	// printf(" speed = %f", stru_body_send.speed);
-	// printf(" angle_cam = %f", stru_body_send.cam_angle);
-	// printf(" ventil_speed = %i", stru_body_send.ventil_speed);
-	// printf("  /  ");
+	printf(" startStop = %i", Data2Driver.control.startStop);
+	printf(" speed = %f", Data2Driver.control.speed);
+	printf(" radius = %f", Data2Driver.control.radius);
+	printf(" led.num_program = %i", Data2Driver.led.num_program);
+	printf("  \n");
 }
 // Выводим на экран данные которые получили
 void printData_From_Driver()

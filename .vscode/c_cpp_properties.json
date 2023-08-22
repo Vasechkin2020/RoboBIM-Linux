@@ -13,6 +13,7 @@
               "${workspaceFolder}/src/data/src",
               "${workspaceFolder}/src/",
               "/opt/ros/melodic/include/**",
+              "/opt/ros/melodic/include/ros/**",
               "/usr/include/**",
               "${workspaceFolder}/**"
           ],

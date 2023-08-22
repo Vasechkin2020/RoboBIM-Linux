@@ -4,50 +4,58 @@
 #include <sensor_msgs/Joy.h>
 
 #include <data/Struct_Joy.h>
+#include <data/Struct_Data2Driver.h>
 
 // #include <my_msgs/Body.h>
 // #include <my_msgs/Control.h>
 // #include <my_msgs/Command.h>
 
 #include "head_code/c_joy.h"
-Joy joy; // Обьявляем экземпляр класса
-
 #include "head_code/config.h"
-#include "head_code/code.h"
 
-data::Struct_Joy msg_Joy2Head;
+Joy joy(MAX_SPEED,0.5);                    // Обьявляем экземпляр класса в нем вся обработка джойстика
+data::Struct_Joy joy2Head;                 // Структура в которую пишем обработанные данные от джойстика
+data::Struct_Joy joy2Head_prev;            // Структура в которую пишем обработанные данные от джойстика предыдущее состоние
+data::Struct_Data2Driver Data2Driver;      // Структура с командами которую публикуем и которую потом Driver исполняет
+data::Struct_Data2Driver Data2Driver_prev; // Структура с командами которую публикуем и которую потом Driver исполняет предыдущее состоние
+
+#include "head_code/code.h"
 
 int main(int argc, char **argv)
 {
     ROS_INFO("%s -------------------------------------------------------------", NN);
-    ROS_INFO("%s START Head Module HighLevel ROS Raspberry Pi 4B !!! ver 1.00 ", NN);
+    ROS_INFO("%s START Head Module HighLevel ROS Raspberry Pi 4B !!! ver 1.03 ", NN);
     ROS_INFO("%s ------------------ROS_INFO-----------------------------------", NN);
     ROS_WARN("%s ------------------ROS_WARN-----------------------------------", NN);
     ROS_ERROR("%s ------------------ROS_ERROR----------------------------------", NN);
 
     ros::init(argc, argv, "head_node");
     ros::NodeHandle nh;
-    ros::Subscriber subscriber_Joy = nh.subscribe("joy", 16, callback_Joy); // Это мы подписываемся на то что публикует нода джойстика
-    ros::Publisher publisher_Joy2Head = nh.advertise<sensor_msgs::Joy>("Joy2Head", 16); // Это мы публикуем структуру которую получили с драйвера
+
+    ros::Subscriber subscriber_Joy = nh.subscribe("joy", 16, callback_Joy);             // Это мы подписываемся на то что публикует нода джойстика
+    ros::Publisher publisher_Joy2Head = nh.advertise<data::Struct_Joy>("Joy2Head", 16); // Это мы публикуем структуру которую получили с драйвера
+    ros::Publisher publisher_Head2Driver = nh.advertise<data::Struct_Data2Driver>("Head2Data", 16); // Это мы публикуем структуру которую получили с драйвера
 
     // ros::Subscriber body_sub = nh.subscribe("body_topic", 16, message_callback_Body);          //Это мы подписываемся
     // ros::Subscriber control_sub = nh.subscribe("control_topic", 16, message_callback_Control); // Это мы подписываемся
-
     // ros::Publisher com_pub = nh.advertise<my_msgs::Command>("command_topic", 16); //Это мы публикуем структуру
+
     ros::Rate r(RATE); // Частота в Герцах - задержка
     // Command_msg.id = 0;                                                           //Начальное значение номера команд
 
     while (ros::ok())
     {
-        ros::spinOnce();  // Опрашиваем ядро ROS и по этой команде срабатывают обратные вызовы где мы получаем данные на которы подписаны
-        joy.processing(); // Расчеты или обработка на основе данных в перемнной data, которые там обновились посде callback
-        publisher_Joy2Head.publish(msg_Joy2Head); //Публикация полученных данных
+        ros::spinOnce();                      // Опрашиваем ядро ROS и по этой команде срабатывают обратные вызовы где мы получаем данные на которы подписаны
+        publisher_Joy2Head.publish(joy2Head); // Публикация полученных данных
+        // ROS_INFO("%s 1 joy2Head.axes_L2 = %f, joy2Head.axes_R2 = %f", NN, joy2Head.axes_L2, joy2Head.axes_R2);
 
+        Data2Driver = joy.transform(joy2Head, joy2Head_prev, Data2Driver_prev); // Преобразование кнопок джойстика в реальные команды
+        publisher_Head2Driver.publish(Data2Driver); // Публикация сформированных данных структуры управления
 
         // collectCommand();             // Формируем команду на основе полученных данных
         // com_pub.publish(Command_msg); //Публикация данных команды
-        // ros::spinOnce();              // Опрашиваем ядро ROS и по этой команде наши данные публикуются
-        r.sleep(); // Интеллектуальная задержка на указанную частоту
+        ros::spinOnce(); // Опрашиваем ядро ROS и по этой команде наши данные публикуются
+        r.sleep();       // Интеллектуальная задержка на указанную частоту
     }
 
     return 0;

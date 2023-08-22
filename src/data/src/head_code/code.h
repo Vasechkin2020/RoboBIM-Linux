@@ -1,10 +1,11 @@
 #ifndef CODE_H
 #define CODE_H
 
+// Функция обраьтного вызова по подпичке на топик джойстика nh.subscribe("joy", 16, callback_Joy);
 void callback_Joy(sensor_msgs::Joy msg)
 {
-    // joy = msg;
-    joy.data = msg;
+    //joy.data = msg;  // Присваиваем в публичную перменную класса данные полученные по spinOnce()
+    joy2Head = joy.processing(msg); // Записываем данные в класс
 
 }
 

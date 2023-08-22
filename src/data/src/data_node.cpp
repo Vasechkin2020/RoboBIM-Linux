@@ -4,8 +4,12 @@
 
 #include <nav_msgs/Odometry.h>
 
-#include <data/Struct_Car.h>
+#include <data/data_iot_info.h>
+#include <data/data_iot_distance.h>
+
+
 #include <data/Struct_Control.h>
+#include <data/Struct_Car.h>
 #include <data/Struct_Encoder.h>
 #include <data/Struct_IMU.h>
 #include <data/Struct_Led.h>
@@ -17,8 +21,6 @@
 #include <data/Struct_Data2Driver.h>
 #include <data/Struct_Driver2Data.h>
 
-#include <data/data_iot_info.h>
-#include <data/data_iot_distance.h>
 
 #include <wiringPi.h>
 #include <wiringPiSPI.h>
@@ -101,10 +103,10 @@ int main(int argc, char **argv)
         // //----------------------------------------------------------------------------------------------------------
 
         collect_Data2Driver(); //Собираем рабочие данные в структуру для передачи считывая данные из топика ноды Head
-        //printData_To_Body();
+        printData2Driver();
         rez_data = sendData2Driver(SPI_CHANNAL_1, Driver2Data, Data2Driver); ////  Отправляем данные на нижний уровень
         data_driver_all++;
-        printData_From_Driver();
+        //printData_From_Driver();
 
         if (rez_data) // Если пришли хорошие данные то обрабатываем их и публикуем данные в ROS
         {
