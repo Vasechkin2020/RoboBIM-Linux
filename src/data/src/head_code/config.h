@@ -2,12 +2,12 @@
 #define CONFIG_H
 
 
-#define RATE 10 // Частота шага
+#define RATE 5 // Частота шага
 
 #define DISTANCE_LAZER 0.39 // Середина стандартного дипазона датчика лазерного в стандартном положении
 #define DIAPAZON 0.04       // Диапазон +- лазерного датчика
 
-#define MAX_SPEED 2                                   // Максимальная скорость робота
+#define MAX_SPEED 1.5                                   // Максимальная скорость робота
 #define MAX_RADIUS 0.5                                  // Максимальный радиус поворота робота
 #define SPEED_STANDART 0.5                              // Стандартная скорость робота
 #define SPEED_ROTATION 0.2                              // Скорость вращения робота

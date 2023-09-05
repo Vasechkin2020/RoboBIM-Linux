@@ -1,6 +1,7 @@
 #// Структура принимаемых данных от контроллера Driver в Data
 
 	uint32 id                       # id команды
+	Struct_StatusDriver status
 	Struct_Car car                  #
 	Struct_Encoder motorLeft
 	Struct_Encoder motorRight

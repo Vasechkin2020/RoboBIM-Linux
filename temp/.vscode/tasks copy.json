@@ -18,19 +18,16 @@
             }
         },
         {
-            "label": "ROS: New catkin_make Data",
+            "label": "ROS: catkin_make Data",
             "type": "shell",
             "command": "catkin_make",
             "args": [
-                "--directory",
-				"/home/pi/RoboBIM-Linux",
                 "--pkg",
                 "data",
                 "-j4",
-                "-DCMAKE_BUILD_TYPE=Debug",
-                "-DCMAKE_EXPORT_COMPILE_COMMANDS=1"
+                "-DCMAKE_BUILD_TYPE=Debug"
             ],
-            "problemMatcher": "$catkin-gcc",
+            "problemMatcher": [],
             "group": "build"
         },
         {
@@ -41,8 +38,7 @@
                 "--pkg",
                 "position",
                 "-j4",
-                "-DCMAKE_BUILD_TYPE=Debug",
-                "-DCMAKE_EXPORT_COMPILE_COMMANDS=1"
+                "-DCMAKE_BUILD_TYPE=Debug"
             ],
             "problemMatcher": [],
             "group": "build"
@@ -53,10 +49,9 @@
             "command": "catkin_make",
             "args": [
                 "--pkg",
-                "data",
+                "head",
                 "-j4",
-                "-DCMAKE_BUILD_TYPE=Debug",
-                "-DCMAKE_EXPORT_COMPILE_COMMANDS=1"
+                "-DCMAKE_BUILD_TYPE=Debug"
             ],
             "problemMatcher": [],
             "group": "build"
@@ -69,8 +64,7 @@
                 "--pkg",
                 "rplidar_ros",
                 "-j4",
-                "-DCMAKE_BUILD_TYPE=Debug",
-                "-DCMAKE_EXPORT_COMPILE_COMMANDS=1"
+                "-DCMAKE_BUILD_TYPE=Debug"
             ],
             "problemMatcher": [],
             "group": "build"

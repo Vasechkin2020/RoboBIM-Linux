@@ -62,6 +62,7 @@ add_message_files(
   Struct_ServoOut.msg
   Struct_Car.msg
   Struct_Joy.msg
+  Struct_StatusDriver.msg
   Struct_Data2Driver.msg
   Struct_Driver2Data.msg
   Rpy.msg

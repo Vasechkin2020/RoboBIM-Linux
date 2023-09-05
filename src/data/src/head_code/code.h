@@ -4,117 +4,60 @@
 // Функция обраьтного вызова по подпичке на топик джойстика nh.subscribe("joy", 16, callback_Joy);
 void callback_Joy(sensor_msgs::Joy msg)
 {
-    //joy.data = msg;  // Присваиваем в публичную перменную класса данные полученные по spinOnce()
+    // joy.data = msg;  // Присваиваем в публичную перменную класса данные полученные по spinOnce()
     joy2Head = joy.processing(msg); // Записываем данные в класс
-
 }
 
-// // Обратный вызов при опросе топика Body
-// void message_callback_Body(const my_msgs::Body &msg)
-// {
-//     Body_msg = msg; // Копируем структуру в глобальную переменную для дальнейшей работы с ней.
-//     //ROS_INFO("Message: %f", msg.bme280.pressure);
-// }
+void callback_Pillar(sensor_msgs::LaserScan::ConstPtr msg)
+{
+    pillar.scanCallback(msg); // Копируем структуру в глобальную переменную для дальнейшей работы с ней.
+}
 
-// // Обратный вызов при опросе топика Control
-// void message_callback_Control(const my_msgs::Control &msg)
-// {
-//     Control_msg = msg; // Копируем структуру в глобальную переменную для дальнейшей работы с ней.
-//     //ROS_INFO("Message: %f", msg.bme280.pressure);
-// }
-// // Переводит значение из одного диапазона в другой, взял из Ардуино
-// long map(long x, long in_min, long in_max, long out_min, long out_max)
-// {
-//     return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
-// }
+void callback_Driver(data::Struct_Driver2Data msg)
+{
+    Driver2Data = msg; // Копируем структуру в глобальную переменную для дальнейшей работы с ней.
+}
+// Находим минимальную дистанцию из 3 датчиков
+float minDistance(float lazer1_, float lazer2_, float uzi1_)
+{
+    float min = lazer1_;
+    if (lazer2_ < min)
+    {
+        min = lazer2_;
+    }
+    if (uzi1_ < min)
+    {
+        min = uzi1_;
+    }
+    return min;
+}
 
-// //Функция вычисляющая новую скорость в зависимости от условий
-// float newSpeed()
-// {
-//     float delta_speed = g_my_position.speed.target - g_my_position.speed.fact; // Находим разницу скоростей
-//     if (delta_speed > 0)                                                       // Если заданна скорость больше чем есть, тогда ускоряемся
-//     {
-//         if (delta_speed > step_accel_up)
-//         {
-//             g_my_position.speed.fact += step_accel_up; // Увеличиваем скорость на величину ускорения
-//         }
-//         else
-//         {
-//             g_my_position.speed.fact += delta_speed; // Увеличиваем скорость на оставшуюся разницу
-//         }
-//     }
-//     if (delta_speed < 0) // Если заданна меньше меньше чем есть, тогда тормозим
-//     {
-//         if (delta_speed < -step_accel_down)
-//         {
-//             g_my_position.speed.fact -= step_accel_down; // Уменьшаем скорость на величину ускорения
-//         }
-//         else
-//         {
-//             g_my_position.speed.fact += delta_speed; // Уменьшаем скорость на оставшуюся разницу
-//         }
-//     }
-//     return g_my_position.speed.fact;
-// }
-// // //Функция фильтрующая целевую скорость в зависимости от датчика растояния лазерного
-// // void filterLaser()
-// // {
-// //     //Если растояние будет меньше границы диапазона или больше границы диапазона
-// //     if (Body_msg.distance_lazer > (DISTANCE_LAZER + DIAPAZON) || // Это обрыв
-// //         Body_msg.distance_lazer < (DISTANCE_LAZER - DIAPAZON))   // Это преграда
-// //     {
-// //         // В таком случае движение зависит от радиуса, разворачиваться не мешаем. а ехать вперед или по большому радиусу запрещаем
-// //         if (g_my_position.radius == 0 ||
-// //             abs(g_my_position.radius) > 0.2)
-// //         {
-// //             g_my_position.speed.target = 0;
-// //         }
-// //     }
-// //     ROS_INFO("Body_msg.distance_lazer= %.2f", Body_msg.distance_lazer);
-// //     ROS_INFO("g_my_position.speed.target= %.2f", g_my_position.speed.target);
-// // }
-// // //Функция фильтрующая целевую скорость в зависимости от датчика растояния ультразвукового
-// // void filterUzi()
-// // {
-// //     // Увеличиваем на 1000 так как команда MAP только в целый числах
-// //     long standart = (long)(SPEED_STANDART * 1000.0);
-// //     long speed_max = (long)(SPEED_MAX * 1000.0);
-// //     long dist = (long)(Body_msg.distance_uzi * 1000.0);
+// Переводит значение из одного диапазона в другой, взял из Ардуино
+long map(long x, long in_min, long in_max, long out_min, long out_max)
+{
+    return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
 
-// //     if (Body_msg.distance_uzi < 0.2) //Если расстояние меньше 0.2 метра то прямо и с большим радиусом ехать не разрешаем, можно только крутиться и разварачиваться на месте
-// //     {
-// //         if (g_my_position.radius == 0 ||
-// //             abs(g_my_position.radius) > 0.2)
-// //         {
-// //             g_my_position.speed.target = 0; // До 20 см
-// //         }
-// //     }
-// //     else
-// //     {
-// //         if (Body_msg.distance_uzi < 1) // Если от 0.2 метра до 1 метров
-// //         {
-// //             g_my_position.speed.target = map(dist, 200, 1000, 0, speed_max) / 1000.0; // От стандартной до максимальной
-// //         }
-// //         else
-// //         {
-// //             g_my_position.speed.target = SPEED_MAX; // Максимальная скорость
-// //         }
-// //     }
-// //     ROS_INFO("Body_msg.distance_uzi= %.2f", Body_msg.distance_uzi);
-// //     ROS_INFO("g_my_position.speed.target= %.2f", g_my_position.speed.target);
-// // }
-// // //Функция фильтрующая целевую скорость в зависимости от радиуса движения, что-бы быстро не крутился
-// // void filterRadius()
-// // {
-// //     ROS_INFO("g_my_position.radius= %.2f", g_my_position.radius);
-// //     if (abs(g_my_position.radius) < 1.5 * DISTANCE_WHEELS && g_my_position.radius != 0 )
-// //     {
-// //         // if (g_my_position.speed.target > SPEED_ROTATION) // Если скорость по цели превышает то ограничиваем, а ели нет то можно вращаться с меньшей скоростью
-// //         // {
-// //             g_my_position.speed.target = SPEED_ROTATION; // Устанавливаем скорость вращения
-// //         // }
-// //     }
-// // }
+// Корректировка скорости движения в зависимости от датчиков растояния перед
+data::Struct_Data2Driver speedCorrect(data::Struct_Data2Driver Data2Driver_)
+{
+    float min = minDistance(Driver2Data.lazer1.distance, Driver2Data.lazer2.distance, Driver2Data.uzi1.distance); // Находим минимальную дистанцию из 3 датчиков
+    long minDist = (long)(min * 1000);                                                                            // Превращаем в целое и увеличиваем умножая на 1000 для точности
+    if (minDist < 100)
+        minDist = 100;
+    long speed = (long)(Data2Driver_.control.speed * 1000);
+    if (min < 0.5)
+    {
+        float proc = map(minDist, 100, 500, 0, 100);
+        proc = proc / 100;
+        Data2Driver_.control.speed = proc * Data2Driver_.control.speed;
+        ROS_INFO ("Correct speed. Min distance = %f, New speed = %f", min, Data2Driver_.control.speed);
+    }
+    // printf("sp= %f \n", Data2Driver_.control.speed);
+    return Data2Driver_;
+}
+
+
 // //Функция формирования команды для нижнего уровня на основе всех полученных данных, датчиков и анализа ситуации
 // void collectCommand()
 // {
@@ -158,8 +101,8 @@ void callback_Joy(sensor_msgs::Joy msg)
 //     // filterLaser(); // Ограничения что-бы не упасть с обрыва
 //     // ROS_INFO("g_my_position.speed.target 5 = %.1f", g_my_position.speed.target);
 
-//     //float speed = newSpeed(); // Устанавливаем новую фактическую скорость после того как разобрались с целью по скорости
-//     float speed = 0.2; // Устанавливаем новую фактическую скорость после того как разобрались с целью по скорости
+//     //float speed = newSpeed();  // Устанавливаем новую фактическую скорость после того как разобрались с целью по скорости
+//     float speed = 0.2;           // Устанавливаем новую фактическую скорость после того как разобрались с целью по скорости
 //     if (radius < 0.05 && radius > 0)
 //     {
 //         speed = 0.1;
@@ -177,10 +120,3 @@ void callback_Joy(sensor_msgs::Joy msg)
 // }
 
 #endif
-
-/*
-начать считать фактическое положение по одометрии и по ускорению от IMU в ноде Body
-
-проверить настройки лазерного датчика, а то больно сильно скачут значения
-
-*/

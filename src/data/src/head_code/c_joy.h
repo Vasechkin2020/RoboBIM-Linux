@@ -33,8 +33,8 @@ Joy::Joy(float speed_max_, float radius_min_)
 Joy::~Joy()
 {
 }
-
-data::Struct_Joy Joy::processing(const sensor_msgs::Joy &data_) // Функция обработки и пробразований данных в мою понятную структуру с кнопками
+// Функция обработки и пробразований данных в мою понятную структуру с кнопками
+data::Struct_Joy Joy::processing(const sensor_msgs::Joy &data_) 
 {
     data::Struct_Joy joy2Head;                   // Структура в которую пишем обработанные данные от джойстика и выдаем наружу из класса
                                                  //--------------------------- BUTTON -----------------------------
@@ -69,13 +69,14 @@ data::Struct_Joy Joy::processing(const sensor_msgs::Joy &data_) // Функци�
     return joy2Head;
 }
 
-data::Struct_Data2Driver Joy::transform(data::Struct_Joy &joy2Head_, data::Struct_Joy &joy2Head_prev_, data::Struct_Data2Driver &Data2Driver_prev_) // Преобразование кнопок джойстика в реальные команды
+// Преобразование кнопок джойстика в реальные команды
+data::Struct_Data2Driver Joy::transform(data::Struct_Joy &joy2Head_, data::Struct_Joy &joy2Head_prev_, data::Struct_Data2Driver &Data2Driver_prev_) 
 {
     static data::Struct_Data2Driver Data2Driver; // Тут формируем команды делаем static что-бы командв сохранялись
 
-    printf(" joy2Head_.button_option %f ! ", joy2Head_.button_option);
-    printf(" joy2Head_prev_.button_option %f ", joy2Head_prev_.button_option);
-    printf(" Data2Driver_prev_.led.num_program %i ", Data2Driver_prev_.led.num_program);
+    // printf(" joy2Head_.button_option %f ! ", joy2Head_.button_option);
+    // printf(" joy2Head_prev_.button_option %f ", joy2Head_prev_.button_option);
+    // printf(" Data2Driver_prev_.led.num_program %i ", Data2Driver_prev_.led.num_program);
 
     if (joy2Head_.button_ps4 != joy2Head_prev_.button_ps4 && joy2Head_.button_ps4 == 1) // Если изменилась кнопка и стала единицей сейчас тогда делаем команду
     {
@@ -136,7 +137,7 @@ data::Struct_Data2Driver Joy::transform(data::Struct_Joy &joy2Head_, data::Struc
     }
     if (joy2Head_.button_square != joy2Head_prev_.button_square && joy2Head_.button_square == 1) // Если изменилась кнопка и стала единицей сейчас тогда делаем команду
     {
-        Data2Driver.control.speed -= 0.1;  // Скорость увеличиваем на 0.1
+        Data2Driver.control.speed -= 0.1;  // Скорость уменьшаем на 0.1
         if (Data2Driver.control.speed < 0) // МИнимальная скорость ограничена 0
         {
             Data2Driver.control.speed = 0;
@@ -168,19 +169,19 @@ data::Struct_Data2Driver Joy::transform(data::Struct_Joy &joy2Head_, data::Struc
         Data2Driver.control.radius = getRadius(offset);
     }
 
-    if (joy2Head_.button_left_right != joy2Head_prev_.button_left_right && joy2Head_.button_left_right == 1) // Если изменилась кнопка и стала единицей сейчас тогда делаем команду
+    if (joy2Head_.button_left_right != joy2Head_prev_.button_left_right && joy2Head_.button_left_right == -1) // Если изменилась кнопка и стала единицей сейчас тогда делаем команду
     {
         offset = offset + radius_delta;
         Data2Driver.control.radius = getRadius(offset);
     }
-    if (joy2Head_.button_left_right != joy2Head_prev_.button_left_right && joy2Head_.button_left_right == -1) // Если изменилась кнопка и стала единицей сейчас тогда делаем команду
+    if (joy2Head_.button_left_right != joy2Head_prev_.button_left_right && joy2Head_.button_left_right == 1) // Если изменилась кнопка и стала единицей сейчас тогда делаем команду
     {
         offset = offset - radius_delta;
         Data2Driver.control.radius = getRadius(offset);
     }
 
-    printf(" control.startStop %i ", Data2Driver.control.startStop);
-    printf(" led.num_program %i \n", Data2Driver.led.num_program);
+    // printf(" control.startStop %i ", Data2Driver.control.startStop);
+    // printf(" led.num_program %i \n", Data2Driver.led.num_program);
 
     joy2Head_prev_ = joy2Head_;      // Запоминаем состояние для следующего раза
     Data2Driver_prev_ = Data2Driver; // Запоминаем статус команд для следующего раза

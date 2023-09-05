@@ -4,15 +4,26 @@
 // Структура сосдержит всю информацию по мотору на основании данных энкодера
 struct Struct_Encoder
 {
-	float way = 0; // Пройденный путь колесом с учетом направления вращения
-	float rps = 0; // Текущая скорость вращения ( обороты в секунду)
+  float way = 0; // Пройденный путь колесом с учетом направления вращения
+  float rpsSet = 0; // Текущая скорость вращения ( обороты в секунду)
+  float rpsEncod = 0; // Текущая скорость вращения ( обороты в секунду)
 };
+// Структура содержит данные по статусу Driver
+struct Struct_StatusDriver
+{
+  uint32_t countCommand = 0;  // Сколько всего пришло команд с момента запуска
+  uint32_t countBedCommand = 0;  // Сколько из них плохих команд
+  uint32_t timeStart = 0;  // Сколько миллисекунд с моента запуска драйвера
+};
+
 // Структура сосдержит всю информацию по мотору на основании данных энкодера
 struct Struct_Car
 {
-	float speed = 0;  // Текущая скорость движения (метры в секунду)
-	float radius = 0; // Текущий радиус движения в метрах
-	float way = 0;	  // Пройденный путь в метрах
+  float speedSet = 0;  // Скорость которую задали в функции (метры в секунду)
+  float speedEncod = 0;  // Текущая скорость движения (метры в секунду)
+  float radiusSet = 0; // Радиус который задали в функции в метрах
+  float radiusEncod = 0; // Текущий радиус движения в метрах
+  float way = 0; // Пройденный путь в метрах
 };
 // Структура для углов наклонов
 struct Struct_IMU
@@ -80,6 +91,7 @@ struct Struct_Odom
 struct Struct_Driver2Data
 {
 	uint32_t id = 0; // id команды
+	Struct_StatusDriver status;
 	Struct_Car car;
 	Struct_Encoder motorLeft;
 	Struct_Encoder motorRight;
@@ -138,14 +150,22 @@ void processing_Driver2Data()
 	// Копируем полученные по SPI данные в сообщение которое потом опубликуем
 	msg_Driver2Data.id = Driver2Data.id;
 
-	msg_Driver2Data.car.radius = Driver2Data.car.radius;
-	msg_Driver2Data.car.speed = Driver2Data.car.speed;
+	msg_Driver2Data.status.timeStart = Driver2Data.status.timeStart;
+	msg_Driver2Data.status.countCommand = Driver2Data.status.countCommand;
+	msg_Driver2Data.status.countBedCommand = Driver2Data.status.countBedCommand;
+
+	msg_Driver2Data.car.speedSet = Driver2Data.car.speedSet;
+	msg_Driver2Data.car.speedEncod = Driver2Data.car.speedEncod;
+	msg_Driver2Data.car.radiusSet = Driver2Data.car.radiusSet;
+	msg_Driver2Data.car.radiusEncod = Driver2Data.car.radiusEncod;
 	msg_Driver2Data.car.way = Driver2Data.car.way;
 	
-	msg_Driver2Data.motorLeft.rps = Driver2Data.motorLeft.rps;
+	msg_Driver2Data.motorLeft.rpsSet = Driver2Data.motorLeft.rpsSet;
+	msg_Driver2Data.motorLeft.rpsEncod = Driver2Data.motorLeft.rpsEncod;
 	msg_Driver2Data.motorLeft.way = Driver2Data.motorLeft.way;
 	
-	msg_Driver2Data.motorRight.rps = Driver2Data.motorRight.rps;
+	msg_Driver2Data.motorRight.rpsSet = Driver2Data.motorRight.rpsSet;
+	msg_Driver2Data.motorRight.rpsEncod = Driver2Data.motorRight.rpsEncod;
 	msg_Driver2Data.motorRight.way = Driver2Data.motorRight.way;
 
 	msg_Driver2Data.odom_enc.x = Driver2Data.odom_enc.x;
@@ -181,6 +201,8 @@ void collect_Data2Driver() // Данные для передачи с Data на 
 	Data2Driver.id++; //= 0x1F1F1F1F;
 
 	Data2Driver.control.startStop = msg_Head2Data.control.startStop;
+
+	Data2Driver.control.startStop = msg_Head2Data.control.startStop;
 	Data2Driver.control.radius = msg_Head2Data.control.radius;
 	Data2Driver.control.speed = msg_Head2Data.control.speed;
 	Data2Driver.control.command1 = msg_Head2Data.control.command1;
@@ -213,7 +235,7 @@ void printData2Driver()
 void printData_From_Driver()
 {
 	printf(" RECEIVE id = %i", Driver2Data.id);
-	printf(" Driver2Data.car.radius = %f", Driver2Data.car.radius);
+	printf(" Driver2Data.car.radius = %f", Driver2Data.car.radiusSet);
 	// printf(" gaz.x = %f", Driver2Data.gaz_data);
 	// printf(" gaz2.x = %f", stru_body_receive.gaz2_data);
 	//  printf(" bno055.x = %f", stru_body_receive.bno055.x);

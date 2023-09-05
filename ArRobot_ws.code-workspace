@@ -1,7 +1,8 @@
 {
 	"folders": [
 		{
-			"path": "."
+			"path": 
+			[]"."
 		}
 	],
 	"settings": {
@@ -24,5 +25,9 @@
 		"python.analysis.extraPaths": [
 			"/opt/ros/melodic/lib/python2.7/dist-packages"
 		]
+	},
+	"launch": {
+		"version": "0.2.0",
+		"configurations": []
 	}
 }

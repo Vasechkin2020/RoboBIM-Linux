@@ -7,17 +7,17 @@
               "limitSymbolsToIncludedHeaders": true
           },
           "includePath": [
-              "/opt/ros/melodic/**",
-              "/opt/ros/melodic/include/**",
-              "/opt/ros/melodic/include/ros/",
-              "/opt/ros/melodic/include/ros/**",
               "${workspaceFolder}/devel/include",
+         //     "${workspaceFolder}/src/data/include",
+         //     "${workspaceFolder}/src/data/include/data",
               "${workspaceFolder}/src/data/src",
               "${workspaceFolder}/src/",
+              "/opt/ros/melodic/include/**",
+              "/opt/ros/melodic/include/ros/**",
               "/usr/include/**",
               "${workspaceFolder}/**"
           ],
-          "intelliSenseMode": "linux-gcc-arm",
+          "intelliSenseMode": "gcc-arm",
 
           "compilerPath": "/usr/bin/g++",
           "cStandard": "c11",
@@ -25,7 +25,7 @@
           // "compilerPath": "/usr/bin/gcc",
           // "cStandard": "gnu17",
           // "cppStandard": "gnu++14"
-          "compileCommands": "${workspaceFolder}/build/compile_commands.json",
+          //"compileCommands": "${workspaceFolder}/build/compile_commands.json",
           "configurationProvider": "ms-vscode.cmake-tools"
       }
   ],

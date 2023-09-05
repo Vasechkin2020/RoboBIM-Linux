@@ -72,6 +72,7 @@ int main(int argc, char **argv)
     set_PIN_Led();                      // Устанавливаем и обьявляем пины. для вывода анализатора светодиодов и всего прочего
     init_SPI(SPI_CHANNAL_0, SPI_SPEED); // Инициализация нужного канала SPI
     init_SPI(SPI_CHANNAL_1, SPI_SPEED); // Инициализация нужного канала SPI
+    int aaa[10];
 
     while (ros::ok())
     {
@@ -103,7 +104,7 @@ int main(int argc, char **argv)
         // //----------------------------------------------------------------------------------------------------------
 
         collect_Data2Driver(); //Собираем рабочие данные в структуру для передачи считывая данные из топика ноды Head
-        printData2Driver();
+        //printData2Driver();
         rez_data = sendData2Driver(SPI_CHANNAL_1, Driver2Data, Data2Driver); ////  Отправляем данные на нижний уровень
         data_driver_all++;
         //printData_From_Driver();
@@ -112,7 +113,7 @@ int main(int argc, char **argv)
         {
             //digitalWrite(PIN_LED_GREEN, 0); // Гасим светодиод пришли хорошие данные
             // ROS_INFO("Data ok! ");
-            processing_Driver2Data(); // данные от драйвера записываем их в структуру для публикации в топике
+            processing_Driver2Data(); //  данные от драйвера записываем их в структуру для публикации в топике
 
             // setOdomToTf(nh, odom_broadcaster, current_time); // Функция которая одометрию пищет куда нужно, передаем этой функции все переменные котороые создали в гласной функции main
             // transOdom();
@@ -126,7 +127,7 @@ int main(int argc, char **argv)
             //digitalWrite(PIN_LED_GREEN, 1); // Включаем светодиод пришли плохие данные
             ROS_WARN("%s Flag_bedData chek_sum BED Driver", NN);
         }
-        ROS_INFO("%s 1 channal data_Driver_all = %i, data_Driver_bed = %i", NN, data_driver_all, data_driver_bed);
+        //ROS_INFO("%s 1 channal data_Driver_all = %i, data_Driver_bed = %i", NN, data_driver_all, data_driver_bed);
 
         ros::spinOnce(); // Обновление в данных в ядре ROS
         r.sleep();       // Интеллектуальная задержка на указанную частоту
