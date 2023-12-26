@@ -12,14 +12,16 @@
 // #include <my_msgs/Control.h>
 // #include <my_msgs/Command.h>
 
-#include "head_code/c_joy.h"
-#include "head_code/pillar.h"
-#include "head_code/position.h"
 #include "head_code/config.h"
+pos_struct position;            // Обьявляем переменную для позиции машинки
 
+#include "head_code/c_joy.h"
 Joy joy(MAX_SPEED, 0.5); // Обьявляем экземпляр класса в нем вся обработка джойстика
+#include "head_code/position.h"
+
+#include "head_code/pillar.h"
 Pillar pillar;           // Обьявляем экземпляр класса в нем вся обработка и обсчет столбов
-Position pos;            // Обьявляем экземпляр класса в нем вся обработка и обсчет позиции
+
 
 data::Struct_Joy joy2Head;                 // Структура в которую пишем обработанные данные от джойстика
 data::Struct_Joy joy2Head_prev;            // Структура в которую пишем обработанные данные от джойстика предыдущее состоние

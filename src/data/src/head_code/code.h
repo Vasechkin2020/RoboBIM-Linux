@@ -20,11 +20,12 @@ void callback_Driver(data::Struct_Driver2Data msg)
 //  Разбор и установка параметров которые задали в launch файле при запуске
 void setParam(ros::NodeHandle nh_private_)
 {
-    //Установка начальных координат у игла направления для машинки
-    nh_private_.param<double>("start_x", pos.pos.x, 1.11);
-    nh_private_.param<double>("start_y", pos.pos.y, 1.11);
-    nh_private_.param<double>("start_th", pos.pos.th, 1.11);
     
+    // Установка начальных координат у игла направления для машинки
+    nh_private_.param<double>("start_x", position.x, 1.11);
+    nh_private_.param<double>("start_y", position.y, 1.11);
+    nh_private_.param<double>("start_th", position.th, 1.11);
+
     // Имя можно с палкой или без, смотря как в лаунч файле параметры обявлены. связано с видимостью глобальной или локальной. относительным поиском переменной как сказал Максим
     if (!nh_private_.getParam("/x0", pillar.pillarOut[0].x))
         pillar.pillarOut[0].x = 1.11;
@@ -44,6 +45,11 @@ void setParam(ros::NodeHandle nh_private_)
     if (!nh_private_.getParam("/x3", pillar.pillarOut[3].x))
         pillar.pillarOut[0].x = 1.11;
     if (!nh_private_.getParam("/y3", pillar.pillarOut[3].y))
+        pillar.pillarOut[0].y = 1.11;
+
+    if (!nh_private_.getParam("/x4", pillar.pillarOut[4].x))
+        pillar.pillarOut[0].x = 1.11;
+    if (!nh_private_.getParam("/y4", pillar.pillarOut[4].y))
         pillar.pillarOut[0].y = 1.11;
 
     // ROS_INFO("pos.x = %f pos.y = %f pos.th = %f ",pos.pos.x,pos.pos.y,pos.pos.th);
@@ -74,16 +80,15 @@ long map(long x, long in_min, long in_max, long out_min, long out_max)
 data::Struct_Data2Driver speedCorrect(data::Struct_Data2Driver Data2Driver_)
 {
     float min = minDistance(Driver2Data.lazer1.distance, Driver2Data.lazer2.distance, Driver2Data.uzi1.distance); // Находим минимальную дистанцию из 3 датчиков
-    long minDist = (long)(min * 1000);                                                                            // Превращаем в целое и увеличиваем умножая на 1000 для точности
-    if (minDist < 100)
-        minDist = 100;
-    long speed = (long)(Data2Driver_.control.speed * 1000);
-    if (min < 0.5)
+    if (min < 0.5)                                                                                                // Если меньше полметра
     {
+        long minDist = (long)(min * 1000); // Превращаем в целое и увеличиваем умножая на 1000 для точности
+        if (minDist < 100)
+            minDist = 100;
         float proc = map(minDist, 100, 500, 0, 100);
-        proc = proc / 100;
+        proc = proc / 100; // Превращаем в проценты
         Data2Driver_.control.speed = proc * Data2Driver_.control.speed;
-        //ROS_INFO("Correct speed. Min distance = %f, New speed = %f", min, Data2Driver_.control.speed);
+        // ROS_INFO("Correct speed. Min distance = %f, New speed = %f", min, Data2Driver_.control.speed);
     }
     // printf("sp= %f \n", Data2Driver_.control.speed);
     return Data2Driver_;

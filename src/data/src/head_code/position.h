@@ -5,17 +5,11 @@
 class Position
 {
 private:
-        // Структура  данных где указаны координаты  текущей позиции
-    struct pos_stru
-    {
-        double x = 0;         // Координата по Х
-        double y = 0;         // Координата по У
-        double th = 0;          // Направление 
-    };
+
 public:
     Position(/* args */);
     ~Position();
-    pos_stru pos;
+    //pos_stru pos;
     //void setStartPos(double x_, double y_, double th_);
 };
 

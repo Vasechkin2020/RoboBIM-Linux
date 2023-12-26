@@ -10,7 +10,6 @@
 class Pillar
 {
 private:
-    /* data */
     struct lidar_stru
     {
         float angle = 0;  // Напрвление с лидара
@@ -28,7 +27,9 @@ private:
         float dist_min = 0;
         float dist_max = 0;
         float width = 0; // Ширина столба
-        float x = 0;     // Расчетные координаты столба исходя из предыдущего положения платформы
+        float xloc = 0;  // Расчетные координаты столба исходя из предыдущего положения платформы
+        float yloc = 0;
+        float x = 0; // Глобальные координаты
         float y = 0;
     };
 
@@ -39,16 +40,19 @@ private:
         float y = 0;         // Координата по У
         float direction = 0; // Направление на столб по данным с лидара после сопоставления столбов
     };
+    pos_struct pos_loc;
+    pos_struct povorotOsi(float xloc_, float yloc_, float th_);
+    void poiskPillar(int a_, int b_, const sensor_msgs::LaserScan::ConstPtr &scan);
+
+    int c = 0; // Номер группы точек для массива
 
 public:
     void scanCallback(const sensor_msgs::LaserScan::ConstPtr &scan);
-    void poiskPillar(int a_, int b_, const sensor_msgs::LaserScan::ConstPtr &scan);
 
-    int c = 0;          // Номер группы точек для массива
     int max_pillar = 0; // Колличество столбов отобраееых по алгоритму в массив
 
     pillar_stru pillar[16];      // Массив котором храним данные по столбам
-    pillarOut_stru pillarOut[4]; // Массив котором храним данные по столбам
+    pillarOut_stru pillarOut[5]; // Массив котором храним данные по столбам 5 столбов пока
 
     Pillar(/* args */);
     ~Pillar();
@@ -73,6 +77,15 @@ Pillar::Pillar(/* args */)
 
 Pillar::~Pillar()
 {
+}
+
+pos_struct Pillar::povorotOsi(float xloc_, float yloc_, float th_)
+{
+    pos_struct ret;
+    th_ = DEG2RAD(th_); // Превращаем в радианы из градусов
+    ret.x = xloc_ * cos(th_) - yloc_ * sin(th_);
+    ret.y = yloc_ * cos(th_) + xloc_ * sin(th_);
+    return ret;
 }
 
 void Pillar::poiskPillar(int a_, int b_, const sensor_msgs::LaserScan::ConstPtr &scan)
@@ -122,13 +135,21 @@ void Pillar::poiskPillar(int a_, int b_, const sensor_msgs::LaserScan::ConstPtr 
             pillar[c].data[x].ranges = scan->ranges[i];
             x++;
         }
-        pillar[c].angle_left = angle_b;
-        pillar[c].angle_right = angle_a;
-        pillar[c].angle_dist_min = min_angle;
+        // У градусов меняем знак чтобы справа были плюс а слева минус градусы
+        pillar[c].angle_left = -angle_b;
+        pillar[c].angle_right = -angle_a;
+        pillar[c].angle_dist_min = -min_angle;
+        pillar[c].azimuth = -angle_middle; // Берем середину столба, хотя из-за вращения происходит смещения и лучше бы еще как-то уточнять
         pillar[c].dist_min = min_dist;
         pillar[c].dist_max = max_dist;
         pillar[c].width = width;
-        pillar[c].azimuth = angle_middle; // Берем середину столба, хотя из-за вращения происходит смещения и лучше бы еще как-то уточнять
+        pillar[c].xloc = sin(DEG2RAD(pillar[c].azimuth)) * pillar[c].dist_max;
+        pillar[c].yloc = cos(DEG2RAD(pillar[c].azimuth)) * pillar[c].dist_max;
+
+        pos_loc = povorotOsi(pillar[c].xloc, pillar[c].yloc, position.th);
+
+        pillar[c].x = position.x + pos_loc.x;
+        pillar[c].y = position.y + pos_loc.y;
         c++;
     }
     else
@@ -199,7 +220,8 @@ void Pillar::scanCallback(const sensor_msgs::LaserScan::ConstPtr &scan)
 
     for (int i = 0; i < max_pillar; i++)
     {
-        ROS_INFO("i= %i width= %f angle_left= %f angle_right= %f azimuth= %f angle_dist_min= %f dist_min- %f dist_max= %f", i, pillar[i].width, pillar[i].angle_left, pillar[i].angle_right, pillar[i].azimuth, pillar[i].angle_dist_min, pillar[i].dist_min, pillar[i].dist_max);
+        //ROS_INFO("i= %i width= %f angle_left= %f angle_right= %f azimuth= %f angle_dist_min= %f dist_min- %f dist_max= %f", i, pillar[i].width, pillar[i].angle_left, pillar[i].angle_right, pillar[i].azimuth, pillar[i].angle_dist_min, pillar[i].dist_min, pillar[i].dist_max);
+        ROS_INFO("i= %i ! width= %f azimuth= %f dist_max= %f ! xloc= %f yloc= %f ! x= %f y- %f !", i, pillar[i].width, pillar[i].azimuth,pillar[i].dist_max,pillar[i].xloc,pillar[i].yloc,pillar[i].x,pillar[i].y);
     }
 }
 
