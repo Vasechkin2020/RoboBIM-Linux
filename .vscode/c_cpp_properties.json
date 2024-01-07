@@ -7,6 +7,7 @@
               "limitSymbolsToIncludedHeaders": true
           },
           "includePath": [
+              "/opt/ros/melodic/include/ros/*", 
               "/opt/ros/melodic/**",
               "/opt/ros/melodic/include/**",
               "/opt/ros/melodic/include/ros/",

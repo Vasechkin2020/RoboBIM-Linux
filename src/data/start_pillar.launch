@@ -1,6 +1,6 @@
 <launch>
 
-  <node pkg="data" type="head_node" name="head_node" output ="screen">
+  <node pkg="data" type="pillar_node" name="pillar_node" output ="screen">
     <param name="start_x" type="double" value="0.0" />
     <param name="start_y" type="double" value="2.0" />
     <param name="start_th" type="double" value="0.0" />

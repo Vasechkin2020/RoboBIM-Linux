@@ -13,6 +13,7 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   tf
   std_msgs
+  geometry_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -52,7 +53,25 @@ find_package(catkin REQUIRED COMPONENTS
 #DIRECTORY msg
 add_message_files(
   FILES
+  point.msg    # x,y,x
+#--------------Структуры для сообщений на данные с MODUL -----------------------------------------
+  Struct_Motor.msg
+  Struct_ModulMotor.msg
+  
+  Struct_Lidar.msg
+  Struct_ModulLidar.msg
+
+  Struct_ModulMicric.msg
+  #------------Структуры для информации по обмену SPI с контроллерами ESP32 -------------------------------------------
+  Struct_Spi.msg
+  Struct_Info_SPI.msg
+  #-------------------------------------------------------
+  
+  topicAngle.msg    # Топик с командой управления углами дальномеров
+  topicPillar.msg    # Топик с данными координаты реального положения столбов
+  #-------------------------------------------------------
   Struct_Control.msg
+  Struct_Car.msg
   Struct_Encoder.msg
   Struct_IMU.msg
   Struct_Led.msg
@@ -60,22 +79,16 @@ add_message_files(
   Struct_Sensor.msg
   Struct_Servo.msg
   Struct_ServoOut.msg
-  Struct_Car.msg
   Struct_Joy.msg
   Struct_StatusDriver.msg
   Struct_Data2Driver.msg
   Struct_Driver2Data.msg
   Rpy.msg
-  Bme.msg
   Odomet.msg
-  Power.msg
   Control.msg
   DataTimeMy.msg
-  data_driver_info.msg
   data_driver_control.msg
   data_driver_odometr.msg
-  data_iot_info.msg
-  data_iot_distance.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -96,6 +109,7 @@ add_message_files(
 generate_messages(
    DEPENDENCIES
    std_msgs
+   geometry_msgs
  )
 
 ################################################
@@ -130,8 +144,10 @@ generate_messages(
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES head
-#  CATKIN_DEPENDS roscpp rospy std_msgs message_generation
-CATKIN_DEPENDS message_runtime
+CATKIN_DEPENDS roscpp rospy std_msgs geometry_msgs message_runtime message_generation 
+# CATKIN_DEPENDS message_generation
+# CATKIN_DEPENDS message_runtime
+# CATKIN_DEPENDS geometry_msgs
 #  DEPENDS system_lib
 )
 
@@ -150,5 +166,11 @@ include_directories(
 add_executable(data_node src/data_node.cpp)
 target_link_libraries(data_node ${catkin_LIBRARIES} -lwiringPi -lpthread)
 
-add_executable(head_node src/head_node.cpp)
-target_link_libraries(head_node ${catkin_LIBRARIES})
+#add_executable(head_node src/head_node.cpp)
+#target_link_libraries(head_node ${catkin_LIBRARIES})
+
+#add_executable(pillar_node src/pillar_node.cpp)
+#target_link_libraries(pillar_node ${catkin_LIBRARIES})
+
+#add_executable(route_node src/route_node.cpp)
+#target_link_libraries(route_node ${catkin_LIBRARIES})

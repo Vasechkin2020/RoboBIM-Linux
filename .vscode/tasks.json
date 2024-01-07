@@ -34,12 +34,12 @@
             "group": "build"
         },
         {
-            "label": "ROS: catkin_make Position",
+            "label": "ROS: catkin_make Pillar",
             "type": "shell",
             "command": "catkin_make",
             "args": [
                 "--pkg",
-                "position",
+                "pillar",
                 "-j4",
                 "-DCMAKE_BUILD_TYPE=Debug",
                 "-DCMAKE_EXPORT_COMPILE_COMMANDS=1"
