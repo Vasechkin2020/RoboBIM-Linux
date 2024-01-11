@@ -50,7 +50,8 @@ void Led_Blink(int led_, unsigned long time_)
 		led_status = 1 - led_status;
 		digitalWrite(led_, led_status);
 		led_time = millis();
-		ROS_INFO("%s led_time = %i.", NN, led_time);
+		// ROS_INFO("%s led_time = %i.", NN, led_time);
+		printf("+ \n");
 	}
 }
 

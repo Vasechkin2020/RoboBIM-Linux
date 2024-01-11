@@ -3,7 +3,7 @@
 
 //**************************** ОБЬЯВЛЕНИЕ ПРОЦЕДУР **********************************
 
-void processingSPI(); 																						  // Сбор данных по результатам обмена по шине SPI по обоим контроллерам
+void processingSPI();																						  // Сбор данных по результатам обмена по шине SPI по обоим контроллерам
 void dataProcessing_Modul();																				  // Обработка полученных данных и копирование их для публикации в топике
 void Collect_Data2Modul();																					  // Данные для передачи на низкий уровень //Копирование рабочих данных в структуру для передачи
 void printData_To_Control();																				  // Выводим на экран данные которые отправляем в Control
@@ -15,8 +15,8 @@ bool sendData2Modul(int channel_, Struct_Modul2Data &structura_receive_, Struct_
 // Копирование рабочих данных в структуру для передачи
 void Collect_Data2Modul() // Данные для передачи на низкий уровень
 {
-	Data2Modul.id++;		  //= 0x1F1F1F1F;
-	Data2Modul.command = msg_topicAngle.command;	  //
+	Data2Modul.id++;							   //= 0x1F1F1F1F;
+	Data2Modul.command = msg_topicAngle.command;   //
 	Data2Modul.angle[0] = msg_topicAngle.angle[0]; //
 	Data2Modul.angle[1] = msg_topicAngle.angle[1]; //
 	Data2Modul.angle[2] = msg_topicAngle.angle[2]; //
@@ -27,7 +27,6 @@ void Collect_Data2Modul() // Данные для передачи на низк�
 													 // printf("Отправляем: Id %i, чек= %i  ", Data2Modul.id, Data2Modul.cheksum);
 }
 
-
 // Сбор данных по результатам обмена по шине SPI по обоим контроллерам
 
 void processingSPI()
@@ -35,7 +34,7 @@ void processingSPI()
 	msg_spi.ModulData.id = Modul2Data.id; // Собираем для публикации данные о результатах обмена полученных из Modul о том как он принял по SPI данные отправленные Data
 	msg_spi.ModulData.all = Modul2Data.spi.all;
 	msg_spi.ModulData.bed = Modul2Data.spi.bed;
-	
+
 	msg_spi.DataModul.id = Data2Modul.id; // Собираем для публикации данные о результатах обмена из Data о том как он принял по SPI данные отправленные Modul
 	msg_spi.DataModul.all = data_modul_all;
 	msg_spi.DataModul.bed = data_modul_bed;
@@ -48,7 +47,7 @@ void dataProcessing_Modul()
 	msg_modul_motor.id = Modul2Data.id;
 	msg_modul_lidar.id = Modul2Data.id;
 	msg_modul_micric.id = Modul2Data.id;
-	
+
 	msg_modul_motor.id = Modul2Data.pinMotorEn; // Стутус пина управления драйвером моторов, включен драйвер или нет
 	for (int i = 0; i < 4; i++)
 	{
@@ -63,8 +62,6 @@ void dataProcessing_Modul()
 		msg_modul_micric.micric[i] = Modul2Data.micric[i]; // Состояние концевиков
 	}
 }
-
-
 
 // Основная функция приема-передачи двух структур на slave контроллер по протоколу SPI
 bool sendData2Modul(int channel_, Struct_Modul2Data &structura_receive_, Struct_Data2Modul &structura_send_) // Указываем на каком пине устройство и с какого регистра нужно прочитать данные
@@ -97,6 +94,7 @@ bool sendData2Modul(int channel_, Struct_Modul2Data &structura_receive_, Struct_
 	// data_Modul_all++;
 	//  int aa = micros();
 	rez = wiringPiSPIDataRW(channel_, buffer, sizeof(buffer)); // Передаем и одновременно получаем данные
+	delayMicroseconds(10);
 	// int time_transfer = micros() - aa;
 	// float time_transfer_sec = time_transfer / 1000000.0;
 
@@ -112,9 +110,13 @@ bool sendData2Modul(int channel_, Struct_Modul2Data &structura_receive_, Struct_
 	// 	printf("\n");
 
 	// Извлекаем из буфера данные в формате структуры и копирум данные
+	Struct_Modul2Data structura_receive_temp;								  // Временная структура, проверить правильные ли пришли данные
+	
 	Struct_Modul2Data *copy_buf_master_receive = (Struct_Modul2Data *)buffer; // Создаем переменную в которую пишем адрес буфера в нужном формате
-	structura_receive_ = *copy_buf_master_receive;							  // Копируем из этой перемнной данные в мою структуру
-	uint32_t cheksum_receive = measureCheksum(structura_receive_);			  // Считаем контрольную сумму пришедшей структуры
+	// structura_receive_ = *copy_buf_master_receive;						  // Копируем из этой перемнной данные в мою структуру
+	// uint32_t cheksum_receive = measureCheksum(structura_receive_);		  // Считаем контрольную сумму пришедшей структуры
+	structura_receive_temp = *copy_buf_master_receive;						  // Копируем из этой перемнной данные в мою структуру
+	uint32_t cheksum_receive = measureCheksum(structura_receive_temp);		  // Считаем контрольную сумму пришедшей структуры
 
 	// Struct_Modul2Data copy_Control_receive = *copy_buf_master_receive;		// Копируем из этой перемнной данные в мою структуру
 	// uint8_t *adr_copy_Control_receive = (uint8_t *)(&copy_Control_receive); // Запоминаем адрес начала структуры. Используем для побайтной передачи
@@ -139,13 +141,14 @@ bool sendData2Modul(int channel_, Struct_Modul2Data &structura_receive_, Struct_
 	// Serial.println(String(micros()) + " copy_DataHL_Control_receive bmp280.pressure= " + copy_DataHL_Control_receive.bmp280.pressure);
 	//  Serial.println(String(micros()) + " copy_DataHL_Control_receive.cheksum_receive= " + copy_DataHL_Control_receive.cheksum);
 	// printf(" measureCheksum= %i \n", cheksum_receive);
-	if (cheksum_receive != structura_receive_.cheksum || structura_receive_.cheksum == 0) // Если наша чек сумма совпадает с последним байтом где чексума переданных данных
+	if (cheksum_receive != structura_receive_temp.cheksum || structura_receive_temp.cheksum == 0) // Если наша чек сумма совпадает с последним байтом где чексума переданных данных
 	{
 		data_modul_bed++;
 		return false;
 	}
 	else // Все хорошо возвращаем Ок
 	{
+		structura_receive_= structura_receive_temp; // Копируем хорошие данные уже в итоговую структуру, если плохие то они просто пропадают и не портят прошлые
 		return true;
 	}
 }

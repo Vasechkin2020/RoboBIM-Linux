@@ -105,7 +105,8 @@ int main(int argc, char **argv)
         }
         if (!rez_data) // Если пришли плохие данные то выводим ошибку
         {
-            ROS_WARN("%s Flag_bedData chek_sum BED Modul", NN);
+            //ROS_WARN("%s Flag_bedData chek_sum BED Modul", NN);
+            // printf("b \n");
         }
 
         // ROS_INFO("%s channal 0, all = %i, bed = %i", NN, data_modul_all, data_modul_bed);
