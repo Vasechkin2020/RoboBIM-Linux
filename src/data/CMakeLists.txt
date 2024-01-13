@@ -53,7 +53,7 @@ find_package(catkin REQUIRED COMPONENTS
 #DIRECTORY msg
 add_message_files(
   FILES
-  point.msg    # x,y,x
+  point.msg    # x,y
 #--------------Структуры для сообщений на данные с MODUL -----------------------------------------
   Struct_Motor.msg
   Struct_ModulMotor.msg
@@ -163,14 +163,17 @@ include_directories(
 )
 
 
-add_executable(data_node src/data_node.cpp)
-target_link_libraries(data_node ${catkin_LIBRARIES} -lwiringPi -lpthread)
+#add_executable(data_node src/data_node.cpp)
+#target_link_libraries(data_node ${catkin_LIBRARIES} -lwiringPi -lpthread)
 
-#add_executable(head_node src/head_node.cpp)
-#target_link_libraries(head_node ${catkin_LIBRARIES})
+add_executable(head_node src/head_node.cpp)
+target_link_libraries(head_node ${catkin_LIBRARIES})
 
-#add_executable(pillar_node src/pillar_node.cpp)
-#target_link_libraries(pillar_node ${catkin_LIBRARIES})
+add_executable(pillar_node src/pillar_node.cpp)
+target_link_libraries(pillar_node ${catkin_LIBRARIES})
+
+add_executable(car_node src/car_node.cpp)
+target_link_libraries(car_node ${catkin_LIBRARIES})
 
 #add_executable(route_node src/route_node.cpp)
 #target_link_libraries(route_node ${catkin_LIBRARIES})

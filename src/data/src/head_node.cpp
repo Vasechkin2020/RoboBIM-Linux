@@ -4,32 +4,45 @@
 #include <sensor_msgs/Joy.h>
 #include "sensor_msgs/LaserScan.h"
 
-
-
 #include <data/Struct_Joy.h>
+#include <data/point.h>
 #include <data/Struct_Data2Driver.h>
 #include <data/Struct_Driver2Data.h>
 
-// #include <my_msgs/Body.h>
-// #include <my_msgs/Control.h>
-// #include <my_msgs/Command.h>
-
 #include "head_code/config.h"
-pos_struct position;            // Обьявляем переменную для позиции машинки
+// pos_struct position; // Обьявляем переменную для позиции машинки
+
+#include "head_code/car.h"
+
+CCar car; // Обьявляем экземпляр класса в нем вся обработка и обсчет машинки как обьекта
 
 #include "head_code/c_joy.h"
-Joy joy(MAX_SPEED, 0.5); // Обьявляем экземпляр класса в нем вся обработка джойстика
-#include "head_code/position.h"
+CJoy joy(MAX_SPEED, 0.5); // Обьявляем экземпляр класса в нем вся обработка джойстика
 
+#include <data/topicPillar.h>
 #include "head_code/pillar.h"
-Pillar pillar;           // Обьявляем экземпляр класса в нем вся обработка и обсчет столбов
+CPillar pillar; // Обьявляем экземпляр класса в нем вся обработка и обсчет столбов
 
+data::topicPillar msg_pillar;               // Перемеенная в которую сохраняем данные лидара из сообщения
+data::point msg_car;                        // Перемеенная в которую сохраняем данные о координатах машинки начальных
+sensor_msgs::Joy msg_joy;                   // Переменная в которую записываем пришедшее сообщение а колбеке
+sensor_msgs::LaserScan::ConstPtr msg_lidar; // Перемеенная в которую сохраняем данные лидара из сообщения
+data::Struct_Driver2Data msg_Driver2Data;   // Сообщение которое считываем из топика
 
-data::Struct_Joy joy2Head;                 // Структура в которую пишем обработанные данные от джойстика
-data::Struct_Joy joy2Head_prev;            // Структура в которую пишем обработанные данные от джойстика предыдущее состоние
+data::Struct_Joy joy2Head_msg;  // Структура в которую пишем обработанные данные от джойстика и потом публикуем в топик
+data::Struct_Joy joy2Head_prev; // Структура в которую пишем обработанные данные от джойстика предыдущее состоние
+
+bool flag_msgJoy = false;    // Флаг что пришло сообщение в топик и можно его парсить
+bool flag_msgPillar = false; // Флаг что пришло сообщение в топик и можно его парсить
+bool flag_msgLidar = false;  // Флаг что пришло сообщение в топик и можно его парсить
+bool flag_msgCar = false;    // Флаг что пришло сообщение в топик и можно его парсить
+
+bool flag_dataPillar = false; // Флаг что разобрали данные по координатам столбов и можно обсчитывать дальше
+bool flag_dataCar = false;    // Флаг что разобрали данные по координатам машины и можно обсчитывать дальше
+bool flag_dataLidar = false;  // Флаг что разобрали данные по лидару и можно сопоставлять столбы
+
 data::Struct_Data2Driver Data2Driver;      // Структура с командами которую публикуем и которую потом Driver исполняет
 data::Struct_Data2Driver Data2Driver_prev; // Структура с командами которую публикуем и которую потом Driver исполняет предыдущее состоние
-data::Struct_Driver2Data Driver2Data;      // Сообщение которое считываем из топика
 
 #include "head_code/code.h"
 
@@ -44,40 +57,65 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "head_node");
 
     ros::NodeHandle nh;
-    ros::NodeHandle nh_private("~");
 
-    setParam(nh_private); // Разбор и установка параметров которые задали в launch файле при запуске
-
+    ros::Subscriber subscriber_Lidar = nh.subscribe<sensor_msgs::LaserScan>("/scan", 1000, callback_Lidar);
+    ros::Subscriber subscriber_Pillar = nh.subscribe<data::topicPillar>("pbPillar", 1000, callback_Pillar);
+    ros::Subscriber subscriber_Car = nh.subscribe<data::point>("pbCar", 1000, callback_Car);
     ros::Subscriber subscriber_Joy = nh.subscribe("joy", 16, callback_Joy); // Это мы подписываемся на то что публикует нода джойстика
-    ros::Subscriber subscriber_Pillar = nh.subscribe<sensor_msgs::LaserScan>("/scan", 1000, callback_Pillar);
     ros::Subscriber subscriber_Driver = nh.subscribe<data::Struct_Driver2Data>("Driver2Data", 1000, callback_Driver);
 
     ros::Publisher publisher_Joy2Head = nh.advertise<data::Struct_Joy>("Joy2Head", 16);             // Это мы публикуем структуру которую сформировали по данным с джойстика
     ros::Publisher publisher_Head2Driver = nh.advertise<data::Struct_Data2Driver>("Head2Data", 16); // Это мы публикуем структуру которую отправляем к исполнению на драйвер
 
-    // ros::Subscriber body_sub = nh.subscribe("body_topic", 16, message_callback_Body);          //Это мы подписываемся
-    // ros::Subscriber control_sub = nh.subscribe("control_topic", 16, message_callback_Control); // Это мы подписываемся
-    // ros::Publisher com_pub = nh.advertise<my_msgs::Command>("command_topic", 16); //Это мы публикуем структуру
-
-    ros::Rate r(RATE); // Частота в Герцах - задержка
-    // Command_msg.id = 0;                                                           //Начальное значение номера команд
+    ros::Rate r(RATE);        // Частота в Герцах - задержка
+    ros::Duration(1).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
 
     while (ros::ok())
     {
-        ros::spinOnce();                      // Опрашиваем ядро ROS и по этой команде срабатывают обратные вызовы где мы получаем данные на которы подписаны
-        publisher_Joy2Head.publish(joy2Head); // Публикация полученных данных
-        // ROS_INFO("%s 1 joy2Head.axes_L2 = %f, joy2Head.axes_R2 = %f", NN, joy2Head.axes_L2, joy2Head.axes_R2);
+        ros::spinOnce(); // Опрашиваем ядро ROS и по этой команде наши срабатывают колбеки. Нужно только для подписки на топики
+        printf("+ \n");
+        if (flag_msgCar)
+        {
+            flag_msgCar = false;
+            car.parsingTopicCar(msg_car);
+            flag_dataCar = true;
+            // pillar.parsingPillar(msg_car); // Разбираем пришедшие данные и ищем там столбы.
+        }
+        if (flag_msgPillar)
+        {
+            flag_msgPillar = false;
+            pillar.parsingPillar(msg_pillar); // Разбираем пришедшие данные Заполняем массив правильных координат.
+            flag_dataPillar = true;
+        }
 
-        Data2Driver = joy.transform(joy2Head, joy2Head_prev, Data2Driver_prev); // Преобразование кнопок джойстика в реальные команды
-        Data2Driver = speedCorrect(Data2Driver);                                // Корректировка скорости движения в зависимости от растояния до преграды
-        publisher_Head2Driver.publish(Data2Driver);                             // Публикация сформированных данных структуры управления для исполнения драйвером
+        if (flag_msgLidar && flag_dataCar) // Если пришло сообщение в топик от лидара и мы уже разобрали данные по координатам машинки
+        {
+            flag_msgLidar = false;
+            pillar.parsingLidar(msg_lidar); // Разбираем пришедшие данные и ищем там столбы.
+            flag_dataLidar = true;
+        }
+
+        if (flag_dataPillar && flag_dataLidar) // Если поступили данные и мы их разобрали по истинным координатоам столбов и есть данные по столюам с лидара то начинаем сопоставлять и публиковать сопоставленные столбы
+        {
+            pillar.comparisonPillar(pillar.pillarLidar, pillar.pillar); // Сопоставляем столбы
+        }
+
+        if (flag_msgJoy) // Если пришло новое сообшение и сработал колбек то разбираем что там пришло
+        {
+            joy2Head_msg = joy.parsingJoy(msg_joy); // Разбираем и формируем команды из полученного сообщения
+            flag_msgJoy = false;
+            publisher_Joy2Head.publish(joy2Head_msg);                                   // Публикация полученных данных для информации
+            Data2Driver = joy.transform(joy2Head_msg, joy2Head_prev, Data2Driver_prev); // Преобразование кнопок джойстика в реальные команды
+        }
+        // Data2Driver = speedCorrect(Data2Driver);                                // Корректировка скорости движения в зависимости от растояния до преграды
+        // publisher_Head2Driver.publish(Data2Driver); // Публикация сформированных данных структуры управления для исполнения драйвером
 
         // pillar.pillar[2].azimuth
         // collectCommand();             // Формируем команду на основе полученных данных
         // com_pub.publish(Command_msg); //Публикация данных команды
 
-        ros::spinOnce(); // Опрашиваем ядро ROS и по этой команде наши данные публикуются
-        r.sleep();       // Интеллектуальная задержка на указанную частоту
+        // ros::spinOnce(); // Опрашиваем ядро ROS и по этой команде наши срабатывают колбеки. Нужно только для подписки на топики
+        r.sleep(); // Интеллектуальная задержка на указанную частоту
     }
 
     return 0;

@@ -7,7 +7,7 @@
 // #include <data/Struct_Joy.h>
 // #include <data/Struct_Data2Driver.h>
 
-class Joy
+class CJoy
 {
 private:
     float speed_max = 1;       // Максимальная скорость
@@ -18,23 +18,23 @@ private:
     float getRadius(float & offset); // Возвращает какой должен быть радиус при указанном смещении
 
 public:
-    Joy(float speed_max_, float radius_min_);
-    ~Joy();
-    data::Struct_Joy processing(const sensor_msgs::Joy &data_);                                                                              // Функция обработки и пробразований данных в мою понятную структуру с кнопками
+    CJoy(float speed_max_, float radius_min_);
+    ~CJoy();
+    data::Struct_Joy parsingJoy(const sensor_msgs::Joy &data_);                                                                              // Функция обработки и пробразований данных в мою понятную структуру с кнопками
     data::Struct_Data2Driver transform(data::Struct_Joy &joy2Head, data::Struct_Joy &joy2Head_prev, data::Struct_Data2Driver &Data2Driver_); // Преобразование кнопок джойстика в реальные команды
 };
 
-Joy::Joy(float speed_max_, float radius_min_)
+CJoy::CJoy(float speed_max_, float radius_min_)
 {
     speed_max = speed_max_; // Меняем значения с умолчания на те что при инициализации
     radius_min = radius_min_;
 }
 
-Joy::~Joy()
+CJoy::~CJoy()
 {
 }
 // Функция обработки и пробразований данных в мою понятную структуру с кнопками
-data::Struct_Joy Joy::processing(const sensor_msgs::Joy &data_) 
+data::Struct_Joy CJoy::parsingJoy(const sensor_msgs::Joy &data_) 
 {
     data::Struct_Joy joy2Head;                   // Структура в которую пишем обработанные данные от джойстика и выдаем наружу из класса
                                                  //--------------------------- BUTTON -----------------------------
@@ -55,8 +55,8 @@ data::Struct_Joy Joy::processing(const sensor_msgs::Joy &data_)
 
     joy2Head.button_L2 = data_.buttons[6]; // 0 или 1, по умолчанию 0
     joy2Head.button_R2 = data_.buttons[7]; // 0 или 1, по умолчанию 0
+                                           
                                            //---------------------------- AXES-----------------------------
-
     joy2Head.axes_L_Hor = data_.axes[0]; // От 1 до -1 float, по умолчанию 0
     joy2Head.axes_L_Ver = data_.axes[1]; // От 1 до -1 float, по умолчанию 0
 
@@ -70,7 +70,7 @@ data::Struct_Joy Joy::processing(const sensor_msgs::Joy &data_)
 }
 
 // Преобразование кнопок джойстика в реальные команды
-data::Struct_Data2Driver Joy::transform(data::Struct_Joy &joy2Head_, data::Struct_Joy &joy2Head_prev_, data::Struct_Data2Driver &Data2Driver_prev_) 
+data::Struct_Data2Driver CJoy::transform(data::Struct_Joy &joy2Head_, data::Struct_Joy &joy2Head_prev_, data::Struct_Data2Driver &Data2Driver_prev_) 
 {
     static data::Struct_Data2Driver Data2Driver; // Тут формируем команды делаем static что-бы командв сохранялись
 
@@ -189,7 +189,7 @@ data::Struct_Data2Driver Joy::transform(data::Struct_Joy &joy2Head_, data::Struc
     return Data2Driver;
 }
 //Функция возвращает радиус по заданному смещению
-float Joy::getRadius(float &offset_)
+float CJoy::getRadius(float &offset_)
 {
     float radius = 0;
     // Ограничиваем размер смещения

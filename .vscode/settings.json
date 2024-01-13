@@ -6,7 +6,10 @@
     ],
     "files.associations": {
         "random": "cpp",
-        "thread": "cpp"
+        "thread": "cpp",
+        "array": "cpp",
+        "string": "cpp",
+        "string_view": "cpp"
     },
     "python.analysis.extraPaths": [
         "/opt/ros/melodic/lib/python2.7/dist-packages"

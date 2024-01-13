@@ -1,59 +1,49 @@
 #ifndef CODE_H
 #define CODE_H
 
-// Функция обраьтного вызова по подпичке на топик джойстика nh.subscribe("joy", 16, callback_Joy);
+//**************************** ОБЬЯВЛЕНИЕ ПРОЦЕДУР **********************************
+
+void callback_Joy(sensor_msgs::Joy msg);                   // Функция обраьтного вызова по подпичке на топик джойстика nh.subscribe("joy", 16, callback_Joy);
+void callback_Lidar(sensor_msgs::LaserScan::ConstPtr msg); //
+void callback_Driver(data::Struct_Driver2Data msg);        //
+void callback_Pillar(data::topicPillar msg);               //
+void callback_Car(data::point msg);                        //
+
+long map(long x, long in_min, long in_max, long out_min, long out_max);       // Переводит значение из одного диапазона в другой, взял из Ардуино
+
+float minDistance(float lazer1_, float lazer2_, float uzi1_);                 // Находим минимальную дистанцию из 3 датчиков
+data::Struct_Data2Driver speedCorrect(data::Struct_Data2Driver Data2Driver_); // Корректировка скорости движения в зависимости от датчиков растояния перед
+// void collectCommand(); // //Функция формирования команды для нижнего уровня на основе всех полученных данных, датчиков и анализа ситуации
+
+// **********************************************************************************
+
+
+// Функция обраьтного вызова по подписке на топик джойстика nh.subscribe("joy", 16, callback_Joy);
 void callback_Joy(sensor_msgs::Joy msg)
 {
-    // joy.data = msg;  // Присваиваем в публичную перменную класса данные полученные по spinOnce()
-    joy2Head = joy.processing(msg); // Записываем данные в класс
+    flag_msgJoy = true;
+    msg_joy = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
 }
 
-void callback_Pillar(sensor_msgs::LaserScan::ConstPtr msg)
+void callback_Lidar(sensor_msgs::LaserScan::ConstPtr msg)
 {
-    pillar.scanCallback(msg); // Копируем структуру в глобальную переменную для дальнейшей работы с ней.
+    flag_msgLidar = true;
+    msg_lidar = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
+}
+void callback_Pillar(data::topicPillar msg)
+{
+    flag_msgPillar = true;
+    msg_pillar = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
+}
+void callback_Car(data::point msg)
+{
+    flag_msgCar = true;
+    msg_car = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
 }
 
 void callback_Driver(data::Struct_Driver2Data msg)
 {
-    Driver2Data = msg; // Копируем структуру в глобальную переменную для дальнейшей работы с ней.
-}
-//  Разбор и установка параметров которые задали в launch файле при запуске
-void setParam(ros::NodeHandle nh_private_)
-{
-    
-    // Установка начальных координат у игла направления для машинки
-    nh_private_.param<double>("start_x", position.x, 1.11);
-    nh_private_.param<double>("start_y", position.y, 1.11);
-    nh_private_.param<double>("start_th", position.th, 1.11);
-
-    // Имя можно с палкой или без, смотря как в лаунч файле параметры обявлены. связано с видимостью глобальной или локальной. относительным поиском переменной как сказал Максим
-    if (!nh_private_.getParam("/x0", pillar.pillarOut[0].x))
-        pillar.pillarOut[0].x = 1.11;
-    if (!nh_private_.getParam("/y0", pillar.pillarOut[0].y))
-        pillar.pillarOut[0].y = 1.11;
-
-    if (!nh_private_.getParam("/x1", pillar.pillarOut[1].x))
-        pillar.pillarOut[0].x = 1.11;
-    if (!nh_private_.getParam("/y1", pillar.pillarOut[1].y))
-        pillar.pillarOut[0].y = 1.11;
-
-    if (!nh_private_.getParam("/x2", pillar.pillarOut[2].x))
-        pillar.pillarOut[0].x = 1.11;
-    if (!nh_private_.getParam("/y2", pillar.pillarOut[2].y))
-        pillar.pillarOut[0].y = 1.11;
-
-    if (!nh_private_.getParam("/x3", pillar.pillarOut[3].x))
-        pillar.pillarOut[0].x = 1.11;
-    if (!nh_private_.getParam("/y3", pillar.pillarOut[3].y))
-        pillar.pillarOut[0].y = 1.11;
-
-    if (!nh_private_.getParam("/x4", pillar.pillarOut[4].x))
-        pillar.pillarOut[0].x = 1.11;
-    if (!nh_private_.getParam("/y4", pillar.pillarOut[4].y))
-        pillar.pillarOut[0].y = 1.11;
-
-    // ROS_INFO("pos.x = %f pos.y = %f pos.th = %f ",pos.pos.x,pos.pos.y,pos.pos.th);
-    // ROS_INFO("pillarOut[0].x = %f pillarOut[0].y = %f ",pillar.pillarOut[0].x,pillar.pillarOut[0].y);
+    msg_Driver2Data = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
 }
 // Находим минимальную дистанцию из 3 датчиков
 float minDistance(float lazer1_, float lazer2_, float uzi1_)
@@ -79,8 +69,8 @@ long map(long x, long in_min, long in_max, long out_min, long out_max)
 // Корректировка скорости движения в зависимости от датчиков растояния перед
 data::Struct_Data2Driver speedCorrect(data::Struct_Data2Driver Data2Driver_)
 {
-    float min = minDistance(Driver2Data.lazer1.distance, Driver2Data.lazer2.distance, Driver2Data.uzi1.distance); // Находим минимальную дистанцию из 3 датчиков
-    if (min < 0.5)                                                                                                // Если меньше полметра
+    float min = minDistance(msg_Driver2Data.lazer1.distance, msg_Driver2Data.lazer2.distance, msg_Driver2Data.uzi1.distance); // Находим минимальную дистанцию из 3 датчиков
+    if (min < 0.5)                                                                                                            // Если меньше полметра
     {
         long minDist = (long)(min * 1000); // Превращаем в целое и увеличиваем умножая на 1000 для точности
         if (minDist < 100)
