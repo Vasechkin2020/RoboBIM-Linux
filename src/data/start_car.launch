@@ -1,0 +1,10 @@
+<launch>
+
+  <node pkg="data" type="car_node" name="car_node" output ="screen">
+
+    <param name="x0" type="double" value="2.0" />
+    <param name="y0" type="double" value="0.0" />
+    <param name="theta" type="double" value="0.0" />
+
+  </node>
+</launch> 

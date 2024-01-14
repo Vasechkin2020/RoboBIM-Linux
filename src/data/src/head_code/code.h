@@ -1,6 +1,7 @@
 #ifndef CODE_H
 #define CODE_H
 
+// #include "pillar.h"
 //**************************** ОБЬЯВЛЕНИЕ ПРОЦЕДУР **********************************
 
 void callback_Joy(sensor_msgs::Joy msg);                   // Функция обраьтного вызова по подпичке на топик джойстика nh.subscribe("joy", 16, callback_Joy);
@@ -9,14 +10,14 @@ void callback_Driver(data::Struct_Driver2Data msg);        //
 void callback_Pillar(data::topicPillar msg);               //
 void callback_Car(data::point msg);                        //
 
-long map(long x, long in_min, long in_max, long out_min, long out_max);       // Переводит значение из одного диапазона в другой, взял из Ардуино
+void formationPillar();                                                 // Формируем перемнную с собщением для публикации
+long map(long x, long in_min, long in_max, long out_min, long out_max); // Переводит значение из одного диапазона в другой, взял из Ардуино
 
 float minDistance(float lazer1_, float lazer2_, float uzi1_);                 // Находим минимальную дистанцию из 3 датчиков
 data::Struct_Data2Driver speedCorrect(data::Struct_Data2Driver Data2Driver_); // Корректировка скорости движения в зависимости от датчиков растояния перед
 // void collectCommand(); // //Функция формирования команды для нижнего уровня на основе всех полученных данных, датчиков и анализа ситуации
 
 // **********************************************************************************
-
 
 // Функция обраьтного вызова по подписке на топик джойстика nh.subscribe("joy", 16, callback_Joy);
 void callback_Joy(sensor_msgs::Joy msg)
@@ -35,10 +36,11 @@ void callback_Pillar(data::topicPillar msg)
     flag_msgPillar = true;
     msg_pillar = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
 }
-void callback_Car(data::point msg)
+void callback_Car(geometry_msgs::Pose2D msg)
 {
+    // ROS_WARN("callback_Car");
     flag_msgCar = true;
-    msg_car = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
+    msg_car = msg; // Пишем в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
 }
 
 void callback_Driver(data::Struct_Driver2Data msg)
@@ -82,6 +84,23 @@ data::Struct_Data2Driver speedCorrect(data::Struct_Data2Driver Data2Driver_)
     }
     // printf("sp= %f \n", Data2Driver_.control.speed);
     return Data2Driver_;
+}
+
+void formationPillar() // Формируем перемнную с собщением для публикации
+{
+    ROS_INFO("!!! %i",pillar.countPillar);
+    //pillar_out_msg.data[0].azimuth = 0;
+    for (int i = 0; i < pillar.countPillar; i++)
+    {
+        pillar_out_msg.data[i].status = pillar.pillar[i].status;
+        pillar_out_msg.data[i].azimuth = pillar.pillar[i].azimuth;
+        pillar_out_msg.data[i].hypotenuse = pillar.pillar[i].hypotenuse;
+        pillar_out_msg.data[i].x_true = pillar.pillar[i].x_true;
+        pillar_out_msg.data[i].y_true = pillar.pillar[i].y_true;
+        pillar_out_msg.data[i].y_lidar = pillar.pillar[i].y_lidar;
+        pillar_out_msg.data[i].x_lidar = pillar.pillar[i].x_lidar;
+        ROS_INFO("Status= %i azimuth= %.3f",pillar_out_msg.data[i].status,pillar_out_msg.data[i].azimuth);
+    }
 }
 
 // //Функция формирования команды для нижнего уровня на основе всех полученных данных, датчиков и анализа ситуации

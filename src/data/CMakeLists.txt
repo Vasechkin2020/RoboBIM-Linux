@@ -54,6 +54,7 @@ find_package(catkin REQUIRED COMPONENTS
 add_message_files(
   FILES
   point.msg    # x,y
+  pillar.msg    # 
 #--------------Структуры для сообщений на данные с MODUL -----------------------------------------
   Struct_Motor.msg
   Struct_ModulMotor.msg
@@ -69,6 +70,7 @@ add_message_files(
   
   topicAngle.msg    # Топик с командой управления углами дальномеров
   topicPillar.msg    # Топик с данными координаты реального положения столбов
+  PillarOut.msg
   #-------------------------------------------------------
   Struct_Control.msg
   Struct_Car.msg

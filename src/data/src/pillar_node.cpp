@@ -7,10 +7,8 @@ data::topicPillar pillar_msg; // Структура в которую пишем
 int main(int argc, char **argv)
 {
     ROS_INFO("%s -------------------------------------------------------------", NN);
-    ROS_INFO("%s START Pillar Node  ROS Raspberry Pi 4B !!! ver 1.0 ", NN);
-    ROS_INFO("%s ------------------ROS_INFO-----------------------------------", NN);
-    ROS_WARN("%s ------------------ROS_WARN-----------------------------------", NN);
-    ROS_ERROR("%s ------------------ROS_ERROR----------------------------------", NN);
+    ROS_WARN("%s Pillar Node PrintBIM 2024 ROS 1.0 Raspberry Pi 4B !!! ver 1.0 ", NN);
+    ROS_ERROR("%s ------------------ROS_ERROR----------------------------------\n", NN);
 
     ros::init(argc, argv, "pillar_node");
 
@@ -41,17 +39,17 @@ int main(int argc, char **argv)
     if (!nh_private.getParam("y3", pillar_msg.pillar[3].y))
         pillar_msg.pillar[3].y = 3.11;
 
+    ROS_INFO("Start pub_topicPillar.publish");
     for (int i = 0; i < pillar_msg.pillar.static_size; i++)
     {
-        printf(" x= %f y= %f \n", pillar_msg.pillar[i].x, pillar_msg.pillar[i].y);
+        ROS_INFO(" x= %f y= %f ", pillar_msg.pillar[i].x, pillar_msg.pillar[i].y);
     }
 
     if (ros::ok())
     {
-        ROS_INFO("Start pub_topicPillar.publish");
         pub_topicPillar.publish(pillar_msg); // Публикация полученных данных
         ros::Duration(1).sleep();
-        ROS_INFO("End pub_topicPillar.publish");
+        ROS_INFO("End pub_topicPillar.publish \n");
     }
 
     return 0;
