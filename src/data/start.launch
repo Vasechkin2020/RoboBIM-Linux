@@ -1,0 +1,5 @@
+<launch>
+  <include file="$(find data)start_car.launch" />
+  <include file="$(find data)start_pillar.launch" />
+
+</launch>

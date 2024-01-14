@@ -88,18 +88,19 @@ data::Struct_Data2Driver speedCorrect(data::Struct_Data2Driver Data2Driver_)
 
 void formationPillar() // Формируем перемнную с собщением для публикации
 {
-    ROS_INFO("!!! %i",pillar.countPillar);
+    //ROS_INFO("!!! %i",pillar.countPillar);
     //pillar_out_msg.data[0].azimuth = 0;
     for (int i = 0; i < pillar.countPillar; i++)
     {
         pillar_out_msg.data[i].status = pillar.pillar[i].status;
         pillar_out_msg.data[i].azimuth = pillar.pillar[i].azimuth;
         pillar_out_msg.data[i].hypotenuse = pillar.pillar[i].hypotenuse;
+        pillar_out_msg.data[i].distance = pillar.pillar[i].distance;
         pillar_out_msg.data[i].x_true = pillar.pillar[i].x_true;
         pillar_out_msg.data[i].y_true = pillar.pillar[i].y_true;
         pillar_out_msg.data[i].y_lidar = pillar.pillar[i].y_lidar;
         pillar_out_msg.data[i].x_lidar = pillar.pillar[i].x_lidar;
-        ROS_INFO("Status= %i azimuth= %.3f",pillar_out_msg.data[i].status,pillar_out_msg.data[i].azimuth);
+        //ROS_INFO("Status= %i azimuth= %.3f",pillar_out_msg.data[i].status,pillar_out_msg.data[i].azimuth);
     }
 }
 

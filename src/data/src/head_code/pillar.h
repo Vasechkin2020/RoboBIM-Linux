@@ -25,6 +25,7 @@ private:
         bool status = false; // Статус сопоставлен столб или нет
         float azimuth = 0; // Дидарные значения появляются при сопоставлении
         float hypotenuse = 0;
+        float distance = 0;
         float x_true = 0; // Истинные значения задаются из топика
         float y_true = 0;
         float x_lidar = 0;
@@ -127,7 +128,7 @@ void CPillar::comparisonPillar()
         pillar[i].y_lidar= 0;
         //printf("i= %i \n",i);
 
-        for (int j = 0; j < countPillarLidar; j++) // Перебираем лидароные столбы
+        for (int j = 0; j < countPillarLidar; j++) // Перебираем лидарные столбы
         {
             delta_x = abs(pillar[i].x_true - pillarLidar[j].x_globalXY); // Находим разницу в координатах
             delta_y = abs(pillar[i].y_true - pillarLidar[j].y_globalXY); //
@@ -137,6 +138,7 @@ void CPillar::comparisonPillar()
                 pillar[i].status = true; // Статус что есть сопоставление
                 pillar[i].azimuth = pillarLidar[j].azimuth;
                 pillar[i].hypotenuse = hypotenuse;
+                pillar[i].distance = pillarLidar[j].dist_min;
                 pillar[i].x_lidar = pillarLidar[j].x_globalXY;
                 pillar[i].y_lidar = pillarLidar[j].y_globalXY;
                 // printf("          hypotenuse= %.3f \n",pillar[i].hypotenuse);
@@ -144,7 +146,7 @@ void CPillar::comparisonPillar()
                 // printf("          x_lidar= %.3f \n",pillar[i].x_true);
                 // printf("          x_lidar= %.3f \n",pillar[i].x_lidar);
                 // printf("          x_lidar= %.3f \n",pillar[i].y_true);
-                // printf("          y_lidar= %.3f \n",pillar[i].y_lidar);
+                // printf("          dist_min= %.3f \n",pillarLidar[j].dist_min);
                 break;
             }
         }

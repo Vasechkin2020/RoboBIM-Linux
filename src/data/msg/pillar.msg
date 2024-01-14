@@ -1,7 +1,8 @@
         bool status         # Статус сопоставлен столб или нет
         float32 azimuth     # Дидарные значения появляются при сопоставлении
-        float32 x_true      # Истинные значения задаются из топика
-        float32 y_true 
+        float32 distance
         float32 x_lidar 
         float32 y_lidar 
+        float32 x_true      # Истинные значения задаются из топика
+        float32 y_true 
         float32 hypotenuse 
