@@ -78,21 +78,21 @@ int main(int argc, char **argv)
     {
         ros::spinOnce(); // Опрашиваем ядро ROS и по этой команде наши срабатывают колбеки. Нужно только для подписки на топики
         printf("+ \n");
-        if (flag_msgCar)
+        if (flag_msgCar) // Флаг что пришло сообщение о начальных координатах машинки
         {
             flag_msgCar = false;
             car.parsingTopicCar(msg_car);
             flag_dataCar = true;
             // pillar.parsingPillar(msg_car); // Разбираем пришедшие данные и ищем там столбы.
         }
-        if (flag_msgPillar)
+        if (flag_msgPillar) // Флаг что пришло сообщение о истинных координатах столбов
         {
             flag_msgPillar = false;
             pillar.parsingPillar(msg_pillar); // Разбираем пришедшие данные Заполняем массив правильных координат.
             flag_dataPillar = true;
         }
 
-        if (flag_msgLidar && flag_dataCar) // Если пришло сообщение в топик от лидара и мы уже разобрали данные по координатам машинки
+        if (flag_msgLidar && flag_dataCar) // Если пришло сообщение в топик от лидара и мы уже разобрали данные по координатам машинки, а значит можем грубо посчитать где стоят столбы.
         {
             flag_msgLidar = false;
             pillar.parsingLidar(msg_lidar); // Разбираем пришедшие данные и ищем там столбы.

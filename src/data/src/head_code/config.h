@@ -1,7 +1,7 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#define RATE 0.5 // Частота шага
+#define RATE 1 // Частота шага
 
 #define DISTANCE_LAZER 0.39 // Середина стандартного дипазона датчика лазерного в стандартном положении
 #define DIAPAZON 0.04       // Диапазон +- лазерного датчика
