@@ -54,7 +54,7 @@ data::Struct_Data2Driver Data2Driver_prev; // Структура с команд
 int main(int argc, char **argv)
 {
     ROS_INFO("%s -------------------------------------------------------------", NN);
-    ROS_WARN("%s        Main Module PrintBIM ROS 1.0 Raspberry Pi 4B  ver 1.12 ", NN);
+    ROS_WARN("%s        Main Module PrintBIM ROS 1.0 Raspberry Pi 4B  ver 1.132 ", NN);
     ROS_ERROR("%s ------------------ROS_ERROR----------------------------------", NN);
 
     ros::init(argc, argv, "head_node");
@@ -98,6 +98,7 @@ int main(int argc, char **argv)
             pillar.parsingLidar(msg_lidar); // Разбираем пришедшие данные и ищем там столбы.
             flag_dataLidar = true;
         }
+        ROS_INFO("flag_dataPillar= %i flag_dataLidar= %i",flag_dataPillar,flag_dataLidar);
 
         if (flag_dataPillar && flag_dataLidar) // Если поступили данные и мы их разобрали по истинным координатоам столбов и есть данные по столюам с лидара то начинаем сопоставлять и публиковать сопоставленные столбы
         {
@@ -105,6 +106,7 @@ int main(int argc, char **argv)
             pillar.comparisonPillar(); // Сопоставляем столбы
             formationPillar(); // Формируем перемнную с собщением для публикации
             publisher_PillarOut.publish(pillar_out_msg); // Публикуем информацию по столбам
+            pillar.getLocation(); // Считаем текущие координаты по столбам
         }
 
         if (flag_msgJoy) // Если пришло новое сообшение и сработал колбек то разбираем что там пришло

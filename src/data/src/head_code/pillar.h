@@ -3,8 +3,6 @@
 
 #include "config.h"
 
-#define RAD2DEG(x) ((x) * 180. / M_PI)
-#define DEG2RAD(x) ((x) * M_PI / 180.)
 #define PILLAR_RADIUS 0.1575  // Радиус столба 315 мм
 #define PEREHOD 0.15          // Разрыв между столбом и обьектом за ним
 #define OTKLONENIE_PILLAR 0.3 // Отклонение межлу истинным и лидарным столююов при котором они сопостовляются
@@ -35,13 +33,13 @@ private:
     // Структура куда записываем все столбы которые мы нашли на основе сканировавания по лидару
     struct SPillarLidar
     {
-        SLidar data[256];         // данные с лидара по этому столбу, всего 256 точек максимум
-        float angle_left = 0;     // крайний левый угол
-        float angle_right = 0;    // крайний правый угол
-        float angle_dist_min = 0; // угол с лидара с минимальным растоянием. Его считаем итоговым напрвлением на столб
+        SLidar data[256];           // данные с лидара по этому столбу, всего 256 точек максимум
+        float angle_left = 0;       // крайний левый угол
+        float angle_right = 0;      // крайний правый угол
+        float angle_dist_min = 0;   // угол с лидара с минимальным растоянием. Его считаем итоговым напрвлением на столб
         float angle_middle_min = 0; // Расчетный средний угол по точкам с дистанцией около минимальной на дельту отличается
-        float angle_middle = 0;   // Угол на примерную середину столба. Считается как середина точек участвующих в формировании стобла
-        float azimuth = 0;        // Итоговый угол на столб. Пока считаем как угол на минимум. Или можно усреднять например со средним углом. Нало посмотреть что будет точнее
+        float angle_middle = 0;     // Угол на примерную середину столба. Считается как середина точек участвующих в формировании стобла
+        float azimuth = 0;          // Итоговый угол на столб. Пока считаем как угол на минимум. Или можно усреднять например со средним углом. Нало посмотреть что будет точнее
         float dist_min = 0;
         float width = 0;      // Ширина столба
         float x_lidarXY = 0;  // Расчетные координаты столба в системе координат лидара
@@ -64,9 +62,12 @@ public:
     // ************************** ПУБЛИЧНЫЕ ФУНКЦИИ КЛАССА *********************************************
     CPillar(/* args */);
     ~CPillar();
-    void parsingLidar(const sensor_msgs::LaserScan::ConstPtr &scan); // Функция которую вызываем из колбека по расчету места столбов
-    void parsingPillar(data::topicPillar &pillar_);                  // Функция которую вызываем из колбека по расчету места столбов
-    void comparisonPillar();                                         // Функция где сопоставляю столбы
+    void parsingLidar(const sensor_msgs::LaserScan::ConstPtr &scan);    // Функция которую вызываем из колбека по расчету места столбов
+    void parsingPillar(data::topicPillar &pillar_);                     // Функция которую вызываем из колбека по расчету места столбов
+    void comparisonPillar();                                            // Функция где сопоставляю столбы
+    SCircle getCircle(SPoint p1_, SPoint p2_, float angle, SPoint p0_); // Функция возвращает окружность(координаты и радиус) которая ближе всего к точке старого измерения
+    SPoint getCrossing(SCircle c1_, SCircle c2_, SPoint p0_);           // Функция возвращает одну из двух точек пеерсечения двух окружностей ближайшую к заданной
+    SPoint getLocation();                                               // Метод возврщает положение центра лидара усредненного по всем столбам и расчетам
 
     // lidar_stru data[1024]; // данные с лидара по этому столбу
     //  float angle_left = 0; // крайний левый угол
@@ -88,6 +89,125 @@ CPillar::CPillar(/* args */)
 
 CPillar::~CPillar()
 {
+}
+// Метод возврщает положение центра лидара усредненного по всем столбам и расчетам
+SPoint CPillar::getLocation()
+{
+    SPoint ret;
+    SPoint p0;
+    p0.x = 2.0;
+    p0.y = 0.0;
+    SPoint p1;
+    SPoint p2;
+    SPoint p3;
+    p1.x = pillar[3].x_true;
+    p1.y = pillar[3].y_true;
+
+    p2.x = pillar[0].x_true;
+    p2.y = pillar[0].y_true;
+
+    float a1;
+    // a1 = pillar[0].azimuth - pillar[3].azimuth;
+    a1 = 52.9435;
+
+    // ROS_INFO("p1x= %.3f p1y= %.3f  / p2x= %.3f p2y= %.3f  / angle = %.3f / p0x= %.3f p0y= %.3f ", p1.x, p1.y, p2.x, p2.y, a1, p0.x, p0.y);
+    SCircle c1 = getCircle(p1, p2, a1, p0);
+    ROS_INFO("c1x= %.3f  c1y= %.3f  / c1r= %.3f ", c1.x, c1.y, c1.r);
+
+    p1.x = pillar[0].x_true;
+    p1.y = pillar[0].y_true;
+
+    p2.x = pillar[1].x_true;
+    p2.y = pillar[1].y_true;
+
+    // a1 = pillar[1].azimuth - pillar[0].azimuth;
+    a1 = 66.8014;
+
+    SCircle c2 = getCircle(p1, p2, a1, p0);
+    ROS_INFO("c2x= %.3f  c2y= %.3f  / c2r= %.3f ", c2.x, c2.y, c2.r);
+
+    ret = getCrossing(c1, c2, p0);
+    return ret;
+}
+// Функция возвращает окружность(координаты и радиус) которая ближе всего к точке старого измерения
+// Основанно на идее что вписанный угол в окружность равен половине угла из центра на эту же хорду. Далее по формулам отсюда  Нахождение центра окружности по 2м точкам и углу https://dxdy.ru/topic4265.html
+SCircle CPillar::getCircle(SPoint p1_, SPoint p2_, float angle_, SPoint p0_) // На вход две точки, угол между ними и координаты старого местонахождения
+{
+    SCircle circle;
+    SPoint c1;
+    SPoint c2;
+    angle_ = DEG2RAD(angle_); // Переводим в радианы
+    // Находим радиус
+    float temp1 = (sqr(p1_.x - p2_.x) + sqr(p1_.y - p2_.y));
+    float temp2 = 4 * sqr(sin(angle_));
+    circle.r = sqrt(temp1 / temp2); // Находим радиус окружности
+    // Таких оргужностей может быть две. Находим координнаты центра для обоих
+    temp1 = (p1_.x + p2_.x) / 2.0;
+    temp2 = (p1_.y - p2_.y) / 2.0;
+    c1.x = temp1 + (temp2 * ctan(angle_));
+    c2.x = temp1 - (temp2 * ctan(angle_));
+    temp1 = (p1_.x - p2_.x) / 2.0;
+    temp2 = (p1_.y + p2_.y) / 2.0;
+    c1.y = temp2 - (temp1 * ctan(angle_));
+    c2.y = temp2 + (temp1 * ctan(angle_));
+
+    if (vectorLen(c1, p0_) < vectorLen(c2, p0_)) // Находим центр какой окружности ближе к последним координатам
+    {
+        circle.x = c1.x;
+        circle.y = c1.y;
+    }
+    else
+    {
+        circle.x = c2.x;
+        circle.y = c2.y;
+    }
+
+    return circle;
+}
+// Функция возвращает одну из двух точек пеерсечения двух окружностей ближайшую к заданной
+SPoint CPillar::getCrossing(SCircle c1_, SCircle c2_, SPoint p0_) // https://algolist.manual.ru/maths/geom/intersect/circlecircle2d.php https://planetcalc.ru/8098/ https://paulbourke.net/geometry/circlesphere/
+{
+    SPoint ret;
+    // Находим раастояние между центрами окружностей
+    SPoint p1;
+    p1.x = c1_.x;
+    p1.y = c1_.y;
+    SPoint p2;
+    p2.x = c2_.x;
+    p2.y = c2_.y;
+    float d = vectorLen(p1, p2); // Растояние между центрами окружностей
+    // Делаем проверку на расстояние между точками
+    if ((d >= c1_.r + c2_.r) || (d < abs(c1_.r - c2_.r))) // Если расстояние меньше суммы радиусов то окружности не пересекаются Если равно то одна точка, нам не подходит/ Если меньше разницы то окружность внутри другой тоже не наш случай
+    {
+        ROS_WARN("Circles do not fit the conditions !!! d= %.3f  r1= %.3f r2= %.3f", d, c1_.r, c2_.r);
+        return ret;
+    }
+
+    float a = (sqr(c1_.r) - sqr(c2_.r) + sqr(d)) / (2.0 * d);
+    float h = sqrt(sqr(c1_.r) - sqr(a));
+
+    SPoint p3; // Промежуточная точка для расчетов
+    p3.x = c1_.x + ((a / d) * (c2_.x - c1_.x));
+    p3.y = c1_.y + ((a / d) * (c2_.y - c1_.y));
+
+    SPoint p4, p5; // Итоговые точки пересечений
+
+    p4.x = p3.x - ((h / d) * (c2_.y - c1_.y));
+    p4.y = p3.y + ((h / d) * (c2_.x - c1_.x));
+
+    p5.x = p3.x + ((h / d) * (c2_.y - c1_.y));
+    p5.y = p3.y - ((h / d) * (c2_.x - c1_.x));
+
+    if (vectorLen(p4, p0_) < vectorLen(p5, p0_)) // Находим центр какой окружности ближе к последним координатам
+    {
+        ret = p4;
+    }
+    else
+    {
+        ret = p5;
+    }
+
+    return ret;
 }
 
 // Формулы поворота системы координат. Угол задавать отрицательный если поворачиваем против часовой к нулю который вверх
@@ -273,10 +393,10 @@ void CPillar::poiskPillar(int a_, int b_, SLidar *lidarData)
         }
         pillarLidar[countPillarLidar].angle_left = angle_b;
         pillarLidar[countPillarLidar].angle_right = angle_a;
-        pillarLidar[countPillarLidar].angle_dist_min = angle_min; // Угол при на точку с минимальной дистанцией которую нашли первой
+        pillarLidar[countPillarLidar].angle_dist_min = angle_min;          // Угол при на точку с минимальной дистанцией которую нашли первой
         pillarLidar[countPillarLidar].angle_middle_min = angle_middle_min; // Угол полученный расчетам как средний угол точек у которых дистанция до них была мешьше минимальной плюс дельта
-        pillarLidar[countPillarLidar].angle_middle = angle_middle;                // Берем середину столба, хотя из-за вращения происходит смещения и лучше бы еще как-то уточнять
-        //pillarLidar[countPillarLidar].azimuth = (angle_min + angle_middle) / 2.0; // Итоговый угол на столб. Пока считаем как угол на минимум. Или можно усреднять например со средним углом. Нало посмотреть что будет точнее
+        pillarLidar[countPillarLidar].angle_middle = angle_middle;         // Берем середину столба, хотя из-за вращения происходит смещения и лучше бы еще как-то уточнять
+        // pillarLidar[countPillarLidar].azimuth = (angle_min + angle_middle) / 2.0; // Итоговый угол на столб. Пока считаем как угол на минимум. Или можно усреднять например со средним углом. Нало посмотреть что будет точнее
         pillarLidar[countPillarLidar].azimuth = angle_middle_min; // Итоговый угол на столб. Берется как средний по точкам расчетный
         pillarLidar[countPillarLidar].dist_min = dist_min;
         pillarLidar[countPillarLidar].width = width;
@@ -288,7 +408,7 @@ void CPillar::poiskPillar(int a_, int b_, SLidar *lidarData)
         pillarLidar[countPillarLidar].y_globalXY = car_XY.y + car.position.y;
 
         // ROS_INFO(" Pillar Angle a = %.3f Angle b= %.3f ", pillarLidar[countPillarLidar].angle_left, pillarLidar[countPillarLidar].angle_right);
-        //ROS_INFO(" Angle_middle= %.3f Angle_dist_min= %.3f angle_middle_min= %.3f Angle_azimuth= %.3f ", pillarLidar[countPillarLidar].angle_middle, pillarLidar[countPillarLidar].angle_dist_min, pillarLidar[countPillarLidar].angle_middle_min, pillarLidar[countPillarLidar].azimuth);
+        // ROS_INFO(" Angle_middle= %.3f Angle_dist_min= %.3f angle_middle_min= %.3f Angle_azimuth= %.3f ", pillarLidar[countPillarLidar].angle_middle, pillarLidar[countPillarLidar].angle_dist_min, pillarLidar[countPillarLidar].angle_middle_min, pillarLidar[countPillarLidar].azimuth);
         ROS_INFO(" Angle_middle= %.3f Angle_dist_min= %.3f angle_middle_min= %.3f ", pillarLidar[countPillarLidar].angle_middle, pillarLidar[countPillarLidar].angle_dist_min, pillarLidar[countPillarLidar].angle_middle_min);
         // ROS_INFO(" dist_min= %.3f width= %.3f ", pillarLidar[countPillarLidar].dist_min, pillarLidar[countPillarLidar].width);
         // ROS_INFO(" x_lidarXY= %.3f y_lidarXY= %.3f ", pillarLidar[countPillarLidar].x_lidarXY, pillarLidar[countPillarLidar].y_lidarXY);
