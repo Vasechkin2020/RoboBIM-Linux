@@ -13,6 +13,8 @@
 
 #include "head_code/config.h"
 // pos_struct position; // Обьявляем переменную для позиции машинки
+//SPose lidarPose; // Последняя посчитанная/полученная позиция лидара
+SPoseLidar poseLidar; // Позиции лидара по расчетам
 
 #include "head_code/car.h"
 
@@ -81,9 +83,8 @@ int main(int argc, char **argv)
         if (flag_msgCar) // Флаг что пришло сообщение о начальных координатах машинки
         {
             flag_msgCar = false;
-            car.parsingTopicCar(msg_car);
+            startPosition(msg_car); // Определяем начальное положение
             flag_dataCar = true;
-            // pillar.parsingPillar(msg_car); // Разбираем пришедшие данные и ищем там столбы.
         }
         if (flag_msgPillar) // Флаг что пришло сообщение о истинных координатах столбов
         {
@@ -104,10 +105,14 @@ int main(int argc, char **argv)
         {
             flag_dataLidar = false;
             pillar.comparisonPillar(); // Сопоставляем столбы
+            poseLidar.mode1 = pillar.getLocationMode1(poseLidar.mode1); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
             formationPillar(); // Формируем перемнную с собщением для публикации
             publisher_PillarOut.publish(pillar_out_msg); // Публикуем информацию по столбам
-            pillar.getLocation(); // Считаем текущие координаты по столбам
         }
+
+
+
+
 
         if (flag_msgJoy) // Если пришло новое сообшение и сработал колбек то разбираем что там пришло
         {

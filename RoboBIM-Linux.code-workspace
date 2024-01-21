@@ -14,7 +14,12 @@
 			"/opt/ros/melodic/lib/python2.7/dist-packages"
 		],
 		"files.associations": {
-			"cmath": "cpp"
+			"cmath": "cpp",
+			"bitset": "cpp",
+			"chrono": "cpp",
+			"algorithm": "cpp",
+			"hash_map": "cpp",
+			"hash_set": "cpp"
 		}
 	}
 }

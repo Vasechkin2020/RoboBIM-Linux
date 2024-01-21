@@ -13,6 +13,8 @@ void callback_Car(data::point msg);                        //
 void formationPillar();                                                 // Формируем перемнную с собщением для публикации
 long map(long x, long in_min, long in_max, long out_min, long out_max); // Переводит значение из одного диапазона в другой, взял из Ардуино
 
+void startPosition(geometry_msgs::Pose2D &car_); // Разбираем топик со стартовой позицией робота
+
 float minDistance(float lazer1_, float lazer2_, float uzi1_);                 // Находим минимальную дистанцию из 3 датчиков
 data::Struct_Data2Driver speedCorrect(data::Struct_Data2Driver Data2Driver_); // Корректировка скорости движения в зависимости от датчиков растояния перед
 // void collectCommand(); // //Функция формирования команды для нижнего уровня на основе всех полученных данных, датчиков и анализа ситуации
@@ -60,6 +62,16 @@ float minDistance(float lazer1_, float lazer2_, float uzi1_)
         min = uzi1_;
     }
     return min;
+}
+// Разбираем топик со стартовой позицией робота
+void startPosition(geometry_msgs::Pose2D &car_)
+{
+    ROS_INFO("------------------------- startPosition -------------------------------------");
+    poseLidar.mode1.x = car_.x; // Пока считаем что передаем положение центра лидара и поэтому ему присваиваем значение, потом надо будет добавлять смещение до центра поворота между колесами
+    poseLidar.mode1.y = car_.y;
+    poseLidar.mode1.theta = car_.theta;
+    ROS_INFO("startPosition lidarPose x= %.3f y= %.3f theta= %.3f ", poseLidar.mode1.x, poseLidar.mode1.y, poseLidar.mode1.theta);
+    ROS_INFO("-------------------------            -------------------------------------");
 }
 
 // Переводит значение из одного диапазона в другой, взял из Ардуино

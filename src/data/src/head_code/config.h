@@ -40,6 +40,13 @@ struct SCircle // Окружность
     float r = 0; // Радиус окружности
 };
 
+struct SPoseLidar // Варианты расчетов координат лидара
+{
+    SPose mode1;
+    SPose mode2;
+    SPose mode3;
+};
+
 //************************************** ОБЬЯВЛЯЕМ ФУНКЦИИ **********************************
 float sqr(float x_);                           // Функция возверения в квадрат
 float ctan(float x_);                          // Функция возверения в котангенс
@@ -54,12 +61,12 @@ float vectorLen(SPoint point1, SPoint point2) // Функция возвраща
     return len;
 }
 // Функция возверения в квадрат
-float sqr(float x_) 
+float sqr(float x_)
 {
     return x_ * x_;
 }
 // Функция котангенса
-float ctan(float x_) 
+float ctan(float x_)
 {
     return 1 / tan(x_);
 }
