@@ -106,6 +106,7 @@ int main(int argc, char **argv)
             flag_dataLidar = false;
             pillar.comparisonPillar(); // Сопоставляем столбы
             poseLidar.mode1 = pillar.getLocationMode1(poseLidar.mode1); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
+            poseLidar.mode2 = pillar.getLocationMode2(poseLidar.mode2); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
             formationPillar(); // Формируем перемнную с собщением для публикации
             publisher_PillarOut.publish(pillar_out_msg); // Публикуем информацию по столбам
         }

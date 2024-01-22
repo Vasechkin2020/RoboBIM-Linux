@@ -39,6 +39,12 @@ struct SCircle // Окружность
     float y = 0; //
     float r = 0; // Радиус окружности
 };
+struct SCircle2 // Две окружности
+{
+    SCircle c1;
+    SCircle c2;
+};
+
 
 struct SPoseLidar // Варианты расчетов координат лидара
 {
