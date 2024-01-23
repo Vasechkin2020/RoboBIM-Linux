@@ -45,7 +45,6 @@ struct SCircle2 // Две окружности
     SCircle c2;
 };
 
-
 struct SPoseLidar // Варианты расчетов координат лидара
 {
     SPose mode1;
@@ -54,9 +53,13 @@ struct SPoseLidar // Варианты расчетов координат лид
 };
 
 //************************************** ОБЬЯВЛЯЕМ ФУНКЦИИ **********************************
-float sqr(float x_);                           // Функция возверения в квадрат
-float ctan(float x_);                          // Функция возверения в котангенс
-float vectorLen(SPoint point1, SPoint point2); // Функция нахождения длинны вектора
+float sqr(float x_);                                                    // Функция возведния в квадрат
+float ctan(float x_);                                                   // Функция котангенса угла
+float vectorLen(SPoint point1, SPoint point2);                          // Функция нахождения длинны вектора
+SPoint povorotSystemCoordinate(float xloc_, float yloc_, float theta_); // Формулы поворота системы координат. Угол задавать отрицательный если поворачиваем против часовой к нулю который вверх
+SPoint povorotSmechenie(SPoint point_, SPose pose_);                    // Формулы поворота системы координат и смещения. На вход координаты точки и положение системы координат в которой мы хотим получить координаты этой заданной точки. На выходе координаты заданной точки, но уже в новой системе координат
+float angleThetaFromPoint(SPoint point_);                               // Получение угла между вектором и осью Y //Задаем координаты точки и получаем угол между У и линией на точку (это гипотенуза)
+
 //*******************************************************************************************
 
 float vectorLen(SPoint point1, SPoint point2) // Функция возвращает длинну вектора, фактически растояние по прямой между двумя точкам
@@ -75,6 +78,69 @@ float sqr(float x_)
 float ctan(float x_)
 {
     return 1 / tan(x_);
+}
+
+// Формулы поворота системы координат. Угол задавать отрицательный если поворачиваем против часовой к нулю который вверх
+SPoint povorotSystemCoordinate(float xloc_, float yloc_, float theta_)
+{
+    SPoint ret;
+    theta_ = DEG2RAD(theta_); // Превращаем в радианы из градусов
+    ret.x = xloc_ * cos(theta_) - yloc_ * sin(theta_);
+    ret.y = xloc_ * sin(theta_) + yloc_ * cos(theta_);
+    return ret;
+}
+
+// Формулы поворота системы координат и смещения.
+// На вход координаты точки и положение системы координат в которой мы хотим получить координаты этой заданной точки. На выходе координаты заданной точки, но уже в новой системе координат
+SPoint povorotSmechenie(SPoint point_, SPose pose_)
+{
+    SPoint ret;
+    float theta = DEG2RAD(pose_.theta); // Превращаем в радианы из градусов
+    float xloc = point_.x;
+    float yloc = point_.y;
+    float xnew = xloc * cos(theta) - yloc * sin(theta); // Поворачиваем по формулам поворота системы координат
+    float ynew = xloc * sin(theta) + yloc * cos(theta);
+    ret.x = xnew + pose_.x; // Добавляем смещение
+    ret.y = ynew + pose_.y;
+    return ret;
+}
+// Преобразование координат точки из Глобальной системы координат в Локальную
+// Задаем координаты точки в Глобальной системе и задаем позицию Локальной системы в координатах Глобальной системы
+// Получаем координаты точки в Локальной системе
+SPoint pointGlobal2Local(SPoint pointGlobal_, SPose poseLocal_)
+{
+    SPoint ret;
+    float theta = DEG2RAD(poseLocal_.theta); // Превращаем в радианы из градусов
+    float x = pointGlobal_.x - poseLocal_.x;
+    float y = pointGlobal_.y - poseLocal_.y;
+    float xnew = x * cos(theta) - y * sin(theta); // Поворачиваем по формулам поворота системы координат
+    float ynew = x * sin(theta) + y * cos(theta);
+    ret.x = xnew; // Добавляем смещение
+    ret.y = ynew;
+    return ret;
+}
+// Преобразование координат точки из Локальной системы координат в Глобальную
+// Задаем координаты точки в Локальной системе и задаем позицию самой Локальной системы в координатах Глобальной системы
+// Получаем координаты точки в Глобальной системе
+SPoint pointLocal2Global(SPoint pointLocal_, SPose poseLocal_)
+{
+    SPoint ret;
+    float theta = DEG2RAD(poseLocal_.theta); // Превращаем в радианы из градусов
+    float x = pointLocal_.x;
+    float y = pointLocal_.y;
+    float xnew = x * cos(theta) + y * sin(theta); // Поворачиваем по формулам поворота системы координат
+    float ynew = - x * sin(theta) + y * cos(theta);
+    ret.x = xnew + poseLocal_.x; // Добавляем смещение
+    ret.y = ynew + poseLocal_.y;
+    return ret;
+}
+
+// Получение угла между вектором и осью Y
+// Задаем координаты точки и получаем угол между У и линией на точку (это гипотенуза)
+float angleThetaFromPoint(SPoint point_)
+{
+    float ret = RAD2DEG(atan2(point_.x, point_.y));
+    return ret;
 }
 
 // my_msgs::Control Control_msg; // Топик полученный из ноды Control

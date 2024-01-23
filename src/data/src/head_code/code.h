@@ -10,6 +10,7 @@ void callback_Driver(data::Struct_Driver2Data msg);        //
 void callback_Pillar(data::topicPillar msg);               //
 void callback_Car(data::point msg);                        //
 
+
 void formationPillar();                                                 // Формируем перемнную с собщением для публикации
 long map(long x, long in_min, long in_max, long out_min, long out_max); // Переводит значение из одного диапазона в другой, взял из Ардуино
 
@@ -83,6 +84,8 @@ long map(long x, long in_min, long in_max, long out_min, long out_max)
     return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
+
+
 // Корректировка скорости движения в зависимости от датчиков растояния перед
 data::Struct_Data2Driver speedCorrect(data::Struct_Data2Driver Data2Driver_)
 {
@@ -103,8 +106,8 @@ data::Struct_Data2Driver speedCorrect(data::Struct_Data2Driver Data2Driver_)
 
 void formationPillar() // Формируем перемнную с собщением для публикации
 {
-    //ROS_INFO("!!! %i",pillar.countPillar);
-    //pillar_out_msg.data[0].azimuth = 0;
+    // ROS_INFO("!!! %i",pillar.countPillar);
+    // pillar_out_msg.data[0].azimuth = 0;
     for (int i = 0; i < pillar.countPillar; i++)
     {
         pillar_out_msg.data[i].status = pillar.pillar[i].status;
@@ -115,7 +118,7 @@ void formationPillar() // Формируем перемнную с собщен�
         pillar_out_msg.data[i].y_true = pillar.pillar[i].y_true;
         pillar_out_msg.data[i].y_lidar = pillar.pillar[i].y_lidar;
         pillar_out_msg.data[i].x_lidar = pillar.pillar[i].x_lidar;
-        //ROS_INFO("Status= %i azimuth= %.3f",pillar_out_msg.data[i].status,pillar_out_msg.data[i].azimuth);
+        // ROS_INFO("Status= %i azimuth= %.3f",pillar_out_msg.data[i].status,pillar_out_msg.data[i].azimuth);
     }
 }
 
@@ -179,5 +182,29 @@ void formationPillar() // Формируем перемнную с собщен�
 //     //INFO ROS_INFO("-------------- ");
 //     //-----------------------------------------------------------
 // }
+//Тест математических ипрочих функций
+void testFunction()
+{
+    
+        // SPoint test1;
+        // SPose test2;
+        // test1.x = 1376.27;
+        // test1.y = 1079.32;
+
+        // test2.x= 500;
+        // test2.y= 900;
+        // test2.theta= 15;
+
+        // SPoint ggg = pointGlobal2Local(test1,test2);
+
+        // test1.x=800;
+        // test1.y=400;
+        // ggg = pointLocal2Global(test1,test2);
+
+        // test1.x=2699.55;
+        // test1.y=428.29;
+
+        // float rrr = angleThetaFromPoint(test1);
+}
 
 #endif

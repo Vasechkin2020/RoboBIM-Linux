@@ -6,14 +6,14 @@
 #include <geometry_msgs/Pose2D.h>
 
 #include <data/Struct_Joy.h>
-//#include <data/point.h>
+// #include <data/point.h>
 #include <data/Struct_Data2Driver.h>
 #include <data/Struct_Driver2Data.h>
 #include <data/PillarOut.h>
 
 #include "head_code/config.h"
 // pos_struct position; // Обьявляем переменную для позиции машинки
-//SPose lidarPose; // Последняя посчитанная/полученная позиция лидара
+// SPose lidarPose; // Последняя посчитанная/полученная позиция лидара
 SPoseLidar poseLidar; // Позиции лидара по расчетам
 
 #include "head_code/car.h"
@@ -27,9 +27,8 @@ CJoy joy(MAX_SPEED, 0.5); // Обьявляем экземпляр класса 
 #include "head_code/pillar.h"
 CPillar pillar; // Обьявляем экземпляр класса в нем вся обработка и обсчет столбов
 
-
 data::topicPillar msg_pillar;               // Перемеенная в которую сохраняем данные лидара из сообщения
-geometry_msgs::Pose2D msg_car;                        // Перемеенная в которую сохраняем данные о координатах машинки начальных
+geometry_msgs::Pose2D msg_car;              // Перемеенная в которую сохраняем данные о координатах машинки начальных
 sensor_msgs::Joy msg_joy;                   // Переменная в которую записываем пришедшее сообщение а колбеке
 sensor_msgs::LaserScan::ConstPtr msg_lidar; // Перемеенная в которую сохраняем данные лидара из сообщения
 data::Struct_Driver2Data msg_Driver2Data;   // Сообщение которое считываем из топика
@@ -37,7 +36,7 @@ data::Struct_Driver2Data msg_Driver2Data;   // Сообщение которое
 data::Struct_Joy joy2Head_msg;  // Структура в которую пишем обработанные данные от джойстика и потом публикуем в топик
 data::Struct_Joy joy2Head_prev; // Структура в которую пишем обработанные данные от джойстика предыдущее состоние
 
-data::PillarOut pillar_out_msg;               // Перемеенная в которую пишем данные для опубликования в топик
+data::PillarOut pillar_out_msg; // Перемеенная в которую пишем данные для опубликования в топик
 
 bool flag_msgJoy = false;    // Флаг что пришло сообщение в топик и можно его парсить
 bool flag_msgPillar = false; // Флаг что пришло сообщение в топик и можно его парсить
@@ -71,16 +70,18 @@ int main(int argc, char **argv)
 
     ros::Publisher publisher_Joy2Head = nh.advertise<data::Struct_Joy>("Joy2Head", 16);             // Это мы публикуем структуру которую сформировали по данным с джойстика
     ros::Publisher publisher_Head2Driver = nh.advertise<data::Struct_Data2Driver>("Head2Data", 16); // Это мы публикуем структуру которую отправляем к исполнению на драйвер
-    ros::Publisher publisher_PillarOut = nh.advertise<data::PillarOut>("pbPillarOut", 16); // Это мы публикуем итоговую информацию по столбам
+    ros::Publisher publisher_PillarOut = nh.advertise<data::PillarOut>("pbPillarOut", 16);          // Это мы публикуем итоговую информацию по столбам
 
     ros::Rate r(RATE);        // Частота в Герцах - задержка
     ros::Duration(1).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
 
     while (ros::ok())
     {
+        //testFunction();
         ros::spinOnce(); // Опрашиваем ядро ROS и по этой команде наши срабатывают колбеки. Нужно только для подписки на топики
         printf("+ \n");
-        if (flag_msgCar) // Флаг что пришло сообщение о начальных координатах машинки
+
+            if (flag_msgCar) // Флаг что пришло сообщение о начальных координатах машинки
         {
             flag_msgCar = false;
             startPosition(msg_car); // Определяем начальное положение
@@ -99,21 +100,19 @@ int main(int argc, char **argv)
             pillar.parsingLidar(msg_lidar); // Разбираем пришедшие данные и ищем там столбы.
             flag_dataLidar = true;
         }
-        ROS_INFO("flag_dataPillar= %i flag_dataLidar= %i",flag_dataPillar,flag_dataLidar);
+        ROS_INFO("flag_dataPillar= %i flag_dataLidar= %i", flag_dataPillar, flag_dataLidar);
 
         if (flag_dataPillar && flag_dataLidar) // Если поступили данные и мы их разобрали по истинным координатоам столбов и есть данные по столюам с лидара то начинаем сопоставлять и публиковать сопоставленные столбы
         {
             flag_dataLidar = false;
-            pillar.comparisonPillar(); // Сопоставляем столбы
+            pillar.comparisonPillar();                                  // Сопоставляем столбы
             poseLidar.mode1 = pillar.getLocationMode1(poseLidar.mode1); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
             poseLidar.mode2 = pillar.getLocationMode2(poseLidar.mode2); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
-            formationPillar(); // Формируем перемнную с собщением для публикации
-            publisher_PillarOut.publish(pillar_out_msg); // Публикуем информацию по столбам
+            formationPillar();                                          // Формируем перемнную с собщением для публикации
+            publisher_PillarOut.publish(pillar_out_msg);                // Публикуем информацию по столбам
         }
 
-
-
-
+        // !!!!!!!!!!!! Сделать поиск столба если он приходится на нос, так чтобы перебирала снова пока не найдет конец столба. Искать только если стоб начался и не закончился
 
         if (flag_msgJoy) // Если пришло новое сообшение и сработал колбек то разбираем что там пришло
         {

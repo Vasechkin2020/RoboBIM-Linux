@@ -62,7 +62,6 @@ private:
     SPillarLidar pillarLidar[16]; // Массив котором храним данные по столбам
 
     // ************************** ПРИВАТНЫЕ ФУНКЦИИ КЛАССА *********************************************
-    SPoint povorotSystemCoordinate(float xloc_, float yloc_, float theta_);
     void poiskPillar(int a_, int b_, SLidar *lidarData);
     SCircle2 getCircle(SPoint p1_, SPoint p2_, float angle);                             // Метод возвращает окружность(координаты и радиус) которая ближе всего к точке старого измерения
     int getCrossing(SCircle c1_, SCircle c2_, SPose pose_, SPoint &pointX_, float len_); // Метод возвращает одну из двух точек пеерсечения двух окружностей ближайшую к заданной
@@ -343,15 +342,7 @@ SPose CPillar::calculationPose(SPoint point_, SPillar pillar_)
     return ret;
 }
 
-// Формулы поворота системы координат. Угол задавать отрицательный если поворачиваем против часовой к нулю который вверх
-SPoint CPillar::povorotSystemCoordinate(float xloc_, float yloc_, float theta_)
-{
-    SPoint ret;
-    theta_ = DEG2RAD(theta_); // Превращаем в радианы из градусов
-    ret.x = xloc_ * cos(theta_) - yloc_ * sin(theta_);
-    ret.y = xloc_ * sin(theta_) + yloc_ * cos(theta_);
-    return ret;
-}
+
 // Разбор столбов из топика в массив
 void CPillar::parsingPillar(data::topicPillar &pillar_)
 {
