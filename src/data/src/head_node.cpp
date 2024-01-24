@@ -10,20 +10,21 @@
 #include <data/Struct_Data2Driver.h>
 #include <data/Struct_Driver2Data.h>
 #include <data/PillarOut.h>
+#include <data/topicPillar.h>
 
 #include "head_code/config.h"
-// pos_struct position; // Обьявляем переменную для позиции машинки
-// SPose lidarPose; // Последняя посчитанная/полученная позиция лидара
-SPoseLidar poseLidar; // Позиции лидара по расчетам
+SPoseLidar poseLidar; // Позиции лидара по расчетам Центральная система координат
 
 #include "head_code/car.h"
+#include "head_code/laser.h"
+
+CLaser laser;
 
 CCar car; // Обьявляем экземпляр класса в нем вся обработка и обсчет машинки как обьекта
 
 #include "head_code/c_joy.h"
 CJoy joy(MAX_SPEED, 0.5); // Обьявляем экземпляр класса в нем вся обработка джойстика
 
-#include <data/topicPillar.h>
 #include "head_code/pillar.h"
 CPillar pillar; // Обьявляем экземпляр класса в нем вся обработка и обсчет столбов
 
@@ -81,7 +82,7 @@ int main(int argc, char **argv)
         ros::spinOnce(); // Опрашиваем ядро ROS и по этой команде наши срабатывают колбеки. Нужно только для подписки на топики
         printf("+ \n");
 
-            if (flag_msgCar) // Флаг что пришло сообщение о начальных координатах машинки
+        if (flag_msgCar) // Флаг что пришло сообщение о начальных координатах машинки
         {
             flag_msgCar = false;
             startPosition(msg_car); // Определяем начальное положение
@@ -108,8 +109,13 @@ int main(int argc, char **argv)
             pillar.comparisonPillar();                                  // Сопоставляем столбы
             poseLidar.mode1 = pillar.getLocationMode1(poseLidar.mode1); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
             poseLidar.mode2 = pillar.getLocationMode2(poseLidar.mode2); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
-            formationPillar();                                          // Формируем перемнную с собщением для публикации
-            publisher_PillarOut.publish(pillar_out_msg);                // Публикуем информацию по столбам
+            laser.calcAnglePillarForLaser(pillar.pillar,poseLidar);
+
+            
+            // formationPillar();                                          // Формируем перемнную с собщением для публикации
+            // Добавть поля для вывода Theta publisher_PillarOut.publish(pillar_out_msg);                // Публикуем информацию по столбам
+
+
         }
 
         // !!!!!!!!!!!! Сделать поиск столба если он приходится на нос, так чтобы перебирала снова пока не найдет конец столба. Искать только если стоб начался и не закончился

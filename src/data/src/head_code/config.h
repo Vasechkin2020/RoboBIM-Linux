@@ -137,7 +137,7 @@ SPoint pointLocal2Global(SPoint pointLocal_, SPose poseLocal_)
 
 // Получение угла между вектором и осью Y
 // Задаем координаты точки и получаем угол между У и линией на точку (это гипотенуза)
-float angleThetaFromPoint(SPoint point_)
+float angleThetaFromPoint(SPoint point_) // Возвращает от -180 до +180
 {
     float ret = RAD2DEG(atan2(point_.x, point_.y));
     return ret;
