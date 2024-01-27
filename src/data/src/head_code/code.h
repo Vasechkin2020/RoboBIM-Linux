@@ -8,13 +8,15 @@ void callback_Joy(sensor_msgs::Joy msg);                   // Функция о�
 void callback_Lidar(sensor_msgs::LaserScan::ConstPtr msg); //
 void callback_Driver(data::Struct_Driver2Data msg);        //
 void callback_Pillar(data::topicPillar msg);               //
-void callback_Car(data::point msg);                        //
+void callback_StartPose2D(data::point msg);                        //
 
-
-void formationPillar();                                                 // Формируем перемнную с собщением для публикации
+void visualPillar();                                                    // Формируем перемнную с собщением для публикации
+void visualAngleLaser();                                                // Формируем перемнную с собщением для публикации по углам лазера
+void visualPoseLidar();                                                 // Формируем перемнную с собщением для публикации по позиции лидара
+void visualPointPillar();                                               // Визуализация координат столбов
 long map(long x, long in_min, long in_max, long out_min, long out_max); // Переводит значение из одного диапазона в другой, взял из Ардуино
 
-void startPosition(geometry_msgs::Pose2D &car_); // Разбираем топик со стартовой позицией робота
+void startPosition(geometry_msgs::Pose2D &startPose2d_); // Разбираем топик со стартовой позицией робота
 
 float minDistance(float lazer1_, float lazer2_, float uzi1_);                 // Находим минимальную дистанцию из 3 датчиков
 data::Struct_Data2Driver speedCorrect(data::Struct_Data2Driver Data2Driver_); // Корректировка скорости движения в зависимости от датчиков растояния перед
@@ -39,11 +41,11 @@ void callback_Pillar(data::topicPillar msg)
     flag_msgPillar = true;
     msg_pillar = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
 }
-void callback_Car(geometry_msgs::Pose2D msg)
+void callback_StartPose2D(geometry_msgs::Pose2D msg)
 {
     // ROS_WARN("callback_Car");
     flag_msgCar = true;
-    msg_car = msg; // Пишем в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
+    msg_startPose2d = msg; // Пишем в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
 }
 
 void callback_Driver(data::Struct_Driver2Data msg)
@@ -65,16 +67,16 @@ float minDistance(float lazer1_, float lazer2_, float uzi1_)
     return min;
 }
 // Разбираем топик со стартовой позицией робота
-void startPosition(geometry_msgs::Pose2D &car_)
+void startPosition(geometry_msgs::Pose2D &startPose2d_)
 {
     ROS_INFO("------------------------- startPosition -------------------------------------");
-    poseLidar.mode1.x = car_.x; // Пока считаем что передаем положение центра лидара и поэтому ему присваиваем значение, потом надо будет добавлять смещение до центра поворота между колесами
-    poseLidar.mode1.y = car_.y;
-    poseLidar.mode1.theta = car_.theta;
-    poseLidar.mode2.x = car_.x; // Пока считаем что передаем положение центра лидара и поэтому ему присваиваем значение, потом надо будет добавлять смещение до центра поворота между колесами
-    poseLidar.mode2.y = car_.y;
-    poseLidar.mode2.theta = car_.theta;
-    ROS_INFO("startPosition lidarPose x= %.3f y= %.3f theta= %.3f ", poseLidar.mode1.x, poseLidar.mode1.y, poseLidar.mode1.theta);
+    g_poseLidar.mode1.x = startPose2d_.x; // Пока считаем что передаем положение центра лидара и поэтому ему присваиваем значение, потом надо будет добавлять смещение до центра поворота между колесами
+    g_poseLidar.mode1.y = startPose2d_.y;
+    g_poseLidar.mode1.theta = startPose2d_.theta;
+    g_poseLidar.mode2.x = startPose2d_.x; // Пока считаем что передаем положение центра лидара и поэтому ему присваиваем значение, потом надо будет добавлять смещение до центра поворота между колесами
+    g_poseLidar.mode2.y = startPose2d_.y;
+    g_poseLidar.mode2.theta = startPose2d_.theta;
+    ROS_INFO("startPosition lidarPose x= %.3f y= %.3f theta= %.3f ", g_poseLidar.mode1.x, g_poseLidar.mode1.y, g_poseLidar.mode1.theta);
     ROS_INFO("-------------------------            -------------------------------------");
 }
 
@@ -83,8 +85,6 @@ long map(long x, long in_min, long in_max, long out_min, long out_max)
 {
     return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
-
-
 
 // Корректировка скорости движения в зависимости от датчиков растояния перед
 data::Struct_Data2Driver speedCorrect(data::Struct_Data2Driver Data2Driver_)
@@ -104,23 +104,6 @@ data::Struct_Data2Driver speedCorrect(data::Struct_Data2Driver Data2Driver_)
     return Data2Driver_;
 }
 
-void formationPillar() // Формируем перемнную с собщением для публикации
-{
-    // ROS_INFO("!!! %i",pillar.countPillar);
-    // pillar_out_msg.data[0].azimuth = 0;
-    for (int i = 0; i < pillar.countPillar; i++)
-    {
-        pillar_out_msg.data[i].status = pillar.pillar[i].status;
-        pillar_out_msg.data[i].azimuth = pillar.pillar[i].azimuth;
-        pillar_out_msg.data[i].hypotenuse = pillar.pillar[i].hypotenuse;
-        pillar_out_msg.data[i].distance = pillar.pillar[i].distance;
-        pillar_out_msg.data[i].x_true = pillar.pillar[i].x_true;
-        pillar_out_msg.data[i].y_true = pillar.pillar[i].y_true;
-        pillar_out_msg.data[i].y_lidar = pillar.pillar[i].y_lidar;
-        pillar_out_msg.data[i].x_lidar = pillar.pillar[i].x_lidar;
-        // ROS_INFO("Status= %i azimuth= %.3f",pillar_out_msg.data[i].status,pillar_out_msg.data[i].azimuth);
-    }
-}
 
 // //Функция формирования команды для нижнего уровня на основе всех полученных данных, датчиков и анализа ситуации
 // void collectCommand()
@@ -182,29 +165,29 @@ void formationPillar() // Формируем перемнную с собщен�
 //     //INFO ROS_INFO("-------------- ");
 //     //-----------------------------------------------------------
 // }
-//Тест математических ипрочих функций
+// Тест математических ипрочих функций
 void testFunction()
 {
-    
-        // SPoint test1;
-        // SPose test2;
-        // test1.x = 1376.27;
-        // test1.y = 1079.32;
 
-        // test2.x= 500;
-        // test2.y= 900;
-        // test2.theta= 15;
+    // SPoint test1;
+    // SPose test2;
+    // test1.x = 1376.27;
+    // test1.y = 1079.32;
 
-        // SPoint ggg = pointGlobal2Local(test1,test2);
+    // test2.x= 500;
+    // test2.y= 900;
+    // test2.theta= 15;
 
-        // test1.x=800;
-        // test1.y=400;
-        // ggg = pointLocal2Global(test1,test2);
+    // SPoint ggg = pointGlobal2Local(test1,test2);
 
-        // test1.x=2699.55;
-        // test1.y=428.29;
+    // test1.x=800;
+    // test1.y=400;
+    // ggg = pointLocal2Global(test1,test2);
 
-        // float rrr = angleThetaFromPoint(test1);
+    // test1.x=2699.55;
+    // test1.y=428.29;
+
+    // float rrr = angleThetaFromPoint(test1);
 }
 
 #endif

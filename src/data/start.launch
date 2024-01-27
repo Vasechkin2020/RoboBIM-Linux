@@ -1,5 +1,6 @@
 <launch>
-  <include file="$(find data)start_car.launch" />
+  <include file="$(find data)startPose.launch" />
   <include file="$(find data)start_pillar.launch" />
-
+  <node pkg="tf" type="static_transform_publisher" name="static_map_odom_tf" args="0 0 0 0 0 0 map odom 100" /> <!--http://wiki.ros.org/tf-->
+  <node pkg="tf" type="static_transform_publisher" name="static_odom_laser_tf" args="0 0 0 0 0 0 odom laser 100" /> <!--http://wiki.ros.org/tf-->
 </launch>

@@ -54,6 +54,8 @@ find_package(catkin REQUIRED COMPONENTS
 add_message_files(
   FILES
   point.msg    # x,y
+  pointA.msg    # x,y
+  pose.msg    # x,y, theta
   pillar.msg    # 
 #--------------Структуры для сообщений на данные с MODUL -----------------------------------------
   Struct_Motor.msg
@@ -67,7 +69,10 @@ add_message_files(
   Struct_Spi.msg
   Struct_Info_SPI.msg
   #-------------------------------------------------------
+  Struct_AngleLaser.msg
+  Struct_PoseLidar.msg
   
+  #-------------------------------------------------------
   topicAngle.msg    # Топик с командой управления углами дальномеров
   topicPillar.msg    # Топик с данными координаты реального положения столбов
   PillarOut.msg
@@ -174,8 +179,8 @@ target_link_libraries(head_node ${catkin_LIBRARIES})
 add_executable(pillar_node src/pillar_node.cpp)
 target_link_libraries(pillar_node ${catkin_LIBRARIES})
 
-add_executable(car_node src/car_node.cpp)
-target_link_libraries(car_node ${catkin_LIBRARIES})
+add_executable(startPose_node src/startPose_node.cpp)
+target_link_libraries(startPose_node ${catkin_LIBRARIES})
 
 #add_executable(route_node src/route_node.cpp)
 #target_link_libraries(route_node ${catkin_LIBRARIES})

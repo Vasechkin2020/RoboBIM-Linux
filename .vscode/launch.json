@@ -7,7 +7,7 @@
             "request": "launch",
             //"program": "CMakeFiles/data_node.dir/src/data_node.cpp.o",
             //"program": "${workspaceFolder}/devel/lib/hello_vs_code/vs_talker",
-            "program": "${workspaceFolder}/devel/lib/data/data_node",
+            "program": "${workspaceFolder}/devel/lib/data/head_node",
             "args": [],
             "stopAtEntry": false,
             //"cwd": "${fileDirname}",

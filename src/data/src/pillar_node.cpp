@@ -11,13 +11,11 @@ int main(int argc, char **argv)
     ROS_ERROR("%s ------------------ROS_ERROR----------------------------------\n", NN);
 
     ros::init(argc, argv, "pillar_node");
-
     ros::NodeHandle nh;
     ros::NodeHandle nh_private("~");
-
-    ros::Publisher pub_topicPillar = nh.advertise<data::topicPillar>("pbPillar", 16); // Это мы обьявляем структуру для публикации которую сформировали по данным с джойстика
+    ros::Publisher pub_topicPillar = nh.advertise<data::topicPillar>("pbPillar", 16);             // Это мы обьявляем для публикации всех столбов в своем сообщении
     ros::Duration(1).sleep();
-    
+
     // Имя можно с палкой или без, смотря как в лаунч файле параметры обявлены. связано с видимостью глобальной или локальной. относительным поиском переменной как сказал Максим
     if (!nh_private.getParam("x0", pillar_msg.pillar[0].x))
         pillar_msg.pillar[0].x = 0.11;
@@ -47,7 +45,7 @@ int main(int argc, char **argv)
 
     if (ros::ok())
     {
-        pub_topicPillar.publish(pillar_msg); // Публикация полученных данных
+        pub_topicPillar.publish(pillar_msg);   // Публикация полученных данных
         ros::Duration(1).sleep();
         ROS_INFO("End pub_topicPillar.publish \n");
     }

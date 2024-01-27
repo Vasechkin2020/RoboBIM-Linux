@@ -1,55 +1,19 @@
 
-#include <ros/ros.h>
-#include <std_msgs/String.h>
-#include <sensor_msgs/Joy.h>
-#include <sensor_msgs/LaserScan.h>
-#include <geometry_msgs/Pose2D.h>
-
-#include <data/Struct_Joy.h>
-// #include <data/point.h>
-#include <data/Struct_Data2Driver.h>
-#include <data/Struct_Driver2Data.h>
-#include <data/PillarOut.h>
-#include <data/topicPillar.h>
-
 #include "head_code/config.h"
-SPoseLidar poseLidar; // Позиции лидара по расчетам Центральная система координат
+#include "head_code/c_joy.h"
 
-#include "head_code/car.h"
+// #include "head_code/car.h"
+// CCar car; // Обьявляем экземпляр класса в нем вся обработка и обсчет машинки как обьекта
+
+SPoseLidar g_poseLidar; // Позиции лидара по расчетам Центральная система координат
+
 #include "head_code/laser.h"
-
 CLaser laser;
 
-CCar car; // Обьявляем экземпляр класса в нем вся обработка и обсчет машинки как обьекта
-
-#include "head_code/c_joy.h"
-CJoy joy(MAX_SPEED, 0.5); // Обьявляем экземпляр класса в нем вся обработка джойстика
-
 #include "head_code/pillar.h"
-CPillar pillar; // Обьявляем экземпляр класса в нем вся обработка и обсчет столбов
+CPillar g_pillar; // Обьявляем экземпляр класса в нем вся обработка и обсчет столбов
 
-data::topicPillar msg_pillar;               // Перемеенная в которую сохраняем данные лидара из сообщения
-geometry_msgs::Pose2D msg_car;              // Перемеенная в которую сохраняем данные о координатах машинки начальных
-sensor_msgs::Joy msg_joy;                   // Переменная в которую записываем пришедшее сообщение а колбеке
-sensor_msgs::LaserScan::ConstPtr msg_lidar; // Перемеенная в которую сохраняем данные лидара из сообщения
-data::Struct_Driver2Data msg_Driver2Data;   // Сообщение которое считываем из топика
-
-data::Struct_Joy joy2Head_msg;  // Структура в которую пишем обработанные данные от джойстика и потом публикуем в топик
-data::Struct_Joy joy2Head_prev; // Структура в которую пишем обработанные данные от джойстика предыдущее состоние
-
-data::PillarOut pillar_out_msg; // Перемеенная в которую пишем данные для опубликования в топик
-
-bool flag_msgJoy = false;    // Флаг что пришло сообщение в топик и можно его парсить
-bool flag_msgPillar = false; // Флаг что пришло сообщение в топик и можно его парсить
-bool flag_msgLidar = false;  // Флаг что пришло сообщение в топик и можно его парсить
-bool flag_msgCar = false;    // Флаг что пришло сообщение в топик и можно его парсить
-
-bool flag_dataPillar = false; // Флаг что разобрали данные по координатам столбов и можно обсчитывать дальше
-bool flag_dataCar = false;    // Флаг что разобрали данные по координатам машины и можно обсчитывать дальше
-bool flag_dataLidar = false;  // Флаг что разобрали данные по лидару и можно сопоставлять столбы
-
-data::Struct_Data2Driver Data2Driver;      // Структура с командами которую публикуем и которую потом Driver исполняет
-data::Struct_Data2Driver Data2Driver_prev; // Структура с командами которую публикуем и которую потом Driver исполняет предыдущее состоние
+#include "head_code/topic.h" // Файл для функций для формирования топиков в нужном виде и формате
 
 #include "head_code/code.h"
 
@@ -58,47 +22,48 @@ int main(int argc, char **argv)
     ROS_INFO("%s -------------------------------------------------------------", NN);
     ROS_WARN("%s        Main Module PrintBIM ROS 1.0 Raspberry Pi 4B  ver 1.132 ", NN);
     ROS_ERROR("%s ------------------ROS_ERROR----------------------------------", NN);
+    
+    CJoy joy(MAX_SPEED, 0.5); // Обьявляем экземпляр класса в нем вся обработка джойстика
 
     ros::init(argc, argv, "head_node");
+    //topic.init(argc, argv);
 
     ros::NodeHandle nh;
-
+    //----------------------------- ПОДПИСКИ НА ТОПИКИ --------------------------------------------------------------------------
     ros::Subscriber subscriber_Lidar = nh.subscribe<sensor_msgs::LaserScan>("/scan", 1000, callback_Lidar);
     ros::Subscriber subscriber_Pillar = nh.subscribe<data::topicPillar>("pbPillar", 1000, callback_Pillar);
-    ros::Subscriber subscriber_Car = nh.subscribe<geometry_msgs::Pose2D>("pbCar", 1000, callback_Car);
+    ros::Subscriber subscriber_StartPose2D = nh.subscribe<geometry_msgs::Pose2D>("pbStartPose2D", 1000, callback_StartPose2D);
     ros::Subscriber subscriber_Joy = nh.subscribe("joy", 16, callback_Joy); // Это мы подписываемся на то что публикует нода джойстика
     ros::Subscriber subscriber_Driver = nh.subscribe<data::Struct_Driver2Data>("Driver2Data", 1000, callback_Driver);
-
-    ros::Publisher publisher_Joy2Head = nh.advertise<data::Struct_Joy>("Joy2Head", 16);             // Это мы публикуем структуру которую сформировали по данным с джойстика
-    ros::Publisher publisher_Head2Driver = nh.advertise<data::Struct_Data2Driver>("Head2Data", 16); // Это мы публикуем структуру которую отправляем к исполнению на драйвер
-    ros::Publisher publisher_PillarOut = nh.advertise<data::PillarOut>("pbPillarOut", 16);          // Это мы публикуем итоговую информацию по столбам
+    //---------------------------------------------------------------------------------------------------------------------------
+    CTopic topic;                // Экземпляр класса для всех топиков
 
     ros::Rate r(RATE);        // Частота в Герцах - задержка
     ros::Duration(1).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
 
     while (ros::ok())
     {
-        //testFunction();
+        // testFunction();
         ros::spinOnce(); // Опрашиваем ядро ROS и по этой команде наши срабатывают колбеки. Нужно только для подписки на топики
         printf("+ \n");
 
         if (flag_msgCar) // Флаг что пришло сообщение о начальных координатах машинки
         {
             flag_msgCar = false;
-            startPosition(msg_car); // Определяем начальное положение
+            startPosition(msg_startPose2d); // Определяем начальное положение
             flag_dataCar = true;
         }
         if (flag_msgPillar) // Флаг что пришло сообщение о истинных координатах столбов
         {
             flag_msgPillar = false;
-            pillar.parsingPillar(msg_pillar); // Разбираем пришедшие данные Заполняем массив правильных координат.
+            g_pillar.parsingPillar(msg_pillar); // Разбираем пришедшие данные Заполняем массив правильных координат.
             flag_dataPillar = true;
         }
 
         if (flag_msgLidar && flag_dataCar) // Если пришло сообщение в топик от лидара и мы уже разобрали данные по координатам машинки, а значит можем грубо посчитать где стоят столбы.
         {
             flag_msgLidar = false;
-            pillar.parsingLidar(msg_lidar); // Разбираем пришедшие данные и ищем там столбы.
+            g_pillar.parsingLidar(msg_lidar); // Разбираем пришедшие данные и ищем там столбы.
             flag_dataLidar = true;
         }
         ROS_INFO("flag_dataPillar= %i flag_dataLidar= %i", flag_dataPillar, flag_dataLidar);
@@ -106,27 +71,28 @@ int main(int argc, char **argv)
         if (flag_dataPillar && flag_dataLidar) // Если поступили данные и мы их разобрали по истинным координатоам столбов и есть данные по столюам с лидара то начинаем сопоставлять и публиковать сопоставленные столбы
         {
             flag_dataLidar = false;
-            pillar.comparisonPillar();                                  // Сопоставляем столбы
-            poseLidar.mode1 = pillar.getLocationMode1(poseLidar.mode1); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
-            poseLidar.mode2 = pillar.getLocationMode2(poseLidar.mode2); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
-            laser.calcAnglePillarForLaser(pillar.pillar,poseLidar);
+            g_pillar.comparisonPillar();                                      // Сопоставляем столбы
+            g_poseLidar.mode1 = g_pillar.getLocationMode1(g_poseLidar.mode1); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
+            g_poseLidar.mode2 = g_pillar.getLocationMode2(g_poseLidar.mode2); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
+            laser.calcAnglePillarForLaser(g_pillar.pillar, g_poseLidar);
 
+            topic.visualPillarAll();     // Формируем перемнную с собщением для публикации
+            topic.visualPillarPoint();     // Формируем перемнную с собщением для публикации
+            topic.visualPoseLidarAll();  // Формируем перемнную с собщением для публикации
+            topic.visulStartPose();  // Формируем перемнную с собщением для публикации
             
-            // formationPillar();                                          // Формируем перемнную с собщением для публикации
-            // Добавть поля для вывода Theta publisher_PillarOut.publish(pillar_out_msg);                // Публикуем информацию по столбам
-
-
+            topic.visualAngleLaser(); // Формируем перемнную с собщением для публикации
         }
 
         // !!!!!!!!!!!! Сделать поиск столба если он приходится на нос, так чтобы перебирала снова пока не найдет конец столба. Искать только если стоб начался и не закончился
 
-        if (flag_msgJoy) // Если пришло новое сообшение и сработал колбек то разбираем что там пришло
-        {
-            joy2Head_msg = joy.parsingJoy(msg_joy); // Разбираем и формируем команды из полученного сообщения
-            flag_msgJoy = false;
-            publisher_Joy2Head.publish(joy2Head_msg);                                   // Публикация полученных данных для информации
-            Data2Driver = joy.transform(joy2Head_msg, joy2Head_prev, Data2Driver_prev); // Преобразование кнопок джойстика в реальные команды
-        }
+        // if (flag_msgJoy) // Если пришло новое сообшение и сработал колбек то разбираем что там пришло
+        // {
+        //     joy2Head_msg = joy.parsingJoy(msg_joy); // Разбираем и формируем команды из полученного сообщения
+        //     flag_msgJoy = false;
+        //     //publisher_Joy2Head.publish(joy2Head_msg);                                   // Публикация полученных данных для информации
+        //     Data2Driver = joy.transform(joy2Head_msg, joy2Head_prev, Data2Driver_prev); // Преобразование кнопок джойстика в реальные команды
+        // }
         // Data2Driver = speedCorrect(Data2Driver);                                // Корректировка скорости движения в зависимости от растояния до преграды
         // publisher_Head2Driver.publish(Data2Driver); // Публикация сформированных данных структуры управления для исполнения драйвером
 

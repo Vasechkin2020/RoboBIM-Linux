@@ -1,6 +1,28 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+#include <ros/ros.h>
+#include <tf/transform_broadcaster.h>
+#include <std_msgs/String.h>
+
+#include <sensor_msgs/Joy.h>
+#include <sensor_msgs/LaserScan.h>
+#include <sensor_msgs/PointCloud.h>
+
+#include <geometry_msgs/PointStamped.h>
+#include <geometry_msgs/Pose2D.h>
+#include <geometry_msgs/PoseStamped.h>
+
+#include <data/Struct_Joy.h>
+// #include <data/point.h>
+#include <data/Struct_Data2Driver.h>
+#include <data/Struct_Driver2Data.h>
+#include <data/PillarOut.h>
+#include <data/topicPillar.h>
+#include <data/Struct_AngleLaser.h>
+#include <data/Struct_PoseLidar.h>
+#include <data/pointA.h>
+
 #define RATE 1 // Частота шага
 
 #define DISTANCE_LAZER 0.39 // Середина стандартного дипазона датчика лазерного в стандартном положении
@@ -20,6 +42,26 @@ const float step_accel_down = MAX_ACCELERATION_DOWN / RATE; // Максимал�
 
 #define RAD2DEG(x) ((x) * 180. / M_PI) // Первод из радиан в градусы
 #define DEG2RAD(x) ((x) * M_PI / 180.) // Первод из градусов в радианы
+
+//--------------------------------- ПОДПИСКА НА ТОПИКИ -------------------------------------------------
+data::topicPillar msg_pillar;               // Перемеенная в которую сохраняем данные по столбам из сообщения
+geometry_msgs::Pose2D msg_startPose2d;      // Перемеенная в которую сохраняем данные о координатах машинки начальных из сообщения
+sensor_msgs::Joy msg_joy;                   // Переменная в которую записываем пришедшее сообщение а колбеке
+sensor_msgs::LaserScan::ConstPtr msg_lidar; // Перемеенная в которую сохраняем данные лидара из сообщения
+data::Struct_Driver2Data msg_Driver2Data;   // Сообщение которое считываем из топика
+
+//-------------------------------------------------------------------------------------------------------
+bool flag_msgJoy = false;    // Флаг что пришло сообщение в топик и можно его парсить
+bool flag_msgPillar = false; // Флаг что пришло сообщение в топик и можно его парсить
+bool flag_msgLidar = false;  // Флаг что пришло сообщение в топик и можно его парсить
+bool flag_msgCar = false;    // Флаг что пришло сообщение в топик и можно его парсить
+
+bool flag_dataPillar = false; // Флаг что разобрали данные по координатам столбов и можно обсчитывать дальше
+bool flag_dataCar = false;    // Флаг что разобрали данные по координатам машины и можно обсчитывать дальше
+bool flag_dataLidar = false;  // Флаг что разобрали данные по лидару и можно сопоставлять столбы
+
+data::Struct_Data2Driver Data2Driver;      // Структура с командами которую публикуем и которую потом Driver исполняет
+data::Struct_Data2Driver Data2Driver_prev; // Структура с командами которую публикуем и которую потом Driver исполняет предыдущее состоние
 
 struct SPoint // Точка
 {
@@ -129,7 +171,7 @@ SPoint pointLocal2Global(SPoint pointLocal_, SPose poseLocal_)
     float x = pointLocal_.x;
     float y = pointLocal_.y;
     float xnew = x * cos(theta) + y * sin(theta); // Поворачиваем по формулам поворота системы координат
-    float ynew = - x * sin(theta) + y * cos(theta);
+    float ynew = -x * sin(theta) + y * cos(theta);
     ret.x = xnew + poseLocal_.x; // Добавляем смещение
     ret.y = ynew + poseLocal_.y;
     return ret;

@@ -1,0 +1,7 @@
+digraph G {
+"map" -> "scGlobal"[label="Broadcaster: /static_global_tf\nAverage rate: 10.192 Hz\nMost recent transform: 1706177401.994 ( -0.010 sec old)\nBuffer length: 4.808 sec\n"];
+edge [style=invis];
+ subgraph cluster_legend { style=bold; color=black; label ="view_frames Result";
+"Recorded at time: 1706177401.984"[ shape=plaintext ] ;
+ }->"map";
+}
