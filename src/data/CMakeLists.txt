@@ -69,9 +69,11 @@ add_message_files(
   Struct_Spi.msg
   Struct_Info_SPI.msg
   #-------------------------------------------------------
-  Struct_AngleLaser.msg
   Struct_PoseLidar.msg
   
+  SAngleLL.msg
+  SAngleLaserLidar.msg
+
   #-------------------------------------------------------
   topicAngle.msg    # Топик с командой управления углами дальномеров
   topicPillar.msg    # Топик с данными координаты реального положения столбов

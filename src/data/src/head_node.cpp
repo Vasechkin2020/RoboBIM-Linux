@@ -22,11 +22,11 @@ int main(int argc, char **argv)
     ROS_INFO("%s -------------------------------------------------------------", NN);
     ROS_WARN("%s        Main Module PrintBIM ROS 1.0 Raspberry Pi 4B  ver 1.132 ", NN);
     ROS_ERROR("%s ------------------ROS_ERROR----------------------------------", NN);
-    
+
     CJoy joy(MAX_SPEED, 0.5); // Обьявляем экземпляр класса в нем вся обработка джойстика
 
     ros::init(argc, argv, "head_node");
-    //topic.init(argc, argv);
+    // topic.init(argc, argv);
 
     ros::NodeHandle nh;
     //----------------------------- ПОДПИСКИ НА ТОПИКИ --------------------------------------------------------------------------
@@ -36,7 +36,7 @@ int main(int argc, char **argv)
     ros::Subscriber subscriber_Joy = nh.subscribe("joy", 16, callback_Joy); // Это мы подписываемся на то что публикует нода джойстика
     ros::Subscriber subscriber_Driver = nh.subscribe<data::Struct_Driver2Data>("Driver2Data", 1000, callback_Driver);
     //---------------------------------------------------------------------------------------------------------------------------
-    CTopic topic;                // Экземпляр класса для всех топиков
+    CTopic topic; // Экземпляр класса для всех топиков
 
     ros::Rate r(RATE);        // Частота в Герцах - задержка
     ros::Duration(1).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
@@ -75,13 +75,17 @@ int main(int argc, char **argv)
             g_poseLidar.mode1 = g_pillar.getLocationMode1(g_poseLidar.mode1); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
             g_poseLidar.mode2 = g_pillar.getLocationMode2(g_poseLidar.mode2); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
             laser.calcAnglePillarForLaser(g_pillar.pillar, g_poseLidar);
+            topic.transform();         // Публикуем трансформации систем координат
+            topic.visualPillarAll();   // Формируем перемнную с собщением для публикации
+            topic.visualPillarPoint(); // Формируем перемнную с собщением для публикации
 
-            topic.visualPillarAll();     // Формируем перемнную с собщением для публикации
-            topic.visualPillarPoint();     // Формируем перемнную с собщением для публикации
-            topic.visualPoseLidarAll();  // Формируем перемнную с собщением для публикации
-            topic.visulStartPose();  // Формируем перемнную с собщением для публикации
-            
-            topic.visualAngleLaser(); // Формируем перемнную с собщением для публикации
+            topic.visulStartPose(); // Формируем перемнную с собщением для публикации
+
+            topic.visualPoseLidarAll(); // Формируем перемнную с собщением для публикации
+            topic.visualPoseLidarMode();
+
+            topic.visualAngleLaser();     // Формируем перемнную с собщением для публикации
+            topic.visualPoseAngleLaser(); // Формируем перемнную с собщением для публикации
         }
 
         // !!!!!!!!!!!! Сделать поиск столба если он приходится на нос, так чтобы перебирала снова пока не найдет конец столба. Искать только если стоб начался и не закончился

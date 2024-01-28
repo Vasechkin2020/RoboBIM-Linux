@@ -18,10 +18,12 @@
 #include <data/Struct_Data2Driver.h>
 #include <data/Struct_Driver2Data.h>
 #include <data/PillarOut.h>
+#include <data/pillar.h>
 #include <data/topicPillar.h>
-#include <data/Struct_AngleLaser.h>
+#include <data/SAngleLaserLidar.h>
+#include <data/SAngleLL.h>
 #include <data/Struct_PoseLidar.h>
-#include <data/pointA.h>
+//#include <data/pointA.h>
 
 #define RATE 1 // Частота шага
 
