@@ -8,13 +8,8 @@
 SPoseLidar g_poseLidar; // Позиции лидара по расчетам Центральная система координат
 
 #include "head_code/laser.h"
-CLaser g_laser;
-
 #include "head_code/pillar.h"
-CPillar g_pillar; // Обьявляем экземпляр класса в нем вся обработка и обсчет столбов
-
 #include "head_code/topic.h" // Файл для функций для формирования топиков в нужном виде и формате
-
 #include "head_code/code.h"
 
 
@@ -26,6 +21,8 @@ int main(int argc, char **argv)
     ROS_ERROR("%s ------------------ROS_ERROR----------------------------------", NN);
 
     CJoy joy(MAX_SPEED, 0.5); // Обьявляем экземпляр класса в нем вся обработка джойстика
+    CLaser laser;
+    CPillar pillar; // Обьявляем экземпляр класса в нем вся обработка и обсчет столбов
 
     ros::init(argc, argv, "head_node");
     // topic.init(argc, argv);
@@ -59,14 +56,14 @@ int main(int argc, char **argv)
         if (flag_msgPillar) // Флаг что пришло сообщение о истинных координатах столбов
         {
             flag_msgPillar = false;
-            g_pillar.parsingPillar(msg_pillar); // Разбираем пришедшие данные Заполняем массив правильных координат.
+            pillar.parsingPillar(msg_pillar); // Разбираем пришедшие данные Заполняем массив правильных координат.
             flag_dataPillar = true;
         }
 
         if (flag_msgLidar && flag_dataCar) // Если пришло сообщение в топик от лидара и мы уже разобрали данные по координатам машинки, а значит можем грубо посчитать где стоят столбы.
         {
             flag_msgLidar = false;
-            g_pillar.parsingLidar(msg_lidar); // Разбираем пришедшие данные и ищем там столбы.
+            pillar.parsingLidar(msg_lidar); // Разбираем пришедшие данные и ищем там столбы.
             flag_dataLidar = true;
         }
         ROS_INFO("flag_dataPillar= %i flag_dataLidar= %i", flag_dataPillar, flag_dataLidar);
@@ -74,22 +71,22 @@ int main(int argc, char **argv)
         if (flag_dataPillar && flag_dataLidar) // Если поступили данные и мы их разобрали по истинным координатоам столбов и есть данные по столюам с лидара то начинаем сопоставлять и публиковать сопоставленные столбы
         {
             flag_dataLidar = false;
-            g_pillar.comparisonPillar();                                      // Сопоставляем столбы
-            g_poseLidar.mode1 = g_pillar.getLocationMode1(g_poseLidar.mode1); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
-            g_poseLidar.mode2 = g_pillar.getLocationMode2(g_poseLidar.mode2); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
-            g_laser.calcAnglePillarForLaser(g_pillar.pillar, g_poseLidar);      // Расчет углов в локальной системе лазеров на столбы для передачи на нижний уровень для исполнения
+            pillar.comparisonPillar();                                      // Сопоставляем столбы
+            g_poseLidar.mode1 = pillar.getLocationMode1(g_poseLidar.mode1); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
+            g_poseLidar.mode2 = pillar.getLocationMode2(g_poseLidar.mode2); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
+            laser.calcAnglePillarForLaser(pillar.pillar, g_poseLidar);      // Расчет углов в локальной системе лазеров на столбы для передачи на нижний уровень для исполнения
             
-            topic.transform();         // Публикуем трансформации систем координат
-            topic.visualPillarAll();   // Формируем перемнную с собщением для публикации
-            topic.visualPillarPoint(); // Формируем перемнную с собщением для публикации
+            topic.transform(laser);         // Публикуем трансформации систем координат
+            topic.visualPillarAll(pillar);   // Формируем перемнную с собщением для публикации
+            topic.visualPillarPoint(pillar); // Формируем перемнную с собщением для публикации
 
             topic.visulStartPose(); // Формируем перемнную с собщением для публикации
 
             topic.visualPoseLidarAll(); // Формируем перемнную с собщением для публикации
             topic.visualPoseLidarMode();
 
-            topic.visualAngleLaser();     // Формируем перемнную с собщением для публикации
-            topic.visualPoseAngleLaser(); // Формируем перемнную с собщением для публикации
+            topic.visualAngleLaser(laser);     // Формируем перемнную с собщением для публикации
+            topic.visualPoseAngleLaser(laser); // Формируем перемнную с собщением для публикации
         }
 
         // !!!!!!!!!!!! Сделать поиск столба если он приходится на нос, так чтобы перебирала снова пока не найдет конец столба. Искать только если стоб начался и не закончился
