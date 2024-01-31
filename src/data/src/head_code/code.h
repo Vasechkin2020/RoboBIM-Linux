@@ -3,27 +3,21 @@
 
 // #include "pillar.h"
 //**************************** ОБЬЯВЛЕНИЕ ПРОЦЕДУР **********************************
-
 void callback_Joy(sensor_msgs::Joy msg);                   // Функция обраьтного вызова по подпичке на топик джойстика nh.subscribe("joy", 16, callback_Joy);
 void callback_Lidar(sensor_msgs::LaserScan::ConstPtr msg); //
 void callback_Driver(data::Struct_Driver2Data msg);        //
 void callback_Pillar(data::topicPillar msg);               //
-void callback_StartPose2D(data::point msg);                        //
+void callback_StartPose2D(data::point msg);                //
 
-void visualPillar();                                                    // Формируем перемнную с собщением для публикации
-void visualAngleLaser();                                                // Формируем перемнную с собщением для публикации по углам лазера
-void visualPoseLidar();                                                 // Формируем перемнную с собщением для публикации по позиции лидара
-void visualPointPillar();                                               // Визуализация координат столбов
 long map(long x, long in_min, long in_max, long out_min, long out_max); // Переводит значение из одного диапазона в другой, взял из Ардуино
 
 void startPosition(geometry_msgs::Pose2D &startPose2d_); // Разбираем топик со стартовой позицией робота
 
-float minDistance(float lazer1_, float lazer2_, float uzi1_);                 // Находим минимальную дистанцию из 3 датчиков
-data::Struct_Data2Driver speedCorrect(data::Struct_Data2Driver Data2Driver_); // Корректировка скорости движения в зависимости от датчиков растояния перед
+float minDistance(float lazer1_, float lazer2_, float uzi1_);                                                            // Находим минимальную дистанцию из 3 датчиков
+data::Struct_Data2Driver speedCorrect(data::Struct_Driver2Data msg_Driver2Data_, data::Struct_Data2Driver Data2Driver_); // Корректировка скорости движения в зависимости от датчиков растояния перед
 // void collectCommand(); // //Функция формирования команды для нижнего уровня на основе всех полученных данных, датчиков и анализа ситуации
 
 // **********************************************************************************
-
 // Функция обраьтного вызова по подписке на топик джойстика nh.subscribe("joy", 16, callback_Joy);
 void callback_Joy(sensor_msgs::Joy msg)
 {
@@ -52,6 +46,7 @@ void callback_Driver(data::Struct_Driver2Data msg)
 {
     msg_Driver2Data = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
 }
+
 // Находим минимальную дистанцию из 3 датчиков
 float minDistance(float lazer1_, float lazer2_, float uzi1_)
 {
@@ -87,10 +82,10 @@ long map(long x, long in_min, long in_max, long out_min, long out_max)
 }
 
 // Корректировка скорости движения в зависимости от датчиков растояния перед
-data::Struct_Data2Driver speedCorrect(data::Struct_Data2Driver Data2Driver_)
+data::Struct_Data2Driver speedCorrect(data::Struct_Driver2Data msg_Driver2Data_, data::Struct_Data2Driver Data2Driver_)
 {
-    float min = minDistance(msg_Driver2Data.lazer1.distance, msg_Driver2Data.lazer2.distance, msg_Driver2Data.uzi1.distance); // Находим минимальную дистанцию из 3 датчиков
-    if (min < 0.5)                                                                                                            // Если меньше полметра
+    float min = minDistance(msg_Driver2Data_.lazer1.distance, msg_Driver2Data_.lazer2.distance, msg_Driver2Data_.uzi1.distance); // Находим минимальную дистанцию из 3 датчиков
+    if (min < 0.5)                                                                                                               // Если меньше полметра
     {
         long minDist = (long)(min * 1000); // Превращаем в целое и увеличиваем умножая на 1000 для точности
         if (minDist < 100)
@@ -103,7 +98,6 @@ data::Struct_Data2Driver speedCorrect(data::Struct_Data2Driver Data2Driver_)
     // printf("sp= %f \n", Data2Driver_.control.speed);
     return Data2Driver_;
 }
-
 
 // //Функция формирования команды для нижнего уровня на основе всех полученных данных, датчиков и анализа ситуации
 // void collectCommand()
