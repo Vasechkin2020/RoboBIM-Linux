@@ -186,8 +186,7 @@ void CTopic::transform(CLaser &laser_, SPose poseLidar_) // Публикуем �
     tfMapOdom.transform.translation.x = 0.0;
     tfMapOdom.transform.translation.y = 0.0;
     tfMapOdom.transform.translation.z = 0.0;
-    tfMapOdom.transform.rotation = tf::createQuaternionMsgFromYaw(DEG2RAD(0));
-    ;                                       // Из градусов в радианы далле подладить под своё представление
+    tfMapOdom.transform.rotation = tf::createQuaternionMsgFromYaw(DEG2RAD(0));// Из градусов в радианы далле подладить под своё представление
     tfBroadcaster.sendTransform(tfMapOdom); // Публикация системы преобразования из odom в map Тут динамически, а статически выглядит так   <node pkg="tf" type="static_transform_publisher" name="static_map_odom_tf" args="0 0 0 0 0 0 map odom 100" /> <!--http://wiki.ros.org/tf-->
 
     // --------------------------------- odom base ---------------------------------------
@@ -198,8 +197,7 @@ void CTopic::transform(CLaser &laser_, SPose poseLidar_) // Публикуем �
     tfOdomBase.transform.translation.x = poseLidar_.x;
     tfOdomBase.transform.translation.y = poseLidar_.y;
     tfOdomBase.transform.translation.z = 0.1;
-    tfOdomBase.transform.rotation = tf::createQuaternionMsgFromYaw(DEG2RAD(-poseLidar_.theta));
-    ;                                        // Из градусов в радианы далле подладить под своё представление
+    tfOdomBase.transform.rotation = tf::createQuaternionMsgFromYaw(DEG2RAD(-poseLidar_.theta));    // Из градусов в радианы далле подладить под своё представление
     tfBroadcaster.sendTransform(tfOdomBase); // Публикация системы преобразования из odom в map Тут динамически, а статически выглядит так   <node pkg="tf" type="static_transform_publisher" name="static_map_odom_tf" args="0 0 0 0 0 0 map odom 100" /> <!--http://wiki.ros.org/tf-->
 
     // --------------------------------- base laser Для ЛИДАРА---------------------------------------
@@ -210,8 +208,7 @@ void CTopic::transform(CLaser &laser_, SPose poseLidar_) // Публикуем �
     tfOdomLaser.transform.translation.x = 0;
     tfOdomLaser.transform.translation.y = 0;
     tfOdomLaser.transform.translation.z = -0.1;
-    tfOdomLaser.transform.rotation = tf::createQuaternionMsgFromYaw(DEG2RAD(-90));
-    ;                                         // Из градусов в радианы добавляем минус, так как в РОС вращение плюс против часовой, а у меня по часовой
+    tfOdomLaser.transform.rotation = tf::createQuaternionMsgFromYaw(DEG2RAD(-90));    // Из градусов в радианы добавляем минус, так как в РОС вращение плюс против часовой, а у меня по часовой
     tfBroadcaster.sendTransform(tfOdomLaser); // Публикация системы преобразования из odom в map Тут динамически, а статически выглядит так   <node pkg="tf" type="static_transform_publisher" name="static_map_odom_tf" args="0 0 0 0 0 0 map odom 100" /> <!--http://wiki.ros.org/tf-->
 
     // --------------------------------- base laser0---------------------------------------
@@ -222,8 +219,7 @@ void CTopic::transform(CLaser &laser_, SPose poseLidar_) // Публикуем �
     tfOdomLaser0.transform.translation.x = laser_._poseLaser[0].x;
     tfOdomLaser0.transform.translation.y = laser_._poseLaser[0].y;
     tfOdomLaser0.transform.translation.z = 0.3;
-    tfOdomLaser0.transform.rotation = tf::createQuaternionMsgFromYaw(DEG2RAD(-laser_._poseLaser[0].theta));
-    ;                                          // Из градусов в радианы добавляем минус, так как в РОС вращение плюс против часовой, а у меня по часовой
+    tfOdomLaser0.transform.rotation = tf::createQuaternionMsgFromYaw(DEG2RAD(-laser_._poseLaser[0].theta)); // Из градусов в радианы добавляем минус, так как в РОС вращение плюс против часовой, а у меня по часовой
     tfBroadcaster.sendTransform(tfOdomLaser0); // Публикация системы преобразования из odom в map Тут динамически, а статически выглядит так   <node pkg="tf" type="static_transform_publisher" name="static_map_odom_tf" args="0 0 0 0 0 0 map odom 100" /> <!--http://wiki.ros.org/tf-->
     // --------------------------------- base laser1---------------------------------------
     geometry_msgs::TransformStamped tfOdomLaser1;
@@ -233,8 +229,7 @@ void CTopic::transform(CLaser &laser_, SPose poseLidar_) // Публикуем �
     tfOdomLaser1.transform.translation.x = laser_._poseLaser[1].x;
     tfOdomLaser1.transform.translation.y = laser_._poseLaser[1].y;
     tfOdomLaser1.transform.translation.z = 0.3;
-    tfOdomLaser1.transform.rotation = tf::createQuaternionMsgFromYaw(DEG2RAD(-laser_._poseLaser[1].theta));
-    ;                                          // Из градусов в радианы добавляем минус, так как в РОС вращение плюс против часовой, а у меня по часовой
+    tfOdomLaser1.transform.rotation = tf::createQuaternionMsgFromYaw(DEG2RAD(-laser_._poseLaser[1].theta));   // Из градусов в радианы добавляем минус, так как в РОС вращение плюс против часовой, а у меня по часовой
     tfBroadcaster.sendTransform(tfOdomLaser1); // Публикация системы преобразования из odom в map Тут динамически, а статически выглядит так   <node pkg="tf" type="static_transform_publisher" name="static_map_odom_tf" args="0 0 0 0 0 0 map odom 100" /> <!--http://wiki.ros.org/tf-->
 
     // --------------------------------- base laser2---------------------------------------
@@ -245,8 +240,7 @@ void CTopic::transform(CLaser &laser_, SPose poseLidar_) // Публикуем �
     tfOdomLaser2.transform.translation.x = laser_._poseLaser[2].x;
     tfOdomLaser2.transform.translation.y = laser_._poseLaser[2].y;
     tfOdomLaser2.transform.translation.z = 0.3;
-    tfOdomLaser2.transform.rotation = tf::createQuaternionMsgFromYaw(DEG2RAD(-laser_._poseLaser[2].theta));
-    ;                                          // Из градусов в радианы добавляем минус, так как в РОС вращение плюс против часовой, а у меня по часовой
+    tfOdomLaser2.transform.rotation = tf::createQuaternionMsgFromYaw(DEG2RAD(-laser_._poseLaser[2].theta));   // Из градусов в радианы добавляем минус, так как в РОС вращение плюс против часовой, а у меня по часовой
     tfBroadcaster.sendTransform(tfOdomLaser2); // Публикация системы преобразования из odom в map Тут динамически, а статически выглядит так   <node pkg="tf" type="static_transform_publisher" name="static_map_odom_tf" args="0 0 0 0 0 0 map odom 100" /> <!--http://wiki.ros.org/tf-->
     // --------------------------------- base laser3---------------------------------------
     geometry_msgs::TransformStamped tfOdomLaser3;
@@ -256,8 +250,7 @@ void CTopic::transform(CLaser &laser_, SPose poseLidar_) // Публикуем �
     tfOdomLaser3.transform.translation.x = laser_._poseLaser[3].x;
     tfOdomLaser3.transform.translation.y = laser_._poseLaser[3].y;
     tfOdomLaser3.transform.translation.z = 0.3;
-    tfOdomLaser3.transform.rotation = tf::createQuaternionMsgFromYaw(DEG2RAD(-laser_._poseLaser[3].theta));
-    ;                                          // Из градусов в радианы добавляем минус, так как в РОС вращение плюс против часовой, а у меня по часовой
+    tfOdomLaser3.transform.rotation = tf::createQuaternionMsgFromYaw(DEG2RAD(-laser_._poseLaser[3].theta));    // Из градусов в радианы добавляем минус, так как в РОС вращение плюс против часовой, а у меня по часовой
     tfBroadcaster.sendTransform(tfOdomLaser3); // Публикация системы преобразования из odom в map Тут динамически, а статически выглядит так   <node pkg="tf" type="static_transform_publisher" name="static_map_odom_tf" args="0 0 0 0 0 0 map odom 100" /> <!--http://wiki.ros.org/tf-->
 }
 
