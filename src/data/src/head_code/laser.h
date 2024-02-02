@@ -131,37 +131,37 @@ void CLaser::calcAnglePillarForLaser(CPillar::SPillar *pillar_, SPoseLidar &pose
         }
     }
     //-----------------------------------------------------------------------
-
-    float zetta[4][2];
-    int countZetta = 0;
-    while (count < 4) // ЕСЛИ ВДРУГ ТАКАЯ СИТУАЦИЯ ЧТО ПО ПРЕДЫДУЩЕМУ АЛГОРИТМУ НЕ ВСЕ СТОЛБЫ РАСПРЕДЕЛИЛИ ТО ПРОБУЕМ ИНАЧЕ Пока все 4 столба не распределим.  // Делаем пока не распределим все лазеры по столбам
-    {
-        ROS_WARN("!!!! Pillar warn...");
-        for (int i = 0; i < 4; i++) // Перебираем лазеры, это строки матрицы
-        {
-            if (matrixLaserPillar[i][4] == 2) // Если остались лазеры у которых еще 2 столба в возможном обслуживании, то выбор делаем по минимальному углу от осевого
-            {
-                for (int j = 0; j < 4; j++)
-                {
-                    if (matrixLaserPillar[i][j] >= 0) // Находим номера столбов
-                    {
-                        zetta[countZetta][0] = abs(angleThetaFromPoint(pointPillarInLidar[j]) - 90); // Получаем угол в Лидарной системе минус 90 как от осевого и по модулю для 1 столба
-                        zetta[countZetta][1] = matrixLaserPillar[i][j];                              // Запоминаем номер столба, с этим углом
-                        countZetta++;
-                    }
-                }
-                if (zetta[0][0] < zetta[1][0]) // Находим столб с наименьшим углом
-                {
-                    tableLaser[i] = zetta[0][1]; // Номер в маассиве это номер лазера, а значение номер столба который лазеру назначен
-                }
-                else
-                {
-                    tableLaser[i] = zetta[1][1]; // Номер в маассиве это номер лазера, а значение номер столба который лазеру назначен
-                }
-                count++;                     // Есть распредленный столб
-            }
-        }
-    }
+    ROS_INFO("!!!! Pillar warn... % i",count);
+    // float zetta[4][2];
+    // int countZetta = 0;
+    // while (count < 4) // ЕСЛИ ВДРУГ ТАКАЯ СИТУАЦИЯ ЧТО ПО ПРЕДЫДУЩЕМУ АЛГОРИТМУ НЕ ВСЕ СТОЛБЫ РАСПРЕДЕЛИЛИ ТО ПРОБУЕМ ИНАЧЕ Пока все 4 столба не распределим.  // Делаем пока не распределим все лазеры по столбам
+    // {
+    //     ROS_WARN("!!!! Pillar warn... % i",count);
+    //     for (int i = 0; i < 4; i++) // Перебираем лазеры, это строки матрицы
+    //     {
+    //         if (matrixLaserPillar[i][4] == 2) // Если остались лазеры у которых еще 2 столба в возможном обслуживании, то выбор делаем по минимальному углу от осевого
+    //         {
+    //             for (int j = 0; j < 4; j++)
+    //             {
+    //                 if (matrixLaserPillar[i][j] >= 0) // Находим номера столбов
+    //                 {
+    //                     zetta[countZetta][0] = abs(angleThetaFromPoint(pointPillarInLidar[j]) - 90); // Получаем угол в Лидарной системе минус 90 как от осевого и по модулю для 1 столба
+    //                     zetta[countZetta][1] = matrixLaserPillar[i][j];                              // Запоминаем номер столба, с этим углом
+    //                     countZetta++;
+    //                 }
+    //             }
+    //             if (zetta[0][0] < zetta[1][0]) // Находим столб с наименьшим углом
+    //             {
+    //                 tableLaser[i] = zetta[0][1]; // Номер в маассиве это номер лазера, а значение номер столба который лазеру назначен
+    //             }
+    //             else
+    //             {
+    //                 tableLaser[i] = zetta[1][1]; // Номер в маассиве это номер лазера, а значение номер столба который лазеру назначен
+    //             }
+    //             count++;                     // Есть распредленный столб
+    //         }
+    //     }
+    // }
     //-----------------------------------------------------------------------
 
     // Распределяем столбы по лазерам. Каждый обслуживает свой сектор
@@ -171,11 +171,21 @@ void CLaser::calcAnglePillarForLaser(CPillar::SPillar *pillar_, SPoseLidar &pose
         (alfa < 0) ? alfa += 360 : alfa = alfa;
         anglePillarInLidar[i] = alfa;
         ROS_INFO("anglePillarInLidar= %.3f ", alfa);
+        ROS_INFO("---");
 
         SPoint point;
         // Распределяем какой лазер будет светить на этот столб исходя из ранее посчитанной таблицы сопоставлений столюов и лазеров
-        point = pointGlobal2Local(pointPillarInLidar[i], _poseLaser[tableLaser[i]]); // Пересчитываем координаты из Лидарной системы в локальную конкретного лазера, ранее сопоставленного в таблицу tableLaser[i]
-        anglePillarInLaser[i] = angleThetaFromPoint(point);
+        if (tableLaser[i] >=0)
+        {
+            point = pointGlobal2Local(pointPillarInLidar[i], _poseLaser[tableLaser[i]]); // Пересчитываем координаты из Лидарной системы в локальную конкретного лазера, ранее сопоставленного в таблицу tableLaser[i]
+            anglePillarInLaser[i] = angleThetaFromPoint(point);
+        }
+        else
+        {
+            anglePillarInLaser[i] = 0;
+        }
+        
+        
     }
     for (int i = 0; i < 4; i++)
     {

@@ -3,10 +3,10 @@
 
 #include "config.h"
 
-#define PILLAR_RADIUS 0.1575  // Радиус столба 315 мм
-#define PEREHOD 0.15          // Разрыв между столбом и обьектом за ним
-#define OTKLONENIE_PILLAR 0.3 // Отклонение межлу истинным и лидарным столююов при котором они сопостовляются
-#define DELTA_MINIMUMA 0.03   // Величина отклонения на которую увеличиваем минимальную дистация до столба при отборе угла на середину, что-бы не первую попавшийся минимум брать +-3 см как в даташите пока взял для тестов
+#define PILLAR_RADIUS 0.1575   // Радиус столба 315 мм
+#define PEREHOD 0.15           // Разрыв между столбом и обьектом за ним
+#define OTKLONENIE_PILLAR 0.63 // Отклонение между истинным и лидарным столбом при котором они сопоставляются
+#define DELTA_MINIMUMA 0.03    // Величина отклонения на которую увеличиваем минимальную дистация до столба при отборе угла на середину, что-бы не первую попавшийся минимум брать +-3 см как в даташите пока взял для тестов
 
 /* Класс для всего что связано с внешними установленными столбами, по которым определяем свою позицию
 
@@ -34,7 +34,7 @@ public:
     // ************************** ПУБЛИЧНЫЕ ФУНКЦИИ КЛАССА *********************************************
     CPillar(/* args */);
     ~CPillar();
-    void parsingLidar(const sensor_msgs::LaserScan::ConstPtr &scan); // Метод которую вызываем из колбека по расчету места столбов
+    void parsingLidar(const sensor_msgs::LaserScan::ConstPtr &scan, SPose &poseLidarMode_); // Метод которую вызываем из колбека по расчету места столбов
     void parsingPillar(data::topicPillar &pillar_);                  // Метод которую вызываем из колбека по расчету места столбов
     void comparisonPillar();                                         // Метод где сопоставляю столбы
     SPose getLocationMode1(SPose pose_);                             // Метод возврщает положение центра лидара усредненного по всем столбам и расчетам по меоду расчета по "растояние до столбов по лидару"
@@ -76,7 +76,7 @@ private:
     SPillarLidar pillarLidar[16]; // Массив котором храним данные по столбам
 
     // ************************** ПРИВАТНЫЕ ФУНКЦИИ КЛАССА *********************************************
-    void poiskPillar(int a_, int b_, SLidar *lidarData);
+    void poiskPillar(int a_, int b_, SLidar *lidarData, SPose &poseLidarMode_);
     SCircle2 getCircle(SPoint p1_, SPoint p2_, float angle);                             // Метод возвращает окружность(координаты и радиус) которая ближе всего к точке старого измерения
     int getCrossing(SCircle c1_, SCircle c2_, SPose pose_, SPoint &pointX_, float len_); // Метод возвращает одну из двух точек пеерсечения двух окружностей ближайшую к заданной
     SPose calculationPose(SPoint point_, SPillar pillar_);                               // Метод считает угол на который повернут ноль лидара в глобальной системе координат
@@ -92,7 +92,9 @@ CPillar::~CPillar()
 // Метод возврщает положение центра лидара усредненного по всем столбам по методу "растояние до столбов по лидару"
 SPose CPillar::getLocationMode1(SPose pose_) // На вход подается последняя полученная/посчитанная позиция лидара
 {
-    ROS_INFO("getLocationMode1 pose x= %.3f  y= %.3f   theta= %.3f ", pose_.x, pose_.y, pose_.theta);
+    ROS_INFO("=== getLocationMode1");
+    ROS_INFO("pose IN x= %.3f y= %.3f theta= %.3f ", pose_.x, pose_.y, pose_.theta);
+    ROS_INFO("---"); //
     float a1, a2;
     SCircle c1, c2;
     SPoint point;
@@ -129,23 +131,52 @@ SPose CPillar::getLocationMode1(SPose pose_) // На вход подается �
     poseLidar.y = poseLidar.y / count_poseLidarMode1;
     // Находим куда смотрит лидар на основе полученного положения и результтов с лидара фактических
     float gamma = 0;
+    int num = 0; // Для усреднения считаем сколько столбов было
     for (int i = 0; i < countPillar; i++)
     {
-        float a = (pillar[i].x_true - poseLidar.x);
-        float b = (pillar[i].y_true - poseLidar.y);
-        float alfa = RAD2DEG(atan2(a, b));
-        (alfa < 0) ? alfa += 360 : alfa = alfa;
-        pillar[i].theta_true1 = alfa;
-        gamma = gamma + (alfa - pillar[i].azimuth); // Считаем на сколько отличаются углы, это значит на столько повернут нос лидара
+        if (pillar[i].status) // Берем только сопоставленные столбы
+        {
+            float a = (pillar[i].x_true - poseLidar.x);
+            float b = (pillar[i].y_true - poseLidar.y);
+            float alfa = RAD2DEG(atan2(a, b));
+            ROS_INFO("a= %.3f b= %.3f  alfa= %.3f ", a, b, alfa); // Это вектор из нашего текущего положения на столб и угол на него от оси Y
+            (alfa < 0) ? alfa += 360 : alfa = alfa;
+            pillar[i].theta_true1 = alfa;
+            float delta = (alfa - pillar[i].azimuth);
+            float delta2 = delta;
+            float delta3 = 0;
+            if (delta < -180) // Если больше значит угол не с той стороны измерили
+            {
+                delta2 = delta + 360;
+            }
+            if (delta > 180) // Если больше значит угол не с той стороны измерили
+            {
+                delta2 = delta - 360;
+                delta3 = 360 - delta;
+            }
+            gamma = gamma + delta2;
+            num++;                                                                                                                         // Считаем на сколько отличаются углы, это значит на столько повернут нос лидара
+            ROS_INFO("alfa360= %.3f azimuth= %.3f delta= %.3f delta2= %.3f delta3= %.3f", pillar[i].azimuth, alfa, delta, delta2, delta3); //
+        }
+        else
+        {
+            ROS_WARN(" !!! getLocationMode1 Pillar %i status FALSE", i); //
+        }
+        ROS_INFO("---"); //
     }
-    poseLidar.theta = gamma / countPillar; // Усредняем угол
+    ROS_INFO("gamma= %.3f num= %i ", gamma, num);
+    poseLidar.theta = gamma / num; // Усредняем угол
+    ROS_INFO("---");               //
+    ROS_INFO("pose OUT x= %.3f y= %.3f theta= %.3f ", poseLidar.x, poseLidar.y, poseLidar.theta);
+    ROS_INFO("==="); //
     return poseLidar;
 }
 
 // Метод возврщает положение центра лидара усредненного по всем столбам по методу "углы между столюами по лидару"
 SPose CPillar::getLocationMode2(SPose pose_) // На вход подается последняя полученная/посчитанная позиция лидара
 {
-    ROS_INFO("getLocationMode2 pose x= %.3f  y= %.3f   theta= %.3f ", pose_.x, pose_.y, pose_.theta);
+    ROS_INFO("=== getLocationMode2");
+    ROS_INFO("pose IN x= %.3f y= %.3f theta= %.3f ", pose_.x, pose_.y, pose_.theta);
     SPoint p1, p2, p3;
     float a1, a2;
     SCircle2 c;
@@ -251,6 +282,8 @@ SPose CPillar::getLocationMode2(SPose pose_) // На вход подается �
     // ret.x = poseLidar.x;
     // ret.y = poseLidar.y;
     // ret.theta = poseLidar.theta;
+    ROS_INFO("pose OUT x= %.3f y= %.3f theta= %.3f ", poseLidar.x, poseLidar.y, poseLidar.theta);
+    ROS_INFO("===");
     return poseLidar;
 }
 // Функция возвращает 2 окружности(координаты и радиус)
@@ -298,7 +331,7 @@ int CPillar::getCrossing(SCircle c1_, SCircle c2_, SPose pose_, SPoint &pointX_,
     // Делаем проверку на расстояние между точками
     if ((d >= c1_.r + c2_.r) || (d < abs(c1_.r - c2_.r))) // Если расстояние меньше суммы радиусов то окружности не пересекаются Если равно то одна точка, нам не подходит/ Если меньше разницы то окружность внутри другой тоже не наш случай
     {
-        ROS_WARN("Circles do not fit the conditions !!! d= %.3f  r1= %.3f r2= %.3f", d, c1_.r, c2_.r);
+        // ROS_WARN("Circles do not fit the conditions !!! d= %.3f  r1= %.3f r2= %.3f", d, c1_.r, c2_.r);
         ret = -1; // Ошибка по окружностям
         return ret;
     }
@@ -327,7 +360,7 @@ int CPillar::getCrossing(SCircle c1_, SCircle c2_, SPose pose_, SPoint &pointX_,
         ret = -2;      // Нет подходящих пересечений
         pointX_.x = 0; // Возвращаем нули
         pointX_.y = 0;
-        //ROS_WARN("Not getCrossing. vectorLen > 0.1 m");
+        // ROS_WARN("Not getCrossing. vectorLen > 0.1 m");
         return ret;
     }
     ret = 1; // Все хорошо
@@ -361,13 +394,14 @@ void CPillar::parsingPillar(data::topicPillar &pillar_)
 // Функция сопоставления столбов
 void CPillar::comparisonPillar()
 {
+    ROS_INFO("=== comparisonPillar");
     float delta_x = 0;
     float delta_y = 0;
     float hypotenuse = 0;
 
     for (int i = 0; i < countPillar; i++) // Перебираем все истинные столбы и ищем соответствие из лидарных столбов]
     {
-        pillar[i].status = false; // Сбрасываем старое сопоставление, остаются только истинные значения столбов. Сопоставляться должно каждый раз!!! или столб не удаствует в расчетах дальше.
+        pillar[i].status = false; // Сбрасываем старое сопоставление, остаются только истинные значения столбов. Сопоставляться должно каждый раз!!! или столб не участвует в расчетах дальше.
         pillar[i].azimuth = 0;
         pillar[i].x_lidar = 0;
         pillar[i].y_lidar = 0;
@@ -386,49 +420,73 @@ void CPillar::comparisonPillar()
                 pillar[i].distance = pillarLidar[j].dist_min;
                 pillar[i].x_lidar = pillarLidar[j].x_globalXY;
                 pillar[i].y_lidar = pillarLidar[j].y_globalXY;
-                // printf("          hypotenuse= %.3f \n",pillar[i].hypotenuse);
-                // printf("          azimuth= %.3f \n",pillar[i].azimuth);
-                // printf("          x_lidar= %.3f \n",pillar[i].x_true);
-                // printf("          x_lidar= %.3f \n",pillar[i].x_lidar);
-                // printf("          x_lidar= %.3f \n",pillar[i].y_true);
-                // printf("          dist_min= %.3f \n",pillarLidar[j].dist_min);
+                ROS_INFO("comparisonPillar %i azimuth = %.3f distance= %.3f hypotenuse= %.3f", i, pillar[i].azimuth, pillar[i].distance, hypotenuse);
                 break;
+            }
+            else
+            {
+                ROS_INFO("!!! NO comparisonPillar %i hypotenuse= %.3f", i, hypotenuse);
             }
         }
     }
+    ROS_INFO("===");
 }
 
 // Функция которую вызываем из колбека по расчету места столбов
 // Что-бы данные приходили по часовой стрелке в настройках установить   <param name="inverted"            type="bool"   value="true"/>
 // Ноль градусов у нее там где хвостик и поэтому +180 чтобы получить 360 оборот правильный вправо
-void CPillar::parsingLidar(const sensor_msgs::LaserScan::ConstPtr &scan)
+void CPillar::parsingLidar(const sensor_msgs::LaserScan::ConstPtr &scan, SPose &poseLidarMode_)
 {
-    float distance_pred = 0; // Предыдущее значение дистанции
-    int a = 0;               // Начало группы точек
-    int b = 0;               // Конец группы точек
-    bool flag = false;       // Флаг поиска точки
-    SLidar lidarData[4096];  // Выделяем массив из расчета что всего 32000 за секунду и вращаемся 10 Герц с запасом
+    float distance_pred = 0;   // Предыдущее значение дистанции
+    int a = 0;                 // Начало группы точек
+    int b = 0;                 // Конец группы точек
+    bool flag = false;         // Флаг поиска точки
+    SLidar lidarData[4096];    // Выделяем массив из расчета что всего 32000 за секунду и вращаемся 10 Герц с запасом
+    SLidar lidarDataSrc[4096]; // Преобразованный к моему виду массив
+    countPillarLidar = 0;      // Обнуляем для нового сканирования, каждый раз можем находить разное число столбов
     int count = scan->scan_time / scan->time_increment;
-    countPillarLidar = 0; // Обнуляем для нового сканирования, каждый раз можем находить разное число столбов
 
     // ROS_INFO("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! ");
-    ROS_INFO("Lidar data received %s [%d]:", scan->header.frame_id.c_str(), count);
+    ROS_INFO("=== Lidar data received %s [%d]:", scan->header.frame_id.c_str(), count);
     // ROS_INFO("angle_range, %f, %f", RAD2DEG(scan->angle_min), RAD2DEG(scan->angle_max));
 
     int j = 0;
-    for (int i = 0; i < count; i++) // Пробегаем по всему массиву и преобразуем его в нормальный понятный для меня вид. Вращение вправо и 360 градусов
+    for (int i = 0; i < count; i++) // Пробегаем по всему массиву, копируем в свой и считаем сколько хороших данных пришло и для дальнейшего преобразования
     {
         float distance = scan->ranges[i];                                    // Дистанция для данной точки
         float degree = RAD2DEG(scan->angle_min + scan->angle_increment * i); // Градус для данной точки
         if (isfinite(distance))                                              // Проверка что там нормальное число а не бесконечность и не ноль
         {
-            lidarData[j].degree = degree + 180; // Градус в градусах для данной точки
-            lidarData[j].distance = distance;   // Дистанция для данной точки
-            // ROS_INFO("Point j= %i degree= %f distance= %f ", j, lidarData[j].degree, lidarData[j].distance);
+            lidarDataSrc[j].degree = degree;     // Градус в градусах для данной точки
+            lidarDataSrc[j].distance = distance; // Дистанция для данной точки
             j++;
+            // if (i < 5)
+            // {
+            //     ROS_INFO("i = %i degree= %.3f distance= %.3f", i, degree, distance);
+            // }
+            // if (i > 3575)
+            // {
+            //     ROS_INFO("i = %i degree= %.3f distance= %.3f", i, degree, distance);
+            // }
         }
     }
-
+    ROS_INFO("Lidar good data count = %i", j);
+    int k = j;
+    for (int i = 0; i < j; i++) // Пробегаем по всему своему массиву c исходными данными с конца и преобразуем (инвертируем) его в нормальный понятный для меня вид. Вращение вправо и 360 градусов
+    {
+        k--;
+        lidarData[i].degree = 180 - lidarDataSrc[k].degree; // Конец копируем в начало и превращаем в 360 градусов
+        lidarData[i].distance = lidarDataSrc[k].distance;
+        // if (i < 5)
+        // {
+        //     ROS_INFO("i = %i degree= %.4f distance= %.4f", i, lidarData[i].degree, lidarData[i].distance);
+        // }
+        // if (i > 3450)
+        // {
+        //     ROS_INFO("i = %i degree= %.4f distance= %.4f", i, lidarData[i].degree, lidarData[i].distance);
+        // }
+    }
+    ROS_INFO(" Data transformed = %i", k);
     for (int i = 0; i < j; i++) // Пробегаем по всему новому массиву и ищем группы точек
     {
         if (i != 0) // Для первого элемента просто его запоминаем в
@@ -439,7 +497,7 @@ void CPillar::parsingLidar(const sensor_msgs::LaserScan::ConstPtr &scan)
                 // ROS_INFO("Point a= %i degree= %.3f distance= %.3f ", a, lidarData[a].degree, lidarData[a].distance);
                 // ROS_INFO("Point b= %i degree= %.3f distance= %.3f \n", b, lidarData[b].degree, lidarData[b].distance);
                 //  ROS_INFO("=====");
-                poiskPillar(a, b, lidarData);
+                poiskPillar(a, b, lidarData, poseLidarMode_);
                 flag = false; // Сбрасываем флаг для следующего расчета
             }
             if (distance_pred - lidarData[i].distance > PEREHOD) // Если дальность текущей точки меньше предыдущей больше чем на 0,3 метра то
@@ -466,11 +524,12 @@ void CPillar::parsingLidar(const sensor_msgs::LaserScan::ConstPtr &scan)
     }
 
     ROS_INFO("Found countPillarLidar= %i", countPillarLidar);
+    ROS_INFO("===");
 
     // ROS_INFO("End");
 }
 
-void CPillar::poiskPillar(int a_, int b_, SLidar *lidarData)
+void CPillar::poiskPillar(int a_, int b_, SLidar *lidarData, SPose &poseLidarMode_)
 {
     static float width = 0; // Ширина обьекта
     float dist_min = 1000;
@@ -527,9 +586,13 @@ void CPillar::poiskPillar(int a_, int b_, SLidar *lidarData)
         pillarLidar[countPillarLidar].x_lidarXY = sin(DEG2RAD(pillarLidar[countPillarLidar].azimuth)) * (pillarLidar[countPillarLidar].dist_min + PILLAR_RADIUS); // Находим координаты по формулам. К минимальному растоянию прибавляем радиус столба
         pillarLidar[countPillarLidar].y_lidarXY = cos(DEG2RAD(pillarLidar[countPillarLidar].azimuth)) * (pillarLidar[countPillarLidar].dist_min + PILLAR_RADIUS); // Находим координаты по формулам. К минимальному растоянию прибавляем радиус столба
 
-        SPoint car_XY = povorotSystemCoordinate(pillarLidar[countPillarLidar].x_lidarXY, pillarLidar[countPillarLidar].y_lidarXY, -g_poseLidar.mode1.theta); // Поворачиваем систему координат/ Угол с минусом так как вращаем против часовой
-        pillarLidar[countPillarLidar].x_globalXY = car_XY.x + g_poseLidar.mode1.x;                                                                           // Прибавляем смещение. Это раастояние где находится машина относительно глобальной системы координат нуля. И получаем координаты в глобальной системе координат
-        pillarLidar[countPillarLidar].y_globalXY = car_XY.y + g_poseLidar.mode1.y;
+        SPoint car_XY = povorotSystemCoordinate(pillarLidar[countPillarLidar].x_lidarXY, pillarLidar[countPillarLidar].y_lidarXY, -poseLidarMode_.theta); // Поворачиваем систему координат/ Угол с минусом так как вращаем против часовой
+        pillarLidar[countPillarLidar].x_globalXY = car_XY.x + poseLidarMode_.x;                                                                           // Прибавляем смещение. Это раастояние где находится машина относительно глобальной системы координат нуля. И получаем координаты в глобальной системе координат
+        pillarLidar[countPillarLidar].y_globalXY = car_XY.y + poseLidarMode_.y;
+    // Старый вариант, без передачи перемнной через метод, а прямо использовани глобальной перемнной
+        // SPoint car_XY = povorotSystemCoordinate(pillarLidar[countPillarLidar].x_lidarXY, pillarLidar[countPillarLidar].y_lidarXY, -g_poseLidar.mode1.theta); // Поворачиваем систему координат/ Угол с минусом так как вращаем против часовой
+        // pillarLidar[countPillarLidar].x_globalXY = car_XY.x + g_poseLidar.mode1.x;                                                                           // Прибавляем смещение. Это раастояние где находится машина относительно глобальной системы координат нуля. И получаем координаты в глобальной системе координат
+        // pillarLidar[countPillarLidar].y_globalXY = car_XY.y + g_poseLidar.mode1.y;
 
         // ROS_INFO(" Pillar Angle a = %.3f Angle b= %.3f ", pillarLidar[countPillarLidar].angle_left, pillarLidar[countPillarLidar].angle_right);
         // ROS_INFO(" Angle_middle= %.3f Angle_dist_min= %.3f angle_middle_min= %.3f Angle_azimuth= %.3f ", pillarLidar[countPillarLidar].angle_middle, pillarLidar[countPillarLidar].angle_dist_min, pillarLidar[countPillarLidar].angle_middle_min, pillarLidar[countPillarLidar].azimuth);

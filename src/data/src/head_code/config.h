@@ -25,7 +25,7 @@
 #include <data/Struct_PoseLidar.h>
 //#include <data/pointA.h>
 
-#define RATE 1 // Частота шага
+#define RATE 2 // Частота шага
 
 #define DISTANCE_LAZER 0.39 // Середина стандартного дипазона датчика лазерного в стандартном положении
 #define DIAPAZON 0.04       // Диапазон +- лазерного датчика

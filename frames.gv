@@ -1,13 +1,13 @@
 digraph G {
-"map" -> "odom"[label="Broadcaster: /head_node\nAverage rate: 1.250 Hz\nMost recent transform: 1706472875.829 ( 0.327 sec old)\nBuffer length: 4.000 sec\n"];
-"odom" -> "base"[label="Broadcaster: /head_node\nAverage rate: 1.250 Hz\nMost recent transform: 1706472875.829 ( 0.327 sec old)\nBuffer length: 4.000 sec\n"];
-"base" -> "laser"[label="Broadcaster: /head_node\nAverage rate: 1.250 Hz\nMost recent transform: 1706472875.829 ( 0.327 sec old)\nBuffer length: 4.000 sec\n"];
-"base" -> "laser0"[label="Broadcaster: /head_node\nAverage rate: 1.250 Hz\nMost recent transform: 1706472875.829 ( 0.327 sec old)\nBuffer length: 4.000 sec\n"];
-"base" -> "laser1"[label="Broadcaster: /head_node\nAverage rate: 1.250 Hz\nMost recent transform: 1706472875.829 ( 0.327 sec old)\nBuffer length: 4.000 sec\n"];
-"base" -> "laser2"[label="Broadcaster: /head_node\nAverage rate: 1.250 Hz\nMost recent transform: 1706472875.829 ( 0.327 sec old)\nBuffer length: 4.000 sec\n"];
-"base" -> "laser3"[label="Broadcaster: /head_node\nAverage rate: 1.250 Hz\nMost recent transform: 1706472875.829 ( 0.327 sec old)\nBuffer length: 4.000 sec\n"];
+"map" -> "odom"[label="Broadcaster: /head_node\nAverage rate: 1.248 Hz\nMost recent transform: 1706787620.659 ( 0.595 sec old)\nBuffer length: 4.008 sec\n"];
+"odom" -> "base"[label="Broadcaster: /head_node\nAverage rate: 1.248 Hz\nMost recent transform: 1706787620.659 ( 0.595 sec old)\nBuffer length: 4.008 sec\n"];
+"base" -> "laser"[label="Broadcaster: /head_node\nAverage rate: 1.248 Hz\nMost recent transform: 1706787620.659 ( 0.595 sec old)\nBuffer length: 4.008 sec\n"];
+"base" -> "laser0"[label="Broadcaster: /head_node\nAverage rate: 1.248 Hz\nMost recent transform: 1706787620.659 ( 0.595 sec old)\nBuffer length: 4.008 sec\n"];
+"base" -> "laser1"[label="Broadcaster: /head_node\nAverage rate: 1.248 Hz\nMost recent transform: 1706787620.659 ( 0.595 sec old)\nBuffer length: 4.008 sec\n"];
+"base" -> "laser2"[label="Broadcaster: /head_node\nAverage rate: 1.248 Hz\nMost recent transform: 1706787620.659 ( 0.595 sec old)\nBuffer length: 4.008 sec\n"];
+"base" -> "laser3"[label="Broadcaster: /head_node\nAverage rate: 1.248 Hz\nMost recent transform: 1706787620.659 ( 0.595 sec old)\nBuffer length: 4.008 sec\n"];
 edge [style=invis];
  subgraph cluster_legend { style=bold; color=black; label ="view_frames Result";
-"Recorded at time: 1706472876.157"[ shape=plaintext ] ;
+"Recorded at time: 1706787621.254"[ shape=plaintext ] ;
  }->"map";
 }
