@@ -73,10 +73,10 @@ int main(int argc, char **argv)
             g_poseLidar.mode1 = pillar.getLocationMode1(g_poseLidar.mode1); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
             g_poseLidar.mode2 = pillar.getLocationMode2(g_poseLidar.mode2); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
 
-            topic.transform(laser, g_poseLidar.mode1); // Публикуем трансформации систем координат, задаем по какому расчету трансформировать "odom" в "base"
-            topic.visulStartPose();                    // Формируем перемнную с собщением для публикации
+            //topic.transform(laser, g_poseLidar.mode1); // Публикуем трансформации систем координат, задаем по какому расчету трансформировать "odom" в "base"
+            //topic.visulStartPose();                    // Формируем перемнную с собщением для публикации
             // topic.visualPillarAll(pillar);   // Формируем перемнную с собщением для публикации
-            topic.visualPillarPoint(pillar); // Формируем перемнную с собщением для публикации
+            //topic.visualPillarPoint(pillar); // Формируем перемнную с собщением для публикации
 
             // topic.visualPoseLidarAll(); // Формируем перемнную с собщением для публикации
             // topic.visualPoseLidarMode();
