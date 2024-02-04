@@ -2,18 +2,15 @@
 #define CODE_H
 
 //**************************** ОБЬЯВЛЕНИЕ ПРОЦЕДУР **********************************
-
+void processingSPI();																						  // Сбор данных по результатам обмена по шине SPI по обоим контроллерам
 uint16_t getMax_size_Struct(uint16_t stru1_, uint16_t stru2_); // Функция возращает максимальный размер из 2 структур
 void set_PIN_Led();											   // Настройка светодиодов
 void Led_Blink(int led_, unsigned long time_);				   // Функция мигания светодиодом в осномном цикле что программа не зависла и работает
-
 void init_SPI(int channel_, int speed_);																	// Инициализация канала шины SPI
-void setOdomToTf(ros::NodeHandle nh_, tf::TransformBroadcaster odom_broadcaster_, ros::Time current_time_); // Функция записи в нужные места данных одометрии в tf и в odom
-
-void transOdom();											  // Перенес то что было на главном файле
-
-void callback_Head2Data(const data::Struct_Data2Driver &msg); // Обратный вызов при опросе топика Head2Data
-void callback_Angle(const data::topicAngle &msg); // Обратный вызов при опросе топика Angle
+void callback_ControlDriver(const data::SControlDriver &msg); // Обратный вызов при опросе топика Head2Data
+void callback_ControlModul(const data::SControlModul &msg); // Обратный вызов при опросе топика Angle
+// void setOdomToTf(ros::NodeHandle nh_, tf::TransformBroadcaster odom_broadcaster_, ros::Time current_time_); // Функция записи в нужные места данных одометрии в tf и в odom
+// void transOdom();											  // Перенес то что было на главном файле
 
 // **********************************************************************************
 
@@ -24,20 +21,26 @@ uint16_t getMax_size_Struct(uint16_t stru1_, uint16_t stru2_)
 	stru1_ > stru2_ ? ret = stru1_ : ret = stru2_;
 	return ret += 1; // + 1 байт Для контрольной суммы
 }
+// Сбор данных по результатам обмена по шине SPI по обоим контроллерам
+void processingSPI()
+{
+	spi_msg.ModulData.all = Modul2Data.spi.all;// Собираем для публикации данные о результатах обмена полученных из Modul о том как он принял по SPI данные отправленные Data
+	spi_msg.ModulData.bed = Modul2Data.spi.bed;
 
+	spi_msg.DataModul.all = data_modul_all;// Собираем для публикации данные о результатах обмена из Data о том как он принял по SPI данные отправленные Modul
+	spi_msg.DataModul.bed = data_modul_bed;
+//-------------------------------------------------------------------------------------
+	spi_msg.DriverData.all = Driver2Data.spi.all;// Собираем для публикации данные о результатах обмена полученных из Modul о том как он принял по SPI данные отправленные Data
+	spi_msg.DriverData.bed = Driver2Data.spi.bed;
+
+	spi_msg.DataDriver.all = data_driver_all;// Собираем для публикации данные о результатах обмена из Data о том как он принял по SPI данные отправленные Modul
+	spi_msg.DataDriver.bed = data_driver_bed;
+
+}
 // Настройка светодиодов
 void set_PIN_Led()
 {
-	// pinMode(PIN_LED_GREEN, OUTPUT); // Зеленый светодиод
 	pinMode(PIN_LED_BLUE, OUTPUT); // Красный светодиод
-								   // pullUpDnControl(PIN_LED_GREEN, PUD_DOWN);
-								   // pullUpDnControl(PIN_LED_BLUE, PUD_DOWN);
-
-	// digitalWrite(PIN_LED_GREEN, 1);
-	// digitalWrite(PIN_LED_BLUE, 1);
-	// delay(1000);
-	// digitalWrite(PIN_LED_GREEN, 0);
-	// digitalWrite(PIN_LED_BLUE, 0);
 }
 
 // Функция мигания светодиодом в осномном цикле что программа не зависла и работает
@@ -54,50 +57,6 @@ void Led_Blink(int led_, unsigned long time_)
 		printf("+ \n");
 	}
 }
-
-// Функция записи в нужные места данных одометрии в tf и в odom
-void setOdomToTf(ros::NodeHandle nh_, tf::TransformBroadcaster odom_broadcaster_, ros::Time current_time_)
-{
-	// Пример кода взят отсюда
-	//  http://library.isr.ist.utl.pt/docs/roswiki/navigation(2f)Tutorials(2f)RobotSetup(2f)Odom.html
-
-	// current_time_ = ros::Time::now(); // Получаем текущее время в ROS
-
-	// //since all odometry is 6DOF we'll need a quaternion created from yaw
-	// // получаем из моего направления куда смотрит робот кватернион
-	// geometry_msgs::Quaternion odom_quat = tf::createQuaternionMsgFromYaw(Body.odom_enc.th);
-	// //first, we'll publish the transform over tf
-	// geometry_msgs::TransformStamped odom_trans;
-	// odom_trans.header.stamp = current_time_;
-	// odom_trans.header.frame_id = "odom";
-	// odom_trans.child_frame_id = "base_link";
-
-	// odom_trans.transform.translation.x = Body.odom_enc.x;
-	// odom_trans.transform.translation.y = Body.odom_enc.x;
-	// odom_trans.transform.translation.z = 0.0;
-	// odom_trans.transform.rotation = odom_quat;
-
-	// //send the transform
-	// odom_broadcaster_.sendTransform(odom_trans);
-
-	// //next, we'll publish the odometry message over ROS
-
-	// odom.header.stamp = current_time_;
-	// odom.header.frame_id = "odom";
-
-	// //set the position
-	// odom.pose.pose.position.x = Body.odom_enc.x;
-	// odom.pose.pose.position.y = Body.odom_enc.y;
-	// odom.pose.pose.position.z = 0.0;
-	// odom.pose.pose.orientation = odom_quat;
-
-	// //set the velocity
-	// odom.child_frame_id = "base_link";
-	// odom.twist.twist.linear.x = Body.odom_enc.vel_x;
-	// odom.twist.twist.linear.y = Body.odom_enc.vel_y;
-	// odom.twist.twist.angular.z = Body.odom_enc.vel_th;
-}
-
 // Инициализация канала шины SPI
 void init_SPI(int channel_, int speed_)
 {
@@ -117,57 +76,18 @@ void init_SPI(int channel_, int speed_)
 }
 
 // Обратный вызов при опросе топика Head2Data
-void callback_Head2Data(const data::Struct_Data2Driver &msg)
+void callback_ControlDriver(const data::SControlDriver &msg)
 {
-	msg_Head2Data = msg; // Копируем структуру в глобальную переменную для дальнейшей работы с ней.
+	msg_ControlDriver = msg; // Копируем структуру в глобальную переменную для дальнейшей работы с ней.
 						 // ROS_INFO("message_callback_Command.");
 }
 // Обратный вызов при опросе топика Angle
-void callback_Angle(const data::topicAngle &msg)
+void callback_ControlModul(const data::SControlModul &msg)
 {
-	msg_topicAngle = msg; // Копируем структуру в глобальную переменную для дальнейшей работы с ней.
+	msg_ControlModul = msg; // Копируем структуру в глобальную переменную для дальнейшей работы с ней.
 						  // ROS_INFO("message_callback_Command.");
 }
 
-void transOdom() // Перенес то что было на главном файле
-{
-	//     current_time = ros::Time::now(); // Получаем текущее время в ROS
 
-	//     //since all odometry is 6DOF we'll need a quaternion created from yaw
-	//     // получаем из моего направления куда смотрит робот кватернион
-	//     geometry_msgs::Quaternion odom_quat = tf::createQuaternionMsgFromYaw(Body.odom_enc.th);
-	//     //first, we'll publish the transform over tf
-	//     geometry_msgs::TransformStamped odom_trans;
-	//     odom_trans.header.stamp = current_time;
-	//     odom_trans.header.frame_id = "odom";
-	//     odom_trans.child_frame_id = "base_link";
-
-	//     odom_trans.transform.translation.x = Body.odom_enc.x;
-	//     odom_trans.transform.translation.y = Body.odom_enc.y;
-	//     odom_trans.transform.translation.z = 0.0;
-	//     odom_trans.transform.rotation = odom_quat;
-
-	//     //send the transform
-	//     odom_broadcaster.sendTransform(odom_trans);
-
-	//     //next, we'll publish the odometry message over ROS
-
-	//     odom.header.stamp = current_time;
-	//     odom.header.frame_id = "odom";
-
-	//     //set the position
-	//     odom.pose.pose.position.x = Body.odom_enc.x;
-	//     odom.pose.pose.position.y = Body.odom_enc.y;
-	//     odom.pose.pose.position.z = 0.0;
-	//     odom.pose.pose.orientation = odom_quat;
-
-	//     //set the velocity
-	//     odom.child_frame_id = "base_link";
-	//     odom.twist.twist.linear.x = Body.odom_enc.vel_x;
-	//     odom.twist.twist.linear.y = Body.odom_enc.vel_y;
-	//     odom.twist.twist.angular.z = Body.odom_enc.vel_th;
-
-	//     odom_pub.publish(odom); //publish the message
-}
 
 #endif

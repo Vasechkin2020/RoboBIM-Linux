@@ -20,8 +20,9 @@ private:
 public:
     CJoy(float speed_max_, float radius_min_);
     ~CJoy();
-    data::Struct_Joy parsingJoy(const sensor_msgs::Joy &data_);                                                                              // Функция обработки и пробразований данных в мою понятную структуру с кнопками
-    data::Struct_Data2Driver transform(data::Struct_Joy &joy2Head, data::Struct_Joy &joy2Head_prev, data::Struct_Data2Driver &Data2Driver_); // Преобразование кнопок джойстика в реальные команды
+    data::Struct_Joy joy2Head;                   // Структура в которую пишем обработанные данные от джойстика и выдаем наружу из класса
+    void parsingJoy(const sensor_msgs::Joy &data_);                                                                              // Функция обработки и пробразований данных в мою понятную структуру с кнопками
+    data::SControlDriver transform(data::Struct_Joy &joy2Head, data::Struct_Joy &joy2Head_prev, data::SControlDriver &Data2Driver_); // Преобразование кнопок джойстика в реальные команды
 };
 
 CJoy::CJoy(float speed_max_, float radius_min_)
@@ -34,9 +35,8 @@ CJoy::~CJoy()
 {
 }
 // Функция обработки и пробразований данных в мою понятную структуру с кнопками
-data::Struct_Joy CJoy::parsingJoy(const sensor_msgs::Joy &data_) 
+void CJoy::parsingJoy(const sensor_msgs::Joy &data_) 
 {
-    data::Struct_Joy joy2Head;                   // Структура в которую пишем обработанные данные от джойстика и выдаем наружу из класса
                                                  //--------------------------- BUTTON -----------------------------
     joy2Head.button_cross = data_.buttons[0];    // 0 или 1, по умолчанию 0
     joy2Head.button_circle = data_.buttons[1];   // 0 или 1, по умолчанию 0
@@ -55,7 +55,6 @@ data::Struct_Joy CJoy::parsingJoy(const sensor_msgs::Joy &data_)
 
     joy2Head.button_L2 = data_.buttons[6]; // 0 или 1, по умолчанию 0
     joy2Head.button_R2 = data_.buttons[7]; // 0 или 1, по умолчанию 0
-                                           
                                            //---------------------------- AXES-----------------------------
     joy2Head.axes_L_Hor = data_.axes[0]; // От 1 до -1 float, по умолчанию 0
     joy2Head.axes_L_Ver = data_.axes[1]; // От 1 до -1 float, по умолчанию 0
@@ -65,19 +64,17 @@ data::Struct_Joy CJoy::parsingJoy(const sensor_msgs::Joy &data_)
 
     joy2Head.axes_L2 = data_.axes[2]; // От 1 до -1 float с нулем по середине, по умолчанию 1 !!!!!!!!!
     joy2Head.axes_R2 = data_.axes[5]; // От 1 до -1 float с нулем по середине, по умолчанию 1 !!!!!!!!!!!!!!
-
-    return joy2Head;
 }
 
 // Преобразование кнопок джойстика в реальные команды
-data::Struct_Data2Driver CJoy::transform(data::Struct_Joy &joy2Head_, data::Struct_Joy &joy2Head_prev_, data::Struct_Data2Driver &Data2Driver_prev_) 
+data::SControlDriver CJoy::transform(data::Struct_Joy &joy2Head_, data::Struct_Joy &joy2Head_prev_, data::SControlDriver &Data2Driver_prev_) 
 {
-    static data::Struct_Data2Driver Data2Driver; // Тут формируем команды делаем static что-бы командв сохранялись
+    static data::SControlDriver Data2Driver; // Тут формируем команды делаем static что-бы командв сохранялись
 
     // printf(" joy2Head_.button_option %f ! ", joy2Head_.button_option);
     // printf(" joy2Head_prev_.button_option %f ", joy2Head_prev_.button_option);
     // printf(" Data2Driver_prev_.led.num_program %i ", Data2Driver_prev_.led.num_program);
-
+/*
     if (joy2Head_.button_ps4 != joy2Head_prev_.button_ps4 && joy2Head_.button_ps4 == 1) // Если изменилась кнопка и стала единицей сейчас тогда делаем команду
     {
         if (Data2Driver_prev_.control.startStop == 1) // Если предыдущий статус команды 1 то меняем на 0
@@ -185,7 +182,7 @@ data::Struct_Data2Driver CJoy::transform(data::Struct_Joy &joy2Head_, data::Stru
 
     joy2Head_prev_ = joy2Head_;      // Запоминаем состояние для следующего раза
     Data2Driver_prev_ = Data2Driver; // Запоминаем статус команд для следующего раза
-
+*/
     return Data2Driver;
 }
 //Функция возвращает радиус по заданному смещению
@@ -237,6 +234,6 @@ float CJoy::getRadius(float &offset_)
 // // Обратный вызов при опросе топика Head2Data
 // void callback_Joy(const sensor_msgs::Joy &msg)
 // {
-//     // msg_Head2Data = msg; // Копируем структуру в глобальную переменную для дальнейшей работы с ней.
+//     // msg_ControlDriver = msg; // Копируем структуру в глобальную переменную для дальнейшей работы с ней.
 //     //  ROS_INFO("message_callback_Command.");
 // }

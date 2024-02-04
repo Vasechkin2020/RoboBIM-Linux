@@ -86,19 +86,16 @@ int main(int argc, char **argv)
             // topic.visualPoseAngleLaser(laser); // Формируем перемнную с собщением для публикации
         }
 
-        // !!!!!!!!!!!! Сделать поиск столба если он приходится на нос, так чтобы перебирала снова пока не найдет конец столба. Искать только если стоб начался и не закончился
+        if (flag_msgJoy) // Если пришло новое сообшение и сработал колбек то разбираем что там пришло
+        {
+            flag_msgJoy = false;
+            joy.parsingJoy(msg_joy); // Разбираем и формируем команды из полученного сообщения
+            //publisher_Joy2Head.publish(joy2Head_msg);                                   // Публикация полученных данных для информации
+            //Data2Driver = joy.transform(joy2Head_msg, joy2Head_prev, Data2Driver_prev); // Преобразование кнопок джойстика в реальные команды
+        }
+        //Data2Driver = speedCorrect(topic.Driver2Data_msg, Data2Driver);                                // Корректировка скорости движения в зависимости от растояния до преграды
+        // pub_ControlDriver.publish(Data2Driver); // Публикация сформированных данных структуры управления для исполнения драйвером
 
-        // if (flag_msgJoy) // Если пришло новое сообшение и сработал колбек то разбираем что там пришло
-        // {
-        //     joy2Head_msg = joy.parsingJoy(msg_joy); // Разбираем и формируем команды из полученного сообщения
-        //     flag_msgJoy = false;
-        //     //publisher_Joy2Head.publish(joy2Head_msg);                                   // Публикация полученных данных для информации
-        //     Data2Driver = joy.transform(joy2Head_msg, joy2Head_prev, Data2Driver_prev); // Преобразование кнопок джойстика в реальные команды
-        // }
-        // Data2Driver = speedCorrect(topic.msg_Driver2Data, Data2Driver);                                // Корректировка скорости движения в зависимости от растояния до преграды
-        // publisher_Head2Driver.publish(Data2Driver); // Публикация сформированных данных структуры управления для исполнения драйвером
-
-        // pillar.pillar[2].azimuth
         // collectCommand();             // Формируем команду на основе полученных данных
         // com_pub.publish(Command_msg); //Публикация данных команды
 

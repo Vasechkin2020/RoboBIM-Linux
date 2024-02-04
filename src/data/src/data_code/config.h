@@ -1,7 +1,7 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#define RATE 10 // Частота обмена с нижним уровнев в Герц
+#define RATE 20 // Частота обмена с нижним уровнев в Герц
 //---------------------------------------------------------------------------------------
 // Посмотреть пины командой <gpio readall> Пины имеют соответсвие между BMC и wiringpi
 #define PIN_LED_BLUE 4 // Мигает в цикле что работает
@@ -57,7 +57,7 @@ struct lidarStructSend
 	float angle = 0;	 // Положение при последнем измерении
 };
 //Структура по обратной связи по обмену по шине SPI
-struct  spiStruct
+struct  SSpi
 {
   uint32_t all = 0;
   uint32_t bed = 0;
@@ -72,7 +72,7 @@ struct Struct_Modul2Data
 	motorStructSend motor[4]; // Структура по состоянию моторов
 	lidarStructSend lidar[4]; // Структура по состоянию лидаров
 	uint32_t micric[4];		  // Структура по состоянию концевиков
-	spiStruct spi;            // Структура по состоянию обмена по шине SPI
+	SSpi spi;            // Структура по состоянию обмена по шине SPI
 
 	uint32_t cheksum = 0; // Контрольная сумма данных в структуре
 };
@@ -83,29 +83,21 @@ Struct_Modul2Data Modul2Data;
 
 //============================================================================================================================================================
 // Структура сосдержит всю информацию по мотору на основании данных энкодера
-struct Struct_Encoder
+struct SEncoder
 {
-	float way = 0;		// Пройденный путь колесом с учетом направления вращения
 	float rpsSet = 0;	// Текущая скорость вращения ( обороты в секунду)
 	float rpsEncod = 0; // Текущая скорость вращения ( обороты в секунду)
 };
-// Структура содержит данные по статусу Driver
-struct Struct_StatusDriver
-{
-	uint32_t countCommand = 0;	  // Сколько всего пришло команд с момента запуска
-	uint32_t countBedCommand = 0; // Сколько из них плохих команд
-	uint32_t timeStart = 0;		  // Сколько миллисекунд с моента запуска драйвера
-};
 
 // Структура сосдержит всю информацию по мотору на основании данных энкодера
-struct Struct_Car
+struct SCar
 {
-	float speedSet = 0;	   // Скорость которую задали в функции (метры в секунду)
+	float speedSetL = 0;	   // Скорость которую задали в функции (метры в секунду)
+	float speedSetR = 0;	   // Скорость которую задали в функции (метры в секунду)
 	float speedEncod = 0;  // Текущая скорость движения (метры в секунду)
-	float radiusSet = 0;   // Радиус который задали в функции в метрах
-	float radiusEncod = 0; // Текущий радиус движения в метрах
 	float way = 0;		   // Пройденный путь в метрах
 };
+
 // Структура для углов наклонов
 struct Struct_IMU
 {
@@ -134,56 +126,24 @@ struct Struct_IMU
 	}
 };
 
-// Структура состояния сервомотора
-struct Struct_ServoOut
-{
-	int32_t position; // Позиция текущая сервомотра
-};
-
 // Структура состояния датчика расстония
-struct Struct_Sensor
+struct SSensor
 {
 	float distance; // расстояние до препятствия
-};
-
-// Структура одометрии
-struct Struct_Odom
-{
-	float x = 0;	  // Координата по Х
-	float y = 0;	  // Координата по Y
-	float th = 0;	  // Направление носа
-	float vel_x = 0;  // Линейная скорость движения робота по оси X
-	float vel_y = 0;  // Линейная скорость движения робота по оси Y
-	float vel_th = 0; // Угловая скорость вращения робота
-
-	Struct_Odom &operator=(const Struct_Odom &source) // Специальный оператор, как функция в структуре, позволяет копировать одинаковые структуры просто знаком равно
-	{
-		x = source.x;
-		y = source.y;
-		th = source.th;
-		vel_x = source.vel_x;
-		vel_y = source.vel_y;
-		vel_th = source.vel_th;
-		return *this;
-	}
 };
 
 // Структура принимаемых данных от контроллера Driver в Data
 struct Struct_Driver2Data
 {
 	uint32_t id = 0; // id команды
-	Struct_StatusDriver status;
-	Struct_Car car;
-	Struct_Encoder motorLeft;
-	Struct_Encoder motorRight;
-	Struct_Odom odom_enc; // Одометрия по энкодерам
+	SCar car;
+	SEncoder motorLeft;
+	SEncoder motorRight;
 	Struct_IMU bno055;	  // Данные с датчика BNO055
-	Struct_ServoOut servo1;
-	Struct_ServoOut servo2;
-	Struct_Sensor lazer1;
-	Struct_Sensor lazer2;
-	Struct_Sensor uzi1;
-	Struct_Sensor uzi2;
+	SSensor lazer1;
+	SSensor lazer2;
+	SSensor uzi1;
+	SSpi spi;            // Структура по состоянию обмена по шине SPI
 	uint32_t cheksum = 0; // Контрольная сумма данных в структуре
 };
 
@@ -191,22 +151,13 @@ Struct_Driver2Data Driver2Data; // Тело робота. тут все пере
 const uint32_t size_stucturs = sizeof(Struct_Driver2Data);
 // ************************************************************* Struct_Data2Driver *********************
 // Структура управления движением
-struct Struct_Control
+struct SControl
 {
-	uint32_t startStop = 0; // Стоим или двигаемся
-	float radius = 0;		// Радиус по которому нужно двигаться
-	float speed = 0;		// Скорость с которой нужно двигаться`
-	uint32_t command1 = 0;	// Дополнительная команда
-	uint32_t command2 = 0;	// Дополнительная команда
-};
-// Структура управления сервомотором
-struct Struct_Servo
-{
-	int32_t time = 0;	  // Время за которое мотор должен прити в задаваемую позицию
-	int32_t position = 0; // Позиция левого сервомотра
+	float speedL = 0;		// Скорость с которой нужно двигаться`
+	float speedR = 0;		// Скорость с которой нужно двигаться`
 };
 // Структура управления Светодиодами
-struct Struct_Led
+struct SLed
 {
 	int32_t num_program = 0; // Номер программы для светодиодов мигания
 };
@@ -214,16 +165,34 @@ struct Struct_Led
 struct Struct_Data2Driver
 {
 	uint32_t id = 0;		// Номер команды по порядку
-	Struct_Control control; // Структура управления машиной
-	Struct_Servo servo1;	// Управление сервомотором
-	Struct_Servo servo2;	// Управление сервомотором
-	Struct_Led led;			// Управление светодиодами
+	SControl control; // Структура управления моторами
+	SLed led;			// Управление светодиодами
 	uint32_t cheksum = 0;	// Контрольная сумма данных в структуре
 };
 
 Struct_Data2Driver Data2Driver; // Экземпляр структуры отправлемых данных
 // ************************************************************* Struct_Data2Driver *********************
+// Структура одометрии
+// struct Struct_Odom
+// {
+// 	float x = 0;	  // Координата по Х
+// 	float y = 0;	  // Координата по Y
+// 	float th = 0;	  // Направление носа
+// 	float vel_x = 0;  // Линейная скорость движения робота по оси X
+// 	float vel_y = 0;  // Линейная скорость движения робота по оси Y
+// 	float vel_th = 0; // Угловая скорость вращения робота
 
+// 	Struct_Odom &operator=(const Struct_Odom &source) // Специальный оператор, как функция в структуре, позволяет копировать одинаковые структуры просто знаком равно
+// 	{
+// 		x = source.x;
+// 		y = source.y;
+// 		th = source.th;
+// 		vel_x = source.vel_x;
+// 		vel_y = source.vel_y;
+// 		vel_th = source.vel_th;
+// 		return *this;
+// 	}
+// };
 //============================================================================================================================================================
 
 // Функция возвращает контрольную сумму структуры без последних 4 байтов, оформленна как шаблон. Может разные структуры обсчитывать, как разные типы данных входных

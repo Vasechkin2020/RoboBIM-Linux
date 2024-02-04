@@ -3,7 +3,7 @@
 
 //**************************** ОБЬЯВЛЕНИЕ ПРОЦЕДУР **********************************
 
-void processingSPI();																						  // Сбор данных по результатам обмена по шине SPI по обоим контроллерам
+
 void dataProcessing_Modul();																				  // Обработка полученных данных и копирование их для публикации в топике
 void Collect_Data2Modul();																					  // Данные для передачи на низкий уровень //Копирование рабочих данных в структуру для передачи
 void printData_To_Control();																				  // Выводим на экран данные которые отправляем в Control
@@ -16,50 +16,39 @@ bool sendData2Modul(int channel_, Struct_Modul2Data &structura_receive_, Struct_
 void Collect_Data2Modul() // Данные для передачи на низкий уровень
 {
 	Data2Modul.id++;							   //= 0x1F1F1F1F;
-	Data2Modul.command = msg_topicAngle.command;   //
-	Data2Modul.angle[0] = msg_topicAngle.angle[0]; //
-	Data2Modul.angle[1] = msg_topicAngle.angle[1]; //
-	Data2Modul.angle[2] = msg_topicAngle.angle[2]; //
-	Data2Modul.angle[3] = msg_topicAngle.angle[3]; //
+	Data2Modul.command = msg_ControlModul.command;   //
+	Data2Modul.angle[0] = msg_ControlModul.angle[0]; //
+	Data2Modul.angle[1] = msg_ControlModul.angle[1]; //
+	Data2Modul.angle[2] = msg_ControlModul.angle[2]; //
+	Data2Modul.angle[3] = msg_ControlModul.angle[3]; //
 
 	// тут нужно посчитать контрольную сумму структуры
 	Data2Modul.cheksum = measureCheksum(Data2Modul); // Считаем контрольную сумму отправляемой структуры
 													 // printf("Отправляем: Id %i, чек= %i  ", Data2Modul.id, Data2Modul.cheksum);
 }
 
-// Сбор данных по результатам обмена по шине SPI по обоим контроллерам
 
-void processingSPI()
-{
-	msg_spi.ModulData.id = Modul2Data.id; // Собираем для публикации данные о результатах обмена полученных из Modul о том как он принял по SPI данные отправленные Data
-	msg_spi.ModulData.all = Modul2Data.spi.all;
-	msg_spi.ModulData.bed = Modul2Data.spi.bed;
-
-	msg_spi.DataModul.id = Data2Modul.id; // Собираем для публикации данные о результатах обмена из Data о том как он принял по SPI данные отправленные Modul
-	msg_spi.DataModul.all = data_modul_all;
-	msg_spi.DataModul.bed = data_modul_bed;
-}
 
 // Обработка полученных данных и копирование их для публикации в топике
 void dataProcessing_Modul()
 {
 	//----------------------  msg_Modul_info_send ----------------------
-	msg_modul_motor.id = Modul2Data.id;
-	msg_modul_lidar.id = Modul2Data.id;
-	msg_modul_micric.id = Modul2Data.id;
+	modul_motor_msg.id = Modul2Data.id;
+	modul_lidar_msg.id = Modul2Data.id;
+	modul_micric_msg.id = Modul2Data.id;
 
-	msg_modul_motor.id = Modul2Data.pinMotorEn; // Стутус пина управления драйвером моторов, включен драйвер или нет
+	modul_motor_msg.id = Modul2Data.pinMotorEn; // Стутус пина управления драйвером моторов, включен драйвер или нет
 	for (int i = 0; i < 4; i++)
 	{
-		msg_modul_motor.motor[i].status = Modul2Data.motor[i].status;			//
-		msg_modul_motor.motor[i].position = Modul2Data.motor[i].position;		//
-		msg_modul_motor.motor[i].destination = Modul2Data.motor[i].destination; //
+		modul_motor_msg.motor[i].status = Modul2Data.motor[i].status;			//
+		modul_motor_msg.motor[i].position = Modul2Data.motor[i].position;		//
+		modul_motor_msg.motor[i].destination = Modul2Data.motor[i].destination; //
 
-		msg_modul_lidar.lidar[i].status = Modul2Data.lidar[i].status;	  //
-		msg_modul_lidar.lidar[i].distance = Modul2Data.lidar[i].distance; //
-		msg_modul_lidar.lidar[i].angle = Modul2Data.lidar[i].angle;		  //
+		modul_lidar_msg.lidar[i].status = Modul2Data.lidar[i].status;	  //
+		modul_lidar_msg.lidar[i].distance = Modul2Data.lidar[i].distance; //
+		modul_lidar_msg.lidar[i].angle = Modul2Data.lidar[i].angle;		  //
 
-		msg_modul_micric.micric[i] = Modul2Data.micric[i]; // Состояние концевиков
+		modul_micric_msg.micric[i] = Modul2Data.micric[i]; // Состояние концевиков
 	}
 }
 
@@ -110,11 +99,11 @@ bool sendData2Modul(int channel_, Struct_Modul2Data &structura_receive_, Struct_
 	// 	printf("\n");
 
 	// Извлекаем из буфера данные в формате структуры и копирум данные
-	Struct_Modul2Data structura_receive_temp;								  // Временная структура, проверить правильные ли пришли данные
 	
 	Struct_Modul2Data *copy_buf_master_receive = (Struct_Modul2Data *)buffer; // Создаем переменную в которую пишем адрес буфера в нужном формате
 	// structura_receive_ = *copy_buf_master_receive;						  // Копируем из этой перемнной данные в мою структуру
 	// uint32_t cheksum_receive = measureCheksum(structura_receive_);		  // Считаем контрольную сумму пришедшей структуры
+	Struct_Modul2Data structura_receive_temp;								  // Временная структура, проверить правильные ли пришли данные
 	structura_receive_temp = *copy_buf_master_receive;						  // Копируем из этой перемнной данные в мою структуру
 	uint32_t cheksum_receive = measureCheksum(structura_receive_temp);		  // Считаем контрольную сумму пришедшей структуры
 

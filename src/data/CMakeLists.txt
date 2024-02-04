@@ -75,22 +75,24 @@ add_message_files(
   SAngleLaserLidar.msg
 
   #-------------------------------------------------------
-  topicAngle.msg    # Топик с командой управления углами дальномеров
+  SControlModul.msg    # Топик с командой управления углами лазеров
+  SControlDriver.msg
+
   topicPillar.msg    # Топик с данными координаты реального положения столбов
   PillarOut.msg
   #-------------------------------------------------------
-  Struct_Control.msg
+  SControl.msg
+  SLed.msg
+
   Struct_Car.msg
   Struct_Encoder.msg
   Struct_IMU.msg
-  Struct_Led.msg
   Struct_Odom.msg
   Struct_Sensor.msg
   Struct_Servo.msg
   Struct_ServoOut.msg
   Struct_Joy.msg
   Struct_StatusDriver.msg
-  Struct_Data2Driver.msg
   Struct_Driver2Data.msg
   Rpy.msg
   Odomet.msg
@@ -172,8 +174,8 @@ include_directories(
 )
 
 
-#add_executable(data_node src/data_node.cpp)
-#target_link_libraries(data_node ${catkin_LIBRARIES} -lwiringPi -lpthread)
+add_executable(data_node src/data_node.cpp)
+target_link_libraries(data_node ${catkin_LIBRARIES} -lwiringPi -lpthread)
 
 add_executable(head_node src/head_node.cpp)
 target_link_libraries(head_node ${catkin_LIBRARIES})

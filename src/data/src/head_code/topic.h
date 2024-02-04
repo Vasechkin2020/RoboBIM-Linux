@@ -64,7 +64,7 @@ private:
     ros::Publisher pub_PoseLidarMode2 = _nh.advertise<geometry_msgs::PoseStamped>("pbPoseLidarMode2", 16); // Это мы публикуем итоговую информацию по позици лидара расчет по mode1
 
     ros::Publisher pub_Joy2Head = _nh.advertise<data::Struct_Joy>("Joy2Head", 16);             // Это мы публикуем структуру которую сформировали по данным с джойстика
-    ros::Publisher pub_Head2Driver = _nh.advertise<data::Struct_Data2Driver>("Head2Data", 16); // Это мы публикуем структуру которую отправляем к исполнению на драйвер
+    ros::Publisher pub_ControlDriver = _nh.advertise<data::SControlDriver>("pbControlDriver", 16); // Это мы публикуем структуру которую отправляем к исполнению на драйвер
 
     ros::Time ros_time; // Время ROS
 
@@ -310,4 +310,89 @@ void CTopic::visualPoseLidarMode() // Формируем перемнную с �
     pub_PoseLidarMode2.publish(poseLidarMode2_msg);                                                               // Публикуем информацию по позиции лидара mode1
 }
 
+// // Функция записи в нужные места данных одометрии в tf и в odom
+// void setOdomToTf(ros::NodeHandle nh_, tf::TransformBroadcaster odom_broadcaster_, ros::Time current_time_)
+// {
+// 	// Пример кода взят отсюда
+// 	//  http://library.isr.ist.utl.pt/docs/roswiki/navigation(2f)Tutorials(2f)RobotSetup(2f)Odom.html
+
+// 	// current_time_ = ros::Time::now(); // Получаем текущее время в ROS
+
+// 	// //since all odometry is 6DOF we'll need a quaternion created from yaw
+// 	// // получаем из моего направления куда смотрит робот кватернион
+// 	// geometry_msgs::Quaternion odom_quat = tf::createQuaternionMsgFromYaw(Body.odom_enc.th);
+// 	// //first, we'll publish the transform over tf
+// 	// geometry_msgs::TransformStamped odom_trans;
+// 	// odom_trans.header.stamp = current_time_;
+// 	// odom_trans.header.frame_id = "odom";
+// 	// odom_trans.child_frame_id = "base_link";
+
+// 	// odom_trans.transform.translation.x = Body.odom_enc.x;
+// 	// odom_trans.transform.translation.y = Body.odom_enc.x;
+// 	// odom_trans.transform.translation.z = 0.0;
+// 	// odom_trans.transform.rotation = odom_quat;
+
+// 	// //send the transform
+// 	// odom_broadcaster_.sendTransform(odom_trans);
+
+// 	// //next, we'll publish the odometry message over ROS
+
+// 	// odom.header.stamp = current_time_;
+// 	// odom.header.frame_id = "odom";
+
+// 	// //set the position
+// 	// odom.pose.pose.position.x = Body.odom_enc.x;
+// 	// odom.pose.pose.position.y = Body.odom_enc.y;
+// 	// odom.pose.pose.position.z = 0.0;
+// 	// odom.pose.pose.orientation = odom_quat;
+
+// 	// //set the velocity
+// 	// odom.child_frame_id = "base_link";
+// 	// odom.twist.twist.linear.x = Body.odom_enc.vel_x;
+// 	// odom.twist.twist.linear.y = Body.odom_enc.vel_y;
+// 	// odom.twist.twist.angular.z = Body.odom_enc.vel_th;
+// }
+
+
+
+// void transOdom() // Перенес то что было на главном файле
+// {
+// 	//     current_time = ros::Time::now(); // Получаем текущее время в ROS
+
+// 	//     //since all odometry is 6DOF we'll need a quaternion created from yaw
+// 	//     // получаем из моего направления куда смотрит робот кватернион
+// 	//     geometry_msgs::Quaternion odom_quat = tf::createQuaternionMsgFromYaw(Body.odom_enc.th);
+// 	//     //first, we'll publish the transform over tf
+// 	//     geometry_msgs::TransformStamped odom_trans;
+// 	//     odom_trans.header.stamp = current_time;
+// 	//     odom_trans.header.frame_id = "odom";
+// 	//     odom_trans.child_frame_id = "base_link";
+
+// 	//     odom_trans.transform.translation.x = Body.odom_enc.x;
+// 	//     odom_trans.transform.translation.y = Body.odom_enc.y;
+// 	//     odom_trans.transform.translation.z = 0.0;
+// 	//     odom_trans.transform.rotation = odom_quat;
+
+// 	//     //send the transform
+// 	//     odom_broadcaster.sendTransform(odom_trans);
+
+// 	//     //next, we'll publish the odometry message over ROS
+
+// 	//     odom.header.stamp = current_time;
+// 	//     odom.header.frame_id = "odom";
+
+// 	//     //set the position
+// 	//     odom.pose.pose.position.x = Body.odom_enc.x;
+// 	//     odom.pose.pose.position.y = Body.odom_enc.y;
+// 	//     odom.pose.pose.position.z = 0.0;
+// 	//     odom.pose.pose.orientation = odom_quat;
+
+// 	//     //set the velocity
+// 	//     odom.child_frame_id = "base_link";
+// 	//     odom.twist.twist.linear.x = Body.odom_enc.vel_x;
+// 	//     odom.twist.twist.linear.y = Body.odom_enc.vel_y;
+// 	//     odom.twist.twist.angular.z = Body.odom_enc.vel_th;
+
+// 	//     odom_pub.publish(odom); //publish the message
+// }
 #endif

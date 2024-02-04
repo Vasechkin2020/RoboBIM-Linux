@@ -14,7 +14,7 @@ long map(long x, long in_min, long in_max, long out_min, long out_max); // Пе�
 void startPosition(geometry_msgs::Pose2D &startPose2d_); // Разбираем топик со стартовой позицией робота
 
 float minDistance(float lazer1_, float lazer2_, float uzi1_);                                                            // Находим минимальную дистанцию из 3 датчиков
-data::Struct_Data2Driver speedCorrect(data::Struct_Driver2Data msg_Driver2Data_, data::Struct_Data2Driver Data2Driver_); // Корректировка скорости движения в зависимости от датчиков растояния перед
+data::SControlDriver speedCorrect(data::Struct_Driver2Data Driver2Data_msg_, data::SControlDriver Data2Driver_); // Корректировка скорости движения в зависимости от датчиков растояния перед
 // void collectCommand(); // //Функция формирования команды для нижнего уровня на основе всех полученных данных, датчиков и анализа ситуации
 
 // **********************************************************************************
@@ -44,7 +44,7 @@ void callback_StartPose2D(geometry_msgs::Pose2D msg)
 
 void callback_Driver(data::Struct_Driver2Data msg)
 {
-    msg_Driver2Data = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
+    Driver2Data_msg = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
 }
 
 // Находим минимальную дистанцию из 3 датчиков
@@ -82,9 +82,9 @@ long map(long x, long in_min, long in_max, long out_min, long out_max)
 }
 
 // Корректировка скорости движения в зависимости от датчиков растояния перед
-data::Struct_Data2Driver speedCorrect(data::Struct_Driver2Data msg_Driver2Data_, data::Struct_Data2Driver Data2Driver_)
+data::SControlDriver speedCorrect(data::Struct_Driver2Data Driver2Data_msg_, data::SControlDriver Data2Driver_)
 {
-    float min = minDistance(msg_Driver2Data_.lazer1.distance, msg_Driver2Data_.lazer2.distance, msg_Driver2Data_.uzi1.distance); // Находим минимальную дистанцию из 3 датчиков
+    float min = minDistance(Driver2Data_msg_.lazer1.distance, Driver2Data_msg_.lazer2.distance, Driver2Data_msg_.uzi1.distance); // Находим минимальную дистанцию из 3 датчиков
     if (min < 0.5)                                                                                                               // Если меньше полметра
     {
         long minDist = (long)(min * 1000); // Превращаем в целое и увеличиваем умножая на 1000 для точности
@@ -92,7 +92,7 @@ data::Struct_Data2Driver speedCorrect(data::Struct_Driver2Data msg_Driver2Data_,
             minDist = 100;
         float proc = map(minDist, 100, 500, 0, 100);
         proc = proc / 100; // Превращаем в проценты
-        Data2Driver_.control.speed = proc * Data2Driver_.control.speed;
+        // Data2Driver_.control.speed = proc * Data2Driver_.control.speed;
         // ROS_INFO("Correct speed. Min distance = %f, New speed = %f", min, Data2Driver_.control.speed);
     }
     // printf("sp= %f \n", Data2Driver_.control.speed);
