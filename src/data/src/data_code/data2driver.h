@@ -64,15 +64,15 @@ void processing_Driver2Data()
 	Driver2Data_msg.motorRight.rpsSet = Driver2Data.motorRight.rpsSet;
 	Driver2Data_msg.motorRight.rpsEncod = Driver2Data.motorRight.rpsEncod;
 
-	Driver2Data_msg.bno055.x = Driver2Data.bno055.x;
-	Driver2Data_msg.bno055.y = Driver2Data.bno055.y;
-	Driver2Data_msg.bno055.th = Driver2Data.bno055.th;
-	Driver2Data_msg.bno055.vel_x = Driver2Data.bno055.vel_x;
-	Driver2Data_msg.bno055.vel_y = Driver2Data.bno055.vel_y;
-	Driver2Data_msg.bno055.vel_th = Driver2Data.bno055.vel_th;
-	Driver2Data_msg.bno055.roll = Driver2Data.bno055.roll;
-	Driver2Data_msg.bno055.pitch = Driver2Data.bno055.pitch;
-	Driver2Data_msg.bno055.yaw = Driver2Data.bno055.yaw;
+	Driver2Data_msg.bno055.pose.x = Driver2Data.bno055.pose.x;
+	Driver2Data_msg.bno055.pose.y = Driver2Data.bno055.pose.y;
+	Driver2Data_msg.bno055.pose.th = Driver2Data.bno055.pose.th;
+	Driver2Data_msg.bno055.vel.vx = Driver2Data.bno055.vel.vx;
+	Driver2Data_msg.bno055.vel.vy = Driver2Data.bno055.vel.vy;
+	Driver2Data_msg.bno055.vel.vth = Driver2Data.bno055.vel.vth;
+	Driver2Data_msg.bno055.angleEller.roll = Driver2Data.bno055.angleEller.roll;
+	Driver2Data_msg.bno055.angleEller.pitch = Driver2Data.bno055.angleEller.pitch;
+	Driver2Data_msg.bno055.angleEller.yaw = Driver2Data.bno055.angleEller.yaw;
 
 	Driver2Data_msg.lazer1.distance = Driver2Data.lazer1.distance;
 	Driver2Data_msg.lazer2.distance = Driver2Data.lazer2.distance;

@@ -55,7 +55,9 @@ add_message_files(
   FILES
   point.msg    # x,y
   pointA.msg    # x,y
-  pose.msg    # x,y, theta
+  SPose.msg    # x,y, theta
+  SVel.msg    # x,y, theta
+  SEller.msg    # roll pitch yaw
   pillar.msg    # 
 #--------------Структуры для сообщений на данные с MODUL -----------------------------------------
   Struct_Motor.msg
@@ -83,6 +85,7 @@ add_message_files(
   #-------------------------------------------------------
   SControl.msg
   SLed.msg
+  SJoy.msg
 
   Struct_Car.msg
   Struct_Encoder.msg
@@ -91,7 +94,6 @@ add_message_files(
   Struct_Sensor.msg
   Struct_Servo.msg
   Struct_ServoOut.msg
-  Struct_Joy.msg
   Struct_StatusDriver.msg
   Struct_Driver2Data.msg
   Rpy.msg
@@ -172,7 +174,7 @@ include_directories(
 # include
   ${catkin_INCLUDE_DIRS}
 )
-
+# ВЗЯТО отсюда https://wiki.ros.org/navigation/Tutorials/RobotSetup/TF
 
 add_executable(data_node src/data_node.cpp)
 target_link_libraries(data_node ${catkin_LIBRARIES} -lwiringPi -lpthread)

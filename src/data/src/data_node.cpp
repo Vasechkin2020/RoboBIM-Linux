@@ -35,15 +35,14 @@
 nav_msgs::Odometry odom;
 
 data::SControlDriver msg_ControlDriver; // Полученное сообщение из топика Head в Data
-data::SControlModul msg_ControlModul;       // Полученное сообщение из топика
+data::SControlModul msg_ControlModul;   // Полученное сообщение из топика
 
-data::Struct_Info_SPI spi_msg; // Это структуры которые мы заполняем и потом публикуем
+data::Struct_Info_SPI spi_msg;             // Это структуры которые мы заполняем и потом публикуем
 data::Struct_ModulMotor modul_motor_msg;   // Это структуры сообщений которые мы заполняем и потом публикуем
 data::Struct_ModulLidar modul_lidar_msg;   // Это структуры которые мы заполняем и потом публикуем
 data::Struct_ModulMicric modul_micric_msg; // Это структуры которые мы заполняем и потом публикуем
 
 data::Struct_Driver2Data Driver2Data_msg; // Это структуры которые мы заполняем и потом публикуем
-
 
 #include "data_code/config.h"
 #include "data_code/data2driver.h"
@@ -62,15 +61,15 @@ int main(int argc, char **argv)
     ros::Time current_time; // Время ROS
     ros::Rate r(RATE);
 
-    ros::Subscriber sub_ControlDriver = nh.subscribe("pbControlDriver", 16, callback_ControlDriver); // Это мы подписываемся на то что публигует Main для Data
-    ros::Subscriber sub_ControlModul = nh.subscribe("pbControlModul", 16, callback_ControlModul);   // Это мы подписываемся на то что публигует Main для Modul
+    ros::Subscriber sub_ControlDriver = nh.subscribe("pbData/ControlDriver", 16, callback_ControlDriver); // Это мы подписываемся на то что публигует Main для Data
+    ros::Subscriber sub_ControlModul = nh.subscribe("pbData/ControlModul", 16, callback_ControlModul);    // Это мы подписываемся на то что публигует Main для Modul
 
     ros::Publisher publish_Driver2Data = nh.advertise<data::Struct_Driver2Data>("Driver2Data", 16); // Это мы публикуем структуру которую получили с драйвера
 
     ros::Publisher publish_ModulMotor = nh.advertise<data::Struct_ModulMotor>("modulMotor", 16);    // Это мы создаем публикатор и определяем название топика в рос
     ros::Publisher publish_ModulLidar = nh.advertise<data::Struct_ModulLidar>("modulLidar", 16);    // Это мы создаем публикатор и определяем название топика в рос
     ros::Publisher publish_ModulMicric = nh.advertise<data::Struct_ModulMicric>("modulMicric", 16); // Это мы создаем публикатор и определяем название топика в рос
-    ros::Publisher publish_Spi = nh.advertise<data::Struct_Info_SPI>("infoSpi", 16);                // Это мы создаем публикатор и определяем название топика в рос
+    ros::Publisher publish_Spi = nh.advertise<data::Struct_Info_SPI>("pbInfo/Spi", 16);             // Это мы создаем публикатор и определяем название топика в рос
 
     ros::Publisher odom_pub = nh.advertise<nav_msgs::Odometry>("odom", 50);
     tf::TransformBroadcaster odom_broadcaster;
@@ -79,18 +78,18 @@ int main(int argc, char **argv)
     set_PIN_Led();                      // Устанавливаем и обьявляем пины. для вывода анализатора светодиодов и всего прочего
     init_SPI(SPI_CHANNAL_0, SPI_SPEED); // Инициализация нужного канала SPI
     init_SPI(SPI_CHANNAL_1, SPI_SPEED); // Инициализация нужного канала SPI
-    int aaa[10];
     bool led_status = 0;
-
+    //double dt = (current_time - last_time).toSec();
     while (ros::ok())
     {
-        // Led_Blink(PIN_LED_BLUE, 500); // Мигание светодиодом, что цикл работает
+        // Сделать вывозтолько если пригли данные а не постоянно отправку поманд
+        //  Led_Blink(PIN_LED_BLUE, 500); // Мигание светодиодом, что цикл работает
         led_status = 1 - led_status; // Мигаем с частотой работы цикла
         digitalWrite(PIN_LED_BLUE, led_status);
 
         ros::spinOnce(); // Обновление в данных в ядре ROS, по этой команде происходит вызов функции обратного вызова
 
-        // //----------------------------------------------------------------------------------------------------------
+//-----------------------------------------------------------------------------------------------------------------------------------
         Collect_Data2Modul(); // Собираем рабочие данные в структуру для передачи считывая из топиков
         // // printData_To_Control();                                            // Выводим на печать то что отправляем в Control
         rez_data = sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); //
@@ -100,7 +99,7 @@ int main(int argc, char **argv)
         {
             //  ROS_INFO("Data ok! ");
             dataProcessing_Modul(); // Обрабатываем данные
-
+// СДЕЛАТЬ СКОРОСТЬ ПУБЛИКАЦИИ ЕСЛИ БУДЕТ 100Герц то нафига так часто визуализацию публиковать
             publish_ModulMotor.publish(modul_motor_msg);   // Публикация полученных данных
             publish_ModulLidar.publish(modul_lidar_msg);   // Публикация полученных данных
             publish_ModulMicric.publish(modul_micric_msg); // Публикация полученных данных
@@ -110,15 +109,12 @@ int main(int argc, char **argv)
             // ROS_WARN("%s Flag_bedData chek_sum BED Modul", NN);
             //  printf("b \n");
         }
-
-        // ROS_INFO("%s channal 0, all = %i, bed = %i", NN, data_modul_all, data_modul_bed);
-        //  //----------------------------------------------------------------------------------------------------------
+//-----------------------------------------------------------------------------------------------------------------------------------
         collect_Data2Driver(); // Собираем рабочие данные в структуру для передачи считывая данные из топика ноды Head
         // printData2Driver();
         rez_data = sendData2Driver(SPI_CHANNAL_1, Driver2Data, Data2Driver); ////  Отправляем данные на нижний уровень
         data_driver_all++;
         // printData_From_Driver();
-
         if (rez_data) // Если пришли хорошие данные то обрабатываем их и публикуем данные в ROS
         {
             // digitalWrite(PIN_LED_GREEN, 0); // Гасим светодиод пришли хорошие данные
@@ -130,6 +126,7 @@ int main(int argc, char **argv)
 
             publish_Driver2Data.publish(Driver2Data_msg); // Публикация полученных данных
         }
+//-----------------------------------------------------------------------------------------------------------------------------------
 
         // if (!rez_data) // Если пришли плохие данные то выводим ошибку
         // {
@@ -141,11 +138,7 @@ int main(int argc, char **argv)
 
         processingSPI();              // Сбор данных обмена по SPI
         publish_Spi.publish(spi_msg); // Публикация собранных данных по обмену по шине SPI
-        ros::spinOnce();              // Обновление в данных в ядре ROS
         r.sleep();                    // Интеллектуальная задержка на указанную частоту
     }
-    // softPwmStop (PIN_PWM);
-    // digitalWrite(PIN_LED_GREEN, 0); // Выключаем светодиоды при выходе
-    // digitalWrite(PIN_LED_BLUE, 0);
     return 0;
 }

@@ -73,10 +73,12 @@ int main(int argc, char **argv)
             g_poseLidar.mode1 = pillar.getLocationMode1(g_poseLidar.mode1); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
             g_poseLidar.mode2 = pillar.getLocationMode2(g_poseLidar.mode2); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
 
-            //topic.transform(laser, g_poseLidar.mode1); // Публикуем трансформации систем координат, задаем по какому расчету трансформировать "odom" в "base"
-            //topic.visulStartPose();                    // Формируем перемнную с собщением для публикации
-            // topic.visualPillarAll(pillar);   // Формируем перемнную с собщением для публикации
-            //topic.visualPillarPoint(pillar); // Формируем перемнную с собщением для публикации
+            // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! Сделать определние начального угла Theta при запуске путем сканирования лазерами туда-сюда и нахождения минимальной точки и вычисления угла на основе локальных углов
+
+            // topic.transform(laser, g_poseLidar.mode1); // Публикуем трансформации систем координат, задаем по какому расчету трансформировать "odom" в "base"
+            // topic.visulStartPose();                    // Формируем перемнную с собщением для публикации
+            //  topic.visualPillarAll(pillar);   // Формируем перемнную с собщением для публикации
+            // topic.visualPillarPoint(pillar); // Формируем перемнную с собщением для публикации
 
             // topic.visualPoseLidarAll(); // Формируем перемнную с собщением для публикации
             // topic.visualPoseLidarMode();
@@ -89,12 +91,12 @@ int main(int argc, char **argv)
         if (flag_msgJoy) // Если пришло новое сообшение и сработал колбек то разбираем что там пришло
         {
             flag_msgJoy = false;
-            joy.parsingJoy(msg_joy); // Разбираем и формируем команды из полученного сообщения
-            //publisher_Joy2Head.publish(joy2Head_msg);                                   // Публикация полученных данных для информации
-            //Data2Driver = joy.transform(joy2Head_msg, joy2Head_prev, Data2Driver_prev); // Преобразование кнопок джойстика в реальные команды
+            joy.parsingJoy(msg_joy);                            // Разбираем и формируем команды из полученного сообщения
+            topic.publicationJoy(joy._joy2Head);                // Публикация полученных данных для информации
+            joy.transform();                                    // Преобразование кнопок джойстика в реальные команды
+            topic.publicationControlDriver(joy._ControlDriver); // Публикация данных по управлению Driver
         }
-        //Data2Driver = speedCorrect(topic.Driver2Data_msg, Data2Driver);                                // Корректировка скорости движения в зависимости от растояния до преграды
-        // pub_ControlDriver.publish(Data2Driver); // Публикация сформированных данных структуры управления для исполнения драйвером
+        // Data2Driver = speedCorrect(topic.Driver2Data_msg, Data2Driver);                                // Корректировка скорости движения в зависимости от растояния до преграды
 
         // collectCommand();             // Формируем команду на основе полученных данных
         // com_pub.publish(Command_msg); //Публикация данных команды

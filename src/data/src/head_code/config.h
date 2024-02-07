@@ -13,7 +13,7 @@
 #include <geometry_msgs/Pose2D.h>
 #include <geometry_msgs/PoseStamped.h>
 
-#include <data/Struct_Joy.h>
+#include <data/SJoy.h>
 // #include <data/point.h>
 #include <data/SControlDriver.h>
 #include <data/Struct_Driver2Data.h>

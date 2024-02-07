@@ -8,18 +8,20 @@
 
 class CTopic
 {
-    public:
+public:
     CTopic(/* args */);
     ~CTopic();
     //**************************** ОБЬЯВЛЕНИЕ ПРОЦЕДУР **********************************
     void visualPillarAll(CPillar pillar_);   // Формируем перемнную с собщением для публикации
     void visualPillarPoint(CPillar pillar_); // Формируем перемнную с собщением для публикации
     void visulStartPose();
-    void visualPoseLidarAll();   // Формируем перемнную с собщением для публикации по позиции лидара
-    void visualPoseLidarMode();  // Формируем перемнную с собщением для публикации
-    void visualAngleLaser(CLaser &laser_);     // Формируем перемнную с собщением для публикации по углам лазера
-    void visualPoseAngleLaser(CLaser &laser_); // Формируем перемнную с собщением для публикации по углам лазера
-    void transform(CLaser &laser_, SPose poseLidar_);            // Публикуем трансформации для системы координат
+    void visualPoseLidarAll();                                 // Формируем перемнную с собщением для публикации по позиции лидара
+    void visualPoseLidarMode();                                // Формируем перемнную с собщением для публикации
+    void visualAngleLaser(CLaser &laser_);                     // Формируем перемнную с собщением для публикации по углам лазера
+    void visualPoseAngleLaser(CLaser &laser_);                 // Формируем перемнную с собщением для публикации по углам лазера
+    void transform(CLaser &laser_, SPose poseLidar_);          // Публикуем трансформации для системы координат
+    void publicationJoy(data::SJoy joy_);                      // Публикация данных разобранных из джойстика
+    void publicationControlDriver(data::SControlDriver data_); // Публикация данных разобранных из джойстика
 
 private:
     ros::NodeHandle _nh;
@@ -35,9 +37,6 @@ private:
     data::Struct_PoseLidar poseLidarAll_msg;       // Обобщенные данные в моем формате о всех вариантах расчета позиции
     geometry_msgs::PoseStamped poseLidarMode1_msg; // Перемеенная в которую сохраняем данные лидара из сообщения
     geometry_msgs::PoseStamped poseLidarMode2_msg; // Перемеенная в которую сохраняем данные лидара из сообщения
-
-    data::Struct_Joy joy2Head_msg;  // Структура в которую пишем обработанные данные от джойстика и потом публикуем в топик
-    data::Struct_Joy joy2Head_prev; // Структура в которую пишем обработанные данные от джойстика предыдущее состоние
 
     data::PillarOut pillarAll_msg; // Перемеенная в которую пишем данные для опубликования в топик
     geometry_msgs::PointStamped pillar0_msg;
@@ -63,11 +62,10 @@ private:
     ros::Publisher pub_PoseLidarMode1 = _nh.advertise<geometry_msgs::PoseStamped>("pbPoseLidarMode1", 16); // Это мы публикуем итоговую информацию по позици лидара расчет по mode1
     ros::Publisher pub_PoseLidarMode2 = _nh.advertise<geometry_msgs::PoseStamped>("pbPoseLidarMode2", 16); // Это мы публикуем итоговую информацию по позици лидара расчет по mode1
 
-    ros::Publisher pub_Joy2Head = _nh.advertise<data::Struct_Joy>("Joy2Head", 16);             // Это мы публикуем структуру которую сформировали по данным с джойстика
-    ros::Publisher pub_ControlDriver = _nh.advertise<data::SControlDriver>("pbControlDriver", 16); // Это мы публикуем структуру которую отправляем к исполнению на драйвер
+    ros::Publisher pub_JoyData = _nh.advertise<data::SJoy>("pbInfo/JoyData", 16);                       // Это мы публикуем структуру которую сформировали по данным с джойстика
+    ros::Publisher pub_ControlDriver = _nh.advertise<data::SControlDriver>("pbData/ControlDriver", 16); // Это мы публикуем структуру которую отправляем к исполнению на драйвер
 
     ros::Time ros_time; // Время ROS
-
 };
 
 CTopic::CTopic(/* args */)
@@ -77,7 +75,16 @@ CTopic::CTopic(/* args */)
 CTopic::~CTopic()
 {
 }
-
+// Публикация данных разобранных из джойстика
+void CTopic::publicationJoy(data::SJoy joy_)
+{
+    pub_JoyData.publish(joy_);
+}
+// Публикация данных разобранных из джойстика
+void CTopic::publicationControlDriver(data::SControlDriver data_)
+{
+    pub_ControlDriver.publish(data_);
+}
 
 void CTopic::visulStartPose()
 {
@@ -186,8 +193,8 @@ void CTopic::transform(CLaser &laser_, SPose poseLidar_) // Публикуем �
     tfMapOdom.transform.translation.x = 0.0;
     tfMapOdom.transform.translation.y = 0.0;
     tfMapOdom.transform.translation.z = 0.0;
-    tfMapOdom.transform.rotation = tf::createQuaternionMsgFromYaw(DEG2RAD(0));// Из градусов в радианы далле подладить под своё представление
-    tfBroadcaster.sendTransform(tfMapOdom); // Публикация системы преобразования из odom в map Тут динамически, а статически выглядит так   <node pkg="tf" type="static_transform_publisher" name="static_map_odom_tf" args="0 0 0 0 0 0 map odom 100" /> <!--http://wiki.ros.org/tf-->
+    tfMapOdom.transform.rotation = tf::createQuaternionMsgFromYaw(DEG2RAD(0)); // Из градусов в радианы далле подладить под своё представление
+    tfBroadcaster.sendTransform(tfMapOdom);                                    // Публикация системы преобразования из odom в map Тут динамически, а статически выглядит так   <node pkg="tf" type="static_transform_publisher" name="static_map_odom_tf" args="0 0 0 0 0 0 map odom 100" /> <!--http://wiki.ros.org/tf-->
 
     // --------------------------------- odom base ---------------------------------------
     geometry_msgs::TransformStamped tfOdomBase;
@@ -197,8 +204,8 @@ void CTopic::transform(CLaser &laser_, SPose poseLidar_) // Публикуем �
     tfOdomBase.transform.translation.x = poseLidar_.x;
     tfOdomBase.transform.translation.y = poseLidar_.y;
     tfOdomBase.transform.translation.z = 0.1;
-    tfOdomBase.transform.rotation = tf::createQuaternionMsgFromYaw(DEG2RAD(-poseLidar_.theta));    // Из градусов в радианы далле подладить под своё представление
-    tfBroadcaster.sendTransform(tfOdomBase); // Публикация системы преобразования из odom в map Тут динамически, а статически выглядит так   <node pkg="tf" type="static_transform_publisher" name="static_map_odom_tf" args="0 0 0 0 0 0 map odom 100" /> <!--http://wiki.ros.org/tf-->
+    tfOdomBase.transform.rotation = tf::createQuaternionMsgFromYaw(DEG2RAD(-poseLidar_.theta)); // Из градусов в радианы далле подладить под своё представление
+    tfBroadcaster.sendTransform(tfOdomBase);                                                    // Публикация системы преобразования из odom в map Тут динамически, а статически выглядит так   <node pkg="tf" type="static_transform_publisher" name="static_map_odom_tf" args="0 0 0 0 0 0 map odom 100" /> <!--http://wiki.ros.org/tf-->
 
     // --------------------------------- base laser Для ЛИДАРА---------------------------------------
     geometry_msgs::TransformStamped tfOdomLaser;
@@ -208,8 +215,8 @@ void CTopic::transform(CLaser &laser_, SPose poseLidar_) // Публикуем �
     tfOdomLaser.transform.translation.x = 0;
     tfOdomLaser.transform.translation.y = 0;
     tfOdomLaser.transform.translation.z = -0.1;
-    tfOdomLaser.transform.rotation = tf::createQuaternionMsgFromYaw(DEG2RAD(-90));    // Из градусов в радианы добавляем минус, так как в РОС вращение плюс против часовой, а у меня по часовой
-    tfBroadcaster.sendTransform(tfOdomLaser); // Публикация системы преобразования из odom в map Тут динамически, а статически выглядит так   <node pkg="tf" type="static_transform_publisher" name="static_map_odom_tf" args="0 0 0 0 0 0 map odom 100" /> <!--http://wiki.ros.org/tf-->
+    tfOdomLaser.transform.rotation = tf::createQuaternionMsgFromYaw(DEG2RAD(-90)); // Из градусов в радианы добавляем минус, так как в РОС вращение плюс против часовой, а у меня по часовой
+    tfBroadcaster.sendTransform(tfOdomLaser);                                      // Публикация системы преобразования из odom в map Тут динамически, а статически выглядит так   <node pkg="tf" type="static_transform_publisher" name="static_map_odom_tf" args="0 0 0 0 0 0 map odom 100" /> <!--http://wiki.ros.org/tf-->
 
     // --------------------------------- base laser0---------------------------------------
     geometry_msgs::TransformStamped tfOdomLaser0;
@@ -220,7 +227,7 @@ void CTopic::transform(CLaser &laser_, SPose poseLidar_) // Публикуем �
     tfOdomLaser0.transform.translation.y = laser_._poseLaser[0].y;
     tfOdomLaser0.transform.translation.z = 0.3;
     tfOdomLaser0.transform.rotation = tf::createQuaternionMsgFromYaw(DEG2RAD(-laser_._poseLaser[0].theta)); // Из градусов в радианы добавляем минус, так как в РОС вращение плюс против часовой, а у меня по часовой
-    tfBroadcaster.sendTransform(tfOdomLaser0); // Публикация системы преобразования из odom в map Тут динамически, а статически выглядит так   <node pkg="tf" type="static_transform_publisher" name="static_map_odom_tf" args="0 0 0 0 0 0 map odom 100" /> <!--http://wiki.ros.org/tf-->
+    tfBroadcaster.sendTransform(tfOdomLaser0);                                                              // Публикация системы преобразования из odom в map Тут динамически, а статически выглядит так   <node pkg="tf" type="static_transform_publisher" name="static_map_odom_tf" args="0 0 0 0 0 0 map odom 100" /> <!--http://wiki.ros.org/tf-->
     // --------------------------------- base laser1---------------------------------------
     geometry_msgs::TransformStamped tfOdomLaser1;
     tfOdomLaser1.header.stamp = ros_time;
@@ -229,8 +236,8 @@ void CTopic::transform(CLaser &laser_, SPose poseLidar_) // Публикуем �
     tfOdomLaser1.transform.translation.x = laser_._poseLaser[1].x;
     tfOdomLaser1.transform.translation.y = laser_._poseLaser[1].y;
     tfOdomLaser1.transform.translation.z = 0.3;
-    tfOdomLaser1.transform.rotation = tf::createQuaternionMsgFromYaw(DEG2RAD(-laser_._poseLaser[1].theta));   // Из градусов в радианы добавляем минус, так как в РОС вращение плюс против часовой, а у меня по часовой
-    tfBroadcaster.sendTransform(tfOdomLaser1); // Публикация системы преобразования из odom в map Тут динамически, а статически выглядит так   <node pkg="tf" type="static_transform_publisher" name="static_map_odom_tf" args="0 0 0 0 0 0 map odom 100" /> <!--http://wiki.ros.org/tf-->
+    tfOdomLaser1.transform.rotation = tf::createQuaternionMsgFromYaw(DEG2RAD(-laser_._poseLaser[1].theta)); // Из градусов в радианы добавляем минус, так как в РОС вращение плюс против часовой, а у меня по часовой
+    tfBroadcaster.sendTransform(tfOdomLaser1);                                                              // Публикация системы преобразования из odom в map Тут динамически, а статически выглядит так   <node pkg="tf" type="static_transform_publisher" name="static_map_odom_tf" args="0 0 0 0 0 0 map odom 100" /> <!--http://wiki.ros.org/tf-->
 
     // --------------------------------- base laser2---------------------------------------
     geometry_msgs::TransformStamped tfOdomLaser2;
@@ -240,8 +247,8 @@ void CTopic::transform(CLaser &laser_, SPose poseLidar_) // Публикуем �
     tfOdomLaser2.transform.translation.x = laser_._poseLaser[2].x;
     tfOdomLaser2.transform.translation.y = laser_._poseLaser[2].y;
     tfOdomLaser2.transform.translation.z = 0.3;
-    tfOdomLaser2.transform.rotation = tf::createQuaternionMsgFromYaw(DEG2RAD(-laser_._poseLaser[2].theta));   // Из градусов в радианы добавляем минус, так как в РОС вращение плюс против часовой, а у меня по часовой
-    tfBroadcaster.sendTransform(tfOdomLaser2); // Публикация системы преобразования из odom в map Тут динамически, а статически выглядит так   <node pkg="tf" type="static_transform_publisher" name="static_map_odom_tf" args="0 0 0 0 0 0 map odom 100" /> <!--http://wiki.ros.org/tf-->
+    tfOdomLaser2.transform.rotation = tf::createQuaternionMsgFromYaw(DEG2RAD(-laser_._poseLaser[2].theta)); // Из градусов в радианы добавляем минус, так как в РОС вращение плюс против часовой, а у меня по часовой
+    tfBroadcaster.sendTransform(tfOdomLaser2);                                                              // Публикация системы преобразования из odom в map Тут динамически, а статически выглядит так   <node pkg="tf" type="static_transform_publisher" name="static_map_odom_tf" args="0 0 0 0 0 0 map odom 100" /> <!--http://wiki.ros.org/tf-->
     // --------------------------------- base laser3---------------------------------------
     geometry_msgs::TransformStamped tfOdomLaser3;
     tfOdomLaser3.header.stamp = ros_time;
@@ -250,8 +257,8 @@ void CTopic::transform(CLaser &laser_, SPose poseLidar_) // Публикуем �
     tfOdomLaser3.transform.translation.x = laser_._poseLaser[3].x;
     tfOdomLaser3.transform.translation.y = laser_._poseLaser[3].y;
     tfOdomLaser3.transform.translation.z = 0.3;
-    tfOdomLaser3.transform.rotation = tf::createQuaternionMsgFromYaw(DEG2RAD(-laser_._poseLaser[3].theta));    // Из градусов в радианы добавляем минус, так как в РОС вращение плюс против часовой, а у меня по часовой
-    tfBroadcaster.sendTransform(tfOdomLaser3); // Публикация системы преобразования из odom в map Тут динамически, а статически выглядит так   <node pkg="tf" type="static_transform_publisher" name="static_map_odom_tf" args="0 0 0 0 0 0 map odom 100" /> <!--http://wiki.ros.org/tf-->
+    tfOdomLaser3.transform.rotation = tf::createQuaternionMsgFromYaw(DEG2RAD(-laser_._poseLaser[3].theta)); // Из градусов в радианы добавляем минус, так как в РОС вращение плюс против часовой, а у меня по часовой
+    tfBroadcaster.sendTransform(tfOdomLaser3);                                                              // Публикация системы преобразования из odom в map Тут динамически, а статически выглядит так   <node pkg="tf" type="static_transform_publisher" name="static_map_odom_tf" args="0 0 0 0 0 0 map odom 100" /> <!--http://wiki.ros.org/tf-->
 }
 
 void CTopic::visualPoseAngleLaser(CLaser &laser_) // Формируем перемнную с собщением для публикации по углам лазера
@@ -260,33 +267,33 @@ void CTopic::visualPoseAngleLaser(CLaser &laser_) // Формируем пере
     poseLaser0_msg.header.stamp = ros_time;
     poseLaser0_msg.header.frame_id = "laser0";
     poseLaser0_msg.pose.orientation = tf::createQuaternionMsgFromYaw(DEG2RAD(-laser_.anglePillarInLaser[0] + 90)); // + 90 Так как у них оси расположены не так как я меня. У меня ноль вверх а у них вправо и вращение у них против часовой
-    pub_poseLaser0.publish(poseLaser0_msg);                                                                       // Публикуем информацию по позиции луча лазераустановленного на моторе 0 в своей локальной ситеме координат laser0
+    pub_poseLaser0.publish(poseLaser0_msg);                                                                        // Публикуем информацию по позиции луча лазераустановленного на моторе 0 в своей локальной ситеме координат laser0
 
     poseLaser1_msg.header.stamp = ros_time;
     poseLaser1_msg.header.frame_id = "laser1";
     poseLaser1_msg.pose.orientation = tf::createQuaternionMsgFromYaw(DEG2RAD(-laser_.anglePillarInLaser[1] + 90)); // + 90 Так как у них оси расположены не так как я меня. У меня ноль вверх а у них вправо и вращение у них против часовой
-    pub_poseLaser1.publish(poseLaser1_msg);                                                                       // Публикуем информацию по позиции луча лазераустановленного на моторе 0 в своей локальной ситеме координат laser0
+    pub_poseLaser1.publish(poseLaser1_msg);                                                                        // Публикуем информацию по позиции луча лазераустановленного на моторе 0 в своей локальной ситеме координат laser0
 
     poseLaser2_msg.header.stamp = ros_time;
     poseLaser2_msg.header.frame_id = "laser2";
     poseLaser2_msg.pose.orientation = tf::createQuaternionMsgFromYaw(DEG2RAD(-laser_.anglePillarInLaser[2] + 90)); // + 90 Так как у них оси расположены не так как я меня. У меня ноль вверх а у них вправо и вращение у них против часовой
-    pub_poseLaser2.publish(poseLaser2_msg);                                                                       // Публикуем информацию по позиции луча лазераустановленного на моторе 0 в своей локальной ситеме координат laser0
+    pub_poseLaser2.publish(poseLaser2_msg);                                                                        // Публикуем информацию по позиции луча лазераустановленного на моторе 0 в своей локальной ситеме координат laser0
 
     poseLaser3_msg.header.stamp = ros_time;
     poseLaser3_msg.header.frame_id = "laser3";
     poseLaser3_msg.pose.orientation = tf::createQuaternionMsgFromYaw(DEG2RAD(-laser_.anglePillarInLaser[3] + 90)); // + 90 Так как у них оси расположены не так как я меня. У меня ноль вверх а у них вправо и вращение у них против часовой
-    pub_poseLaser3.publish(poseLaser3_msg);                                                                       // Публикуем информацию по позиции луча лазераустановленного на моторе 0 в своей локальной ситеме координат laser0
+    pub_poseLaser3.publish(poseLaser3_msg);                                                                        // Публикуем информацию по позиции луча лазераустановленного на моторе 0 в своей локальной ситеме координат laser0
 }
 
 void CTopic::visualPoseLidarAll() // Формируем перемнную с собщением для публикации
 {
     poseLidarAll_msg.mmode1.x = g_poseLidar.mode1.x;
     poseLidarAll_msg.mmode1.y = g_poseLidar.mode1.y;
-    poseLidarAll_msg.mmode1.theta = g_poseLidar.mode1.theta;
+    poseLidarAll_msg.mmode1.th = g_poseLidar.mode1.theta;
 
     poseLidarAll_msg.mmode2.x = g_poseLidar.mode2.x;
     poseLidarAll_msg.mmode2.y = g_poseLidar.mode2.y;
-    poseLidarAll_msg.mmode2.theta = g_poseLidar.mode2.theta;
+    poseLidarAll_msg.mmode2.th = g_poseLidar.mode2.theta;
 
     pub_poseLidarAll.publish(poseLidarAll_msg); // Публикуем информацию по позиции лидара
 }
@@ -301,13 +308,13 @@ void CTopic::visualPoseLidarMode() // Формируем перемнную с �
     poseLidarMode1_msg.pose.position.y = g_poseLidar.mode1.y;
     poseLidarMode1_msg.pose.orientation = tf::createQuaternionMsgFromYaw(DEG2RAD(-g_poseLidar.mode1.theta + 90)); // + 90 Так как у них оси расположены не так как я меня. У меня ноль вверх а у них вправо и вращение у них против часовой
     pub_PoseLidarMode1.publish(poseLidarMode1_msg);                                                               // Публикуем информацию по позиции лидара mode1
-
+/// ТУТ СЧЕДАТ ПУБЛИКАЦИЯ ПУТИ ДОБАВЛЯЯ В МАССИВ ПОЗИЦИИ
     poseLidarMode2_msg.header.stamp = ros_time;
     poseLidarMode2_msg.header.frame_id = "odom";
     poseLidarMode2_msg.pose.position.x = g_poseLidar.mode2.x;
     poseLidarMode2_msg.pose.position.y = g_poseLidar.mode2.y;
     poseLidarMode2_msg.pose.orientation = tf::createQuaternionMsgFromYaw(DEG2RAD(-g_poseLidar.mode2.theta + 90)); // + 90 Так как у них оси расположены не так как я меня. У меня ноль вверх а у них вправо и вращение у них против часовой
-    pub_PoseLidarMode2.publish(poseLidarMode2_msg);                                                               // Публикуем информацию по позиции лидара mode1
+    pub_PoseLidarMode2.publish(poseLidarMode2_msg);                                                               // Публикуем информацию по позиции лидара mode2
 }
 
 // // Функция записи в нужные места данных одометрии в tf и в odom
@@ -352,8 +359,6 @@ void CTopic::visualPoseLidarMode() // Формируем перемнную с �
 // 	// odom.twist.twist.linear.y = Body.odom_enc.vel_y;
 // 	// odom.twist.twist.angular.z = Body.odom_enc.vel_th;
 // }
-
-
 
 // void transOdom() // Перенес то что было на главном файле
 // {

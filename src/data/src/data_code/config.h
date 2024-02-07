@@ -1,7 +1,7 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#define RATE 20 // Частота обмена с нижним уровнев в Герц
+#define RATE 100 // Частота обмена с нижним уровнев в Герц
 //---------------------------------------------------------------------------------------
 // Посмотреть пины командой <gpio readall> Пины имеют соответсвие между BMC и wiringpi
 #define PIN_LED_BLUE 4 // Мигает в цикле что работает
@@ -98,32 +98,33 @@ struct SCar
 	float way = 0;		   // Пройденный путь в метрах
 };
 
-// Структура для углов наклонов
-struct Struct_IMU
+struct SPose
 {
-	float roll = 0;	  // Крен в право  влево
-	float pitch = 0;  // Тангаж вверх или вних
-	float yaw = 0;	  // Поворот по часовой мом против часовой
-	float x = 0;	  // Координата по Х
-	float y = 0;	  // Координата по Y
-	float th = 0;	  // Направление носа
-	float vel_x = 0;  // Линейная скорость движения робота по оси X
-	float vel_y = 0;  // Линейная скорость движения робота по оси Y
-	float vel_th = 0; // Угловая скорость вращения робота
+  float x = 0;      // Координата по Х
+  float y = 0;      // Координата по Y
+  float th = 0;     // Направление носа
+};
+struct SEller
+{
+  float roll = 0;   // Крен в право  влево
+  float pitch = 0;  // Тангаж вверх или вних
+  float yaw = 0;    // Поворот по часовой мом против часовой
+};
 
-	Struct_IMU &operator=(const Struct_IMU &source) // Специальный оператор, как функция в структуре, позволяет копировать одинаковые структуры просто знаком равно
-	{
-		roll = source.roll;
-		pitch = source.pitch;
-		yaw = source.yaw;
-		x = source.x;
-		y = source.y;
-		th = source.th;
-		vel_x = source.vel_x;
-		vel_y = source.vel_y;
-		vel_th = source.vel_th;
-		return *this;
-	}
+// Структура для углов наклонов
+struct SVel
+{
+  float vx = 0;  // Линейная скорость движения робота по оси X
+  float vy = 0;  // Линейная скорость движения робота по оси Y
+  float vth = 0; // Угловая скорость вращения робота
+};
+
+
+struct SImu // Структура с данными со всех датчиков, отправляем наверх
+{
+  SPose pose;
+  SVel vel;
+  SEller angleEller;
 };
 
 // Структура состояния датчика расстония
@@ -135,16 +136,16 @@ struct SSensor
 // Структура принимаемых данных от контроллера Driver в Data
 struct Struct_Driver2Data
 {
-	uint32_t id = 0; // id команды
-	SCar car;
-	SEncoder motorLeft;
-	SEncoder motorRight;
-	Struct_IMU bno055;	  // Данные с датчика BNO055
-	SSensor lazer1;
-	SSensor lazer2;
-	SSensor uzi1;
-	SSpi spi;            // Структура по состоянию обмена по шине SPI
-	uint32_t cheksum = 0; // Контрольная сумма данных в структуре
+  uint32_t id = 0; // id команды
+  SCar car;
+  SEncoder motorLeft;
+  SEncoder motorRight;
+  SImu bno055;    // Данные с датчика BNO055
+  SSensor lazer1;
+  SSensor lazer2;
+  SSensor uzi1;
+  SSpi spi;            // Структура по состоянию обмена по шине SPI
+  uint32_t cheksum = 0; // Контрольная сумма данных в структуре
 };
 
 Struct_Driver2Data Driver2Data; // Тело робота. тут все переменные его характеризующие на низком уровне
