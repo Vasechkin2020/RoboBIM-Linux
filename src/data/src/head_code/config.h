@@ -5,7 +5,7 @@
 #include <tf/transform_broadcaster.h>
 #include <std_msgs/String.h>
 
-#include <sensor_msgs/Joy.h>
+
 #include <sensor_msgs/LaserScan.h>
 #include <sensor_msgs/PointCloud.h>
 
@@ -13,17 +13,19 @@
 #include <geometry_msgs/Pose2D.h>
 #include <geometry_msgs/PoseStamped.h>
 
-#include <data/SJoy.h>
+#include <nav_msgs/Odometry.h>
+
+
 // #include <data/point.h>
 #include <data/SControlDriver.h>
-#include <data/Struct_Driver2Data.h>
+#include <data/SDriver2Data.h>
 #include <data/PillarOut.h>
 #include <data/pillar.h>
 #include <data/topicPillar.h>
 #include <data/SAngleLaserLidar.h>
 #include <data/SAngleLL.h>
 #include <data/Struct_PoseLidar.h>
-//#include <data/pointA.h>
+// #include <data/pointA.h>
 
 #define RATE 2 // Частота шага
 
@@ -40,23 +42,21 @@ const float step_accel_up = MAX_ACCELERATION_UP / RATE; // Максимальн�
 #define MAX_ACCELERATION_DOWN 0.7                           // Максимальное замедление робота
 const float step_accel_down = MAX_ACCELERATION_DOWN / RATE; // Максимальное замедление робота с учтом частоты шага (цикл) работы программы
 
-#define DISTANCE_WHEELS 0.186 // Растояние между колесами робота. подобрал экспериментально Влияет на правильность круга
-
 #define RAD2DEG(x) ((x) * 180. / M_PI) // Первод из радиан в градусы
 #define DEG2RAD(x) ((x) * M_PI / 180.) // Первод из градусов в радианы
 
 //--------------------------------- ПОДПИСКА НА ТОПИКИ -------------------------------------------------
 sensor_msgs::LaserScan::ConstPtr msg_lidar; // Перемеенная в которую сохраняем данные лидара из сообщения
-sensor_msgs::Joy msg_joy;                 // Переменная в которую записываем пришедшее сообщение а колбеке
-data::topicPillar msg_pillar;             // Перемеенная в которую сохраняем данные по столбам из сообщения
-geometry_msgs::Pose2D msg_startPose2d;    // Перемеенная в которую сохраняем данные о координатах машинки начальных из сообщения
-data::Struct_Driver2Data Driver2Data_msg; // Сообщение которое считываем из топика
+data::topicPillar msg_pillar;               // Перемеенная в которую сохраняем данные по столбам из сообщения
+geometry_msgs::Pose2D msg_startPose2d;      // Перемеенная в которую сохраняем данные о координатах машинки начальных из сообщения
+data::SDriver2Data msg_Driver2Data;         // Сообщение которое считываем из топика
 //-------------------------------------------------------------------------------------------------------
-bool flag_msgJoy = false;    // Флаг что пришло сообщение в топик и можно его парсить
+
 bool flag_msgPillar = false; // Флаг что пришло сообщение в топик и можно его парсить
 bool flag_msgLidar = false;  // Флаг что пришло сообщение в топик и можно его парсить
 bool flag_msgCar = false;    // Флаг что пришло сообщение в топик и можно его парсить
-
+bool flag_msgDriver = false; // Флаг что пришло сообщение в топик и можно его парсить
+bool flag_msgModul = false;  // Флаг что пришло сообщение в топик и можно его парсить
 bool flag_dataPillar = false; // Флаг что разобрали данные по координатам столбов и можно обсчитывать дальше
 bool flag_dataCar = false;    // Флаг что разобрали данные по координатам машины и можно обсчитывать дальше
 bool flag_dataLidar = false;  // Флаг что разобрали данные по лидару и можно сопоставлять столбы
@@ -70,11 +70,31 @@ struct SPoint // Точка
     float y = 0; //
 };
 
-struct SPose // Позиция
+struct SPose
 {
-    float x = 0;     //
-    float y = 0;     //
-    float theta = 0; //
+    float x = 0;  // Координата по Х
+    float y = 0;  // Координата по Y
+    float th = 0; // Направление носа
+};
+struct SEuler
+{
+    float roll = 0;  // Крен в право  влево
+    float pitch = 0; // Тангаж вверх или вних
+    float yaw = 0;   // Поворот по часовой мом против часовой
+};
+
+// Структура для углов наклонов
+struct STwist
+{
+    float vx = 0;  // Линейная скорость движения робота по оси X
+    float vy = 0;  // Линейная скорость движения робота по оси Y
+    float vth = 0; // Угловая скорость вращения робота
+};
+// Структура для одометрии
+struct SOdom 
+{
+    SPose pose;
+    STwist twist;
 };
 struct SCircle // Окружность
 {
@@ -138,7 +158,7 @@ SPoint povorotSystemCoordinate(float xloc_, float yloc_, float theta_)
 SPoint povorotSmechenie(SPoint point_, SPose pose_)
 {
     SPoint ret;
-    float theta = DEG2RAD(pose_.theta); // Превращаем в радианы из градусов
+    float theta = DEG2RAD(pose_.th); // Превращаем в радианы из градусов
     float xloc = point_.x;
     float yloc = point_.y;
     float xnew = xloc * cos(theta) - yloc * sin(theta); // Поворачиваем по формулам поворота системы координат
@@ -153,7 +173,7 @@ SPoint povorotSmechenie(SPoint point_, SPose pose_)
 SPoint pointGlobal2Local(SPoint pointGlobal_, SPose poseLocal_)
 {
     SPoint ret;
-    float theta = DEG2RAD(poseLocal_.theta); // Превращаем в радианы из градусов
+    float theta = DEG2RAD(poseLocal_.th); // Превращаем в радианы из градусов
     float x = pointGlobal_.x - poseLocal_.x;
     float y = pointGlobal_.y - poseLocal_.y;
     float xnew = x * cos(theta) - y * sin(theta); // Поворачиваем по формулам поворота системы координат
@@ -168,7 +188,7 @@ SPoint pointGlobal2Local(SPoint pointGlobal_, SPose poseLocal_)
 SPoint pointLocal2Global(SPoint pointLocal_, SPose poseLocal_)
 {
     SPoint ret;
-    float theta = DEG2RAD(poseLocal_.theta); // Превращаем в радианы из градусов
+    float theta = DEG2RAD(poseLocal_.th); // Превращаем в радианы из градусов
     float x = pointLocal_.x;
     float y = pointLocal_.y;
     float xnew = x * cos(theta) + y * sin(theta); // Поворачиваем по формулам поворота системы координат

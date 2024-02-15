@@ -1,6 +1,6 @@
 
 #include "head_code/config.h"
-#include "head_code/c_joy.h"
+#include "head_code/low.h"
 
 // #include "head_code/car.h"
 // CCar car; // Обьявляем экземпляр класса в нем вся обработка и обсчет машинки как обьекта
@@ -18,23 +18,21 @@ int main(int argc, char **argv)
     ROS_WARN("%s        Main Module PrintBIM ROS 1.0 Raspberry Pi 4B  ver 1.132 ", NN);
     ROS_ERROR("%s ------------------ROS_ERROR----------------------------------", NN);
 
-    CJoy joy(MAX_SPEED, 0.5); // Обьявляем экземпляр класса в нем вся обработка джойстика
     CLaser laser;
     CPillar pillar; // Обьявляем экземпляр класса в нем вся обработка и обсчет столбов
 
     ros::init(argc, argv, "head_node");
     // topic.init(argc, argv);
-
     ros::NodeHandle nh;
 
     //----------------------------- ПОДПИСКИ НА ТОПИКИ -------НЕ УБИРАЮ В КЛАСС ТАК КАК НУЖНЫ ГЛОБАЛЬНЫЕ КОЛБЕКИ И ПРОЧАЯ ХЕРНЯ --------
     ros::Subscriber subscriber_Lidar = nh.subscribe<sensor_msgs::LaserScan>("/scan", 1000, callback_Lidar);
     ros::Subscriber subscriber_Pillar = nh.subscribe<data::topicPillar>("pbPillar", 1000, callback_Pillar);
     ros::Subscriber subscriber_StartPose2D = nh.subscribe<geometry_msgs::Pose2D>("pbStartPose2D", 1000, callback_StartPose2D);
-    ros::Subscriber subscriber_Joy = nh.subscribe("joy", 16, callback_Joy); // Это мы подписываемся на то что публикует нода джойстика
-    ros::Subscriber subscriber_Driver = nh.subscribe<data::Struct_Driver2Data>("Driver2Data", 1000, callback_Driver);
+    ros::Subscriber subscriber_Driver = nh.subscribe<data::SDriver2Data>("pbData/Driver2Data", 1000, callback_Driver);
     //---------------------------------------------------------------------------------------------------------------------------
     CTopic topic; // Экземпляр класса для всех публикуемых топиков
+    CLow low; // Экземпляр класса для всех данных получаемых сноды Data  с нижнего уровня
 
     ros::Rate r(RATE);        // Частота в Герцах - задержка
     ros::Duration(1).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
@@ -44,6 +42,16 @@ int main(int argc, char **argv)
         // testFunction();
         ros::spinOnce(); // Опрашиваем ядро ROS и по этой команде наши срабатывают колбеки. Нужно только для подписки на топики
         printf("+ \n");
+
+        if (flag_msgDriver) // Флаг что пришло сообщение от ноды Data по Driver
+        {
+            flag_msgDriver = false;
+            low.parsingDriver(msg_Driver2Data);
+            low.calculateOdometryFromEncoder(); // Расчет линейных и угловой скорости из энкодера
+            topic.visualEncoderOdom(low._encoderOdom);
+            low.calculateOdometryFromMpu(); // Расчет линейных и угловой скорости из энкодера
+            topic.visualMpuOdom(low._mpuOdom);
+        }
 
         if (flag_msgCar) // Флаг что пришло сообщение о начальных координатах машинки
         {
@@ -88,15 +96,7 @@ int main(int argc, char **argv)
             // topic.visualPoseAngleLaser(laser); // Формируем перемнную с собщением для публикации
         }
 
-        if (flag_msgJoy) // Если пришло новое сообшение и сработал колбек то разбираем что там пришло
-        {
-            flag_msgJoy = false;
-            joy.parsingJoy(msg_joy);                            // Разбираем и формируем команды из полученного сообщения
-            topic.publicationJoy(joy._joy2Head);                // Публикация полученных данных для информации
-            joy.transform();                                    // Преобразование кнопок джойстика в реальные команды
-            topic.publicationControlDriver(joy._ControlDriver); // Публикация данных по управлению Driver
-        }
-        // Data2Driver = speedCorrect(topic.Driver2Data_msg, Data2Driver);                                // Корректировка скорости движения в зависимости от растояния до преграды
+        //Data2Driver = speedCorrect(topic.Driver2Data_msg, Data2Driver);                                // Корректировка скорости движения в зависимости от растояния до преграды
 
         // collectCommand();             // Формируем команду на основе полученных данных
         // com_pub.publish(Command_msg); //Публикация данных команды

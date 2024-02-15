@@ -70,21 +70,25 @@ void CJoy::transform()
     if (_joy2Head.button_L1 != _joy2HeadPrev.button_L1 && _joy2Head.button_L1 == 1) // Если изменилась кнопка и стала единицей сейчас тогда делаем команду
     {
         _ControlDriver.control.speedL = 0.0;  // Вращение ВЛЕВО
-        _ControlDriver.control.speedR = 0.05; //
+        _ControlDriver.control.speedR = 0.1; //
     }
     if (_joy2Head.button_R1 != _joy2HeadPrev.button_R1 && _joy2Head.button_R1 == 1) // Если изменилась кнопка и стала единицей сейчас тогда делаем команду
     {
-        _ControlDriver.control.speedL = 0.05; // Вращение ВПРАВО
+        _ControlDriver.control.speedL = 0.1; // Вращение ВПРАВО
         _ControlDriver.control.speedR = 0;    //
     }
 
     if (_joy2Head.button_option != _joy2HeadPrev.button_option && _joy2Head.button_option == 1) // Если изменилась кнопка и стала единицей сейчас тогда делаем команду
     {
-        _ControlDriver.led.num_program++; // Увеличиваем номер команды на 1
+        //_ControlDriver.led.num_program++; // Увеличиваем номер команды на 1
+        _ControlDriver.control.speedL = 1; // Скорость ноль
+        _ControlDriver.control.speedR = -1; // Скорость ноль
     }
     if (_joy2Head.button_share != _joy2HeadPrev.button_share && _joy2Head.button_share == 1) // Если изменилась кнопка и стала единицей сейчас тогда делаем команду
     {
-        _ControlDriver.led.num_program = 0; // Выключаем свет, номер команды делаем 0
+        //_ControlDriver.led.num_program = 0; // Выключаем свет, номер команды делаем 0
+        _ControlDriver.control.speedL = -1; // Скорость ноль
+        _ControlDriver.control.speedR = 1; // Скорость ноль
     }
 
     // Скорость --------------------------
@@ -95,8 +99,8 @@ void CJoy::transform()
     }
     if (_joy2Head.button_circle != _joy2HeadPrev.button_circle && _joy2Head.button_circle == 1) // Если изменилась кнопка и стала единицей сейчас тогда делаем команду
     {
-        _ControlDriver.control.speedL = 0.05;  // Скорость уменьшаем на 0.1
-        _ControlDriver.control.speedR = -0.05; // Скорость уменьшаем на 0.1
+        _ControlDriver.control.speedL = 1;  // Скорость уменьшаем на 0.1
+        _ControlDriver.control.speedR = 0; // Скорость уменьшаем на 0.1
         // _ControlDriver.control.speedL += 0.05;          // Скорость увеличиваем на 0.1
         // _ControlDriver.control.speedR += 0.05;          // Скорость увеличиваем на 0.1
         // if (_ControlDriver.control.speedL >= speed_max) // Максимальная скорость ограничена
@@ -110,8 +114,8 @@ void CJoy::transform()
     }
     if (_joy2Head.button_square != _joy2HeadPrev.button_square && _joy2Head.button_square == 1) // Если изменилась кнопка и стала единицей сейчас тогда делаем команду
     {
-        _ControlDriver.control.speedL = -0.05; // Скорость уменьшаем на 0.1
-        _ControlDriver.control.speedR = 0.05;  // Скорость уменьшаем на 0.1
+        _ControlDriver.control.speedL = 0; // Скорость уменьшаем на 0.1
+        _ControlDriver.control.speedR = 1;  // Скорость уменьшаем на 0.1
         // _ControlDriver.control.speedL -= 0.05; // Скорость уменьшаем на 0.1
         // _ControlDriver.control.speedR -= 0.05; // Скорость уменьшаем на 0.1
         // if (_ControlDriver.control.speedL < 0) // МИнимальная скорость ограничена 0
@@ -125,8 +129,8 @@ void CJoy::transform()
     }
     if (_joy2Head.button_triangle != _joy2HeadPrev.button_triangle && _joy2Head.button_triangle == 1) // Если изменилась кнопка и стала единицей сейчас тогда делаем команду
     {
-        _ControlDriver.control.speedL = 0.05; //
-        _ControlDriver.control.speedR = 0.05; //
+        _ControlDriver.control.speedL = 1; //
+        _ControlDriver.control.speedR = 1; //
     }
 
     if (_joy2Head.button_up_down != _joy2HeadPrev.button_up_down && _joy2Head.button_up_down == 1) // Если изменилась кнопка и стала единицей сейчас тогда делаем команду

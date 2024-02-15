@@ -4,10 +4,8 @@
 //**************************** ОБЬЯВЛЕНИЕ ПРОЦЕДУР **********************************
 
 
-void dataProcessing_Modul();																				  // Обработка полученных данных и копирование их для публикации в топике
 void Collect_Data2Modul();																					  // Данные для передачи на низкий уровень //Копирование рабочих данных в структуру для передачи
-void printData_To_Control();																				  // Выводим на экран данные которые отправляем в Control
-void printDataFrom_Control();																				  // Выводим на экран данные которые получили
+void dataProcessing_Modul();																				  // Обработка полученных данных и копирование их для публикации в топике
 bool sendData2Modul(int channel_, Struct_Modul2Data &structura_receive_, Struct_Data2Modul &structura_send_); // Основная функция приема-передачи двух структур на slave контроллер по протоколу SPI
 
 //***********************************************************************************
@@ -140,22 +138,6 @@ bool sendData2Modul(int channel_, Struct_Modul2Data &structura_receive_, Struct_
 		structura_receive_= structura_receive_temp; // Копируем хорошие данные уже в итоговую структуру, если плохие то они просто пропадают и не портят прошлые
 		return true;
 	}
-}
-
-// Выводим на экран данные которые отправляем в Control
-void printData_To_Control()
-{
-	// printf(" Data2Modul id = %i", Data2Modul.id);
-	// printf(" distance_uzi = %f", Data2Modul.distance_uzi);
-}
-
-// Выводим на экран данные которые получили
-void printDataFrom_Control()
-{
-	// printf(" Получили id = %i", Modul2Data.id);
-	// printf(" radius = %.2f", Modul2Data.radius);
-	// printf(" cheksum = %i", Modul2Data.cheksum);
-	// printf("\n");
 }
 
 #endif

@@ -55,23 +55,29 @@ add_message_files(
   FILES
   point.msg    # x,y
   pointA.msg    # x,y
-  SPose.msg    # x,y, theta
-  SVel.msg    # x,y, theta
-  SEller.msg    # roll pitch yaw
   pillar.msg    # 
-#--------------Структуры для сообщений на данные с MODUL -----------------------------------------
+  #--------------Структуры для сообщений на данные с MODUL -----------------------------------------
   Struct_Motor.msg
   Struct_ModulMotor.msg
   
   Struct_Lidar.msg
   Struct_ModulLidar.msg
-
+  
   Struct_ModulMicric.msg
-  #------------Структуры для информации по обмену SPI с контроллерами ESP32 -------------------------------------------
-  Struct_Spi.msg
-  Struct_Info_SPI.msg
+  
+  SPose.msg    # x,y, theta
+  STwist.msg    # x,y, theta
+  SOdom.msg
+  SMpu.msg
+  SEuler.msg    # roll pitch yaw
+  SSpi.msg
+  SSensor.msg
+  SControl.msg
+  SDriver2Data.msg
+  SEncoder.msg
   #-------------------------------------------------------
   Struct_PoseLidar.msg
+  Struct_Info_SPI.msg
   
   SAngleLL.msg
   SAngleLaserLidar.msg
@@ -83,19 +89,14 @@ add_message_files(
   topicPillar.msg    # Топик с данными координаты реального положения столбов
   PillarOut.msg
   #-------------------------------------------------------
-  SControl.msg
   SLed.msg
   SJoy.msg
 
-  Struct_Car.msg
-  Struct_Encoder.msg
-  Struct_IMU.msg
+  #Struct_Car.msg
   Struct_Odom.msg
-  Struct_Sensor.msg
   Struct_Servo.msg
   Struct_ServoOut.msg
   Struct_StatusDriver.msg
-  Struct_Driver2Data.msg
   Rpy.msg
   Odomet.msg
   Control.msg
@@ -179,8 +180,8 @@ include_directories(
 add_executable(data_node src/data_node.cpp)
 target_link_libraries(data_node ${catkin_LIBRARIES} -lwiringPi -lpthread)
 
-add_executable(head_node src/head_node.cpp)
-target_link_libraries(head_node ${catkin_LIBRARIES})
+#add_executable(head_node src/head_node.cpp)
+#target_link_libraries(head_node ${catkin_LIBRARIES})
 
 add_executable(pillar_node src/pillar_node.cpp)
 target_link_libraries(pillar_node ${catkin_LIBRARIES})

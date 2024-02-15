@@ -15,12 +15,14 @@ public:
     void visualPillarAll(CPillar pillar_);   // Формируем перемнную с собщением для публикации
     void visualPillarPoint(CPillar pillar_); // Формируем перемнную с собщением для публикации
     void visulStartPose();
+    void visualEncoderOdom(SOdom &encoderOdom_);
+    void visualMpuOdom(SOdom &mpuOdom_);
     void visualPoseLidarAll();                                 // Формируем перемнную с собщением для публикации по позиции лидара
     void visualPoseLidarMode();                                // Формируем перемнную с собщением для публикации
     void visualAngleLaser(CLaser &laser_);                     // Формируем перемнную с собщением для публикации по углам лазера
     void visualPoseAngleLaser(CLaser &laser_);                 // Формируем перемнную с собщением для публикации по углам лазера
     void transform(CLaser &laser_, SPose poseLidar_);          // Публикуем трансформации для системы координат
-    void publicationJoy(data::SJoy joy_);                      // Публикация данных разобранных из джойстика
+
     void publicationControlDriver(data::SControlDriver data_); // Публикация данных разобранных из джойстика
 
 private:
@@ -44,6 +46,12 @@ private:
     geometry_msgs::PointStamped pillar2_msg;
     geometry_msgs::PointStamped pillar3_msg;
 
+    nav_msgs::Odometry encoderOdom_msg;
+    nav_msgs::Odometry mpuOdom_msg;
+
+    ros::Publisher pub_encoderOdom = _nh.advertise<nav_msgs::Odometry>("pbinfo/encoderOdom", 16);
+    ros::Publisher pub_mpuOdom = _nh.advertise<nav_msgs::Odometry>("pbinfo/mpuOdom", 16);
+
     ros::Publisher pub_PillarAll = _nh.advertise<data::PillarOut>("pbPillarAll", 16);              // Это мы публикуем итоговую информацию по столбам
     ros::Publisher pub_topicPillar0 = _nh.advertise<geometry_msgs::PointStamped>("pbPillar0", 16); // Для публикации конкретного столба
     ros::Publisher pub_topicPillar1 = _nh.advertise<geometry_msgs::PointStamped>("pbPillar1", 16); // Для публикации конкретного столба
@@ -62,7 +70,6 @@ private:
     ros::Publisher pub_PoseLidarMode1 = _nh.advertise<geometry_msgs::PoseStamped>("pbPoseLidarMode1", 16); // Это мы публикуем итоговую информацию по позици лидара расчет по mode1
     ros::Publisher pub_PoseLidarMode2 = _nh.advertise<geometry_msgs::PoseStamped>("pbPoseLidarMode2", 16); // Это мы публикуем итоговую информацию по позици лидара расчет по mode1
 
-    ros::Publisher pub_JoyData = _nh.advertise<data::SJoy>("pbInfo/JoyData", 16);                       // Это мы публикуем структуру которую сформировали по данным с джойстика
     ros::Publisher pub_ControlDriver = _nh.advertise<data::SControlDriver>("pbData/ControlDriver", 16); // Это мы публикуем структуру которую отправляем к исполнению на драйвер
 
     ros::Time ros_time; // Время ROS
@@ -75,15 +82,48 @@ CTopic::CTopic(/* args */)
 CTopic::~CTopic()
 {
 }
-// Публикация данных разобранных из джойстика
-void CTopic::publicationJoy(data::SJoy joy_)
-{
-    pub_JoyData.publish(joy_);
-}
+
 // Публикация данных разобранных из джойстика
 void CTopic::publicationControlDriver(data::SControlDriver data_)
 {
     pub_ControlDriver.publish(data_);
+}
+
+// void CTopic::visualEncoderOdom(SOdom &odom_)
+// {
+//     encoderOdom_msg.header.stamp = ros::Time::now(); // Время ROS
+//     encoderOdom_msg.header.frame_id = "odom";        // Поза в этом сообщении должна быть указана в системе координат, заданной header.frame_id.
+//     // set the position
+//     encoderOdom_msg.pose.pose.position.x = odom_.pose.x;
+//     encoderOdom_msg.pose.pose.position.y = odom_.pose.y;
+//     float theta = DEG2RAD(odom_.pose.th); //
+//     geometry_msgs::Quaternion quat = tf::createQuaternionMsgFromYaw(theta);
+//     encoderOdom_msg.pose.pose.orientation = quat;
+//     // set the velocity
+//     encoderOdom_msg.child_frame_id = "base"; // Поворот в этом сообщении должен быть указан в системе координат, заданной child_frame_id
+//     encoderOdom_msg.twist.twist.linear.x = odom_.twist.vx;
+//     encoderOdom_msg.twist.twist.linear.y = odom_.twist.vy;
+//     encoderOdom_msg.twist.twist.angular.z = odom_.twist.vth;
+
+//     pub_encoderOdom.publish(encoderOdom_msg); // Публикация полученных данных
+// }
+void CTopic::visualMpuOdom(SOdom &odom_)
+{
+    mpuOdom_msg.header.stamp = ros::Time::now(); // Время ROS
+    mpuOdom_msg.header.frame_id = "odom";        // Поза в этом сообщении должна быть указана в системе координат, заданной header.frame_id.
+    // set the position
+    mpuOdom_msg.pose.pose.position.x = odom_.pose.x;
+    mpuOdom_msg.pose.pose.position.y = odom_.pose.y;
+    float theta = DEG2RAD(odom_.pose.th); //
+    geometry_msgs::Quaternion quat = tf::createQuaternionMsgFromYaw(theta);
+    mpuOdom_msg.pose.pose.orientation = quat;
+    // set the velocity
+    mpuOdom_msg.child_frame_id = "base"; // Поворот в этом сообщении должен быть указан в системе координат, заданной child_frame_id
+    mpuOdom_msg.twist.twist.linear.x = odom_.twist.vx;
+    mpuOdom_msg.twist.twist.linear.y = odom_.twist.vy;
+    mpuOdom_msg.twist.twist.angular.z = odom_.twist.vth;
+
+    pub_mpuOdom.publish(mpuOdom_msg); // Публикация полученных данных
 }
 
 void CTopic::visulStartPose()
@@ -204,8 +244,8 @@ void CTopic::transform(CLaser &laser_, SPose poseLidar_) // Публикуем �
     tfOdomBase.transform.translation.x = poseLidar_.x;
     tfOdomBase.transform.translation.y = poseLidar_.y;
     tfOdomBase.transform.translation.z = 0.1;
-    tfOdomBase.transform.rotation = tf::createQuaternionMsgFromYaw(DEG2RAD(-poseLidar_.theta)); // Из градусов в радианы далле подладить под своё представление
-    tfBroadcaster.sendTransform(tfOdomBase);                                                    // Публикация системы преобразования из odom в map Тут динамически, а статически выглядит так   <node pkg="tf" type="static_transform_publisher" name="static_map_odom_tf" args="0 0 0 0 0 0 map odom 100" /> <!--http://wiki.ros.org/tf-->
+    tfOdomBase.transform.rotation = tf::createQuaternionMsgFromYaw(DEG2RAD(-poseLidar_.th)); // Из градусов в радианы далле подладить под своё представление
+    tfBroadcaster.sendTransform(tfOdomBase);                                                 // Публикация системы преобразования из odom в map Тут динамически, а статически выглядит так   <node pkg="tf" type="static_transform_publisher" name="static_map_odom_tf" args="0 0 0 0 0 0 map odom 100" /> <!--http://wiki.ros.org/tf-->
 
     // --------------------------------- base laser Для ЛИДАРА---------------------------------------
     geometry_msgs::TransformStamped tfOdomLaser;
@@ -226,8 +266,8 @@ void CTopic::transform(CLaser &laser_, SPose poseLidar_) // Публикуем �
     tfOdomLaser0.transform.translation.x = laser_._poseLaser[0].x;
     tfOdomLaser0.transform.translation.y = laser_._poseLaser[0].y;
     tfOdomLaser0.transform.translation.z = 0.3;
-    tfOdomLaser0.transform.rotation = tf::createQuaternionMsgFromYaw(DEG2RAD(-laser_._poseLaser[0].theta)); // Из градусов в радианы добавляем минус, так как в РОС вращение плюс против часовой, а у меня по часовой
-    tfBroadcaster.sendTransform(tfOdomLaser0);                                                              // Публикация системы преобразования из odom в map Тут динамически, а статически выглядит так   <node pkg="tf" type="static_transform_publisher" name="static_map_odom_tf" args="0 0 0 0 0 0 map odom 100" /> <!--http://wiki.ros.org/tf-->
+    tfOdomLaser0.transform.rotation = tf::createQuaternionMsgFromYaw(DEG2RAD(-laser_._poseLaser[0].th)); // Из градусов в радианы добавляем минус, так как в РОС вращение плюс против часовой, а у меня по часовой
+    tfBroadcaster.sendTransform(tfOdomLaser0);                                                           // Публикация системы преобразования из odom в map Тут динамически, а статически выглядит так   <node pkg="tf" type="static_transform_publisher" name="static_map_odom_tf" args="0 0 0 0 0 0 map odom 100" /> <!--http://wiki.ros.org/tf-->
     // --------------------------------- base laser1---------------------------------------
     geometry_msgs::TransformStamped tfOdomLaser1;
     tfOdomLaser1.header.stamp = ros_time;
@@ -236,8 +276,8 @@ void CTopic::transform(CLaser &laser_, SPose poseLidar_) // Публикуем �
     tfOdomLaser1.transform.translation.x = laser_._poseLaser[1].x;
     tfOdomLaser1.transform.translation.y = laser_._poseLaser[1].y;
     tfOdomLaser1.transform.translation.z = 0.3;
-    tfOdomLaser1.transform.rotation = tf::createQuaternionMsgFromYaw(DEG2RAD(-laser_._poseLaser[1].theta)); // Из градусов в радианы добавляем минус, так как в РОС вращение плюс против часовой, а у меня по часовой
-    tfBroadcaster.sendTransform(tfOdomLaser1);                                                              // Публикация системы преобразования из odom в map Тут динамически, а статически выглядит так   <node pkg="tf" type="static_transform_publisher" name="static_map_odom_tf" args="0 0 0 0 0 0 map odom 100" /> <!--http://wiki.ros.org/tf-->
+    tfOdomLaser1.transform.rotation = tf::createQuaternionMsgFromYaw(DEG2RAD(-laser_._poseLaser[1].th)); // Из градусов в радианы добавляем минус, так как в РОС вращение плюс против часовой, а у меня по часовой
+    tfBroadcaster.sendTransform(tfOdomLaser1);                                                           // Публикация системы преобразования из odom в map Тут динамически, а статически выглядит так   <node pkg="tf" type="static_transform_publisher" name="static_map_odom_tf" args="0 0 0 0 0 0 map odom 100" /> <!--http://wiki.ros.org/tf-->
 
     // --------------------------------- base laser2---------------------------------------
     geometry_msgs::TransformStamped tfOdomLaser2;
@@ -247,8 +287,8 @@ void CTopic::transform(CLaser &laser_, SPose poseLidar_) // Публикуем �
     tfOdomLaser2.transform.translation.x = laser_._poseLaser[2].x;
     tfOdomLaser2.transform.translation.y = laser_._poseLaser[2].y;
     tfOdomLaser2.transform.translation.z = 0.3;
-    tfOdomLaser2.transform.rotation = tf::createQuaternionMsgFromYaw(DEG2RAD(-laser_._poseLaser[2].theta)); // Из градусов в радианы добавляем минус, так как в РОС вращение плюс против часовой, а у меня по часовой
-    tfBroadcaster.sendTransform(tfOdomLaser2);                                                              // Публикация системы преобразования из odom в map Тут динамически, а статически выглядит так   <node pkg="tf" type="static_transform_publisher" name="static_map_odom_tf" args="0 0 0 0 0 0 map odom 100" /> <!--http://wiki.ros.org/tf-->
+    tfOdomLaser2.transform.rotation = tf::createQuaternionMsgFromYaw(DEG2RAD(-laser_._poseLaser[2].th)); // Из градусов в радианы добавляем минус, так как в РОС вращение плюс против часовой, а у меня по часовой
+    tfBroadcaster.sendTransform(tfOdomLaser2);                                                           // Публикация системы преобразования из odom в map Тут динамически, а статически выглядит так   <node pkg="tf" type="static_transform_publisher" name="static_map_odom_tf" args="0 0 0 0 0 0 map odom 100" /> <!--http://wiki.ros.org/tf-->
     // --------------------------------- base laser3---------------------------------------
     geometry_msgs::TransformStamped tfOdomLaser3;
     tfOdomLaser3.header.stamp = ros_time;
@@ -257,8 +297,8 @@ void CTopic::transform(CLaser &laser_, SPose poseLidar_) // Публикуем �
     tfOdomLaser3.transform.translation.x = laser_._poseLaser[3].x;
     tfOdomLaser3.transform.translation.y = laser_._poseLaser[3].y;
     tfOdomLaser3.transform.translation.z = 0.3;
-    tfOdomLaser3.transform.rotation = tf::createQuaternionMsgFromYaw(DEG2RAD(-laser_._poseLaser[3].theta)); // Из градусов в радианы добавляем минус, так как в РОС вращение плюс против часовой, а у меня по часовой
-    tfBroadcaster.sendTransform(tfOdomLaser3);                                                              // Публикация системы преобразования из odom в map Тут динамически, а статически выглядит так   <node pkg="tf" type="static_transform_publisher" name="static_map_odom_tf" args="0 0 0 0 0 0 map odom 100" /> <!--http://wiki.ros.org/tf-->
+    tfOdomLaser3.transform.rotation = tf::createQuaternionMsgFromYaw(DEG2RAD(-laser_._poseLaser[3].th)); // Из градусов в радианы добавляем минус, так как в РОС вращение плюс против часовой, а у меня по часовой
+    tfBroadcaster.sendTransform(tfOdomLaser3);                                                           // Публикация системы преобразования из odom в map Тут динамически, а статически выглядит так   <node pkg="tf" type="static_transform_publisher" name="static_map_odom_tf" args="0 0 0 0 0 0 map odom 100" /> <!--http://wiki.ros.org/tf-->
 }
 
 void CTopic::visualPoseAngleLaser(CLaser &laser_) // Формируем перемнную с собщением для публикации по углам лазера
@@ -289,11 +329,11 @@ void CTopic::visualPoseLidarAll() // Формируем перемнную с с
 {
     poseLidarAll_msg.mmode1.x = g_poseLidar.mode1.x;
     poseLidarAll_msg.mmode1.y = g_poseLidar.mode1.y;
-    poseLidarAll_msg.mmode1.th = g_poseLidar.mode1.theta;
+    poseLidarAll_msg.mmode1.th = g_poseLidar.mode1.th;
 
     poseLidarAll_msg.mmode2.x = g_poseLidar.mode2.x;
     poseLidarAll_msg.mmode2.y = g_poseLidar.mode2.y;
-    poseLidarAll_msg.mmode2.th = g_poseLidar.mode2.theta;
+    poseLidarAll_msg.mmode2.th = g_poseLidar.mode2.th;
 
     pub_poseLidarAll.publish(poseLidarAll_msg); // Публикуем информацию по позиции лидара
 }
@@ -306,98 +346,15 @@ void CTopic::visualPoseLidarMode() // Формируем перемнную с �
     poseLidarMode1_msg.header.frame_id = "odom";
     poseLidarMode1_msg.pose.position.x = g_poseLidar.mode1.x;
     poseLidarMode1_msg.pose.position.y = g_poseLidar.mode1.y;
-    poseLidarMode1_msg.pose.orientation = tf::createQuaternionMsgFromYaw(DEG2RAD(-g_poseLidar.mode1.theta + 90)); // + 90 Так как у них оси расположены не так как я меня. У меня ноль вверх а у них вправо и вращение у них против часовой
-    pub_PoseLidarMode1.publish(poseLidarMode1_msg);                                                               // Публикуем информацию по позиции лидара mode1
-/// ТУТ СЧЕДАТ ПУБЛИКАЦИЯ ПУТИ ДОБАВЛЯЯ В МАССИВ ПОЗИЦИИ
+    poseLidarMode1_msg.pose.orientation = tf::createQuaternionMsgFromYaw(DEG2RAD(-g_poseLidar.mode1.th + 90)); // + 90 Так как у них оси расположены не так как я меня. У меня ноль вверх а у них вправо и вращение у них против часовой
+    pub_PoseLidarMode1.publish(poseLidarMode1_msg);                                                            // Публикуем информацию по позиции лидара mode1
+                                                                                                               /// ТУТ СЧЕДАТ ПУБЛИКАЦИЯ ПУТИ ДОБАВЛЯЯ В МАССИВ ПОЗИЦИИ
     poseLidarMode2_msg.header.stamp = ros_time;
     poseLidarMode2_msg.header.frame_id = "odom";
     poseLidarMode2_msg.pose.position.x = g_poseLidar.mode2.x;
     poseLidarMode2_msg.pose.position.y = g_poseLidar.mode2.y;
-    poseLidarMode2_msg.pose.orientation = tf::createQuaternionMsgFromYaw(DEG2RAD(-g_poseLidar.mode2.theta + 90)); // + 90 Так как у них оси расположены не так как я меня. У меня ноль вверх а у них вправо и вращение у них против часовой
-    pub_PoseLidarMode2.publish(poseLidarMode2_msg);                                                               // Публикуем информацию по позиции лидара mode2
+    poseLidarMode2_msg.pose.orientation = tf::createQuaternionMsgFromYaw(DEG2RAD(-g_poseLidar.mode2.th + 90)); // + 90 Так как у них оси расположены не так как я меня. У меня ноль вверх а у них вправо и вращение у них против часовой
+    pub_PoseLidarMode2.publish(poseLidarMode2_msg);                                                            // Публикуем информацию по позиции лидара mode2
 }
 
-// // Функция записи в нужные места данных одометрии в tf и в odom
-// void setOdomToTf(ros::NodeHandle nh_, tf::TransformBroadcaster odom_broadcaster_, ros::Time current_time_)
-// {
-// 	// Пример кода взят отсюда
-// 	//  http://library.isr.ist.utl.pt/docs/roswiki/navigation(2f)Tutorials(2f)RobotSetup(2f)Odom.html
-
-// 	// current_time_ = ros::Time::now(); // Получаем текущее время в ROS
-
-// 	// //since all odometry is 6DOF we'll need a quaternion created from yaw
-// 	// // получаем из моего направления куда смотрит робот кватернион
-// 	// geometry_msgs::Quaternion odom_quat = tf::createQuaternionMsgFromYaw(Body.odom_enc.th);
-// 	// //first, we'll publish the transform over tf
-// 	// geometry_msgs::TransformStamped odom_trans;
-// 	// odom_trans.header.stamp = current_time_;
-// 	// odom_trans.header.frame_id = "odom";
-// 	// odom_trans.child_frame_id = "base_link";
-
-// 	// odom_trans.transform.translation.x = Body.odom_enc.x;
-// 	// odom_trans.transform.translation.y = Body.odom_enc.x;
-// 	// odom_trans.transform.translation.z = 0.0;
-// 	// odom_trans.transform.rotation = odom_quat;
-
-// 	// //send the transform
-// 	// odom_broadcaster_.sendTransform(odom_trans);
-
-// 	// //next, we'll publish the odometry message over ROS
-
-// 	// odom.header.stamp = current_time_;
-// 	// odom.header.frame_id = "odom";
-
-// 	// //set the position
-// 	// odom.pose.pose.position.x = Body.odom_enc.x;
-// 	// odom.pose.pose.position.y = Body.odom_enc.y;
-// 	// odom.pose.pose.position.z = 0.0;
-// 	// odom.pose.pose.orientation = odom_quat;
-
-// 	// //set the velocity
-// 	// odom.child_frame_id = "base_link";
-// 	// odom.twist.twist.linear.x = Body.odom_enc.vel_x;
-// 	// odom.twist.twist.linear.y = Body.odom_enc.vel_y;
-// 	// odom.twist.twist.angular.z = Body.odom_enc.vel_th;
-// }
-
-// void transOdom() // Перенес то что было на главном файле
-// {
-// 	//     current_time = ros::Time::now(); // Получаем текущее время в ROS
-
-// 	//     //since all odometry is 6DOF we'll need a quaternion created from yaw
-// 	//     // получаем из моего направления куда смотрит робот кватернион
-// 	//     geometry_msgs::Quaternion odom_quat = tf::createQuaternionMsgFromYaw(Body.odom_enc.th);
-// 	//     //first, we'll publish the transform over tf
-// 	//     geometry_msgs::TransformStamped odom_trans;
-// 	//     odom_trans.header.stamp = current_time;
-// 	//     odom_trans.header.frame_id = "odom";
-// 	//     odom_trans.child_frame_id = "base_link";
-
-// 	//     odom_trans.transform.translation.x = Body.odom_enc.x;
-// 	//     odom_trans.transform.translation.y = Body.odom_enc.y;
-// 	//     odom_trans.transform.translation.z = 0.0;
-// 	//     odom_trans.transform.rotation = odom_quat;
-
-// 	//     //send the transform
-// 	//     odom_broadcaster.sendTransform(odom_trans);
-
-// 	//     //next, we'll publish the odometry message over ROS
-
-// 	//     odom.header.stamp = current_time;
-// 	//     odom.header.frame_id = "odom";
-
-// 	//     //set the position
-// 	//     odom.pose.pose.position.x = Body.odom_enc.x;
-// 	//     odom.pose.pose.position.y = Body.odom_enc.y;
-// 	//     odom.pose.pose.position.z = 0.0;
-// 	//     odom.pose.pose.orientation = odom_quat;
-
-// 	//     //set the velocity
-// 	//     odom.child_frame_id = "base_link";
-// 	//     odom.twist.twist.linear.x = Body.odom_enc.vel_x;
-// 	//     odom.twist.twist.linear.y = Body.odom_enc.vel_y;
-// 	//     odom.twist.twist.angular.z = Body.odom_enc.vel_th;
-
-// 	//     odom_pub.publish(odom); //publish the message
-// }
 #endif

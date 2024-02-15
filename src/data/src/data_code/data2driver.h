@@ -2,15 +2,13 @@
 #define DATA2DRIVER_H
 
 //**************************** ОБЬЯВЛЕНИЕ ПРОЦЕДУР **********************************
-bool sendData2Driver(int channel_, Struct_Driver2Data &structura_receive_, Struct_Data2Driver &structura_send_); // Указываем на каком пине устройство и с какого регистра нужно прочитать данные // Основная функция приема-передачи двух структур на slave контроллер по протоколу SPI
-void processing_Driver2Data();																					 // Копирование полученных данных в структуру для публикации в топике
 void collect_Data2Driver();																						 // Данные для передачи с Data на Driver // Копирование данных из сообщения в топике в структуру для передачи по SPI
-void printData2Driver();																						 // Выводим на экран данные команды которую отправляем
-void printData_From_Driver();																					 // Выводим на экран данные которые получили
+void processing_Driver2Data();																					 // Копирование полученных данных в структуру для публикации в топике
+bool sendData2Driver(int channel_, Struct_Driver2Data &structura_receive_, SData2Driver &structura_send_); // Указываем на каком пине устройство и с какого регистра нужно прочитать данные // Основная функция приема-передачи двух структур на slave контроллер по протоколу SPI
 
 //***********************************************************************************
 // Основная функция приема-передачи двух структур на slave контроллер по протоколу SPI
-bool sendData2Driver(int channel_, Struct_Driver2Data &structura_receive_, Struct_Data2Driver &structura_send_) // Указываем на каком пине устройство и с какого регистра нужно прочитать данные
+bool sendData2Driver(int channel_, Struct_Driver2Data &structura_receive_, SData2Driver &structura_send_) // Указываем на каком пине устройство и с какого регистра нужно прочитать данные
 {
 	uint8_t rez = false;												// Результат выполнения функции
 	const uint16_t size_structura_receive = sizeof(structura_receive_); // Размер структуры с данными которые получаем
@@ -21,7 +19,7 @@ bool sendData2Driver(int channel_, Struct_Driver2Data &structura_receive_, Struc
 	memset(buffer, 0, sizeof(buffer));																							   // Очищаем буфер передачи
 
 	// Заполняем буфер данными структуры для передачи
-	Struct_Data2Driver *buffer_send = (Struct_Data2Driver *)buffer; // Создаем переменную в которую записываем адрес буфера в нужном формате
+	SData2Driver *buffer_send = (SData2Driver *)buffer; // Создаем переменную в которую записываем адрес буфера в нужном формате
 	*buffer_send = structura_send_;									// Переписываем по этому адресу данные в буфер
 
 	rez = wiringPiSPIDataRW(channel_, buffer, sizeof(buffer)); // Передаем и одновременно получаем данные
@@ -43,6 +41,30 @@ bool sendData2Driver(int channel_, Struct_Driver2Data &structura_receive_, Struc
 		return true;
 	}
 }
+// Копирование данных из сообщения в топике в структуру для передачи по SPI
+void collect_Data2Driver() // Данные для передачи с Data на Driver
+{
+	// Data2Driver.id++; //= 0x1F1F1F1F;
+	// Data2Driver.pose.x = msg_ControlDriver.pose.x; Скореев сего не надо туда отправлять
+	// Data2Driver.pose.y = msg_ControlDriver.pose.y;
+	// Data2Driver.pose.th = msg_ControlDriver.pose.th;
+
+	// Data2Driver.twist.vx = msg_ControlDriver.twist.vx;
+	// Data2Driver.twist.vy = msg_ControlDriver.twist.vy;
+	// Data2Driver.twist.vth = msg_ControlDriver.twist.vth;
+
+	// Data2Driver.control.speedL = 0.1;
+	// Data2Driver.control.speedR = 0.1;
+	Data2Driver.control.speedL = msg_ControlDriver.control.speedL;
+	Data2Driver.control.speedR = msg_ControlDriver.control.speedR;
+	// Data2Driver.control.tagPose = msg_ControlDriver.control.tagPose;
+	// Data2Driver.control.tagVel = msg_ControlDriver.control.tagVel;
+
+	Data2Driver.led.num_program = msg_ControlDriver.led.num_program;
+	// Data2Driver.cheksum = measureCheksum(Data2Driver); // Считаем контрольную сумму отправляемой структу
+
+	// printf("Отправляем: Id %i, чек= %i  ", Data2Driver.id, Data2Driver.cheksum);
+}
 
 // Копирование полученных данных в структуру для публикации в топике
 void processing_Driver2Data()
@@ -50,69 +72,21 @@ void processing_Driver2Data()
 	// Копируем полученные по SPI данные в сообщение которое потом опубликуем
 	Driver2Data_msg.id = Driver2Data.id;
 
-	// Driver2Data_msg.status.timeStart = Driver2Data.status.timeStart;
-	// Driver2Data_msg.status.countCommand = Driver2Data.status.countCommand;
-	// Driver2Data_msg.status.countBedCommand = Driver2Data.status.countBedCommand;
+	Driver2Data_msg.mpu.status = Driver2Data.bno055.status;
+	Driver2Data_msg.mpu.angleEuler.roll = Driver2Data.bno055.angleEuler.x;
+	Driver2Data_msg.mpu.angleEuler.pitch = Driver2Data.bno055.angleEuler.y;
+	Driver2Data_msg.mpu.angleEuler.yaw = Driver2Data.bno055.angleEuler.z;
 
-	// Driver2Data_msg.car.speedSet = Driver2Data.car.speedSet;
-	Driver2Data_msg.car.speedEncod = Driver2Data.car.speedEncod;
-	Driver2Data_msg.car.way = Driver2Data.car.way;
+	Driver2Data_msg.laserL.distance = Driver2Data.laserL.distance;
+	Driver2Data_msg.laserL.status = Driver2Data.laserL.status;
 
-	Driver2Data_msg.motorLeft.rpsSet = Driver2Data.motorLeft.rpsSet;
-	Driver2Data_msg.motorLeft.rpsEncod = Driver2Data.motorLeft.rpsEncod;
-
-	Driver2Data_msg.motorRight.rpsSet = Driver2Data.motorRight.rpsSet;
-	Driver2Data_msg.motorRight.rpsEncod = Driver2Data.motorRight.rpsEncod;
-
-	Driver2Data_msg.bno055.pose.x = Driver2Data.bno055.pose.x;
-	Driver2Data_msg.bno055.pose.y = Driver2Data.bno055.pose.y;
-	Driver2Data_msg.bno055.pose.th = Driver2Data.bno055.pose.th;
-	Driver2Data_msg.bno055.vel.vx = Driver2Data.bno055.vel.vx;
-	Driver2Data_msg.bno055.vel.vy = Driver2Data.bno055.vel.vy;
-	Driver2Data_msg.bno055.vel.vth = Driver2Data.bno055.vel.vth;
-	Driver2Data_msg.bno055.angleEller.roll = Driver2Data.bno055.angleEller.roll;
-	Driver2Data_msg.bno055.angleEller.pitch = Driver2Data.bno055.angleEller.pitch;
-	Driver2Data_msg.bno055.angleEller.yaw = Driver2Data.bno055.angleEller.yaw;
-
-	Driver2Data_msg.lazer1.distance = Driver2Data.lazer1.distance;
-	Driver2Data_msg.lazer2.distance = Driver2Data.lazer2.distance;
-
-	Driver2Data_msg.uzi1.distance = Driver2Data.uzi1.distance;
+	Driver2Data_msg.laserR.distance = Driver2Data.laserR.distance;
+	Driver2Data_msg.laserR.status = Driver2Data.laserR.status;
+	
+	Driver2Data_msg.uzi.distance = Driver2Data.uzi.distance;
+	Driver2Data_msg.uzi.status = Driver2Data.uzi.status;
 }
 
-// Копирование данных из сообщения в топике в структуру для передачи по SPI
-void collect_Data2Driver() // Данные для передачи с Data на Driver
-{
-	Data2Driver.id++; //= 0x1F1F1F1F;
-	Data2Driver.control.speedL = msg_ControlDriver.control.speedL;
-	Data2Driver.control.speedR = msg_ControlDriver.control.speedR;
-	Data2Driver.led.num_program = msg_ControlDriver.led.num_program;
-	Data2Driver.cheksum = measureCheksum(Data2Driver); // Считаем контрольную сумму отправляемой структу
 
-	// printf("Отправляем: Id %i, чек= %i  ", Data2Driver.id, Data2Driver.cheksum);
-}
-
-// Выводим на экран данные команды которую отправляем
-void printData2Driver()
-{
-	printf(" SEND id = %i", Data2Driver.id);
-	// printf(" startStop = %i", Data2Driver.control.startStop);
-	// printf(" speed = %f", Data2Driver.control.speed);
-	// printf(" radius = %f", Data2Driver.control.radius);
-	printf(" led.num_program = %i", Data2Driver.led.num_program);
-	printf("  \n");
-}
-// Выводим на экран данные которые получили
-void printData_From_Driver()
-{
-	printf(" RECEIVE id = %i", Driver2Data.id);
-	// printf(" Driver2Data.car.radius = %f", Driver2Data.car.radiusSet);
-	//  printf(" bno055.x = %f", stru_body_receive.bno055.x);
-	//  printf(" bno055.y = %f", stru_body_receive.bno055.y);
-	//  printf(" bno055.z = %f", stru_body_receive.bno055.z);
-	//  printf(" distance_lazer = %.2f", stru_body_receive.distance_lazer);
-	//  printf(" distance_uzi = %.2f", stru_body_receive.distance_uzi);
-	printf("  / data_driver_all= %i data_driver_bed= %i \n", data_driver_all, data_driver_bed);
-}
 
 #endif

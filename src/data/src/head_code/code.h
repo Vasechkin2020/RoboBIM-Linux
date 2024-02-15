@@ -3,9 +3,8 @@
 
 // #include "pillar.h"
 //**************************** ОБЬЯВЛЕНИЕ ПРОЦЕДУР **********************************
-void callback_Joy(sensor_msgs::Joy msg);                   // Функция обраьтного вызова по подпичке на топик джойстика nh.subscribe("joy", 16, callback_Joy);
 void callback_Lidar(sensor_msgs::LaserScan::ConstPtr msg); //
-void callback_Driver(data::Struct_Driver2Data msg);        //
+void callback_Driver(data::SDriver2Data msg);              //
 void callback_Pillar(data::topicPillar msg);               //
 void callback_StartPose2D(data::point msg);                //
 
@@ -13,47 +12,42 @@ long map(long x, long in_min, long in_max, long out_min, long out_max); // Пе�
 
 void startPosition(geometry_msgs::Pose2D &startPose2d_); // Разбираем топик со стартовой позицией робота
 
-float minDistance(float lazer1_, float lazer2_, float uzi1_);                                                            // Находим минимальную дистанцию из 3 датчиков
-data::SControlDriver speedCorrect(data::Struct_Driver2Data Driver2Data_msg_, data::SControlDriver Data2Driver_); // Корректировка скорости движения в зависимости от датчиков растояния перед
+void testFunction(); // Тест математических ипрочих функций
+
+float minDistance(float laserL_, float laserR_, float uzi1_); // Находим минимальную дистанцию из 3 датчиков
+// data::SControlDriver speedCorrect(data::SDriver2Data Driver2Data_msg_, data::SControlDriver Data2Driver_); // Корректировка скорости движения в зависимости от датчиков растояния перед
 // void collectCommand(); // //Функция формирования команды для нижнего уровня на основе всех полученных данных, датчиков и анализа ситуации
 
 // **********************************************************************************
-// Функция обраьтного вызова по подписке на топик джойстика nh.subscribe("joy", 16, callback_Joy);
-void callback_Joy(sensor_msgs::Joy msg)
-{
-    flag_msgJoy = true;
-    msg_joy = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
-}
 
 void callback_Lidar(sensor_msgs::LaserScan::ConstPtr msg)
 {
-    flag_msgLidar = true;
     msg_lidar = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
+    flag_msgLidar = true;
 }
 void callback_Pillar(data::topicPillar msg)
 {
-    flag_msgPillar = true;
     msg_pillar = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
+    flag_msgPillar = true;
 }
 void callback_StartPose2D(geometry_msgs::Pose2D msg)
 {
-    // ROS_WARN("callback_Car");
-    flag_msgCar = true;
     msg_startPose2d = msg; // Пишем в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
+    flag_msgCar = true;
 }
-
-void callback_Driver(data::Struct_Driver2Data msg)
+void callback_Driver(data::SDriver2Data msg)
 {
-    Driver2Data_msg = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
+    msg_Driver2Data = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
+    flag_msgDriver = true;
 }
 
 // Находим минимальную дистанцию из 3 датчиков
-float minDistance(float lazer1_, float lazer2_, float uzi1_)
+float minDistance(float laserL_, float laserR_, float uzi1_)
 {
-    float min = lazer1_;
-    if (lazer2_ < min)
+    float min = laserL_;
+    if (laserR_ < min)
     {
-        min = lazer2_;
+        min = laserR_;
     }
     if (uzi1_ < min)
     {
@@ -67,11 +61,11 @@ void startPosition(geometry_msgs::Pose2D &startPose2d_)
     ROS_INFO("------------------------- startPosition -------------------------------------");
     g_poseLidar.mode1.x = startPose2d_.x; // Пока считаем что передаем положение центра лидара и поэтому ему присваиваем значение, потом надо будет добавлять смещение до центра поворота между колесами
     g_poseLidar.mode1.y = startPose2d_.y;
-    g_poseLidar.mode1.theta = startPose2d_.theta;
+    g_poseLidar.mode1.th = startPose2d_.theta;
     g_poseLidar.mode2.x = startPose2d_.x; // Пока считаем что передаем положение центра лидара и поэтому ему присваиваем значение, потом надо будет добавлять смещение до центра поворота между колесами
     g_poseLidar.mode2.y = startPose2d_.y;
-    g_poseLidar.mode2.theta = startPose2d_.theta;
-    ROS_INFO("startPosition lidarPose x= %.3f y= %.3f theta= %.3f ", g_poseLidar.mode1.x, g_poseLidar.mode1.y, g_poseLidar.mode1.theta);
+    g_poseLidar.mode2.th = startPose2d_.theta;
+    ROS_INFO("startPosition lidarPose x= %.3f y= %.3f th= %.3f ", g_poseLidar.mode1.x, g_poseLidar.mode1.y, g_poseLidar.mode1.th);
     ROS_INFO("-------------------------            -------------------------------------");
 }
 
@@ -82,22 +76,22 @@ long map(long x, long in_min, long in_max, long out_min, long out_max)
 }
 
 // Корректировка скорости движения в зависимости от датчиков растояния перед
-data::SControlDriver speedCorrect(data::Struct_Driver2Data Driver2Data_msg_, data::SControlDriver Data2Driver_)
-{
-    float min = minDistance(Driver2Data_msg_.lazer1.distance, Driver2Data_msg_.lazer2.distance, Driver2Data_msg_.uzi1.distance); // Находим минимальную дистанцию из 3 датчиков
-    if (min < 0.5)                                                                                                               // Если меньше полметра
-    {
-        long minDist = (long)(min * 1000); // Превращаем в целое и увеличиваем умножая на 1000 для точности
-        if (minDist < 100)
-            minDist = 100;
-        float proc = map(minDist, 100, 500, 0, 100);
-        proc = proc / 100; // Превращаем в проценты
-        // Data2Driver_.control.speed = proc * Data2Driver_.control.speed;
-        // ROS_INFO("Correct speed. Min distance = %f, New speed = %f", min, Data2Driver_.control.speed);
-    }
-    // printf("sp= %f \n", Data2Driver_.control.speed);
-    return Data2Driver_;
-}
+// data::SControlDriver speedCorrect(data::SDriver2Data Driver2Data_msg_, data::SControlDriver Data2Driver_)
+// {
+//     float min = minDistance(Driver2Data_msg_.laserL.distance, Driver2Data_msg_.laserR.distance, Driver2Data_msg_.uzi1.distance); // Находим минимальную дистанцию из 3 датчиков
+//     if (min < 0.5)                                                                                                               // Если меньше полметра
+//     {
+//         long minDist = (long)(min * 1000); // Превращаем в целое и увеличиваем умножая на 1000 для точности
+//         if (minDist < 100)
+//             minDist = 100;
+//         float proc = map(minDist, 100, 500, 0, 100);
+//         proc = proc / 100; // Превращаем в проценты
+//         // Data2Driver_.control.speed = proc * Data2Driver_.control.speed;
+//         // ROS_INFO("Correct speed. Min distance = %f, New speed = %f", min, Data2Driver_.control.speed);
+//     }
+//     // printf("sp= %f \n", Data2Driver_.control.speed);
+//     return Data2Driver_;
+// }
 
 // //Функция формирования команды для нижнего уровня на основе всех полученных данных, датчиков и анализа ситуации
 // void collectCommand()
@@ -170,7 +164,7 @@ void testFunction()
 
     // test2.x= 500;
     // test2.y= 900;
-    // test2.theta= 15;
+    // test2.th= 15;
 
     // SPoint ggg = pointGlobal2Local(test1,test2);
 
