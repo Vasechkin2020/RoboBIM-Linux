@@ -2,7 +2,7 @@
 #define CODE_H
 
 //**************************** ОБЬЯВЛЕНИЕ ПРОЦЕДУР **********************************
-void processingSPI();										   // Сбор данных по результатам обмена по шине SPI по обоим контроллерам
+
 uint16_t getMax_size_Struct(uint16_t stru1_, uint16_t stru2_); // Функция возращает максимальный размер из 2 структур
 void set_PIN_Led();											   // Настройка светодиодов
 void Led_Blink(int led_, unsigned long time_);				   // Функция мигания светодиодом в осномном цикле что программа не зависла и работает
@@ -10,6 +10,8 @@ void init_SPI(int channel_, int speed_);					   // Инициализация к
 void callback_ControlDriver(const data::SControlDriver &msg);  // Обратный вызов при опросе топика Head2Data
 void callback_ControlModul(const data::SControlModul &msg);	   // Обратный вызов при опросе топика Angle
 void callback_Joy(sensor_msgs::Joy msg);					   // Функция обраьтного вызова по подпичке на топик джойстика nh.subscribe("joy", 16, callback_Joy);
+void calculateOdometryFromEncoder();						   // Обработка пришедших данных.Обсчитываем одометрию по энкодеру
+void calculateOdometryFromMpu();							   // Обработка пришедших данных.Обсчитываем одометрию по энкодеру
 // **********************************************************************************
 
 // Функция возращает максимальный размер из 2 структур
@@ -18,21 +20,6 @@ uint16_t getMax_size_Struct(uint16_t stru1_, uint16_t stru2_)
 	uint16_t ret = 0;
 	stru1_ > stru2_ ? ret = stru1_ : ret = stru2_;
 	return ret += 1; // + 1 байт Для контрольной суммы
-}
-// Сбор данных по результатам обмена по шине SPI по обоим контроллерам
-void processingSPI()
-{
-	spi_msg.ModulData.all = Modul2Data.spi.all; // Собираем для публикации данные о результатах обмена полученных из Modul о том как он принял по SPI данные отправленные Data
-	spi_msg.ModulData.bed = Modul2Data.spi.bed;
-
-	spi_msg.DataModul.all = data_modul_all; // Собираем для публикации данные о результатах обмена из Data о том как он принял по SPI данные отправленные Modul
-	spi_msg.DataModul.bed = data_modul_bed;
-	//-------------------------------------------------------------------------------------
-	spi_msg.DriverData.all = Driver2Data.spi.all; // Собираем для публикации данные о результатах обмена полученных из Modul о том как он принял по SPI данные отправленные Data
-	spi_msg.DriverData.bed = Driver2Data.spi.bed;
-
-	spi_msg.DataDriver.all = data_driver_all; // Собираем для публикации данные о результатах обмена из Data о том как он принял по SPI данные отправленные Modul
-	spi_msg.DataDriver.bed = data_driver_bed;
 }
 // Настройка светодиодов
 void set_PIN_Led()
@@ -94,9 +81,9 @@ void callback_ControlModul(const data::SControlModul &msg)
 // Обработка пришедших данных.Обсчитываем одометрию по энкодеру
 void calculateOdometryFromEncoder()
 {
-	float radius = 0;
-	float theta = 0;
-	float lenArc = 0;
+	double radius = 0;
+	double theta = 0;
+	double lenArc = 0;
 	static SPose pose;
 	STwist twist;
 
@@ -109,24 +96,24 @@ void calculateOdometryFromEncoder()
 	// int end = clock(); // засекаем время окончания
 	// int t = (end - start) / CLOCKS_PER_SEC;// команда CLOCKS_PER_SEC нужна для перевода результата функции clock в секунды
 
-	float speedL = PERIMETR * Driver2Data.motor.rpsEncodL; // По формуле периметр колеса на обороты это и есть пройденный путь за секунду Это и есть скорость за секунду
-	float speedR = PERIMETR * Driver2Data.motor.rpsEncodR; // По формуле периметр колеса на обороты это и есть пройденный путь за секунду Это и есть скорость за секунду
-	float sumSpeed = speedL + speedR;
-	float deltaSpeed = speedL - speedR;
-	float speed = (speedR + speedL) / 2.0;	// Находим скорость всего обьекта.
-	float w = deltaSpeed / DISTANCE_WHEELS; // Находим уголовую скорость движения по радиусу. Плюс по часовой минус против часовой
-	ROS_INFO("dt= %.6f speedL= %.4f speedR= %.4f speed= %.4f w = %.4f ///  ", dt, speedL, speedR, speed, RAD2DEG(w));
-
-	if (abs(sumSpeed) < 0.01) // Если сумма скоростей очень маленькая или ноль значит крутимся на месте или стоим на месте и тогда совсем иной расчет чем если движемся
+	double speedL = PERIMETR * Driver2Data.motor.rpsEncodL; // По формуле периметр колеса на обороты это и есть пройденный путь за секунду Это и есть скорость за секунду
+	double speedR = PERIMETR * Driver2Data.motor.rpsEncodR; // По формуле периметр колеса на обороты это и есть пройденный путь за секунду Это и есть скорость за секунду
+	printf("speed= %.4f speedR = %.4f / ", speedL, speedR);
+	double sumSpeed = speedL + speedR;
+	double deltaSpeed = speedL - speedR;
+	double speed = (speedR + speedL) / 2.0;	 // Находим скорость всего обьекта.
+	double w = deltaSpeed / DISTANCE_WHEELS; // Находим уголовую скорость движения по радиусу. Плюс по часовой минус против часовой
+											 // ROS_INFO("speedL= %.4f speedR= %.4f speed= %.4f w = %.4f ///  ", speedL, speedR, speed, RAD2DEG(w));
+	if (speedL == 0 && speedR == 0)			 // Стоим на месте. Скорости равны нулю
 	{
-		if (speedL == 0 && speedR == 0) // Стоим на месте. Скорости равны нулю
-		{
-			radius = 0;
-			speed = 0;
-			theta = 0;
-			ROS_INFO("0 STOIM NA MESTE radius = %.4f theta gradus = %.4f \n", radius, RAD2DEG(theta));
-		}
-		else // Крутимся на месте
+		radius = 0;
+		speed = 0;
+		theta = 0;
+		// ROS_INFO("0 STOIM NA MESTE radius = %.4f theta gradus = %.4f ", radius, RAD2DEG(theta));
+	}
+	else
+	{
+		if (abs(sumSpeed) < 0.01 && speedL != 0 && speedR != 0) // Если сумма скоростей очень маленькая или ноль значит крутимся на месте или стоим на месте и тогда совсем иной расчет чем если движемся// Крутимся на месте
 		{
 			radius = 0.5 * DISTANCE_WHEELS; // Радиус в таком случае это половина между колесами
 			if (speedL > speedR)			// Значит крутимся по часовой и знак угловой скорсти плюс
@@ -137,47 +124,60 @@ void calculateOdometryFromEncoder()
 			{
 				lenArc = -speedR; //  Значит крутимся против часовой и знак минус будет у угловой скорости // Находим путь какой проехали. Это длинна дуги.
 			}
-			speed = 0;				  // Обнуляем скорость чтобы дальше позиция не сдвигалась, мы же на месте.
-			theta = -lenArc / radius; // Отношение улинны дуги окружночти к радиусу дает угол в радианах. Нахождение центрального угла по дуге и радиусу.
-			ROS_INFO("1 KRUTIMSA NA MESTE radius = %.4f theta gradus = %.4f lenArc = %.4f speedL = %.4f speedR = %.4f \n", radius, RAD2DEG(theta), lenArc, speedL, speedR);
+			speed = 0;				 // Обнуляем скорость чтобы дальше позиция не сдвигалась, мы же на месте.
+			theta = lenArc / radius; // Отношение улинны дуги окружночти к радиусу дает угол в радианах. Нахождение центрального угла по дуге и радиусу.
+									 // ROS_INFO("1 KRUTIMSA NA MESTE radius = %.4f theta gradus = %.4f lenArc = %.4f speedL = %.4f speedR = %.4f ", radius, RAD2DEG(theta), lenArc, speedL, speedR);
 		}
-	}
-	else // Тут нормальный расчет что мы движемся или по прямой или по радиусу
-	{
-		lenArc = speed;				// Находим путь какой проехали за время в течении которого энкодер собирал данные. Это длинна дуги.
-		if (abs(deltaSpeed) < 0.01) // Если раздница скоростей незначительна то считаем что едем прямо вперед или назад
+		else // Тут нормальный расчет что мы движемся или по прямой или по радиусу
 		{
-			radius = 0; // Едем прямо или назад и все по нулям
-			theta = 0;	// Если едем прямо то угол поворота отклонения от оси равен 0
-			ROS_INFO("2 EDEM PRIAMO radius = %.4f theta gradus = %.4f \n", radius, RAD2DEG(theta));
-		}
-		else // Едем по радиусу и надо все считать
-		{
-			radius = (0.5 * DISTANCE_WHEELS) * (sumSpeed / deltaSpeed); // Находим радиус движения
-			theta = -lenArc / radius;									// Отношение улинны дуги окружночти к радиусу дает угол в радианах. Нахождение центрального угла по дуге и радиусу.
-			ROS_INFO("3 EDEM RADIUS radius = %.4f theta gradus = %.4f \n", radius, RAD2DEG(theta));
+			lenArc = speed;				// Находим путь какой проехали за время в течении которого энкодер собирал данные. Это длинна дуги.
+			if (abs(deltaSpeed) < 0.01) // Если раздница скоростей незначительна то считаем что едем прямо вперед или назад
+			{
+				radius = 0; // Едем прямо или назад и все по нулям
+				theta = 0;	// Если едем прямо то угол поворота отклонения от оси равен 0
+						   // ROS_INFO("2 EDEM PRIAMO radius = %.4f theta gradus = %.4f ", radius, RAD2DEG(theta));
+			}
+			else // Едем по радиусу и надо все считать
+			{
+				radius = (0.5 * DISTANCE_WHEELS) * (sumSpeed / deltaSpeed); // Находим радиус движения
+				theta = lenArc / radius;									// Отношение улинны дуги окружночти к радиусу дает угол в радианах. Нахождение центрального угла по дуге и радиусу.
+																			// ROS_INFO("3 EDEM RADIUS radius = %.4f theta gradus = %.4f ", radius, RAD2DEG(theta));
+			}
 		}
 	}
 
+	// ROS_INFO("theta = %.3f", theta);
 	// Находим линейные скорости из моего вектора скорости. Я задаю общую скорость движения (длинна вектора), ее надо разложить на проекции по осям x y. Это будут линейные скорости
-	twist.vx = speed * sin(theta); // Проекция моей скорости на ось Y получаем линейную скорость по оси
-	twist.vy = speed * cos(theta); // Проекция моей скорости на ось X получаем линейную скорость по оси
-	// ROS_INFO("twist.vy = %f speed= %f thata = %f cos(theta)= %f", twist.vy, speed, theta, cos(theta));
-	twist.vth = theta; // Угловая скорость в радианах
+	// speed = 0.26;
+	twist.vth = theta * dt;		   // Угловая скорость в радианах за интрвал измерения. Это угол на который провернулись на интервал Знак минус так как у меня Вращение ПЛЮС по часовой, а у всех против часовой
+	twist.vx = speed * sin(twist.vth); // Проекция моей скорости на ось Y получаем линейную скорость по оси
+	twist.vy = speed * cos(twist.vth); // Проекция моей скорости на ось X получаем линейную скорость по оси
+	// printf("speed= %.4f twist.vth = %.4f / sin(twist.vth )= %.4f cos(twist.vth ) = %.4f / ", speed, RAD2DEG(twist.vth), sin(twist.vth ), cos(twist.vth ));
+	printf("speed= %.4f twist.vth = %.4f / ", speed, RAD2DEG(twist.vth));
+	// ROS_INFO("SPEED= %.3f Linear speed twist.vx = %.3f twist.vy = %.3f Angular speed twist.vth = %.3f for sec.", speed, twist.vx, twist.vy, RAD2DEG(twist.vth));
+	//==============================================================================================================================
+	double vx = twist.vx * dt; // Находим проекции скорсти на оси за интревал времени
+	double vy = twist.vy * dt;
+	printf("vx= %.8f vy= %.8f / ", vx, vy);
 
-	// Находим смещние по осям за это время с этой линейной и угловой скоростями
-	float thRad = DEG2RAD(pose.th);
-	double delta_x = (twist.vx * cos(thRad) - twist.vy * sin(thRad)) * dt;
-	double delta_y = (twist.vx * sin(thRad) + twist.vy * cos(thRad)) * dt;
-	double delta_th = RAD2DEG(theta) * dt; // тут радианы превращаем в градусы
+	// printf("DO pose.x= %.3f pose.y= %.3f pose.th= %.3f / ", pose.x, pose.y, RAD2DEG(pose.th));
+	//  Находим смещние по осям матрица координаты точки из локальной системы координат в глобальной
+	printf(" pose.th= %.6f / vx*cos(pose.th)= %.6f vy*sin(pose.th)= %.6f / ",pose.th, vx * cos(pose.th), vy * sin(pose.th));
+	double delta_x = vx * cos(pose.th) - vy * sin(pose.th);
+	double delta_y = vx * sin(pose.th) + vy * cos(pose.th);
+	double delta_th = twist.vth;
+	// printf(" / pose.th = %.6f cos= %.6f sin= %.6f / ",pose.th, cos(pose.th), sin(pose.th));
+
+	printf("delta_x= %.6f delta_y= %.6f delta_th= %.6f ", delta_x, delta_y, delta_th);
 
 	// Меняем координаты и угол на основе вычислений
 	pose.x += delta_x;	 // Вычисляем координаты
 	pose.y += delta_y;	 // Вычисляем координаты
 	pose.th += delta_th; // Прибавляем к текущему углу и получаем новый угол куда смотрит наш робот в ГРАДУСАХ
-	(pose.th > 360) ? (pose.th -= 360) : (pose.th = pose.th);
-	(pose.th < 0) ? (pose.th += 360) : (pose.th = pose.th);
-	ROS_INFO("pose.th= %f ", pose.th);
+	(pose.th > (2 * M_PI)) ? (pose.th -= (2 * M_PI)) : (pose.th = pose.th);
+	(pose.th < 0) ? (pose.th += (2 * M_PI)) : (pose.th = pose.th);
+	printf(" /// POSLE pose.x= %.6f pose.y= %.6f pose.th= %.6f \n", pose.x, pose.y, pose.th);
+
 	encoder.pose = pose;
 	encoder.twist = twist;
 
@@ -328,39 +328,6 @@ void calculateOdometryFromMpu()
 	// BNO055_EulerAngles.z = BNO055_EulerAngles.z - 60 + 180;
 	// if (BNO055_EulerAngles.z < 0) { BNO055_EulerAngles.z = BNO055_EulerAngles.z + 360; }
 	// if (BNO055_EulerAngles.z > 360) { BNO055_EulerAngles.z = BNO055_EulerAngles.z - 360; }
-}
-
-void visualEncoderOdom()
-{
-	odomEncoder_msg.header.stamp = ros::Time::now(); // Время ROS
-	odomEncoder_msg.header.frame_id = "odom";		 // Поза в этом сообщении должна быть указана в системе координат, заданной header.frame_id.
-	// set the position
-	odomEncoder_msg.pose.pose.position.x = encoder.pose.x;
-	odomEncoder_msg.pose.pose.position.y = encoder.pose.y;
-	float theta = DEG2RAD(encoder.pose.th); //
-	geometry_msgs::Quaternion quat = tf::createQuaternionMsgFromYaw(theta);
-	odomEncoder_msg.pose.pose.orientation = quat;
-	// set the velocity
-	odomEncoder_msg.child_frame_id = "base"; // Поворот в этом сообщении должен быть указан в системе координат, заданной child_frame_id
-	odomEncoder_msg.twist.twist.linear.x = encoder.twist.vx;
-	odomEncoder_msg.twist.twist.linear.y = encoder.twist.vy;
-	odomEncoder_msg.twist.twist.angular.z = encoder.twist.vth;
-}
-void visualEncoderMpu()
-{
-	odomMpu_msg.header.stamp = ros::Time::now(); // Время ROS
-	odomMpu_msg.header.frame_id = "odom";		 // Поза в этом сообщении должна быть указана в системе координат, заданной header.frame_id.
-	// set the position
-	odomMpu_msg.pose.pose.position.x = mpu.pose.x;
-	odomMpu_msg.pose.pose.position.y = mpu.pose.y;
-	float theta = DEG2RAD(mpu.pose.th); //
-	geometry_msgs::Quaternion quat = tf::createQuaternionMsgFromYaw(theta);
-	odomMpu_msg.pose.pose.orientation = quat;
-	// set the velocity
-	odomMpu_msg.child_frame_id = "base"; // Поворот в этом сообщении должен быть указан в системе координат, заданной child_frame_id
-	odomMpu_msg.twist.twist.linear.x = mpu.twist.vx;
-	odomMpu_msg.twist.twist.linear.y = mpu.twist.vy;
-	odomMpu_msg.twist.twist.angular.z = mpu.twist.vth;
 }
 
 #endif

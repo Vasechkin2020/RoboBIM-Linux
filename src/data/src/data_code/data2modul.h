@@ -27,28 +27,6 @@ void Collect_Data2Modul() // Данные для передачи на низк�
 
 
 
-// Обработка полученных данных и копирование их для публикации в топике
-void dataProcessing_Modul()
-{
-	//----------------------  msg_Modul_info_send ----------------------
-	modul_motor_msg.id = Modul2Data.id;
-	modul_lidar_msg.id = Modul2Data.id;
-	modul_micric_msg.id = Modul2Data.id;
-
-	modul_motor_msg.id = Modul2Data.pinMotorEn; // Стутус пина управления драйвером моторов, включен драйвер или нет
-	for (int i = 0; i < 4; i++)
-	{
-		modul_motor_msg.motor[i].status = Modul2Data.motor[i].status;			//
-		modul_motor_msg.motor[i].position = Modul2Data.motor[i].position;		//
-		modul_motor_msg.motor[i].destination = Modul2Data.motor[i].destination; //
-
-		modul_lidar_msg.lidar[i].status = Modul2Data.lidar[i].status;	  //
-		modul_lidar_msg.lidar[i].distance = Modul2Data.lidar[i].distance; //
-		modul_lidar_msg.lidar[i].angle = Modul2Data.lidar[i].angle;		  //
-
-		modul_micric_msg.micric[i] = Modul2Data.micric[i]; // Состояние концевиков
-	}
-}
 
 // Основная функция приема-передачи двух структур на slave контроллер по протоколу SPI
 bool sendData2Modul(int channel_, Struct_Modul2Data &structura_receive_, Struct_Data2Modul &structura_send_) // Указываем на каком пине устройство и с какого регистра нужно прочитать данные

@@ -46,11 +46,11 @@ private:
     geometry_msgs::PointStamped pillar2_msg;
     geometry_msgs::PointStamped pillar3_msg;
 
-    nav_msgs::Odometry encoderOdom_msg;
-    nav_msgs::Odometry mpuOdom_msg;
+    // nav_msgs::Odometry encoderOdom_msg;
+    // nav_msgs::Odometry mpuOdom_msg;
 
-    ros::Publisher pub_encoderOdom = _nh.advertise<nav_msgs::Odometry>("pbinfo/encoderOdom", 16);
-    ros::Publisher pub_mpuOdom = _nh.advertise<nav_msgs::Odometry>("pbinfo/mpuOdom", 16);
+    // ros::Publisher pub_encoderOdom = _nh.advertise<nav_msgs::Odometry>("pbinfo/encoderOdom", 16);
+    // ros::Publisher pub_mpuOdom = _nh.advertise<nav_msgs::Odometry>("pbinfo/mpuOdom", 16);
 
     ros::Publisher pub_PillarAll = _nh.advertise<data::PillarOut>("pbPillarAll", 16);              // Это мы публикуем итоговую информацию по столбам
     ros::Publisher pub_topicPillar0 = _nh.advertise<geometry_msgs::PointStamped>("pbPillar0", 16); // Для публикации конкретного столба

@@ -66,26 +66,7 @@ void collect_Data2Driver() // Данные для передачи с Data на 
 	// printf("Отправляем: Id %i, чек= %i  ", Data2Driver.id, Data2Driver.cheksum);
 }
 
-// Копирование полученных данных в структуру для публикации в топике
-void processing_Driver2Data()
-{
-	// Копируем полученные по SPI данные в сообщение которое потом опубликуем
-	Driver2Data_msg.id = Driver2Data.id;
 
-	Driver2Data_msg.mpu.status = Driver2Data.bno055.status;
-	Driver2Data_msg.mpu.angleEuler.roll = Driver2Data.bno055.angleEuler.x;
-	Driver2Data_msg.mpu.angleEuler.pitch = Driver2Data.bno055.angleEuler.y;
-	Driver2Data_msg.mpu.angleEuler.yaw = Driver2Data.bno055.angleEuler.z;
-
-	Driver2Data_msg.laserL.distance = Driver2Data.laserL.distance;
-	Driver2Data_msg.laserL.status = Driver2Data.laserL.status;
-
-	Driver2Data_msg.laserR.distance = Driver2Data.laserR.distance;
-	Driver2Data_msg.laserR.status = Driver2Data.laserR.status;
-	
-	Driver2Data_msg.uzi.distance = Driver2Data.uzi.distance;
-	Driver2Data_msg.uzi.status = Driver2Data.uzi.status;
-}
 
 
 
