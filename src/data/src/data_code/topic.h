@@ -82,7 +82,7 @@ void CTopic::transform(SPose pose_) // Публикуем системы тра�
     tfOdomBase.transform.translation.x = pose_.x;
     tfOdomBase.transform.translation.y = pose_.y;
     tfOdomBase.transform.translation.z = 0.1;
-    tfOdomBase.transform.rotation = tf::createQuaternionMsgFromYaw(DEG2RAD(pose_.th)); // Из градусов в радианы далее подладить под своё представление
+    tfOdomBase.transform.rotation = tf::createQuaternionMsgFromYaw(-pose_.th); // Из градусов в радианы далее подладить под своё представление
     tfBroadcaster.sendTransform(tfOdomBase);                                                 // Публикация системы преобразования из odom в map Тут динамически, а статически выглядит так   <node pkg="tf" type="static_transform_publisher" name="static_map_odom_tf" args="0 0 0 0 0 0 map odom 100" /> <!--http://wiki.ros.org/tf-->
 }
 // Публикация данных разобранных из джойстика
@@ -98,11 +98,10 @@ void CTopic::visualEncoderOdom()
 	// set the position
 	odomEncoder_msg.pose.pose.position.x = encoder.pose.x;
 	odomEncoder_msg.pose.pose.position.y = encoder.pose.y;
-	float theta = DEG2RAD(encoder.pose.th); //
-	geometry_msgs::Quaternion quat = tf::createQuaternionMsgFromYaw(theta);
+	geometry_msgs::Quaternion quat = tf::createQuaternionMsgFromYaw(-encoder.pose.th);
 	odomEncoder_msg.pose.pose.orientation = quat;
 	// set the velocity
-	odomEncoder_msg.child_frame_id = "base"; // Поворот в этом сообщении должен быть указан в системе координат, заданной child_frame_id
+	odomEncoder_msg.child_frame_id = "odom"; // Поворот в этом сообщении должен быть указан в системе координат, заданной child_frame_id
 	odomEncoder_msg.twist.twist.linear.x = encoder.twist.vx;
 	odomEncoder_msg.twist.twist.linear.y = encoder.twist.vy;
 	odomEncoder_msg.twist.twist.angular.z = encoder.twist.vth;
@@ -119,7 +118,7 @@ void CTopic::visualEncoderMpu()
 	geometry_msgs::Quaternion quat = tf::createQuaternionMsgFromYaw(theta);
 	odomMpu_msg.pose.pose.orientation = quat;
 	// set the velocity
-	odomMpu_msg.child_frame_id = "base"; // Поворот в этом сообщении должен быть указан в системе координат, заданной child_frame_id
+	odomMpu_msg.child_frame_id = "odom"; // Поворот в этом сообщении должен быть указан в системе координат, заданной child_frame_id
 	odomMpu_msg.twist.twist.linear.x = mpu.twist.vx;
 	odomMpu_msg.twist.twist.linear.y = mpu.twist.vy;
 	odomMpu_msg.twist.twist.angular.z = mpu.twist.vth;

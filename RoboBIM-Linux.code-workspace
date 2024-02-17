@@ -22,7 +22,8 @@
 			"hash_set": "cpp",
 			"variant": "cpp",
 			"random": "cpp",
-			"*.tcc": "cpp"
+			"*.tcc": "cpp",
+			"complex": "cpp"
 		}
 	}
 }

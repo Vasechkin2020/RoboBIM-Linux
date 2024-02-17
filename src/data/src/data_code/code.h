@@ -79,7 +79,7 @@ void callback_ControlModul(const data::SControlModul &msg)
 }
 
 // Обработка пришедших данных.Обсчитываем одометрию по энкодеру
-void calculateOdometryFromEncoder()
+void calculateOdometryFromEncoder(SControl control_)
 {
 	double radius = 0;
 	double theta = 0;
@@ -92,95 +92,124 @@ void calculateOdometryFromEncoder()
 	double dt = ((time_now - time) / 1000000.0); // Интервал расчета переводим сразу в секунды Находим интревал между текущим и предыдущим расчетом в секундах
 	time = time_now;
 
+	static unsigned long time2 = clock(); // Время предыдущего расчета// Функция из WiringPi.
+	unsigned long time_now2 = clock();	  // Время в которое делаем расчет
+	// printf("time2= %.8lu time_now2 = %.8lu / ", time2, time_now2);
+	double dt2 = ((time_now2 - time2) / 1000000.); // Интервал расчета переводим сразу в секунды Находим интревал между текущим и предыдущим расчетом в секундах
+	time2 = time_now2;
+	// printf("dt = %.6f ", dt);
+	// printf("dt2 = %.8f | ",dt2);
+
 	// int start = clock(); // засекаем время старта
 	// int end = clock(); // засекаем время окончания
 	// int t = (end - start) / CLOCKS_PER_SEC;// команда CLOCKS_PER_SEC нужна для перевода результата функции clock в секунды
 
 	double speedL = PERIMETR * Driver2Data.motor.rpsEncodL; // По формуле периметр колеса на обороты это и есть пройденный путь за секунду Это и есть скорость за секунду
 	double speedR = PERIMETR * Driver2Data.motor.rpsEncodR; // По формуле периметр колеса на обороты это и есть пройденный путь за секунду Это и есть скорость за секунду
-	printf("speed= %.4f speedR = %.4f / ", speedL, speedR);
+	speedL = PERIMETR * control_.speedL;
+	speedR = PERIMETR * control_.speedR;
 	double sumSpeed = speedL + speedR;
 	double deltaSpeed = speedL - speedR;
-	double speed = (speedR + speedL) / 2.0;	 // Находим скорость всего обьекта.
+	double speed = (speedR + speedL) / 2.0; // Находим скорость всего обьекта.
+	// printf("speed= %.6f / ", speed);
 	double w = deltaSpeed / DISTANCE_WHEELS; // Находим уголовую скорость движения по радиусу. Плюс по часовой минус против часовой
 											 // ROS_INFO("speedL= %.4f speedR= %.4f speed= %.4f w = %.4f ///  ", speedL, speedR, speed, RAD2DEG(w));
-	if (speedL == 0 && speedR == 0)			 // Стоим на месте. Скорости равны нулю
+	if (dt > (1.0 / RATE * 0.95))
 	{
-		radius = 0;
-		speed = 0;
-		theta = 0;
-		// ROS_INFO("0 STOIM NA MESTE radius = %.4f theta gradus = %.4f ", radius, RAD2DEG(theta));
-	}
-	else
-	{
-		if (abs(sumSpeed) < 0.01 && speedL != 0 && speedR != 0) // Если сумма скоростей очень маленькая или ноль значит крутимся на месте или стоим на месте и тогда совсем иной расчет чем если движемся// Крутимся на месте
+		if (speedL == 0 && speedR == 0) // Стоим на месте. Скорости равны нулю
 		{
-			radius = 0.5 * DISTANCE_WHEELS; // Радиус в таком случае это половина между колесами
-			if (speedL > speedR)			// Значит крутимся по часовой и знак угловой скорсти плюс
-			{
-				lenArc = speedL; // меняем скорость со среднй на скорость одного колеса, наружнего // Находим путь какой проехали. Это длинна дуги.
-			}
-			else
-			{
-				lenArc = -speedR; //  Значит крутимся против часовой и знак минус будет у угловой скорости // Находим путь какой проехали. Это длинна дуги.
-			}
-			speed = 0;				 // Обнуляем скорость чтобы дальше позиция не сдвигалась, мы же на месте.
-			theta = lenArc / radius; // Отношение улинны дуги окружночти к радиусу дает угол в радианах. Нахождение центрального угла по дуге и радиусу.
-									 // ROS_INFO("1 KRUTIMSA NA MESTE radius = %.4f theta gradus = %.4f lenArc = %.4f speedL = %.4f speedR = %.4f ", radius, RAD2DEG(theta), lenArc, speedL, speedR);
+			radius = 0;
+			speed = 0;
+			theta = 0;
+			// ROS_INFO("0 STOIM NA MESTE radius = %.4f theta gradus = %.4f ", radius, RAD2DEG(theta));
 		}
-		else // Тут нормальный расчет что мы движемся или по прямой или по радиусу
+		else
 		{
-			lenArc = speed;				// Находим путь какой проехали за время в течении которого энкодер собирал данные. Это длинна дуги.
-			if (abs(deltaSpeed) < 0.01) // Если раздница скоростей незначительна то считаем что едем прямо вперед или назад
+			if (abs(sumSpeed) < 0.01 && speedL != 0 && speedR != 0) // Если сумма скоростей очень маленькая или ноль значит крутимся на месте или стоим на месте и тогда совсем иной расчет чем если движемся// Крутимся на месте
 			{
-				radius = 0; // Едем прямо или назад и все по нулям
-				theta = 0;	// Если едем прямо то угол поворота отклонения от оси равен 0
-						   // ROS_INFO("2 EDEM PRIAMO radius = %.4f theta gradus = %.4f ", radius, RAD2DEG(theta));
+				radius = 0.5 * DISTANCE_WHEELS; // Радиус в таком случае это половина между колесами
+				if (speedL > speedR)			// Значит крутимся по часовой и знак угловой скорсти плюс
+				{
+					lenArc = speedL; // меняем скорость со среднй на скорость одного колеса, наружнего // Находим путь какой проехали. Это длинна дуги.
+				}
+				else
+				{
+					lenArc = -speedR; //  Значит крутимся против часовой и знак минус будет у угловой скорости // Находим путь какой проехали. Это длинна дуги.
+				}
+				speed = 0;				 // Обнуляем скорость чтобы дальше позиция не сдвигалась, мы же на месте.
+				theta = lenArc / radius; // Отношение улинны дуги окружночти к радиусу дает угол в радианах. Нахождение центрального угла по дуге и радиусу.
+										 // ROS_INFO("1 KRUTIMSA NA MESTE radius = %.4f theta gradus = %.4f lenArc = %.4f speedL = %.4f speedR = %.4f ", radius, RAD2DEG(theta), lenArc, speedL, speedR);
 			}
-			else // Едем по радиусу и надо все считать
+			else // Тут нормальный расчет что мы движемся или по прямой или по радиусу
 			{
-				radius = (0.5 * DISTANCE_WHEELS) * (sumSpeed / deltaSpeed); // Находим радиус движения
-				theta = lenArc / radius;									// Отношение улинны дуги окружночти к радиусу дает угол в радианах. Нахождение центрального угла по дуге и радиусу.
-																			// ROS_INFO("3 EDEM RADIUS radius = %.4f theta gradus = %.4f ", radius, RAD2DEG(theta));
+				lenArc = speed;				// Находим путь какой проехали за время в течении которого энкодер собирал данные. Это длинна дуги.
+				if (abs(deltaSpeed) < 0.01) // Если раздница скоростей незначительна то считаем что едем прямо вперед или назад
+				{
+					radius = 0; // Едем прямо или назад и все по нулям
+					theta = 0;	// Если едем прямо то угол поворота отклонения от оси равен 0
+							   // ROS_INFO("2 EDEM PRIAMO radius = %.4f theta gradus = %.4f ", radius, RAD2DEG(theta));
+				}
+				else // Едем по радиусу и надо все считать
+				{
+					radius = (0.5 * DISTANCE_WHEELS) * (sumSpeed / deltaSpeed); // Находим радиус движения
+					theta = lenArc / radius;									// Отношение улинны дуги окружночти к радиусу дает угол в радианах. Нахождение центрального угла по дуге и радиусу.
+																				// ROS_INFO("3 EDEM RADIUS radius = %.4f theta gradus = %.4f ", radius, RAD2DEG(theta));
+				}
 			}
 		}
+
+		// ROS_INFO("theta = %.3f", theta);
+		// Находим линейные скорости из моего вектора скорости. Я задаю общую скорость движения (длинна вектора), ее надо разложить на проекции по осям x y. Это будут линейные скорости
+		// speed = 0.26;
+		twist.vx = speed * sin(theta * dt); // Проекция моей скорости на ось Y получаем линейную скорость по оси за секунуду
+		twist.vy = speed * cos(theta * dt); // Проекция моей скорости на ось X получаем линейную скорость по оси за секунуду
+		twist.vth = theta;					// Угловая скорость в радианах.
+		// printf("speed= %.4f twist.vth = %.4f / sin(twist.vth )= %.4f cos(twist.vth ) = %.4f / ", speed, RAD2DEG(twist.vth), sin(twist.vth ), cos(twist.vth ));
+		// printf("speed= %.4f twist.vth = %.8f / ", speed, RAD2DEG(twist.vth));
+		// ROS_INFO("SPEED= %.3f Linear speed twist.vx = %.3f twist.vy = %.3f Angular speed twist.vth = %.3f for sec.", speed, twist.vx, twist.vy, RAD2DEG(twist.vth));
+		// //==============================================================================================================================
+		double vx = twist.vx * dt; // Находим проекции скорсти на оси за интревал времени это коокрдинаты нашей точки в локальной системе координат
+		double vy = twist.vy * dt;
+		// vx = 0.00291409;
+		// vy = 0.02337962;
+		// twist.vth = DEG2RAD(71.24713973);
+		if (flag_dt && speed > 0)
+		{
+			twist.vth = twist.vth / 2.0;
+			printf("flag vth= %.8f \n", twist.vth);
+			flag_dt = false;
+		}
+		printf("vx= %.8f vy= %.8f vth= %.8f dt= %.8f / ", vx, vy, twist.vth, dt);
+
+		// // printf("DO pose.x= %.3f pose.y= %.3f pose.th= %.3f / ", pose.x, pose.y, RAD2DEG(pose.th));
+		// // Находим смещние по осям матрица координаты точки из локальной системы координат в глобальной
+		// double delta_x = vx * cos(pose.th) + vy * sin(pose.th);
+		// double delta_y = -vx * sin(pose.th) + vy * cos(pose.th);
+
+		// // Меняем координаты и угол на основе вычислений
+		// pose.x += delta_x; // Вычисляем координаты
+		// pose.y += delta_y; // Вычисляем координаты
+
+		SPoint pointLoc;
+		pointLoc.x = twist.vx * dt;
+		pointLoc.y = twist.vy * dt;
+		SPoint newPoint = pointLocal2Global(pointLoc, pose);
+		pose.x = newPoint.x;
+		pose.y = newPoint.y;
+
+		// printf("pose.th= %.8f cos(pose.th)= %.8f sin(pose.th)= %.8f / ", RAD2DEG(pose.th), cos(pose.th), sin(pose.th));
+		// printf("vx*cos(pose.th)= %.8f vy*sin(pose.th)= %.8f =>delta_x= %.8f \n", vx * cos(pose.th), vy * sin(pose.th), delta_x);
+		// printf("vx*sin(pose.th)= %.8f vy*cos(pose.th)= %.8f =>delta_y= %.8f \n", vx * sin(pose.th), vy * cos(pose.th), delta_y);
+
+		pose.th += twist.vth * dt; // Прибавляем к текущему углу и получаем новый угол куда смотрит наш робот
+		(pose.th > (2 * M_PI)) ? (pose.th -= (2 * M_PI)) : (pose.th = pose.th);
+		(pose.th < 0) ? (pose.th += (2 * M_PI)) : (pose.th = pose.th);
+
+		printf("pose.x= %.6f pose.y= %.6f pose.th= %.6f \n", pose.x, pose.y, RAD2DEG(pose.th));
+
+		encoder.pose = pose;
+		encoder.twist = twist;
 	}
-
-	// ROS_INFO("theta = %.3f", theta);
-	// Находим линейные скорости из моего вектора скорости. Я задаю общую скорость движения (длинна вектора), ее надо разложить на проекции по осям x y. Это будут линейные скорости
-	// speed = 0.26;
-	twist.vth = theta * dt;		   // Угловая скорость в радианах за интрвал измерения. Это угол на который провернулись на интервал Знак минус так как у меня Вращение ПЛЮС по часовой, а у всех против часовой
-	twist.vx = speed * sin(twist.vth); // Проекция моей скорости на ось Y получаем линейную скорость по оси
-	twist.vy = speed * cos(twist.vth); // Проекция моей скорости на ось X получаем линейную скорость по оси
-	// printf("speed= %.4f twist.vth = %.4f / sin(twist.vth )= %.4f cos(twist.vth ) = %.4f / ", speed, RAD2DEG(twist.vth), sin(twist.vth ), cos(twist.vth ));
-	printf("speed= %.4f twist.vth = %.4f / ", speed, RAD2DEG(twist.vth));
-	// ROS_INFO("SPEED= %.3f Linear speed twist.vx = %.3f twist.vy = %.3f Angular speed twist.vth = %.3f for sec.", speed, twist.vx, twist.vy, RAD2DEG(twist.vth));
-	//==============================================================================================================================
-	double vx = twist.vx * dt; // Находим проекции скорсти на оси за интревал времени
-	double vy = twist.vy * dt;
-	printf("vx= %.8f vy= %.8f / ", vx, vy);
-
-	// printf("DO pose.x= %.3f pose.y= %.3f pose.th= %.3f / ", pose.x, pose.y, RAD2DEG(pose.th));
-	//  Находим смещние по осям матрица координаты точки из локальной системы координат в глобальной
-	printf(" pose.th= %.6f / vx*cos(pose.th)= %.6f vy*sin(pose.th)= %.6f / ",pose.th, vx * cos(pose.th), vy * sin(pose.th));
-	double delta_x = vx * cos(pose.th) - vy * sin(pose.th);
-	double delta_y = vx * sin(pose.th) + vy * cos(pose.th);
-	double delta_th = twist.vth;
-	// printf(" / pose.th = %.6f cos= %.6f sin= %.6f / ",pose.th, cos(pose.th), sin(pose.th));
-
-	printf("delta_x= %.6f delta_y= %.6f delta_th= %.6f ", delta_x, delta_y, delta_th);
-
-	// Меняем координаты и угол на основе вычислений
-	pose.x += delta_x;	 // Вычисляем координаты
-	pose.y += delta_y;	 // Вычисляем координаты
-	pose.th += delta_th; // Прибавляем к текущему углу и получаем новый угол куда смотрит наш робот в ГРАДУСАХ
-	(pose.th > (2 * M_PI)) ? (pose.th -= (2 * M_PI)) : (pose.th = pose.th);
-	(pose.th < 0) ? (pose.th += (2 * M_PI)) : (pose.th = pose.th);
-	printf(" /// POSLE pose.x= %.6f pose.y= %.6f pose.th= %.6f \n", pose.x, pose.y, pose.th);
-
-	encoder.pose = pose;
-	encoder.twist = twist;
-
 	//**************************************************************** СТАРЫЙ ПРИМЕР РАСЧЕТА С НИЖНЕГО УРОВНЯ ******************************************
 	// float angle_pov_sum = 0;
 	// printf("odom_impuls_L= %i rps_L= %f \n", odom_impuls_L, rps_L);
@@ -253,6 +282,7 @@ void calculateOdometryFromEncoder()
 
 	// printf("x= %.2f y= %.2f th= %.3f  time= %u \n", g_odom_enc.x, g_odom_enc.y, g_odom_enc.th, millis());
 }
+
 // Обработка пришедших данных.Обсчитываем одометрию по энкодеру
 void calculateOdometryFromMpu()
 {

@@ -1,4 +1,5 @@
 
+#include "lib.h"
 #include "data_code/config.h"
 #include "data_code/c_joy.h"
 #include "data_code/data2driver.h"
@@ -14,7 +15,9 @@ int main(int argc, char **argv)
 
     ros::init(argc, argv, "data_node");
     ros::NodeHandle nh;
-    ros::Time current_time; // Время ROS
+    // ros::Time current_time = ros::Time::now(); // Время ROS
+    // ros::Time last_time2 = ros::Time::now();
+
     // double dt = (current_time - last_time).toSec();
     ros::Rate r(RATE);
 
@@ -32,11 +35,37 @@ int main(int argc, char **argv)
     bool led_status = 0;
     ros::Duration(1).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
 
+    double x = 0.0;
+    double y = 0.0;
+    double th = 0.0;
 
+    double vx = 0.03;
+    double vy = 0.3;
+    double vth = 0.5;
 
+    ros::Time current_time, last_time;
+    current_time = ros::Time::now();
+    last_time = ros::Time::now();
+    ros::Duration(1).sleep();
     while (ros::ok())
     {
-        topic.transform(encoder.pose);
+        // current_time = ros::Time::now();
+
+        // // compute odometry in a typical way given the velocities of the robot
+        // double dt = (current_time - last_time).toSec();
+        // double delta_x = (vx * cos(th) - vy * sin(th)) * dt;
+        // double delta_y = (vx * sin(th) + vy * cos(th)) * dt;
+        // double delta_th = vth * dt;
+
+        // x += delta_x;
+        // y += delta_y;
+        // th += delta_th;
+
+        // last_time = current_time;
+
+        // printf(" x= %.6f y= %.6f \n ", x, y);
+
+        
         // Сделать вывозтолько если пригли данные а не постоянно отправку поманд
         //  Led_Blink(PIN_LED_BLUE, 500); // Мигание светодиодом, что цикл работает
         led_status = 1 - led_status; // Мигаем с частотой работы цикла
@@ -86,8 +115,9 @@ int main(int argc, char **argv)
         data_driver_all++;
         if (rez_data) // Если пришли хорошие данные то обрабатываем их и публикуем данные в ROS
         {
-            calculateOdometryFromEncoder(); // Обработка пришедших данных.Обсчитываем одометрию по энкодеру
+            calculateOdometryFromEncoder(Data2Driver.control); // Обработка пришедших данных.Обсчитываем одометрию по энкодеру
             topic.visualEncoderOdom();
+            topic.transform(encoder.pose);
 
             // calculateOdometryFromMpu();                               // Обработка пришедших данных.Обсчитываем одометрию по датчику MPU BNO055
             // visualEncoderMpu();
