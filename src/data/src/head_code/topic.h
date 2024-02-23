@@ -15,8 +15,6 @@ public:
     void visualPillarAll(CPillar pillar_);   // Формируем перемнную с собщением для публикации
     void visualPillarPoint(CPillar pillar_); // Формируем перемнную с собщением для публикации
     void visulStartPose();
-    void visualEncoderOdom(SOdom &encoderOdom_);
-    void visualMpuOdom(SOdom &mpuOdom_);
     void visualPoseLidarAll();                                 // Формируем перемнную с собщением для публикации по позиции лидара
     void visualPoseLidarMode();                                // Формируем перемнную с собщением для публикации
     void visualAngleLaser(CLaser &laser_);                     // Формируем перемнную с собщением для публикации по углам лазера
@@ -87,43 +85,6 @@ CTopic::~CTopic()
 void CTopic::publicationControlDriver(data::SControlDriver data_)
 {
     pub_ControlDriver.publish(data_);
-}
-
-// void CTopic::visualEncoderOdom(SOdom &odom_)
-// {
-//     encoderOdom_msg.header.stamp = ros::Time::now(); // Время ROS
-//     encoderOdom_msg.header.frame_id = "odom";        // Поза в этом сообщении должна быть указана в системе координат, заданной header.frame_id.
-//     // set the position
-//     encoderOdom_msg.pose.pose.position.x = odom_.pose.x;
-//     encoderOdom_msg.pose.pose.position.y = odom_.pose.y;
-//     float theta = DEG2RAD(odom_.pose.th); //
-//     geometry_msgs::Quaternion quat = tf::createQuaternionMsgFromYaw(theta);
-//     encoderOdom_msg.pose.pose.orientation = quat;
-//     // set the velocity
-//     encoderOdom_msg.child_frame_id = "base"; // Поворот в этом сообщении должен быть указан в системе координат, заданной child_frame_id
-//     encoderOdom_msg.twist.twist.linear.x = odom_.twist.vx;
-//     encoderOdom_msg.twist.twist.linear.y = odom_.twist.vy;
-//     encoderOdom_msg.twist.twist.angular.z = odom_.twist.vth;
-
-//     pub_encoderOdom.publish(encoderOdom_msg); // Публикация полученных данных
-// }
-void CTopic::visualMpuOdom(SOdom &odom_)
-{
-    mpuOdom_msg.header.stamp = ros::Time::now(); // Время ROS
-    mpuOdom_msg.header.frame_id = "odom";        // Поза в этом сообщении должна быть указана в системе координат, заданной header.frame_id.
-    // set the position
-    mpuOdom_msg.pose.pose.position.x = odom_.pose.x;
-    mpuOdom_msg.pose.pose.position.y = odom_.pose.y;
-    float theta = DEG2RAD(odom_.pose.th); //
-    geometry_msgs::Quaternion quat = tf::createQuaternionMsgFromYaw(theta);
-    mpuOdom_msg.pose.pose.orientation = quat;
-    // set the velocity
-    mpuOdom_msg.child_frame_id = "base"; // Поворот в этом сообщении должен быть указан в системе координат, заданной child_frame_id
-    mpuOdom_msg.twist.twist.linear.x = odom_.twist.vx;
-    mpuOdom_msg.twist.twist.linear.y = odom_.twist.vy;
-    mpuOdom_msg.twist.twist.angular.z = odom_.twist.vth;
-
-    pub_mpuOdom.publish(mpuOdom_msg); // Публикация полученных данных
 }
 
 void CTopic::visulStartPose()

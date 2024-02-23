@@ -29,7 +29,7 @@ int main(int argc, char **argv)
     ros::Subscriber subscriber_Lidar = nh.subscribe<sensor_msgs::LaserScan>("/scan", 1000, callback_Lidar);
     ros::Subscriber subscriber_Pillar = nh.subscribe<data::topicPillar>("pbPillar", 1000, callback_Pillar);
     ros::Subscriber subscriber_StartPose2D = nh.subscribe<geometry_msgs::Pose2D>("pbStartPose2D", 1000, callback_StartPose2D);
-    ros::Subscriber subscriber_Driver = nh.subscribe<data::SDriver2Data>("pbData/Driver2Data", 1000, callback_Driver);
+    ros::Subscriber subscriber_Driver = nh.subscribe<data::SDriver2Data>("pbData/Driver", 1000, callback_Driver);
     //---------------------------------------------------------------------------------------------------------------------------
     CTopic topic; // Экземпляр класса для всех публикуемых топиков
     CLow low; // Экземпляр класса для всех данных получаемых сноды Data  с нижнего уровня
@@ -47,10 +47,6 @@ int main(int argc, char **argv)
         {
             flag_msgDriver = false;
             low.parsingDriver(msg_Driver2Data);
-            low.calculateOdometryFromEncoder(); // Расчет линейных и угловой скорости из энкодера
-            topic.visualEncoderOdom(low._encoderOdom);
-            low.calculateOdometryFromMpu(); // Расчет линейных и угловой скорости из энкодера
-            topic.visualMpuOdom(low._mpuOdom);
         }
 
         if (flag_msgCar) // Флаг что пришло сообщение о начальных координатах машинки
@@ -95,8 +91,6 @@ int main(int argc, char **argv)
             // topic.visualAngleLaser(laser);     // Формируем перемнную с собщением для публикации
             // topic.visualPoseAngleLaser(laser); // Формируем перемнную с собщением для публикации
         }
-
-        //Data2Driver = speedCorrect(topic.Driver2Data_msg, Data2Driver);                                // Корректировка скорости движения в зависимости от растояния до преграды
 
         // collectCommand();             // Формируем команду на основе полученных данных
         // com_pub.publish(Command_msg); //Публикация данных команды

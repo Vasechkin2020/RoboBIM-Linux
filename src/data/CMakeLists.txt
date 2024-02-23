@@ -66,12 +66,14 @@ add_message_files(
   Struct_ModulMicric.msg
   
   SPose.msg    # x,y, theta
+  SPoseTrue.msg    # x,y, theta, flag
   STwist.msg    # x,y, theta
   SOdom.msg
   SMpu.msg
   SEuler.msg    # roll pitch yaw
   SSpi.msg
   SSensor.msg
+  SMotor.msg
   SControl.msg
   SDriver2Data.msg
   SEncoder.msg
@@ -180,8 +182,8 @@ include_directories(
 add_executable(data_node src/data_node.cpp)
 target_link_libraries(data_node ${catkin_LIBRARIES} -lwiringPi -lpthread)
 
-#add_executable(head_node src/head_node.cpp)
-#target_link_libraries(head_node ${catkin_LIBRARIES})
+add_executable(head_node src/head_node.cpp)
+target_link_libraries(head_node ${catkin_LIBRARIES})
 
 add_executable(pillar_node src/pillar_node.cpp)
 target_link_libraries(pillar_node ${catkin_LIBRARIES})

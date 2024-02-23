@@ -41,29 +41,20 @@ bool sendData2Driver(int channel_, Struct_Driver2Data &structura_receive_, SData
 		return true;
 	}
 }
-// Копирование данных из сообщения в топике в структуру для передачи по SPI
-void collect_Data2Driver() // Данные для передачи с Data на Driver
+// Копирование данных из сообщения в топике в структуру для использования
+void collect_Data2Driver()
 {
-	// Data2Driver.id++; //= 0x1F1F1F1F;
-	// Data2Driver.pose.x = msg_ControlDriver.pose.x; Скореев сего не надо туда отправлять
-	// Data2Driver.pose.y = msg_ControlDriver.pose.y;
-	// Data2Driver.pose.th = msg_ControlDriver.pose.th;
+	g_poseControl.x = msg_ControlDriver.pose.x; 
+	g_poseControl.y = msg_ControlDriver.pose.y;
+	g_poseControl.th = msg_ControlDriver.pose.th;
+	g_poseControl.flag = msg_ControlDriver.pose.flag;
 
-	// Data2Driver.twist.vx = msg_ControlDriver.twist.vx;
-	// Data2Driver.twist.vy = msg_ControlDriver.twist.vy;
-	// Data2Driver.twist.vth = msg_ControlDriver.twist.vth;
-
+	g_dreamSpeed.speedL = msg_ControlDriver.control.speedL;
+	g_dreamSpeed.speedR = msg_ControlDriver.control.speedR;
 	// Data2Driver.control.speedL = 0.1;
 	// Data2Driver.control.speedR = 0.1;
-	Data2Driver.control.speedL = msg_ControlDriver.control.speedL;
-	Data2Driver.control.speedR = msg_ControlDriver.control.speedR;
-	// Data2Driver.control.tagPose = msg_ControlDriver.control.tagPose;
-	// Data2Driver.control.tagVel = msg_ControlDriver.control.tagVel;
 
 	Data2Driver.led.num_program = msg_ControlDriver.led.num_program;
-	// Data2Driver.cheksum = measureCheksum(Data2Driver); // Считаем контрольную сумму отправляемой структу
-
-	// printf("Отправляем: Id %i, чек= %i  ", Data2Driver.id, Data2Driver.cheksum);
 }
 
 

@@ -29,7 +29,14 @@ SPoint pointLocal2Global(SPoint pointLocal_, SPose poseLocal_)
     ret.y = ynew + poseLocal_.y;
     return ret;
 }
+void normalizeVector(double& x, double& y, double& z)
+{
+    double norm = sqrt(x * x + y * y + z * z);
 
+    x /= norm;
+    y /= norm;
+    z /= norm;
+}
 
 
 #endif
