@@ -9,52 +9,55 @@
 class CTopic
 {
 public:
-    CTopic(/* args */);
-    ~CTopic();
-    //**************************** ОБЬЯВЛЕНИЕ ПРОЦЕДУР **********************************
-    void transform();          // Публикуем трансформации для системы координат
-	void transformEncod(SPose pose_);
+	CTopic(/* args */);
+	~CTopic();
+	//**************************** ОБЬЯВЛЕНИЕ ПРОЦЕДУР **********************************
+	void transform(); // Публикуем трансформации для системы координат
+	void transformWheel(SPose pose_);
+	void transformUnited(SPose pose_);
 	void transformMpu(SPose pose_);
-    void publicationControlDriver(data::SControlDriver data_); // Публикация данных разобранных из джойстика
-    void processingSPI();										   // Сбор данных по результатам обмена по шине SPI по обоим контроллерам
-    void visualEncoderMpu();
-    void visualOdomWheel();
-	void visualOdomWheelCorrect();
-    void processing_Driver2Data();
-    void dataProcessing_Modul(); // Обработка полученных данных и копирование их для публикации в топике
+
+	void publishOdomMpu();
+	void publishOdomWheel();
+	void publishOdomUnited();
+	void publishControlDriver(data::SControlDriver data_); // Публикация данных разобранных из джойстика
+
+	void processingSPI(); // Сбор данных по результатам обмена по шине SPI по обоим контроллерам
+	void processing_Driver2Data();
+	void dataProcessing_Modul(); // Обработка полученных данных и копирование их для публикации в топике
 
 private:
-    ros::NodeHandle _nh;
-    tf::TransformBroadcaster tfBroadcaster; // Вещание данных преобразования систем координат
+	ros::NodeHandle _nh;
+	tf::TransformBroadcaster tfBroadcaster; // Вещание данных преобразования систем координат
 
-    nav_msgs::Odometry odomWheel_msg;
-    nav_msgs::Odometry odomWheelCorrect_msg;
-    nav_msgs::Odometry odomMpu_msg;
+	nav_msgs::Odometry odomWheel_msg;
+	nav_msgs::Odometry odomUnited_msg;
+	nav_msgs::Odometry odomMpu_msg;
 
-    data::SDriver2Data Driver2Data_msg; // Это структуры которые мы заполняем и потом публикуем
-    data::Struct_Info_SPI spi_msg;      // Это структуры которые мы заполняем и потом публикуем
+	data::SDriver2Data Driver2Data_msg; // Это структуры которые мы заполняем и потом публикуем
+	data::Struct_Info_SPI spi_msg;		// Это структуры которые мы заполняем и потом публикуем
 
-    data::Struct_ModulMotor modul_motor_msg;   // Это структуры сообщений которые мы заполняем и потом публикуем
-    data::Struct_ModulLidar modul_lidar_msg;   // Это структуры которые мы заполняем и потом публикуем
-    data::Struct_ModulMicric modul_micric_msg; // Это структуры которые мы заполняем и потом публикуем
-    //--------------------------------- ПУБЛИКАЦИЯ В ТОПИКИ -------------------------------------------------
+	data::Struct_ModulMotor modul_motor_msg;   // Это структуры сообщений которые мы заполняем и потом публикуем
+	data::Struct_ModulLidar modul_lidar_msg;   // Это структуры которые мы заполняем и потом публикуем
+	data::Struct_ModulMicric modul_micric_msg; // Это структуры которые мы заполняем и потом публикуем
+	//--------------------------------- ПУБЛИКАЦИЯ В ТОПИКИ -------------------------------------------------
 
-    ros::Publisher publish_Driver2Data = _nh.advertise<data::SDriver2Data>("pbData/Driver", 16);  // Это мы публикуем структуру которую получили с драйвера
-    ros::Publisher publish_Spi = _nh.advertise<data::Struct_Info_SPI>("pbInfo/Spi", 16);          // Это мы создаем публикатор и определяем название топика в рос
-    ros::Publisher publish_OdomEncoder = _nh.advertise<nav_msgs::Odometry>("pbOdom/Encoder", 16); // Это мы создаем публикатор и определяем название топика в рос
-    ros::Publisher publish_OdomEncTrue = _nh.advertise<nav_msgs::Odometry>("pbOdom/EncTrue", 16); // Это мы создаем публикатор и определяем название топика в рос
-    ros::Publisher publish_OdomMpu = _nh.advertise<nav_msgs::Odometry>("pbOdom/Mpu", 16);         // Это мы создаем публикатор и определяем название топика в рос
+	ros::Publisher publish_Driver2Data = _nh.advertise<data::SDriver2Data>("pbData/Driver", 16);			// Это мы публикуем структуру которую получили с драйвера
+	ros::Publisher publish_Spi = _nh.advertise<data::Struct_Info_SPI>("pbInfo/Spi", 16);					// Это мы создаем публикатор и определяем название топика в рос
+	ros::Publisher publish_OdomWheel = _nh.advertise<nav_msgs::Odometry>("pbOdom/Wheel", 16);				// Это мы создаем публикатор и определяем название топика в рос
+	ros::Publisher publish_OdomUnited = _nh.advertise<nav_msgs::Odometry>("pbOdom/United", 16); // Это мы создаем публикатор и определяем название топика в рос
+	ros::Publisher publish_OdomMpu = _nh.advertise<nav_msgs::Odometry>("pbOdom/Mpu", 16);					// Это мы создаем публикатор и определяем название топика в рос
 
-    ros::Publisher publish_ModulMotor = _nh.advertise<data::Struct_ModulMotor>("modulMotor", 16);    // Это мы создаем публикатор и определяем название топика в рос
-    ros::Publisher publish_ModulLidar = _nh.advertise<data::Struct_ModulLidar>("modulLidar", 16);    // Это мы создаем публикатор и определяем название топика в рос
-    ros::Publisher publish_ModulMicric = _nh.advertise<data::Struct_ModulMicric>("modulMicric", 16); // Это мы создаем публикатор и определяем название топика в рос
+	ros::Publisher publish_ModulMotor = _nh.advertise<data::Struct_ModulMotor>("modulMotor", 16);	 // Это мы создаем публикатор и определяем название топика в рос
+	ros::Publisher publish_ModulLidar = _nh.advertise<data::Struct_ModulLidar>("modulLidar", 16);	 // Это мы создаем публикатор и определяем название топика в рос
+	ros::Publisher publish_ModulMicric = _nh.advertise<data::Struct_ModulMicric>("modulMicric", 16); // Это мы создаем публикатор и определяем название топика в рос
 
-    // ros::Publisher pub_JoyData = _nh.advertise<data::SJoy>("pbInfo/JoyData", 16);                       // Это мы публикуем структуру которую сформировали по данным с джойстика
+	// ros::Publisher pub_JoyData = _nh.advertise<data::SJoy>("pbInfo/JoyData", 16);                       // Это мы публикуем структуру которую сформировали по данным с джойстика
 
-    // ros::Publisher pub_encoderOdom = _nh.advertise<nav_msgs::Odometry>("pbinfo/encoderOdom", 16);
-    // ros::Publisher pub_mpuOdom = _nh.advertise<nav_msgs::Odometry>("pbinfo/mpuOdom", 16);
+	// ros::Publisher pub_encoderOdom = _nh.advertise<nav_msgs::Odometry>("pbinfo/encoderOdom", 16);
+	// ros::Publisher pub_mpuOdom = _nh.advertise<nav_msgs::Odometry>("pbinfo/mpuOdom", 16);
 
-    ros::Time ros_time; // Время ROS
+	ros::Time ros_time; // Время ROS
 };
 
 CTopic::CTopic(/* args */)
@@ -67,41 +70,53 @@ CTopic::~CTopic()
 
 void CTopic::transform() // Публикуем системы трансормаций из одних систем координат в другие
 {
-    ros_time = ros::Time::now(); // Время ROS
-    // --------------------------------- map odom  ---------------------------------------
-    geometry_msgs::TransformStamped tfMapOdom;
-    tfMapOdom.header.stamp = ros_time;
-    tfMapOdom.header.frame_id = "map";
-    tfMapOdom.child_frame_id = "odom";
-    tfMapOdom.transform.translation.x = 0.0;
-    tfMapOdom.transform.translation.y = 0.0;
-    tfMapOdom.transform.translation.z = 0.0;
-    tfMapOdom.transform.rotation = tf::createQuaternionMsgFromYaw(DEG2RAD(0)); // Из градусов в радианы далле подладить под своё представление
-    tfBroadcaster.sendTransform(tfMapOdom);                                    // Публикация системы преобразования из odom в map Тут динамически, а статически выглядит так   <node pkg="tf" type="static_transform_publisher" name="static_map_odom_tf" args="0 0 0 0 0 0 map odom 100" /> <!--http://wiki.ros.org/tf-->
+	ros_time = ros::Time::now(); // Время ROS
+	// --------------------------------- map odom  ---------------------------------------
+	geometry_msgs::TransformStamped tfMapOdom;
+	tfMapOdom.header.stamp = ros_time;
+	tfMapOdom.header.frame_id = "map";
+	tfMapOdom.child_frame_id = "odom";
+	tfMapOdom.transform.translation.x = 0.0;
+	tfMapOdom.transform.translation.y = 0.0;
+	tfMapOdom.transform.translation.z = 0.0;
+	tfMapOdom.transform.rotation = tf::createQuaternionMsgFromYaw(DEG2RAD(0)); // Из градусов в радианы далле подладить под своё представление
+	tfBroadcaster.sendTransform(tfMapOdom);									   // Публикация системы преобразования из odom в map Тут динамически, а статически выглядит так   <node pkg="tf" type="static_transform_publisher" name="static_map_odom_tf" args="0 0 0 0 0 0 map odom 100" /> <!--http://wiki.ros.org/tf-->
 }
-void CTopic::transformEncod(SPose pose_) // Публикуем системы трансормаций из одних систем координат в другие
+void CTopic::transformWheel(SPose pose_) // Публикуем системы трансормаций из одних систем координат в другие
 {
-    geometry_msgs::TransformStamped tfOdomEncod;
-    tfOdomEncod.header.stamp = ros_time;
-    tfOdomEncod.header.frame_id = "odom";
-    tfOdomEncod.child_frame_id = "encod";
-    tfOdomEncod.transform.translation.x = pose_.x;
-    tfOdomEncod.transform.translation.y = pose_.y;
-    tfOdomEncod.transform.translation.z = 0.1;
-    tfOdomEncod.transform.rotation = tf::createQuaternionMsgFromYaw(-pose_.th); // Из градусов в радианы далее подладить под своё представление
-    tfBroadcaster.sendTransform(tfOdomEncod);                                                 // Публикация системы преобразования из odom в map Тут динамически, а статически выглядит так   <node pkg="tf" type="static_transform_publisher" name="static_map_odom_tf" args="0 0 0 0 0 0 map odom 100" /> <!--http://wiki.ros.org/tf-->
+	geometry_msgs::TransformStamped tfOdomWheel;
+	tfOdomWheel.header.stamp = ros_time;
+	tfOdomWheel.header.frame_id = "odom";
+	tfOdomWheel.child_frame_id = "wheel";
+	tfOdomWheel.transform.translation.x = pose_.x;
+	tfOdomWheel.transform.translation.y = pose_.y;
+	tfOdomWheel.transform.translation.z = 0.1;
+	tfOdomWheel.transform.rotation = tf::createQuaternionMsgFromYaw(-pose_.th); // Из градусов в радианы далее подладить под своё представление
+	tfBroadcaster.sendTransform(tfOdomWheel);									// Публикация системы преобразования из odom в map Тут динамически, а статически выглядит так   <node pkg="tf" type="static_transform_publisher" name="static_map_odom_tf" args="0 0 0 0 0 0 map odom 100" /> <!--http://wiki.ros.org/tf-->
+}
+void CTopic::transformUnited(SPose pose_) // Публикуем системы трансормаций из одних систем координат в другие
+{
+	geometry_msgs::TransformStamped tfOdomUnited;
+	tfOdomUnited.header.stamp = ros_time;
+	tfOdomUnited.header.frame_id = "odom";
+	tfOdomUnited.child_frame_id = "united";
+	tfOdomUnited.transform.translation.x = pose_.x;
+	tfOdomUnited.transform.translation.y = pose_.y;
+	tfOdomUnited.transform.translation.z = 0.1;
+	tfOdomUnited.transform.rotation = tf::createQuaternionMsgFromYaw(-pose_.th); // Из градусов в радианы далее подладить под своё представление
+	tfBroadcaster.sendTransform(tfOdomUnited);								   // Публикация системы преобразования из odom в map Тут динамически, а статически выглядит так   <node pkg="tf" type="static_transform_publisher" name="static_map_odom_tf" args="0 0 0 0 0 0 map odom 100" /> <!--http://wiki.ros.org/tf-->
 }
 void CTopic::transformMpu(SPose pose_) // Публикуем системы трансормаций из одних систем координат в другие
 {
-    geometry_msgs::TransformStamped tfOdomMpu;
-    tfOdomMpu.header.stamp = ros_time;
-    tfOdomMpu.header.frame_id = "odom";
-    tfOdomMpu.child_frame_id = "mpu";
-    tfOdomMpu.transform.translation.x = pose_.x;
-    tfOdomMpu.transform.translation.y = pose_.y;
-    tfOdomMpu.transform.translation.z = 0.2;
-    tfOdomMpu.transform.rotation = tf::createQuaternionMsgFromYaw(-pose_.th); // Из градусов в радианы далее подладить под своё представление
-    tfBroadcaster.sendTransform(tfOdomMpu);                                                 // Публикация системы преобразования из odom в map Тут динамически, а статически выглядит так   <node pkg="tf" type="static_transform_publisher" name="static_map_odom_tf" args="0 0 0 0 0 0 map odom 100" /> <!--http://wiki.ros.org/tf-->
+	geometry_msgs::TransformStamped tfOdomMpu;
+	tfOdomMpu.header.stamp = ros_time;
+	tfOdomMpu.header.frame_id = "odom";
+	tfOdomMpu.child_frame_id = "mpu";
+	tfOdomMpu.transform.translation.x = pose_.x;
+	tfOdomMpu.transform.translation.y = pose_.y;
+	tfOdomMpu.transform.translation.z = 0.2;
+	tfOdomMpu.transform.rotation = tf::createQuaternionMsgFromYaw(-pose_.th); // Из градусов в радианы далее подладить под своё представление
+	tfBroadcaster.sendTransform(tfOdomMpu);									  // Публикация системы преобразования из odom в map Тут динамически, а статически выглядит так   <node pkg="tf" type="static_transform_publisher" name="static_map_odom_tf" args="0 0 0 0 0 0 map odom 100" /> <!--http://wiki.ros.org/tf-->
 }
 // Публикация данных разобранных из джойстика
 // void CTopic::publicationControlDriver(data::SControlDriver data_)
@@ -109,10 +124,11 @@ void CTopic::transformMpu(SPose pose_) // Публикуем системы тр
 //     pub_ControlDriver.publish(data_);
 // }
 
-void CTopic::visualOdomWheel()
+void CTopic::publishOdomWheel()
 {
+	transformWheel(odomWheel.pose); // Публиация системы трансформации
 	odomWheel_msg.header.stamp = ros::Time::now(); // Время ROS
-	odomWheel_msg.header.frame_id = "odom";		 // Поза в этом сообщении должна быть указана в системе координат, заданной header.frame_id.
+	odomWheel_msg.header.frame_id = "odom";		   // Поза в этом сообщении должна быть указана в системе координат, заданной header.frame_id.
 	// set the position
 	odomWheel_msg.pose.pose.position.x = odomWheel.pose.x;
 	odomWheel_msg.pose.pose.position.y = odomWheel.pose.y;
@@ -123,26 +139,28 @@ void CTopic::visualOdomWheel()
 	odomWheel_msg.twist.twist.linear.x = odomWheel.twist.vx;
 	odomWheel_msg.twist.twist.linear.y = odomWheel.twist.vy;
 	odomWheel_msg.twist.twist.angular.z = odomWheel.twist.vth;
-    publish_OdomEncoder.publish(odomWheel_msg); // Публикация полученных данных
+	publish_OdomWheel.publish(odomWheel_msg); // Публикация полученных данных
 }
-void CTopic::visualOdomWheelCorrect()
+void CTopic::publishOdomUnited()
 {
-	odomWheelCorrect_msg.header.stamp = ros::Time::now(); // Время ROS
-	odomWheelCorrect_msg.header.frame_id = "odom";		 // Поза в этом сообщении должна быть указана в системе координат, заданной header.frame_id.
+	transformUnited(odomUnited.pose); // Публиация системы трансформации
+	odomUnited_msg.header.stamp = ros::Time::now(); // Время ROS
+	odomUnited_msg.header.frame_id = "odom";		  // Поза в этом сообщении должна быть указана в системе координат, заданной header.frame_id.
 	// set the position
-	odomWheelCorrect_msg.pose.pose.position.x = odomWheelCorrect.pose.x;
-	odomWheelCorrect_msg.pose.pose.position.y = odomWheelCorrect.pose.y;
-	geometry_msgs::Quaternion quat = tf::createQuaternionMsgFromYaw(-odomWheelCorrect.pose.th);
-	odomWheelCorrect_msg.pose.pose.orientation = quat;
+	odomUnited_msg.pose.pose.position.x = odomUnited.pose.x;
+	odomUnited_msg.pose.pose.position.y = odomUnited.pose.y;
+	geometry_msgs::Quaternion quat = tf::createQuaternionMsgFromYaw(-odomUnited.pose.th);
+	odomUnited_msg.pose.pose.orientation = quat;
 	// set the velocity
-	odomWheelCorrect_msg.child_frame_id = "odom"; // Поворот в этом сообщении должен быть указан в системе координат, заданной child_frame_id
-	odomWheelCorrect_msg.twist.twist.linear.x = odomWheelCorrect.twist.vx;
-	odomWheelCorrect_msg.twist.twist.linear.y = odomWheelCorrect.twist.vy;
-	odomWheelCorrect_msg.twist.twist.angular.z = odomWheelCorrect.twist.vth;
-    publish_OdomEncTrue.publish(odomWheelCorrect_msg); // Публикация полученных данных
+	odomUnited_msg.child_frame_id = "odom"; // Поворот в этом сообщении должен быть указан в системе координат, заданной child_frame_id
+	odomUnited_msg.twist.twist.linear.x = odomUnited.twist.vx;
+	odomUnited_msg.twist.twist.linear.y = odomUnited.twist.vy;
+	odomUnited_msg.twist.twist.angular.z = odomUnited.twist.vth;
+	publish_OdomUnited.publish(odomUnited_msg); // Публикация полученных данных
 }
-void CTopic::visualEncoderMpu()
+void CTopic::publishOdomMpu()
 {
+	transformMpu(odomMpu.pose);
 	odomMpu_msg.header.stamp = ros::Time::now(); // Время ROS
 	odomMpu_msg.header.frame_id = "odom";		 // Поза в этом сообщении должна быть указана в системе координат, заданной header.frame_id.
 	// set the position
@@ -155,7 +173,7 @@ void CTopic::visualEncoderMpu()
 	odomMpu_msg.twist.twist.linear.x = odomMpu.twist.vx;
 	odomMpu_msg.twist.twist.linear.y = odomMpu.twist.vy;
 	odomMpu_msg.twist.twist.angular.z = odomMpu.twist.vth;
-	publish_OdomMpu.publish(odomMpu_msg);         // Публикация полученных данных
+	publish_OdomMpu.publish(odomMpu_msg); // Публикация полученных данных
 }
 
 // Сбор данных по результатам обмена по шине SPI по обоим контроллерам
@@ -174,7 +192,8 @@ void CTopic::processingSPI()
 
 	spi_msg.DataDriver.all = data_driver_all; // Собираем для публикации данные о результатах обмена из Data о том как он принял по SPI данные отправленные Modul
 	spi_msg.DataDriver.bed = data_driver_bed;
-    publish_Spi.publish(spi_msg); // Публикация собранных данных по обмену по шине SPI
+
+	publish_Spi.publish(spi_msg); // Публикация собранных данных по обмену по шине SPI
 }
 
 // Копирование полученных данных в структуру для публикации в топике
@@ -184,7 +203,7 @@ void CTopic::processing_Driver2Data()
 	Driver2Data_msg.header.stamp = ros::Time::now();
 
 	Driver2Data_msg.id = Driver2Data.id;
-	
+
 	Driver2Data_msg.motor.status = Driver2Data.motor.status;
 	Driver2Data_msg.motor.rpsEncodL = Driver2Data.motor.rpsEncodL;
 	Driver2Data_msg.motor.rpsEncodL = Driver2Data.motor.rpsEncodR;
@@ -199,9 +218,11 @@ void CTopic::processing_Driver2Data()
 
 	Driver2Data_msg.laserR.status = Driver2Data.laserR.status;
 	Driver2Data_msg.laserR.distance = Driver2Data.laserR.distance;
-	
+
 	Driver2Data_msg.uzi.status = Driver2Data.uzi.status;
 	Driver2Data_msg.uzi.distance = Driver2Data.uzi.distance;
+
+	publish_Driver2Data.publish(Driver2Data_msg); // Публикация полученных данных
 }
 
 // Обработка полученных данных и копирование их для публикации в топике
@@ -226,6 +247,5 @@ void CTopic::dataProcessing_Modul()
 		modul_micric_msg.micric[i] = Modul2Data.micric[i]; // Состояние концевиков
 	}
 }
-
 
 #endif

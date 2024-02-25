@@ -2,8 +2,8 @@
 #define DATA2DRIVER_H
 
 //**************************** ОБЬЯВЛЕНИЕ ПРОЦЕДУР **********************************
-void collect_Data2Driver();																						 // Данные для передачи с Data на Driver // Копирование данных из сообщения в топике в структуру для передачи по SPI
-void processing_Driver2Data();																					 // Копирование полученных данных в структуру для публикации в топике
+void collect_Data2Driver();																				   // Данные для передачи с Data на Driver // Копирование данных из сообщения в топике в структуру для передачи по SPI
+void processing_Driver2Data();																			   // Копирование полученных данных в структуру для публикации в топике
 bool sendData2Driver(int channel_, Struct_Driver2Data &structura_receive_, SData2Driver &structura_send_); // Указываем на каком пине устройство и с какого регистра нужно прочитать данные // Основная функция приема-передачи двух структур на slave контроллер по протоколу SPI
 
 //***********************************************************************************
@@ -20,7 +20,7 @@ bool sendData2Driver(int channel_, Struct_Driver2Data &structura_receive_, SData
 
 	// Заполняем буфер данными структуры для передачи
 	SData2Driver *buffer_send = (SData2Driver *)buffer; // Создаем переменную в которую записываем адрес буфера в нужном формате
-	*buffer_send = structura_send_;									// Переписываем по этому адресу данные в буфер
+	*buffer_send = structura_send_;						// Переписываем по этому адресу данные в буфер
 
 	rez = wiringPiSPIDataRW(channel_, buffer, sizeof(buffer)); // Передаем и одновременно получаем данные
 
@@ -44,10 +44,12 @@ bool sendData2Driver(int channel_, Struct_Driver2Data &structura_receive_, SData
 // Копирование данных из сообщения в топике в структуру для использования
 void collect_Data2Driver()
 {
-	g_poseControl.x = msg_ControlDriver.pose.x; 
-	g_poseControl.y = msg_ControlDriver.pose.y;
-	g_poseControl.th = msg_ControlDriver.pose.th;
-	g_poseControl.flag = msg_ControlDriver.pose.flag;
+	if (msg_ControlDriver.pose.flag == true) // Если флаг что новые корректирующие данные пришли то меняем данные
+	{
+		odomUnited.pose.x = msg_ControlDriver.pose.x;
+		odomUnited.pose.y = msg_ControlDriver.pose.y;
+		odomUnited.pose.th = msg_ControlDriver.pose.th;
+	}
 
 	g_dreamSpeed.speedL = msg_ControlDriver.control.speedL;
 	g_dreamSpeed.speedR = msg_ControlDriver.control.speedR;
@@ -56,9 +58,5 @@ void collect_Data2Driver()
 
 	Data2Driver.led.num_program = msg_ControlDriver.led.num_program;
 }
-
-
-
-
 
 #endif

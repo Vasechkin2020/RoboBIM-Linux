@@ -10,12 +10,19 @@ void init_SPI(int channel_, int speed_);					   // Инициализация к
 void callback_ControlDriver(const data::SControlDriver &msg);  // Обратный вызов при опросе топика Head2Data
 void callback_ControlModul(const data::SControlModul &msg);	   // Обратный вызов при опросе топика Angle
 void callback_Joy(sensor_msgs::Joy msg);					   // Функция обраьтного вызова по подпичке на топик джойстика nh.subscribe("joy", 16, callback_Joy);
-void calculateOdometryFromEncoder(SControl control_);		   // Обработка пришедших данных.Обсчитываем одометрию по энкодеру
-void calculateOdometryFromMpu(SMpu mpu_);					   // Обработка пришедших данных.Обсчитываем одометрию по энкодеру
-void controlAcc(SControl &control_, SControl g_dreamSpeed);	   // Функция контроля ускорения
-float autoOffsetX(float data_);								   // Функция считаем скользящее среднее из 128 элементов как офсет значений при стоянии на месте
-float autoOffsetY(float data_);								   // Функция считаем скользящее среднее из 128 элементов как офсет значений при стоянии на месте
-void calcNewOdom(SOdom &odom_, STwistDt data_);				   // На вход подаются старая одометрия и новые угловая угловая скорость. Возвращается новая позиция по данным угловым скоростям // Обработка пришедших данных.Обсчитываем одометрию по энкодеру
+
+STwistDt calcTwistFromWheel(SControl control_);						// Обработка пришедших данных.Обсчитываем одометрию по энкодеру
+STwistDt calcTwistFromMpu(SMpu mpu_, float koef_);					// Обработка пришедших данных.Обсчитываем угловые скорости по энкодеру
+STwistDt calcTwistUnited(STwistDt wheelTwist_, STwistDt mpuTwist_); // Функция комплементации угловых скоростей полученных с колес и с датчика MPU и угла поворота
+
+void calcNewOdom(SOdom &odom_, STwistDt data_); // На вход подаются старая одометрия и новые угловая угловая скорость. Возвращается новая позиция по данным угловым скоростям // Обработка пришедших данных.Обсчитываем одометрию по энкодеру
+
+// void calculateOdometryFromMpu(SMpu mpu_);					   // Обработка пришедших данных.Обсчитываем одометрию по энкодеру
+void controlAcc(SControl &control_, SControl g_dreamSpeed); // Функция контроля ускорения
+float autoOffsetX(float data_);								// Функция считаем скользящее среднее из 128 элементов как офсет значений при стоянии на месте
+float autoOffsetY(float data_);								// Функция считаем скользящее среднее из 128 элементов как офсет значений при стоянии на месте
+
+float filtrComplem(float koef_, float oldData_, float newData_); // функция фильтрации, берем старое значение с некоторым весом
 // **********************************************************************************
 
 // Функция возращает максимальный размер из 2 структур
@@ -93,57 +100,48 @@ void initArray()
 float autoOffsetX(float data_)
 {
 	static uint16_t i = 0;
+	static uint16_t k = 0;
 	static float sum = 0;
-	uint16_t j = 0;
-	uint16_t k = 0;
-	k = i + 1;
-	if (k > 128)
-		(k = 128);
-	j = i % 128;
-	sum = sum - linearOffsetX[j]; // Убираем из среднего прежнее значение
-	linearOffsetX[j] = data_;	  // Меняем значение в массиве
-	sum = sum + linearOffsetX[j]; // Добавляем в среднее новое значение
+	if (k < 128)
+		k++;
+	else
+		sum = sum - linearOffsetX[i]; // Убираем из среднего прежнее значение
+	linearOffsetX[i] = data_;		  // Меняем значение в массиве
+	sum = sum + linearOffsetX[i];	  // Добавляем в среднее новое значение
 	i++;
+	if (i >= 128)
+		i = 0;
 	// printf(" sumX= % .3f ", sum);
 	return sum / k;
 }
 float autoOffsetY(float data_)
 {
-	static uint64_t i = 0;
+	static uint16_t i = 0;
+	static uint16_t k = 0;
 	static float sum = 0;
-	uint16_t j = 0;
-	uint16_t k = 0;
-	k = i + 1;
-	if (k > 128)
-		(k = 128);
-	j = i % 128;
-	sum = sum - linearOffsetY[j]; // Убираем из среднего прежнее значение
-	linearOffsetY[j] = data_;	  // Меняем значение в массиве
-	sum = sum + linearOffsetY[j]; // Добавляем в среднее новое значение
+	if (k < 128)
+		k++;
+	else
+		sum = sum - linearOffsetY[i]; // Убираем из среднего прежнее значение
+	linearOffsetY[i] = data_;		  // Меняем значение в массиве
+	sum = sum + linearOffsetY[i];	  // Добавляем в среднее новое значение
 	i++;
-	// printf(" sumY= % .3f ", sum);
+	if (i >= 128)
+		i = 0;
+	// printf(" sumX= % .3f ", sum);
 	return sum / k;
 }
 
-float _err_measure = 0.01; // примерный шум измерений
-float _q = 0.1;			   // скорость изменения значений 0.001-1, варьировать самому
-
-// функция фильтрации
-float simpleKalman(float newVal)
+// функция фильтрации, берем старое значение с некоторым весом
+float filtrComplem(float koef_, float oldData_, float newData_)
 {
-	float _kalman_gain, _current_estimate;
-	static float _err_estimate = _err_measure;
-	static float _last_estimate;
-	_kalman_gain = (float)_err_estimate / (_err_estimate + _err_measure);
-	_current_estimate = _last_estimate + (float)_kalman_gain * (newVal - _last_estimate);
-	_err_estimate = (1.0 - _kalman_gain) * _err_estimate + abs(_last_estimate - _current_estimate) * _q;
-	_last_estimate = _current_estimate;
-	return _current_estimate;
+	return (1 - koef_) * oldData_ + (koef_ * newData_);
 }
 
 // Обработка пришедших данных.Обсчитываем одометрию по энкодеру
-void calculateOdometryFromEncoder(SControl control_)
+STwistDt calcTwistFromWheel(SControl control_)
 {
+	STwistDt ret;
 	double radius = 0;
 	double theta = 0;
 	double lenArc = 0;
@@ -215,13 +213,18 @@ void calculateOdometryFromEncoder(SControl control_)
 		twist.vx = speed * sin(theta * dt); // Проекция моей скорости на ось Y получаем линейную скорость по оси за секунуду
 		twist.vy = speed * cos(theta * dt); // Проекция моей скорости на ось X получаем линейную скорость по оси за секунуду
 		twist.vth = theta;					// Угловая скорость в радианах.
-		printf("Encoder % .4f vy= % .4f | ", twist.vx, twist.vy);
+		printf("% 6lu |Wheel % .4f vy= % .4f", millis(), twist.vx, twist.vy);
 		// printf("vy= % .4f", twist.vy);
 		// printf("speed= %.4f twist.vth = %.4f / sin(twist.vth )= %.4f cos(twist.vth ) = %.4f / ", speed, RAD2DEG(twist.vth), sin(twist.vth ), cos(twist.vth ));
 		// printf("speed= %.4f twist.vth = %.8f / ", speed, RAD2DEG(twist.vth));
 		// ROS_INFO("SPEED= %.3f Linear speed twist.vx = %.3f twist.vy = %.3f Angular speed twist.vth = %.3f for sec.", speed, twist.vx, twist.vy, RAD2DEG(twist.vth));
 		// //==============================================================================================================================
-
+		ret.twist = twist;
+		ret.dt = dt;
+	}
+	return ret;
+}
+/*
 		double vx = twist.vx * dt; // Находим проекции скорсти на оси за интревал времени это коокрдинаты нашей точки в локальной системе координат
 		double vy = twist.vy * dt;
 		// vx = 0.00291409;
@@ -260,9 +263,10 @@ void calculateOdometryFromEncoder(SControl control_)
 		odomWheel.twist = twist;
 	}
 }
+*/
 
 // Обработка пришедших данных.Обсчитываем угловые скорости по энкодеру
-STwistDt calcTwistFromMpu(SMpu mpu_)
+STwistDt calcTwistFromMpu(SMpu mpu_, float koef_)
 {
 	static STwistDt ret;
 	static unsigned long time = micros();		 // Время предыдущего расчета// Функция из WiringPi.// Замеряем интервалы по времени между запросами данных
@@ -270,31 +274,35 @@ STwistDt calcTwistFromMpu(SMpu mpu_)
 	double dt = ((time_now - time) / 1000000.0); // Интервал расчета переводим сразу в секунды Находим интревал между текущим и предыдущим расчетом в секундах
 	time = time_now;
 	static double predAngleZ = 0;
-	float offsetX = 0;
-	float offsetY = 0;
-	/* Примечание. Сигнал линейного ускорения обычно не может быть интегрирован для восстановления скорости или дважды интегрирован для восстановления положения.
-	Ошибка обычно становится больше сигнала менее чем за 1 секунду, если для компенсации этой ошибки интегрирования не используются другие источники датчиков.*/
+	static float offsetX = 0;
+	static float offsetY = 0;
+	static float complX = 0; // Значение после комплементарного фильтра
+	static float complY = 0; // Значение после комплементарного фильтра
 
-	printf("Src % .3f % .3f | % .3f | ", mpu_.linear.x, mpu_.linear.y, dt);
+	printf(" |Src % .3f % .3f | % .3f", mpu_.linear.x, mpu_.linear.y, dt);
 
 	if (Data2Driver.control.speedL == 0 && Data2Driver.control.speedR == 0) // Если стоим на месте, то считаем офсет. Как только тронемся, его и будем применять до следующей остановки
 	{
 		offsetX = autoOffsetX(mpu_.linear.x);
 		offsetY = autoOffsetY(mpu_.linear.y);
-		printf("offset % .4f % .4f | ", offsetX, offsetY);
 	}
+	// printf(" |offset % .4f % .4f | ", offsetX, offsetY);
+	printf(" |offset % .4f | ", offsetY);
 
 	mpu_.linear.x = mpu_.linear.x - offsetX;
 	mpu_.linear.y = mpu_.linear.y - offsetY;
 
-	printf("Average  % .3f % .3f | ", mpu_.linear.x, mpu_.linear.y);
+	// printf(" |Average  % .3f % .3f | ", mpu_.linear.x, mpu_.linear.y);
+	printf(" |Average % .3f | ", mpu_.linear.y);
 
-	mpu_.linear.x = simpleKalman(mpu_.linear.x) * (RATE / 5);
-	mpu_.linear.y = simpleKalman(mpu_.linear.y) * (RATE / 5);
-	printf("Kalman  % .3f % .3f | ", mpu_.linear.x, mpu_.linear.y);
+	complX = filtrComplem(koef_, complX, mpu_.linear.x);
+	complY = filtrComplem(koef_, complY, mpu_.linear.y);
+	printf(" |Compl % .3f | ", complY);
 
-	ret.twist.vx += mpu_.linear.x * dt; // Линейное ускорение по оси метры за секунуду умножаем на интервал, получаем ускорение за интервал и суммируем в скорость линейную по оси
-	ret.twist.vy += mpu_.linear.y * dt; // Линейное ускорение по оси метры за секунуду
+	/* Примечание. Сигнал линейного ускорения обычно не может быть интегрирован для восстановления скорости или дважды интегрирован для восстановления положения.
+	Ошибка обычно становится больше сигнала менее чем за 1 секунду, если для компенсации этой ошибки интегрирования не используются другие источники датчиков.*/
+	ret.twist.vx += complX * dt; // Линейное ускорение по оси метры за секунуду умножаем на интервал, получаем ускорение за интервал и суммируем в скорость линейную по оси
+	ret.twist.vy += complY * dt; // Линейное ускорение по оси метры за секунуду
 
 	double delta_th = (mpu_.angleEuler.z - predAngleZ); // считаем величину изменения угла, тут она в градусах
 	predAngleZ = mpu_.angleEuler.z;
@@ -306,7 +314,22 @@ STwistDt calcTwistFromMpu(SMpu mpu_)
 	ret.dt = dt;
 
 	// printf(" ||| LinearSpeed vx= % .3f vy=  % .3f vth= % .6f | ", ret.twist.vx, ret.twist.vy, ret.twist.vth);
-	printf("sum= % .3f % .3f % .3f | \n", ret.twist.vx, ret.twist.vy, ret.twist.vth);
+	// printf(" |Vel= % .3f % .3f % .3f\n", ret.twist.vx, ret.twist.vy, ret.twist.vth);
+	printf(" |Vel= % .3f\n", ret.twist.vy);
+	return ret;
+}
+// Функция комплементации угловых скоростей полученных с колес и с датчика MPU и угла поворота
+STwistDt calcTwistUnited(STwistDt wheelTwist_, STwistDt mpuTwist_)
+{
+	STwistDt ret;
+	float koef = 0.5;	// Коефициант по умолчанию.Пополам.
+	float koefTh = 0.5; // Коефициант по умолчанию.Пополам.
+	ret.dt = wheelTwist_.twist.vth * 0.5 + mpuTwist_.twist.vth * 0.5;
+
+	ret.twist.vx = wheelTwist_.twist.vx * (1 - koef) + mpuTwist_.twist.vx * koef;
+	ret.twist.vy = wheelTwist_.twist.vy * (1 - koef) + mpuTwist_.twist.vy * koef;
+	ret.twist.vy = wheelTwist_.twist.vth * (1 - koefTh) + mpuTwist_.twist.vth * koefTh;
+
 	return ret;
 }
 // Обработка пришедших данных.Обсчитываем одометрию по энкодеру
@@ -346,7 +369,7 @@ void controlAcc(SControl &control_, SControl g_dreamSpeed) // Функция к�
 	double dt = ((time_now - time) / 1000000.0); // Интервал расчета переводим сразу в секунды Находим интревал между текущим и предыдущим расчетом в секундах
 	time = time_now;
 	float accel = ACCELERATION * dt; // Ускорение
-	// printf("do % f % f \n", Data2Driver.control.speedL, Data2Driver.control.speedR);
+	//printf("g_dreamSpeed % .3f % .3f ", g_dreamSpeed.speedL, g_dreamSpeed.speedR);
 	if (g_dreamSpeed.speedL != factControl.speedL) // Если скорость с которой хотим крутиться не равна тому что была ранее установлена, то меняем с учетом ускорения
 	{
 		// printf("g_dreamSpeed % f : % f : acc= % f | ", g_dreamSpeed.speedL, g_dreamSpeed.speedR, accel);
@@ -359,8 +382,10 @@ void controlAcc(SControl &control_, SControl g_dreamSpeed) // Функция к�
 		if (factControl.speedL > g_dreamSpeed.speedL) // Если меньше чем надо то прибавим оборотов
 		{
 			factControl.speedL = factControl.speedL - accel; // К старой скорости прибавляем ускорение за этот промежуток
-			if (factControl.speedL < g_dreamSpeed.speedL)	 // Если стала совсем мальнькая то делаем 0
+			if (factControl.speedL < g_dreamSpeed.speedL)	 // Если стала меньше нужной то далаем какая должна быть
 				factControl.speedL = g_dreamSpeed.speedL;
+			if (factControl.speedL < 0.01) // Если стала совсем мальнькая то делаем 0
+				factControl.speedL = 0;
 		}
 	}
 	if (g_dreamSpeed.speedR != factControl.speedR) // Если скорость с которой хотим крутиться не равна тому что была ранее установлена, то меняем с учетом ускорения
@@ -374,12 +399,16 @@ void controlAcc(SControl &control_, SControl g_dreamSpeed) // Функция к�
 		if (factControl.speedR > g_dreamSpeed.speedR) // Если меньше чем надо то прибавим оборотов
 		{
 			factControl.speedR = factControl.speedR - accel; // К старой скорости прибавляем ускорение за этот промежуток
-			if (factControl.speedR < g_dreamSpeed.speedR)	 // Если стала совсем мальнькая то делаем 0
+			if (factControl.speedR < g_dreamSpeed.speedR)	 // Если стала меньше нужной то далаем какая должна быть
 				factControl.speedR = g_dreamSpeed.speedR;
+			if (factControl.speedR < 0.01) // Если стала совсем мальнькая то делаем 0
+				factControl.speedR = 0;
 		}
 	}
 	// printf("factControl % f : % f : acc= % f \n ", factControl.speedL, factControl.speedR);
+	//printf(" |factControl % .3f % .3f \n", factControl.speedL, factControl.speedR);
 	control_ = factControl; // Передаем для дальнейшего испонения
+	
 }
 /*   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!! ПРИМЕР ОТ ВАДИМА КАК НУЖНО СЧИТАТЬ одометрию!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	#define  R2G(val) (val*57.29577951308233)

@@ -21,11 +21,11 @@ int main(int argc, char **argv)
     // double dt = (current_time - last_time).toSec();
     ros::Rate r(RATE);
 
-    ros::Subscriber sub_ControlDriver = nh.subscribe("pbData/ControlDriver", 16, callback_ControlDriver,ros::TransportHints().tcpNoDelay(true)); // Это мы подписываемся на то что публигует Main для Data
-    ros::Subscriber sub_ControlModul = nh.subscribe("pbData/ControlModul", 16, callback_ControlModul,ros::TransportHints().tcpNoDelay(true));    // Это мы подписываемся на то что публигует Main для Modul
-    ros::Subscriber subscriber_Joy = nh.subscribe("joy", 16, callback_Joy);                               // Это мы подписываемся на то что публикует нода джойстика
+    ros::Subscriber sub_ControlDriver = nh.subscribe("pbData/ControlDriver", 16, callback_ControlDriver, ros::TransportHints().tcpNoDelay(true)); // Это мы подписываемся на то что публигует Main для Data
+    ros::Subscriber sub_ControlModul = nh.subscribe("pbData/ControlModul", 16, callback_ControlModul, ros::TransportHints().tcpNoDelay(true));    // Это мы подписываемся на то что публигует Main для Modul
+    ros::Subscriber subscriber_Joy = nh.subscribe("joy", 16, callback_Joy);                                                                       // Это мы подписываемся на то что публикует нода джойстика
 
-    //sub_low_state = _nh.subscribe("/low_state", 1, &IOInterface::_lowStateCallback, this, ros::TransportHints().tcpNoDelay(true)); // От Максима пример
+    // sub_low_state = _nh.subscribe("/low_state", 1, &IOInterface::_lowStateCallback, this, ros::TransportHints().tcpNoDelay(true)); // От Максима пример
 
     CJoy joy(0.5, 0.5); // Обьявляем экземпляр класса в нем вся обработка джойстика
     CTopic topic;       // Экземпляр класса для всех публикуемых топиков
@@ -50,6 +50,7 @@ int main(int argc, char **argv)
         digitalWrite(PIN_LED_BLUE, led_status);
 
         ros::spinOnce();                                                  // Обновление в данных в ядре ROS, по этой команде происходит вызов функции обратного вызова
+        topic.transform();                                                // Трансформация odom to map
                                                                           //-----------------------------------------------------------------------------------------------------------------------------------
         Collect_Data2Modul();                                             // Собираем рабочие данные в структуру для передачи считывая из топиков
         rez_data = sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); //
@@ -62,32 +63,22 @@ int main(int argc, char **argv)
             // publish_ModulLidar.publish(modul_lidar_msg);   // Публикация полученных данных
             // publish_ModulMicric.publish(modul_micric_msg); // Публикация полученных данных
         }
-        if (!rez_data) // Если пришли плохие данные то выводим ошибку
-        {
-            // ROS_WARN("%s Flag_bedData chek_sum BED Modul", NN);
-        }
         //-----------------------------------------------------------------------------------------------------------------------------------
         if (flag_msgControlDriver) // Если пришло сообщение в топике и сработал колбек
         {
             flag_msgControlDriver = false;
             collect_Data2Driver(); // Обрабатываем пришедшие данные и пишем в глобальные перемнные
-            if (g_poseControl.flag == true) // Если флаг что новые корректирующие данные пришли то меняем данные
-            {
-                odomWheelCorrect.pose.x = g_poseControl.x;
-                odomWheelCorrect.pose.y = g_poseControl.y;
-                odomWheelCorrect.pose.th = g_poseControl.th;
-            }
         }
 
         if (flag_msgJoy) // Если пришло новое сообшение и сработал колбек то разбираем что там пришло
         {
             flag_msgJoy = false;     // Флаг сбратываем .Приоритет джойстику
             joy.parsingJoy(msg_joy); // Разбираем и формируем команды из полученного сообщения
-            // pub_JoyData.publish(joy._joy2Head); // Публикация данных разобранных из джойстика
-            joy.transform(); // Преобразование кнопок джойстика в реальные команды
+            joy.transform();         // Преобразование кнопок джойстика в реальные команды
             g_dreamSpeed.speedL = joy._ControlDriver.control.speedL;
             g_dreamSpeed.speedR = joy._ControlDriver.control.speedR;
-            //topic.publicationControlDriver(joy._ControlDriver); // Публикация данных по управлению Driver для отладки
+            // pub_JoyData.publish(joy._joy2Head); // Публикация данных разобранных из джойстика
+            // topic.publicationControlDriver(joy._ControlDriver); // Публикация данных по управлению Driver (для отладки)
         }
 
         controlAcc(Data2Driver.control, g_dreamSpeed); // Функция контроля ускорения На вход скорость с которой хотим ехать. После будет скорость с которой поедем фактически с учетом возможностей по ускорению
@@ -100,26 +91,25 @@ int main(int argc, char **argv)
         data_driver_all++;
         if (rez_data) // Если пришли хорошие данные то обрабатываем их и публикуем данные в ROS
         {
-            
-            calculateOdometryFromEncoder(Data2Driver.control); // Обработка пришедших данных.Обсчитываем одометрию по энкодеру
-            topic.visualOdomWheel(); // Публикация одометрии по моторам
-            topic.transformEncod(odomWheel.pose); // Публиация системы трансформации
+            topic.processing_Driver2Data(); // Обработанные данные записываем их в структуру для публикации в топике и публикуем
 
-            mpuTwistDt = calcTwistFromMpu(Driver2Data.bno055);// асчет и оформление в структуру ускорений по осям (линейных скоростей) и  разделить получение угловых скоростей и расчет сновой точки на основе этих скоростей
-            calcNewOdom(odomMpu, mpuTwistDt); // Обработка пришедших данных.Обсчитываем одометрию по датчику MPU BNO055
-            // mpu2 = calcOdom(odomCompl, mpuTwistDt); // Обработка пришедших данных.Обсчитываем одометрию по датчику MPU BNO055
-            // тут написать функцию комплементации данных одометрии
+            wheelTwistDt = calcTwistFromWheel(Data2Driver.control); // Обработка пришедших данных. По ним считаем линейные скорости по осям и угловую по углу. Запоминаем dt
+            calcNewOdom(odomWheel, wheelTwistDt);                   // На основе линейных скоростей считаем новую позицию и угол
+            topic.publishOdomWheel();                               // Публикация одометрии по моторам которая получается от начальной точки
 
-            topic.visualEncoderMpu();
-            topic.transformMpu(odomMpu.pose);
+            mpuTwistDt = calcTwistFromMpu(Driver2Data.bno055, 0.2); // асчет и оформление в структуру ускорений по осям (линейных скоростей) и  разделить получение угловых скоростей и расчет сновой точки на основе этих скоростей
+            calcNewOdom(odomMpu, mpuTwistDt);                       // Обработка пришедших данных.Обсчитываем одометрию по датчику MPU BNO055
+            topic.publishOdomMpu();
 
-            topic.processing_Driver2Data(); // Обработанные данные записываем их в структуру для публикации в топике
-            // publish_Driver2Data.publish(Driver2Data_msg); // Публикация полученных данных
+            // тут написать функцию комплементации данных угловых скоростей с разными условиями когда и в каком соотношении скомплементировать скорсти с двух источников
+            unitedTwistDt = calcTwistUnited(wheelTwistDt, mpuTwistDt);
+            calcNewOdom(odomUnited, unitedTwistDt); // // На основе линейных скоростей считаем новую позицию и угол
+            topic.publishOdomUnited(); // Публикация одометрии по моторам с корректировкой с верхнего уровня
         }
         //-----------------------------------------------------------------------------------------------------------------------------------
 
         topic.processingSPI(); // Сбор и публикация статистики обмена по SPI
-        topic.transform(); // Трансформация odom to map
+
         r.sleep(); // Интеллектуальная задержка на указанную частоту
     }
     return 0;
