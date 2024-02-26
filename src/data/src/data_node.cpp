@@ -87,6 +87,8 @@ int main(int argc, char **argv)
         Data2Driver.cheksum = measureCheksum(Data2Driver);                   // Пересчитываем  контрольную сумму отправляемой структуры
         rez_data = sendData2Driver(SPI_CHANNAL_1, Driver2Data, Data2Driver); ////  Отправляем данные на нижний уровень
         // ROS_INFO("id= %i speedL= %f speedR= %f cheksum = %i", Data2Driver.id, Data2Driver.control.speedL, Data2Driver.control.speedR, Data2Driver.cheksum);
+        
+        //!isnan(rez_data); // true если nan
 
         data_driver_all++;
         if (rez_data) // Если пришли хорошие данные то обрабатываем их и публикуем данные в ROS
@@ -105,6 +107,7 @@ int main(int argc, char **argv)
             unitedTwistDt = calcTwistUnited(wheelTwistDt, mpuTwistDt);
             calcNewOdom(odomUnited, unitedTwistDt); // // На основе линейных скоростей считаем новую позицию и угол
             topic.publishOdomUnited(); // Публикация одометрии по моторам с корректировкой с верхнего уровня
+            printf("\n");
         }
         //-----------------------------------------------------------------------------------------------------------------------------------
 

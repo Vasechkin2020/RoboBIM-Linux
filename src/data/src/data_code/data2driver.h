@@ -46,9 +46,13 @@ void collect_Data2Driver()
 {
 	if (msg_ControlDriver.pose.flag == true) // Если флаг что новые корректирующие данные пришли то меняем данные
 	{
-		odomUnited.pose.x = msg_ControlDriver.pose.x;
-		odomUnited.pose.y = msg_ControlDriver.pose.y;
-		odomUnited.pose.th = msg_ControlDriver.pose.th;
+		odomUnited.pose.x = 0;
+		odomUnited.pose.y = 0;
+		odomUnited.pose.th = 0;
+		// odomUnited.pose.x = msg_ControlDriver.pose.x;
+		// odomUnited.pose.y = msg_ControlDriver.pose.y;
+		// odomUnited.pose.th = msg_ControlDriver.pose.th;
+		ROS_INFO("Falg true.");
 	}
 
 	g_dreamSpeed.speedL = msg_ControlDriver.control.speedL;
