@@ -24,6 +24,7 @@
 			"random": "cpp",
 			"*.tcc": "cpp",
 			"complex": "cpp"
-		}
+		},
+		"ros.distro": "melodic"
 	}
 }

@@ -49,9 +49,10 @@ int main(int argc, char **argv)
         led_status = 1 - led_status; // Мигаем с частотой работы цикла
         digitalWrite(PIN_LED_BLUE, led_status);
 
-        ros::spinOnce();                                                  // Обновление в данных в ядре ROS, по этой команде происходит вызов функции обратного вызова
-        topic.transform();                                                // Трансформация odom to map
-                                                                          //-----------------------------------------------------------------------------------------------------------------------------------
+        ros::spinOnce();   // Обновление в данных в ядре ROS, по этой команде происходит вызов функции обратного вызова
+        topic.transform(); // Трансформация odom to map
+
+        //-----------------------------------------------------------------------------------------------------------------------------------
         Collect_Data2Modul();                                             // Собираем рабочие данные в структуру для передачи считывая из топиков
         rez_data = sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); //
         data_modul_all++;
@@ -82,13 +83,16 @@ int main(int argc, char **argv)
         }
 
         controlAcc(Data2Driver.control, g_dreamSpeed); // Функция контроля ускорения На вход скорость с которой хотим ехать. После будет скорость с которой поедем фактически с учетом возможностей по ускорению
-
+        Data2Driver.led.led[24] = 1;
+        Data2Driver.led.led[25] = 2;
+        Data2Driver.led.led[26] = 3;
+        Data2Driver.led.led[27] = 4;
         Data2Driver.id++;                                                    //= 0x1F1F1F1F; Считаем каждый раз сколько отправляем, даже если не было изменений в данных ни от джойстика ни от топика от Head
         Data2Driver.cheksum = measureCheksum(Data2Driver);                   // Пересчитываем  контрольную сумму отправляемой структуры
         rez_data = sendData2Driver(SPI_CHANNAL_1, Driver2Data, Data2Driver); ////  Отправляем данные на нижний уровень
         // ROS_INFO("id= %i speedL= %f speedR= %f cheksum = %i", Data2Driver.id, Data2Driver.control.speedL, Data2Driver.control.speedR, Data2Driver.cheksum);
-        
-        //!isnan(rez_data); // true если nan
+
+        //! isnan(rez_data); // true если nan
 
         data_driver_all++;
         if (rez_data) // Если пришли хорошие данные то обрабатываем их и публикуем данные в ROS
@@ -106,7 +110,7 @@ int main(int argc, char **argv)
             // тут написать функцию комплементации данных угловых скоростей с разными условиями когда и в каком соотношении скомплементировать скорсти с двух источников
             unitedTwistDt = calcTwistUnited(wheelTwistDt, mpuTwistDt);
             calcNewOdom(odomUnited, unitedTwistDt); // // На основе линейных скоростей считаем новую позицию и угол
-            topic.publishOdomUnited(); // Публикация одометрии по моторам с корректировкой с верхнего уровня
+            topic.publishOdomUnited();              // Публикация одометрии по моторам с корректировкой с верхнего уровня
             printf("\n");
         }
         //-----------------------------------------------------------------------------------------------------------------------------------
