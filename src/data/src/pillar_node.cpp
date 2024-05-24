@@ -13,7 +13,7 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "pillar_node");
     ros::NodeHandle nh;
     ros::NodeHandle nh_private("~");
-    ros::Publisher pub_topicPillar = nh.advertise<data::topicPillar>("pbPillar", 16);             // Это мы обьявляем для публикации всех столбов в своем сообщении
+    ros::Publisher pub_topicPillar = nh.advertise<data::topicPillar>("pbStart/Pillar", 16);             // Это мы обьявляем для публикации всех столбов в своем сообщении
     ros::Duration(1).sleep();
 
     // Имя можно с палкой или без, смотря как в лаунч файле параметры обявлены. связано с видимостью глобальной или локальной. относительным поиском переменной как сказал Максим

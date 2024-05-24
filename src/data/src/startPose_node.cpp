@@ -17,7 +17,7 @@ int main(int argc, char **argv)
 
     ros::NodeHandle nh;
     ros::NodeHandle nh_private("~");
-    ros::Publisher pub_StartPose2D = nh.advertise<geometry_msgs::Pose2D>("pbStartPose2D", 16);             // Это мы обьявляем структуру для публикации которую сформировали по данным с джойстика
+    ros::Publisher pub_StartPose2D = nh.advertise<geometry_msgs::Pose2D>("pbStart/Pose2D", 16);             // Это мы обьявляем структуру для публикации которую сформировали по данным с джойстика
     ros::Duration(1).sleep();
 
     // Имя можно с палкой или без, смотря как в лаунч файле параметры обявлены. связано с видимостью глобальной или локальной. относительным поиском переменной как сказал Максим

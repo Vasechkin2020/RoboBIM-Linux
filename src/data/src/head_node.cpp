@@ -27,8 +27,8 @@ int main(int argc, char **argv)
 
     //----------------------------- ПОДПИСКИ НА ТОПИКИ -------НЕ УБИРАЮ В КЛАСС ТАК КАК НУЖНЫ ГЛОБАЛЬНЫЕ КОЛБЕКИ И ПРОЧАЯ ХЕРНЯ --------
     ros::Subscriber subscriber_Lidar = nh.subscribe<sensor_msgs::LaserScan>("/scan", 1000, callback_Lidar);
-    ros::Subscriber subscriber_Pillar = nh.subscribe<data::topicPillar>("pbPillar", 1000, callback_Pillar);
-    ros::Subscriber subscriber_StartPose2D = nh.subscribe<geometry_msgs::Pose2D>("pbStartPose2D", 1000, callback_StartPose2D);
+    ros::Subscriber subscriber_Pillar = nh.subscribe<data::topicPillar>("pbStart/Pillar", 1000, callback_Pillar);
+    ros::Subscriber subscriber_StartPose2D = nh.subscribe<geometry_msgs::Pose2D>("pbStart/Pose2D", 1000, callback_StartPose2D);
     ros::Subscriber subscriber_Driver = nh.subscribe<data::SDriver2Data>("pbData/Driver", 1000, callback_Driver);
     //---------------------------------------------------------------------------------------------------------------------------
     CTopic topic; // Экземпляр класса для всех публикуемых топиков
