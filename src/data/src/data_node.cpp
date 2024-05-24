@@ -21,8 +21,8 @@ int main(int argc, char **argv)
     // double dt = (current_time - last_time).toSec();
     ros::Rate r(RATE);
 
-    ros::Subscriber sub_ControlDriver = nh.subscribe("pbData/ControlDriver", 16, callback_ControlDriver, ros::TransportHints().tcpNoDelay(true)); // Это мы подписываемся на то что публигует Main для Data
-    ros::Subscriber sub_ControlModul = nh.subscribe("pbData/ControlModul", 16, callback_ControlModul, ros::TransportHints().tcpNoDelay(true));    // Это мы подписываемся на то что публигует Main для Modul
+    ros::Subscriber sub_ControlDriver = nh.subscribe("pbMain/ControlDriver", 16, callback_ControlDriver, ros::TransportHints().tcpNoDelay(true)); // Это мы подписываемся на то что публигует Main для Data
+    ros::Subscriber sub_ControlModul = nh.subscribe("pbMain/ControlModul", 16, callback_ControlModul, ros::TransportHints().tcpNoDelay(true));    // Это мы подписываемся на то что публигует Main для Modul
     ros::Subscriber subscriber_Joy = nh.subscribe("joy", 16, callback_Joy);                                                                       // Это мы подписываемся на то что публикует нода джойстика
 
     // sub_low_state = _nh.subscribe("/low_state", 1, &IOInterface::_lowStateCallback, this, ros::TransportHints().tcpNoDelay(true)); // От Максима пример
@@ -58,11 +58,8 @@ int main(int argc, char **argv)
         data_modul_all++;
         if (rez_data) // Если пришли хорошие данные то обрабатываем их и публикуем данные в ROS
         {
-            topic.dataProcessing_Modul(); // Обрабатываем данные
-                                          // СДЕЛАТЬ СКОРОСТЬ ПУБЛИКАЦИИ ЕСЛИ БУДЕТ 100Герц то нафига так часто визуализацию публиковать
-            // publish_ModulMotor.publish(modul_motor_msg);   // Публикация полученных данных
-            // publish_ModulLidar.publish(modul_lidar_msg);   // Публикация полученных данных
-            // publish_ModulMicric.publish(modul_micric_msg); // Публикация полученных данных
+             // СДЕЛАТЬ СКОРОСТЬ ПУБЛИКАЦИИ ЕСЛИ БУДЕТ 100Герц то нафига так часто визуализацию публиковать
+            topic.processing_Modul2Data(); // Обрабатываем данные
         }
         //-----------------------------------------------------------------------------------------------------------------------------------
         if (flag_msgControlDriver) // Если пришло сообщение в топике и сработал колбек

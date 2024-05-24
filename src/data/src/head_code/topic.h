@@ -50,25 +50,25 @@ private:
     // ros::Publisher pub_encoderOdom = _nh.advertise<nav_msgs::Odometry>("pbinfo/encoderOdom", 16);
     // ros::Publisher pub_mpuOdom = _nh.advertise<nav_msgs::Odometry>("pbinfo/mpuOdom", 16);
 
-    ros::Publisher pub_PillarAll = _nh.advertise<data::PillarOut>("pbPillarAll", 16);              // Это мы публикуем итоговую информацию по столбам
-    ros::Publisher pub_topicPillar0 = _nh.advertise<geometry_msgs::PointStamped>("pbPillar0", 16); // Для публикации конкретного столба
-    ros::Publisher pub_topicPillar1 = _nh.advertise<geometry_msgs::PointStamped>("pbPillar1", 16); // Для публикации конкретного столба
-    ros::Publisher pub_topicPillar2 = _nh.advertise<geometry_msgs::PointStamped>("pbPillar2", 16); // Для публикации конкретного столба
-    ros::Publisher pub_topicPillar3 = _nh.advertise<geometry_msgs::PointStamped>("pbPillar3", 16); // Для публикации конкретного столба
+    ros::Publisher pub_PillarAll = _nh.advertise<data::PillarOut>("pbMain/PillarAll", 16);              // Это мы публикуем итоговую информацию по столбам
+    ros::Publisher pub_topicPillar0 = _nh.advertise<geometry_msgs::PointStamped>("pbMain/Pillar0", 16); // Для публикации конкретного столба
+    ros::Publisher pub_topicPillar1 = _nh.advertise<geometry_msgs::PointStamped>("pbMain/Pillar1", 16); // Для публикации конкретного столба
+    ros::Publisher pub_topicPillar2 = _nh.advertise<geometry_msgs::PointStamped>("pbMain/Pillar2", 16); // Для публикации конкретного столба
+    ros::Publisher pub_topicPillar3 = _nh.advertise<geometry_msgs::PointStamped>("pbMain/Pillar3", 16); // Для публикации конкретного столба
 
-    ros::Publisher pub_AngleLLAll = _nh.advertise<data::SAngleLaserLidar>("pbAngleLLAll", 16);     // Это мы публикуем итоговую информацию по углам лазера для нижнего уровня
-    ros::Publisher pub_poseLaser0 = _nh.advertise<geometry_msgs::PoseStamped>("pbPoseLaser0", 16); // Публикатор для позиции лазера на моторе 0
-    ros::Publisher pub_poseLaser1 = _nh.advertise<geometry_msgs::PoseStamped>("pbPoseLaser1", 16); // Публикатор для позиции лазера на моторе 1
-    ros::Publisher pub_poseLaser2 = _nh.advertise<geometry_msgs::PoseStamped>("pbPoseLaser2", 16); // Публикатор для позиции лазера на моторе 2
-    ros::Publisher pub_poseLaser3 = _nh.advertise<geometry_msgs::PoseStamped>("pbPoseLaser3", 16); // Публикатор для позиции лазера на моторе 3
+    ros::Publisher pub_AngleLLAll = _nh.advertise<data::SAngleLaserLidar>("pbMain/AngleLLAll", 16);     // Это мы публикуем итоговую информацию по углам лазера для нижнего уровня
+    ros::Publisher pub_poseLaser0 = _nh.advertise<geometry_msgs::PoseStamped>("pbMain/PoseLaser0", 16); // Публикатор для позиции лазера на моторе 0
+    ros::Publisher pub_poseLaser1 = _nh.advertise<geometry_msgs::PoseStamped>("pbMain/PoseLaser1", 16); // Публикатор для позиции лазера на моторе 1
+    ros::Publisher pub_poseLaser2 = _nh.advertise<geometry_msgs::PoseStamped>("pbMain/PoseLaser2", 16); // Публикатор для позиции лазера на моторе 2
+    ros::Publisher pub_poseLaser3 = _nh.advertise<geometry_msgs::PoseStamped>("pbMain/PoseLaser3", 16); // Публикатор для позиции лазера на моторе 3
 
-    ros::Publisher pub_StartPose = _nh.advertise<geometry_msgs::PoseStamped>("pbStartPose", 16); // Это мы обьявляем структуру для публикации которую сформировали по данным с джойстика
+    ros::Publisher pub_StartPose = _nh.advertise<geometry_msgs::PoseStamped>("pbMain/StartPose", 16); // Это мы обьявляем структуру для публикации которую сформировали по данным с джойстика
 
-    ros::Publisher pub_poseLidarAll = _nh.advertise<data::Struct_PoseLidar>("pbPoseLidarAll", 16);         // Это мы публикуем итоговую информацию по позици лидара обобщенную
-    ros::Publisher pub_PoseLidarMode1 = _nh.advertise<geometry_msgs::PoseStamped>("pbPoseLidarMode1", 16); // Это мы публикуем итоговую информацию по позици лидара расчет по mode1
-    ros::Publisher pub_PoseLidarMode2 = _nh.advertise<geometry_msgs::PoseStamped>("pbPoseLidarMode2", 16); // Это мы публикуем итоговую информацию по позици лидара расчет по mode1
+    ros::Publisher pub_poseLidarAll = _nh.advertise<data::Struct_PoseLidar>("pbMain/PoseLidarAll", 16);         // Это мы публикуем итоговую информацию по позици лидара обобщенную
+    ros::Publisher pub_PoseLidarMode1 = _nh.advertise<geometry_msgs::PoseStamped>("pbMain/PoseLidarMode1", 16); // Это мы публикуем итоговую информацию по позици лидара расчет по mode1
+    ros::Publisher pub_PoseLidarMode2 = _nh.advertise<geometry_msgs::PoseStamped>("pbMain/PoseLidarMode2", 16); // Это мы публикуем итоговую информацию по позици лидара расчет по mode1
 
-    ros::Publisher pub_ControlDriver = _nh.advertise<data::SControlDriver>("pbData/ControlDriver", 16); // Это мы публикуем структуру которую отправляем к исполнению на драйвер
+    ros::Publisher pub_ControlDriver = _nh.advertise<data::SControlDriver>("pbMain/ControlDriver", 16); // Это мы публикуем структуру которую отправляем к исполнению на драйвер
 
     ros::Time ros_time; // Время ROS
 };
@@ -81,7 +81,7 @@ CTopic::~CTopic()
 {
 }
 
-// Публикация данных разобранных из джойстика
+// Публикация данных для управления Driver
 void CTopic::publicationControlDriver(data::SControlDriver data_)
 {
     pub_ControlDriver.publish(data_);

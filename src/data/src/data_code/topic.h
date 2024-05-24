@@ -23,34 +23,29 @@ public:
 	void publishControlDriver(data::SControlDriver data_); // Публикация данных разобранных из джойстика
 
 	void processingSPI(); // Сбор данных по результатам обмена по шине SPI по обоим контроллерам
-	void processing_Driver2Data();
-	void dataProcessing_Modul(); // Обработка полученных данных и копирование их для публикации в топике
+	void processing_Driver2Data(); // Обработка полученных данных и копирование их для публикации в топике
+	void processing_Modul2Data(); // Обработка полученных данных и копирование их для публикации в топике
 
 private:
 	ros::NodeHandle _nh;
 	tf::TransformBroadcaster tfBroadcaster; // Вещание данных преобразования систем координат
 
+	//--------------------------------- ПУБЛИКАЦИЯ В ТОПИКИ -------------------------------------------------
+	data::SDriver2Data Driver2Data_msg; // Это структуры которые мы заполняем и потом публикуем
+	ros::Publisher publish_Driver2Data = _nh.advertise<data::SDriver2Data>("pbData/Driver", 16);	 // Это мы публикуем структуру которую получили с драйвера
+
+	data::Struct_Info_SPI spi_msg;		// Это структуры которые мы заполняем и потом публикуем
+	ros::Publisher publish_Spi = _nh.advertise<data::Struct_Info_SPI>("pbData/Spi", 16);			 // Это мы создаем публикатор и определяем название топика в рос
+
+	data::SModul2Data Modul2Data_msg;														  // Это структуры которые мы заполняем и потом публикуем
+	ros::Publisher publish_Modul2Data = _nh.advertise<data::SModul2Data>("pbData/Modul", 16); // Это мы создаем публикатор и определяем название топика в рос
+
 	nav_msgs::Odometry odomWheel_msg;
 	nav_msgs::Odometry odomUnited_msg;
 	nav_msgs::Odometry odomMpu_msg;
-
-	data::SDriver2Data Driver2Data_msg; // Это структуры которые мы заполняем и потом публикуем
-	data::Struct_Info_SPI spi_msg;		// Это структуры которые мы заполняем и потом публикуем
-
-	data::Struct_ModulMotor modul_motor_msg;   // Это структуры сообщений которые мы заполняем и потом публикуем
-	data::Struct_ModulLidar modul_lidar_msg;   // Это структуры которые мы заполняем и потом публикуем
-	data::Struct_ModulMicric modul_micric_msg; // Это структуры которые мы заполняем и потом публикуем
-	//--------------------------------- ПУБЛИКАЦИЯ В ТОПИКИ -------------------------------------------------
-
-	ros::Publisher publish_Driver2Data = _nh.advertise<data::SDriver2Data>("pbData/Driver", 16);			// Это мы публикуем структуру которую получили с драйвера
-	ros::Publisher publish_Spi = _nh.advertise<data::Struct_Info_SPI>("pbInfo/Spi", 16);					// Это мы создаем публикатор и определяем название топика в рос
-	ros::Publisher publish_OdomWheel = _nh.advertise<nav_msgs::Odometry>("pbOdom/Wheel", 16);				// Это мы создаем публикатор и определяем название топика в рос
-	ros::Publisher publish_OdomUnited = _nh.advertise<nav_msgs::Odometry>("pbOdom/United", 16); // Это мы создаем публикатор и определяем название топика в рос
-	ros::Publisher publish_OdomMpu = _nh.advertise<nav_msgs::Odometry>("pbOdom/Mpu", 16);					// Это мы создаем публикатор и определяем название топика в рос
-
-	ros::Publisher publish_ModulMotor = _nh.advertise<data::Struct_ModulMotor>("modulMotor", 16);	 // Это мы создаем публикатор и определяем название топика в рос
-	ros::Publisher publish_ModulLidar = _nh.advertise<data::Struct_ModulLidar>("modulLidar", 16);	 // Это мы создаем публикатор и определяем название топика в рос
-	ros::Publisher publish_ModulMicric = _nh.advertise<data::Struct_ModulMicric>("modulMicric", 16); // Это мы создаем публикатор и определяем название топика в рос
+	ros::Publisher publish_OdomWheel = _nh.advertise<nav_msgs::Odometry>("pbData/odom/Wheel", 16);	 // Это мы создаем публикатор и определяем название топика в рос
+	ros::Publisher publish_OdomUnited = _nh.advertise<nav_msgs::Odometry>("pbData/odom/United", 16); // Это мы создаем публикатор и определяем название топика в рос
+	ros::Publisher publish_OdomMpu = _nh.advertise<nav_msgs::Odometry>("pbData/odom/Mpu", 16);		 // Это мы создаем публикатор и определяем название топика в рос
 
 	// ros::Publisher pub_JoyData = _nh.advertise<data::SJoy>("pbInfo/JoyData", 16);                       // Это мы публикуем структуру которую сформировали по данным с джойстика
 
@@ -104,7 +99,7 @@ void CTopic::transformUnited(SPose pose_) // Публикуем системы �
 	tfOdomUnited.transform.translation.y = pose_.y;
 	tfOdomUnited.transform.translation.z = 0.1;
 	tfOdomUnited.transform.rotation = tf::createQuaternionMsgFromYaw(-pose_.th); // Из градусов в радианы далее подладить под своё представление
-	tfBroadcaster.sendTransform(tfOdomUnited);								   // Публикация системы преобразования из odom в map Тут динамически, а статически выглядит так   <node pkg="tf" type="static_transform_publisher" name="static_map_odom_tf" args="0 0 0 0 0 0 map odom 100" /> <!--http://wiki.ros.org/tf-->
+	tfBroadcaster.sendTransform(tfOdomUnited);									 // Публикация системы преобразования из odom в map Тут динамически, а статически выглядит так   <node pkg="tf" type="static_transform_publisher" name="static_map_odom_tf" args="0 0 0 0 0 0 map odom 100" /> <!--http://wiki.ros.org/tf-->
 }
 void CTopic::transformMpu(SPose pose_) // Публикуем системы трансормаций из одних систем координат в другие
 {
@@ -126,7 +121,7 @@ void CTopic::transformMpu(SPose pose_) // Публикуем системы тр
 
 void CTopic::publishOdomWheel()
 {
-	transformWheel(odomWheel.pose); // Публиация системы трансформации
+	transformWheel(odomWheel.pose);				   // Публиация системы трансформации
 	odomWheel_msg.header.stamp = ros::Time::now(); // Время ROS
 	odomWheel_msg.header.frame_id = "odom";		   // Поза в этом сообщении должна быть указана в системе координат, заданной header.frame_id.
 	// set the position
@@ -143,9 +138,9 @@ void CTopic::publishOdomWheel()
 }
 void CTopic::publishOdomUnited()
 {
-	transformUnited(odomUnited.pose); // Публиация системы трансформации
+	transformUnited(odomUnited.pose);				// Публиация системы трансформации
 	odomUnited_msg.header.stamp = ros::Time::now(); // Время ROS
-	odomUnited_msg.header.frame_id = "odom";		  // Поза в этом сообщении должна быть указана в системе координат, заданной header.frame_id.
+	odomUnited_msg.header.frame_id = "odom";		// Поза в этом сообщении должна быть указана в системе координат, заданной header.frame_id.
 	// set the position
 	odomUnited_msg.pose.pose.position.x = odomUnited.pose.x;
 	odomUnited_msg.pose.pose.position.y = odomUnited.pose.y;
@@ -226,26 +221,30 @@ void CTopic::processing_Driver2Data()
 }
 
 // Обработка полученных данных и копирование их для публикации в топике
-void CTopic::dataProcessing_Modul()
+void CTopic::processing_Modul2Data()
 {
+	Modul2Data_msg.header.stamp = ros::Time::now();
 	//----------------------  msg_Modul_info_send ----------------------
-	modul_motor_msg.id = Modul2Data.id;
-	modul_lidar_msg.id = Modul2Data.id;
-	modul_micric_msg.id = Modul2Data.id;
+	// modul_motor_msg.id = Modul2Data.id;
+	// modul_lidar_msg.id = Modul2Data.id;
+	// modul_micric_msg.id = Modul2Data.id;
+	Modul2Data_msg.id = Modul2Data.id;
+	Modul2Data_msg.pinMotorEn = Modul2Data.pinMotorEn; // Стутус пина управления драйвером моторов, включен драйвер или нет
+	Modul2Data_msg.statusDataLaser = Modul2Data.statusDataLaser;
 
-	modul_motor_msg.id = Modul2Data.pinMotorEn; // Стутус пина управления драйвером моторов, включен драйвер или нет
 	for (int i = 0; i < 4; i++)
 	{
-		modul_motor_msg.motor[i].status = Modul2Data.motor[i].status;			//
-		modul_motor_msg.motor[i].position = Modul2Data.motor[i].position;		//
-		modul_motor_msg.motor[i].destination = Modul2Data.motor[i].destination; //
+		Modul2Data_msg.motor[i].status = Modul2Data.motor[i].status;		   //
+		Modul2Data_msg.motor[i].position = Modul2Data.motor[i].position;	   //
+		Modul2Data_msg.motor[i].destination = Modul2Data.motor[i].destination; //
 
-		modul_lidar_msg.lidar[i].status = Modul2Data.lidar[i].status;	  //
-		modul_lidar_msg.lidar[i].distance = Modul2Data.lidar[i].distance; //
-		modul_lidar_msg.lidar[i].angle = Modul2Data.lidar[i].angle;		  //
+		Modul2Data_msg.lidar[i].status = Modul2Data.laser[i].status;	 //
+		Modul2Data_msg.lidar[i].distance = Modul2Data.laser[i].distance; //
+		Modul2Data_msg.lidar[i].angle = Modul2Data.laser[i].angle;		 //
 
-		modul_micric_msg.micric[i] = Modul2Data.micric[i]; // Состояние концевиков
+		Modul2Data_msg.micric[i] = Modul2Data.micric[i]; // Состояние концевиков
 	}
+	publish_Modul2Data.publish(Modul2Data_msg); // Публикация полученных данных
 }
 
 #endif

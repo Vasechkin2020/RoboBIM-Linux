@@ -57,14 +57,10 @@ add_message_files(
   pointA.msg    # x,y
   pillar.msg    # 
   #--------------Структуры для сообщений на данные с MODUL -----------------------------------------
-  Struct_Motor.msg
-  Struct_ModulMotor.msg
-  
-  Struct_Lidar.msg
-  Struct_ModulLidar.msg
-  
-  Struct_ModulMicric.msg
-  
+  SMotorSend.msg
+  SLaserSend.msg
+  SModul2Data.msg 
+
   SPose.msg    # x,y, theta
   SPoseTrue.msg    # x,y, theta, flag
   STwist.msg    # x,y, theta
