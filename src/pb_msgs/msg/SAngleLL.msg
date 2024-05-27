@@ -1,0 +1,2 @@
+float32 angleFromLidar
+float32 angleFromLaser

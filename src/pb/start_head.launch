@@ -1,0 +1,21 @@
+<launch>
+
+  <node pkg="pb" type="head_node" name="head_node" output ="screen">
+    <param name="start_x" type="double" value="0.0" />
+    <param name="start_y" type="double" value="2.0" />
+    <param name="start_th" type="double" value="0.0" />
+
+    <param name="x0" type="double" value="3.5" />
+    <param name="y0" type="double" value="1.0" />
+
+    <param name="x1" type="double" value="3.0" />
+    <param name="y1" type="double" value="3.0" />
+
+    <param name="x2" type="double" value="2.0" />
+    <param name="y2" type="double" value="2.0" />
+
+    <param name="x3" type="double" value="0.5" />
+    <param name="y3" type="double" value="2.5" />
+
+  </node>
+</launch> 
