@@ -187,6 +187,13 @@ void CTopic::processingSPI()
 
 	spi_msg.DataDriver.all = data_driver_all; // Собираем для публикации данные о результатах обмена из Data о том как он принял по SPI данные отправленные Modul
 	spi_msg.DataDriver.bed = data_driver_bed;
+	//-------------------------------------------------------------------------------------
+	spi_msg.PrintData.all = Print2Data.spi.all; // Собираем для публикации данные о результатах обмена полученных из Modul о том как он принял по SPI данные отправленные Data
+	spi_msg.PrintData.bed = Print2Data.spi.bed;
+
+	spi_msg.DataPrint.all = data_print_all; // Собираем для публикации данные о результатах обмена из Data о том как он принял по SPI данные отправленные Modul
+	spi_msg.DataPrint.bed = data_print_bed;
+	//-------------------------------------------------------------------------------------
 
 	publish_Spi.publish(spi_msg); // Публикация собранных данных по обмену по шине SPI
 }

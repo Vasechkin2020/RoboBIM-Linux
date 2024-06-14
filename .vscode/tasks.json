@@ -2,12 +2,12 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "ROS: catkin_make my_msgs",
+            "label": "ROS: pb_msgs",
             "type": "shell",
             "command": "catkin_make",
             "args": [
                 "--pkg",
-                "my_msgs",
+                "pb_msgs",
                 "-j4",
                 "-DCMAKE_BUILD_TYPE=Debug"
             ],
@@ -18,14 +18,14 @@
             }
         },
         {
-            "label": "ROS: New catkin_make Data",
+            "label": "data_node",
             "type": "shell",
             "command": "catkin_make",
             "args": [
                 "--directory",
-				"/home/pi/RoboBIM-Linux",
+                "/home/pi/RoboBIM-Linux",
                 "--pkg",
-                "data",
+                "pb",
                 "-j4",
                 "-DCMAKE_BUILD_TYPE=Debug",
                 "-DCMAKE_EXPORT_COMPILE_COMMANDS=1"
@@ -48,12 +48,12 @@
             "group": "build"
         },
         {
-            "label": "ROS: catkin_make Head",
+            "label": "ROS: data_node",
             "type": "shell",
             "command": "catkin_make",
             "args": [
                 "--pkg",
-                "data",
+                "data_node",
                 "-j4",
                 "-DCMAKE_BUILD_TYPE=Debug",
                 "-DCMAKE_EXPORT_COMPILE_COMMANDS=1"

@@ -180,14 +180,14 @@ include_directories(
 add_executable(data_node src/data_node.cpp)
 target_link_libraries(data_node ${catkin_LIBRARIES} -lwiringPi -lpthread)
 
-add_executable(head_node src/head_node.cpp)
-target_link_libraries(head_node ${catkin_LIBRARIES})
+#add_executable(head_node src/head_node.cpp)
+#target_link_libraries(head_node ${catkin_LIBRARIES})
 
-add_executable(pillar_node src/pillar_node.cpp)
-target_link_libraries(pillar_node ${catkin_LIBRARIES})
+#add_executable(pillar_node src/pillar_node.cpp)
+#target_link_libraries(pillar_node ${catkin_LIBRARIES})
 
-add_executable(startPose_node src/startPose_node.cpp)
-target_link_libraries(startPose_node ${catkin_LIBRARIES})
+#add_executable(startPose_node src/startPose_node.cpp)
+#target_link_libraries(startPose_node ${catkin_LIBRARIES})
 
 #add_executable(route_node src/route_node.cpp)
 #target_link_libraries(route_node ${catkin_LIBRARIES})
