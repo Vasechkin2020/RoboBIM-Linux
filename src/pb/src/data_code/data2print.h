@@ -46,7 +46,10 @@ bool sendData2Print(int channel_, SPrint2Data &structura_receive_, SData2Print &
 void collect_Data2Print()
 {
 	Data2Print.id++;				 //= 0x1F1F1F1F;
-	Data2Print.modePrint.mode = 777; //
+	Data2Print.controlPrint.status = 1; //
+	Data2Print.controlPrint.mode = 1; //
+	Data2Print.controlPrint.intensity = 2; //
+	Data2Print.controlPrint.speed = 0.5; //
 
 	// тут нужно посчитать контрольную сумму структуры
 	Data2Print.cheksum = measureCheksum(Data2Print); // Считаем контрольную сумму отправляемой структуры
