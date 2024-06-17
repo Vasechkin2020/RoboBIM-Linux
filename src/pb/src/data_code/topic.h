@@ -23,8 +23,9 @@ public:
 	void publishControlDriver(pb_msgs::SControlDriver data_); // Публикация данных разобранных из джойстика
 
 	void processingSPI(); // Сбор данных по результатам обмена по шине SPI по обоим контроллерам
-	void processing_Driver2Data(); // Обработка полученных данных и копирование их для публикации в топике
 	void processing_Modul2Data(); // Обработка полученных данных и копирование их для публикации в топике
+	void processing_Print2Data(); // Обработка полученных данных и копирование их для публикации в топике
+	void processing_Driver2Data(); // Обработка полученных данных и копирование их для публикации в топике
 
 private:
 	ros::NodeHandle _nh;
@@ -252,6 +253,12 @@ void CTopic::processing_Modul2Data()
 		Modul2Data_msg.micric[i] = Modul2Data.micric[i]; // Состояние концевиков
 	}
 	publish_Modul2Data.publish(Modul2Data_msg); // Публикация полученных данных
+}
+
+// Обработка полученных данных и копирование их для публикации в топике
+void CTopic::processing_Print2Data()
+{
+	//Нечего публиковать
 }
 
 #endif

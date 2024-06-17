@@ -77,6 +77,8 @@ add_message_files(
   
   SAngleLL.msg
   SAngleLaserLidar.msg
+  
+  SControlPrint.msg
 
   #-------------------------------------------------------
   SControlModul.msg    # Топик с командой управления углами лазеров

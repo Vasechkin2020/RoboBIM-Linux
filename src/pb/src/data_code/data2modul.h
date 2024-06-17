@@ -13,7 +13,6 @@ bool sendData2Modul(int channel_, Struct_Modul2Data &structura_receive_, Struct_
 // Копирование рабочих данных в структуру для передачи
 void Collect_Data2Modul() // Данные для передачи на низкий уровень
 {
-	Data2Modul.id++;							   //= 0x1F1F1F1F;
 	Data2Modul.controlMotor.mode = msg_ControlModul.mode;   //
 	//Data2Modul.controlMotor.mode = 1;   //
 	Data2Modul.controlMotor.angle[0] = msg_ControlModul.angle[0]; //
@@ -21,10 +20,6 @@ void Collect_Data2Modul() // Данные для передачи на низк�
 	Data2Modul.controlMotor.angle[1] = msg_ControlModul.angle[1]; //
 	Data2Modul.controlMotor.angle[2] = msg_ControlModul.angle[2]; //
 	Data2Modul.controlMotor.angle[3] = msg_ControlModul.angle[3]; //
-
-	// тут нужно посчитать контрольную сумму структуры
-	Data2Modul.cheksum = measureCheksum(Data2Modul); // Считаем контрольную сумму отправляемой структуры
-													 // printf("Отправляем: Id %i, чек= %i  ", Data2Modul.id, Data2Modul.cheksum);
 }
 
 
@@ -60,8 +55,11 @@ bool sendData2Modul(int channel_, Struct_Modul2Data &structura_receive_, Struct_
 
 	// data_Modul_all++;
 	//  int aa = micros();
+	data_modul_all++;
+	digitalWrite(PIN_SPI_MODUL, 0);
 	rez = wiringPiSPIDataRW(channel_, buffer, sizeof(buffer)); // Передаем и одновременно получаем данные
 	delayMicroseconds(10);
+	digitalWrite(PIN_SPI_MODUL, 1);
 	// int time_transfer = micros() - aa;
 	// float time_transfer_sec = time_transfer / 1000000.0;
 

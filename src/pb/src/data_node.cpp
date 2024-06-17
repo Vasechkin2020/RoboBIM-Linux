@@ -3,6 +3,7 @@
 #include "lib.h"
 #include "data_code/config.h"
 #include "data_code/c_joy.h"
+CJoy joy(0.5, 0.5); // Обьявляем экземпляр класса в нем вся обработка джойстика
 #include "data_code/data2driver.h"
 #include "data_code/data2modul.h"
 #include "data_code/data2print.h"
@@ -20,23 +21,19 @@ int main(int argc, char **argv)
     // ros::Time current_time = ros::Time::now(); // Время ROS
     // ros::Time last_time2 = ros::Time::now();
 
-    CJoy joy(0.5, 0.5); // Обьявляем экземпляр класса в нем вся обработка джойстика
-    CTopic topic;       // Экземпляр класса для всех публикуемых топиков
+    CTopic topic; // Экземпляр класса для всех публикуемых топиков
     // double dt = (current_time - last_time).toSec();
     ros::Rate r(RATE);
 
-    ros::Subscriber sub_ControlDriver = nh.subscribe("pbMain/ControlDriver", 16, callback_ControlDriver, ros::TransportHints().tcpNoDelay(true)); // Это мы подписываемся на то что публигует Main для Data
     ros::Subscriber sub_ControlModul = nh.subscribe("pbMain/ControlModul", 16, callback_ControlModul, ros::TransportHints().tcpNoDelay(true));    // Это мы подписываемся на то что публигует Main для Modul
+    ros::Subscriber sub_ControlPrint = nh.subscribe("pbMain/ControlPrint", 16, callback_ControlPrint, ros::TransportHints().tcpNoDelay(true));    // Это мы подписываемся на то что публигует Main для Print
+    ros::Subscriber sub_ControlDriver = nh.subscribe("pbMain/ControlDriver", 16, callback_ControlDriver, ros::TransportHints().tcpNoDelay(true)); // Это мы подписываемся на то что публигует Main для Data
     ros::Subscriber subscriber_Joy = nh.subscribe("joy", 16, callback_Joy);                                                                       // Это мы подписываемся на то что публикует нода джойстика
 
     // sub_low_state = _nh.subscribe("/low_state", 1, &IOInterface::_lowStateCallback, this, ros::TransportHints().tcpNoDelay(true)); // От Максима пример
 
     int rez = wiringPiSetup(); // Инициализация библиотеки
-    // printf("1= %i ",rez);
-    // ROS_INFO("%i -------------------------------------------------------", rez);
-    // //rez = wiringPiSetupGpio();
-    // ROS_INFO("%i -------------------------------------------------------", rez);
-    // printf("2= %i \n",rez);
+    // //rez = wiringPiSetupGpio(); // При такой инициализациипины имеют другие номера, как изначально в распбери ПИ.
     pinMode(21, OUTPUT); //
     pinMode(23, OUTPUT); //
     pinMode(26, OUTPUT); //
@@ -44,18 +41,6 @@ int main(int argc, char **argv)
     digitalWrite(21, 1);
     digitalWrite(23, 1);
     digitalWrite(26, 1);
-
-    // ROS_INFO("%i -21-", digitalRead(21));
-    // ROS_INFO("%i -22-", digitalRead(22));
-    // ROS_INFO("%i -23-", digitalRead(23));
-
-    // digitalWrite(21,0);
-    // digitalWrite(22,0);
-    // digitalWrite(23,0);
-
-    // ROS_INFO("%i -21-0", digitalRead(21));
-    // ROS_INFO("%i -22-0", digitalRead(22));
-    // ROS_INFO("%i -23-0", digitalRead(23));
 
     set_PIN_Led();                      // Устанавливаем и обьявляем пины. для вывода анализатора светодиодов и всего прочего
     init_SPI(SPI_CHANNAL_0, SPI_SPEED); // Инициализация нужного канала SPI
@@ -67,11 +52,12 @@ int main(int argc, char **argv)
     current_time = ros::Time::now();
     last_time = ros::Time::now();
     initArray();
+    
+    ROS_INFO("ver -222-");
 
     while (ros::ok())
     {
-        // Сделать вывозтолько если пригли данные а не постоянно отправку поманд
-        //       Led_Blink(PIN_LED_BLUE, 500); // Мигание светодиодом, что цикл работает
+        // Сделать вывод только если пришли данные а не постоянно отправку команд
         led_status = 1 - led_status; // Мигаем с частотой работы цикла
         digitalWrite(PIN_LED_BLUE, led_status);
 
@@ -79,27 +65,22 @@ int main(int argc, char **argv)
         topic.transform(); // Трансформация odom to map
 
         //-----------------------------------------------------------------------------------------------------------------------------------
-        // sendSPItoModul();     // Функция отправки на Modul
-
-        Collect_Data2Modul(); // Собираем рабочие данные в структуру для передачи считывая из топиков
-        digitalWrite(21, 0);
-        // delay(1);
-        //  ROS_INFO("%i -21-0", digitalRead(21));
-        rez_data = sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); //
-        digitalWrite(21, 1);
-        // ROS_INFO("%i -21-1", digitalRead(21));
-        data_modul_all++;
-        if (rez_data) // Если пришли хорошие данные то обрабатываем их и публикуем данные в ROS
+        if (flag_msgControlModul) // Если пришло сообщение в топике и сработал колбек
         {
-            // СДЕЛАТЬ СКОРОСТЬ ПУБЛИКАЦИИ ЕСЛИ БУДЕТ 100Герц то нафига так часто визуализацию публиковать
-            topic.processing_Modul2Data(); // Обрабатываем данные
+            flag_msgControlModul = false;
+            Collect_Data2Modul(); // Обрабатываем пришедшие данные и пишем в перемнные для передачи на нижний уровень
         }
-        //-----------------------------------------------------------------------------------------------------------------------------------
+        if (flag_msgControlPrint) // Если пришло сообщение в топике и сработал колбек
+        {
+            flag_msgControlPrint = false;
+            collect_Data2Print(); // Обрабатываем пришедшие данные и пишем в переменные для передачи на нижний уровень
+        }
         if (flag_msgControlDriver) // Если пришло сообщение в топике и сработал колбек
         {
             flag_msgControlDriver = false;
-            collect_Data2Driver(); // Обрабатываем пришедшие данные и пишем в глобальные перемнные
+            collect_Data2Driver(); // Обрабатываем пришедшие данные и пишем в переменные для передачи на нижний уровень
         }
+        //----------------------------- ТУТ ВНОСИМ ИЗМЕНЕНИЕ В УПРАВЛЕНИЕ ЕСЛИ ВРУЧНУЮ УПРАВЛЯЕМ ЧЕРЕЗ ДЖОЙСТИК ------------------------------------------------------------------
 
         if (flag_msgJoy) // Если пришло новое сообшение и сработал колбек то разбираем что там пришло
         {
@@ -108,28 +89,50 @@ int main(int argc, char **argv)
             joy.transform();         // Преобразование кнопок джойстика в реальные команды
             g_dreamSpeed.speedL = joy._ControlDriver.control.speedL;
             g_dreamSpeed.speedR = joy._ControlDriver.control.speedR;
+
+            Data2Print.controlPrint.status = joy._controlPrint.status; //
+            Data2Print.controlPrint.mode = joy._controlPrint.mode;
+
             // pub_JoyData.publish(joy._joy2Head); // Публикация данных разобранных из джойстика
             // topic.publicationControlDriver(joy._ControlDriver); // Публикация данных по управлению Driver (для отладки)
         }
 
+        //---------------- Тут какие-то постоянные данные вносятся в ручном режиме или алгоритмы корректировки данных перед пердачей --------------------------------------------------------------------------------------
+
         controlAcc(Data2Driver.control, g_dreamSpeed); // Функция контроля ускорения На вход скорость с которой хотим ехать. После будет скорость с которой поедем фактически с учетом возможностей по ускорению
-        Data2Driver.led.led[24] = 1;
-        Data2Driver.led.led[25] = 2;
-        Data2Driver.led.led[26] = 3;
-        Data2Driver.led.led[27] = 4;
+        controlLed();                                  // Функция управления несколькими светодиодами которые отведены для прямого управления нодой data
+
+        //---------------- Тут увеличиваем айди и считаем контрольную сумму структур для передачи --------------------------------------------------------------------------------------
+
+        Data2Modul.id++;                                 //= 0x1F1F1F1F;
+        Data2Modul.cheksum = measureCheksum(Data2Modul); // Считаем контрольную сумму отправляемой структуры// тут нужно посчитать контрольную сумму структуры
+        // printf("Отправляем: Id %i, чек= %i  ", Data2Modul.id, Data2Modul.cheksum);
+
+        Data2Print.id++;                                 //= 0x1F1F1F1F;
+        Data2Print.cheksum = measureCheksum(Data2Print); // Считаем контрольную сумму отправляемой структуры// тут нужно посчитать контрольную сумму структуры
+
         Data2Driver.id++;                                  //= 0x1F1F1F1F; Считаем каждый раз сколько отправляем, даже если не было изменений в данных ни от джойстика ни от топика от Head
         Data2Driver.cheksum = measureCheksum(Data2Driver); // Пересчитываем  контрольную сумму отправляемой структуры
-        digitalWrite(23, 0);
-        // delay(1);
-        // ROS_INFO("%i -23-0", digitalRead(23));
+
+        // --------------------------- ОТПРАВКА ДАННЫХ на нижний уровень и разборка и публикация данных полученных с нижнего уровня---------------------------------------------------------------------
+
+        rez_data = sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
+        if (rez_data)                                                     // Если пришли хорошие данные с нижнего уровня, то обрабатываем их и публикуем данные в ROS
+        {
+            // СДЕЛАТЬ СКОРОСТЬ ПУБЛИКАЦИИ ЕСЛИ БУДЕТ 100Герц то нафига так часто визуализацию публиковать
+            topic.processing_Modul2Data(); // Обрабатываем данные
+        }
+        //----------------------------
+        rez_data = sendData2Print(SPI_CHANNAL_0, Print2Data, Data2Print); ////  Отправляем данные на нижний уровень
+        if (rez_data)                                                     // Если пришли хорошие данные то обрабатываем их и публикуем данные в ROS
+        {
+            topic.processing_Print2Data(); // Обработанные данные записываем их в структуру для публикации в топике и публикуем
+            // printf("GGGGG!!!!!!!!!! \n");
+        }
+        //----------------------------
         rez_data = sendData2Driver(SPI_CHANNAL_0, Driver2Data, Data2Driver); ////  Отправляем данные на нижний уровень
         // ROS_INFO("id= %i speedL= %f speedR= %f cheksum = %i", Data2Driver.id, Data2Driver.control.speedL, Data2Driver.control.speedR, Data2Driver.cheksum);
-        digitalWrite(23, 1);
-        // ROS_INFO("%i -23-1", digitalRead(23));
 
-        //! isnan(rez_data); // true если nan
-
-        data_driver_all++;
         if (rez_data) // Если пришли хорошие данные то обрабатываем их и публикуем данные в ROS
         {
             topic.processing_Driver2Data(); // Обработанные данные записываем их в структуру для публикации в топике и публикуем
@@ -150,23 +153,10 @@ int main(int argc, char **argv)
         }
         //-----------------------------------------------------------------------------------------------------------------------------------
 
-        digitalWrite(26, 0);
-
-        collect_Data2Print();
-        rez_data = sendData2Print(SPI_CHANNAL_0, Print2Data, Data2Print); ////  Отправляем данные на нижний уровень
-        if (rez_data) // Если пришли хорошие данные то обрабатываем их и публикуем данные в ROS
-        {
-            //topic.processing_Driver2Data(); // Обработанные данные записываем их в структуру для публикации в топике и публикуем
-            printf("GGGGG!!!!!!!!!! \n");
-        }
-        digitalWrite(26, 1);
-
-        //-----------------------------------------------------------------------------------------------------------------------------------
-        ROS_INFO("%i -225", digitalRead(21));
-
         topic.processingSPI(); // Сбор и публикация статистики обмена по SPI
 
         r.sleep(); // Интеллектуальная задержка на указанную частоту
     }
+    //! isnan(rez_data); // true если nan
     return 0;
 }

@@ -4,7 +4,7 @@
 class CJoy
 {
 private:
-    float speed_max = 0.3;    // Максимальная скорость
+    float speed_max = 0.3;       // Максимальная скорость
     pb_msgs::SJoy _joy2HeadPrev; // Структура в которую пишем обработанные данные от джойстика предыдущее состоние
 
     // float getRadius(float &offset); // Возвращает какой долpb_msgsжен быть радиус при указанном смещении
@@ -13,8 +13,9 @@ private:
 public:
     CJoy(float speed_max_, float radius_min_);
     ~CJoy();
-    pb_msgs::SJoy _joy2Head;                           // Структура в которую пишем обработанные данные от джойстика и выдаем наружу из класса
-    pb_msgs::SControlDriver _ControlDriver;            // Тут формируем команды делаем
+    pb_msgs::SJoy _joy2Head;                        // Структура в которую пишем обработанные данные от джойстика и выдаем наружу из класса
+    pb_msgs::SControlDriver _ControlDriver;         // Тут формируем команды делаем
+    SControlPrint _controlPrint;                    // Структура в которую пишем обработанные данные от джойстика и выдаем наружу из класса
     void parsingJoy(const sensor_msgs::Joy &data_); // Функция обработки и пробразований данных в мою понятную структуру с кнопками
     void transform();                               // Преобразование кнопок джойстика в реальные команды
 };
@@ -69,26 +70,26 @@ void CJoy::transform()
 
     if (_joy2Head.button_L1 != _joy2HeadPrev.button_L1 && _joy2Head.button_L1 == 1) // Если изменилась кнопка и стала единицей сейчас тогда делаем команду
     {
-        _ControlDriver.control.speedL = 0.0;  // Вращение ВЛЕВО
+        _ControlDriver.control.speedL = 0.0; // Вращение ВЛЕВО
         _ControlDriver.control.speedR = 0.1; //
     }
     if (_joy2Head.button_R1 != _joy2HeadPrev.button_R1 && _joy2Head.button_R1 == 1) // Если изменилась кнопка и стала единицей сейчас тогда делаем команду
     {
         _ControlDriver.control.speedL = 0.1; // Вращение ВПРАВО
-        _ControlDriver.control.speedR = 0;    //
+        _ControlDriver.control.speedR = 0;   //
     }
 
     if (_joy2Head.button_option != _joy2HeadPrev.button_option && _joy2Head.button_option == 1) // Если изменилась кнопка и стала единицей сейчас тогда делаем команду
     {
         //_ControlDriver.led.num_program++; // Увеличиваем номер команды на 1
-        _ControlDriver.control.speedL = 1; // Скорость ноль
-        _ControlDriver.control.speedR = -1; // Скорость ноль
+        _ControlDriver.control.speedL = 0.5;  // Скорость ноль
+        _ControlDriver.control.speedR = -0.5; // Скорость ноль
     }
     if (_joy2Head.button_share != _joy2HeadPrev.button_share && _joy2Head.button_share == 1) // Если изменилась кнопка и стала единицей сейчас тогда делаем команду
     {
         //_ControlDriver.led.num_program = 0; // Выключаем свет, номер команды делаем 0
-        _ControlDriver.control.speedL = -1; // Скорость ноль
-        _ControlDriver.control.speedR = 1; // Скорость ноль
+        _ControlDriver.control.speedL = -0.5; // Скорость ноль
+        _ControlDriver.control.speedR = 0.5;  // Скорость ноль
     }
 
     // Скорость --------------------------
@@ -99,8 +100,9 @@ void CJoy::transform()
     }
     if (_joy2Head.button_circle != _joy2HeadPrev.button_circle && _joy2Head.button_circle == 1) // Если изменилась кнопка и стала единицей сейчас тогда делаем команду
     {
-        _ControlDriver.control.speedL = 1;  // Скорость уменьшаем на 0.1
-        _ControlDriver.control.speedR = 0; // Скорость уменьшаем на 0.1
+        _ControlDriver.control.speedL = 0;   // Скорость уменьшаем на 0.1
+        _ControlDriver.control.speedR = 0.5; // Скорость уменьшаем на 0.1
+
         // _ControlDriver.control.speedL += 0.05;          // Скорость увеличиваем на 0.1
         // _ControlDriver.control.speedR += 0.05;          // Скорость увеличиваем на 0.1
         // if (_ControlDriver.control.speedL >= speed_max) // Максимальная скорость ограничена
@@ -114,8 +116,8 @@ void CJoy::transform()
     }
     if (_joy2Head.button_square != _joy2HeadPrev.button_square && _joy2Head.button_square == 1) // Если изменилась кнопка и стала единицей сейчас тогда делаем команду
     {
-        _ControlDriver.control.speedL = 0; // Скорость уменьшаем на 0.1
-        _ControlDriver.control.speedR = 1;  // Скорость уменьшаем на 0.1
+        _ControlDriver.control.speedL = 0.5; // Скорость уменьшаем на 0.1
+        _ControlDriver.control.speedR = 0;   // Скорость уменьшаем на 0.1
         // _ControlDriver.control.speedL -= 0.05; // Скорость уменьшаем на 0.1
         // _ControlDriver.control.speedR -= 0.05; // Скорость уменьшаем на 0.1
         // if (_ControlDriver.control.speedL < 0) // МИнимальная скорость ограничена 0
@@ -129,22 +131,33 @@ void CJoy::transform()
     }
     if (_joy2Head.button_triangle != _joy2HeadPrev.button_triangle && _joy2Head.button_triangle == 1) // Если изменилась кнопка и стала единицей сейчас тогда делаем команду
     {
-        _ControlDriver.control.speedL = 1; //
-        _ControlDriver.control.speedR = 1; //
+        _ControlDriver.control.speedL = 0.5; //
+        _ControlDriver.control.speedR = 0.5; //
     }
 
     if (_joy2Head.button_up_down != _joy2HeadPrev.button_up_down && _joy2Head.button_up_down == 1) // Если изменилась кнопка и стала единицей сейчас тогда делаем команду
     {
+        _controlPrint.status = 1;
+        _controlPrint.mode = 5;
     }
 
-    if (_joy2Head.button_up_down != _joy2HeadPrev.button_up_down && _joy2Head.button_up_down == -1) // Если изменилась кнопка и стала единицей сейчас тогда делаем команду
+    if (_joy2Head.button_up_down != _joy2HeadPrev.button_up_down && _joy2Head.button_up_down == -1) // Если изменилась кнопка и стала минус единицей сейчас тогда делаем команду
     {
+        _controlPrint.status = 1;
+        _controlPrint.mode = 4;
+    }
+    if (_joy2Head.button_up_down != _joy2HeadPrev.button_up_down && _joy2Head.button_up_down == 0) // Если изменилась кнопка и стала нулем сейчас тогда делаем команду
+    {
+        _controlPrint.status = 0;
     }
 
-    if (_joy2Head.button_left_right != _joy2HeadPrev.button_left_right && _joy2Head.button_left_right == -1) // Если изменилась кнопка и стала единицей сейчас тогда делаем команду
+    if (_joy2Head.button_left_right != _joy2HeadPrev.button_left_right && _joy2Head.button_left_right == -1) // Если изменилась кнопка и стала минус единицей сейчас тогда делаем команду
     {
     }
     if (_joy2Head.button_left_right != _joy2HeadPrev.button_left_right && _joy2Head.button_left_right == 1) // Если изменилась кнопка и стала единицей сейчас тогда делаем команду
+    {
+    }
+    if (_joy2Head.button_left_right != _joy2HeadPrev.button_left_right && _joy2Head.button_left_right == 0) // Если изменилась кнопка и стала нулем сейчас тогда делаем команду
     {
     }
 

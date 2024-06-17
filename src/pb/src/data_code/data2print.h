@@ -21,9 +21,12 @@ bool sendData2Print(int channel_, SPrint2Data &structura_receive_, SData2Print &
 	// Заполняем буфер данными структуры для передачи
 	SData2Print *buffer_send = (SData2Print *)buffer; // Создаем переменную в которую записываем адрес буфера в нужном формате
 	*buffer_send = structura_send_;					  // Переписываем по этому адресу данные в буфер
-	
+
 	data_print_all++;
+	digitalWrite(PIN_SPI_PRINT, 0);
 	rez = wiringPiSPIDataRW(channel_, buffer, sizeof(buffer)); // Передаем и одновременно получаем данные
+	delayMicroseconds(10);
+	digitalWrite(PIN_SPI_PRINT, 1);
 
 	// Извлекаем из буфера данные в формате структуры и копирум данные
 	SPrint2Data *copy_buf_master_receive = (SPrint2Data *)buffer;	   // Создаем переменную в которую пишем адрес буфера в нужном формате
@@ -45,16 +48,11 @@ bool sendData2Print(int channel_, SPrint2Data &structura_receive_, SData2Print &
 // Копирование данных из сообщения в топике в структуру для использования
 void collect_Data2Print()
 {
-	Data2Print.id++;				 //= 0x1F1F1F1F;
-	Data2Print.controlPrint.status = 1; //
-	Data2Print.controlPrint.mode = 1; //
-	Data2Print.controlPrint.intensity = 2; //
+	Data2Print.controlPrint.status = msg_ControlPrint.status; //
+	Data2Print.controlPrint.mode = msg_ControlPrint.mode;	 //
+	Data2Print.controlPrint.intensity = 2;									 //
+	// Data2Print.controlPrint.speed = (Data2Driver.control.speedL + 0.1);// + Data2Driver.control.speedR) * 0.5; // Так как у левого колеса картридж находится расположен и не можеьт быть н
 	Data2Print.controlPrint.speed = 0.5; //
-
-	// тут нужно посчитать контрольную сумму структуры
-	Data2Print.cheksum = measureCheksum(Data2Print); // Считаем контрольную сумму отправляемой структуры
-
-	// printf("Отправляем: Id %i, чек= %i  ", Data2Modul.id, Data2Modul.cheksum);
 }
 
 #endif

@@ -3,13 +3,13 @@
 
 //**************************** ОБЬЯВЛЕНИЕ ПРОЦЕДУР **********************************
 
-uint16_t getMax_size_Struct(uint16_t stru1_, uint16_t stru2_); // Функция возращает максимальный размер из 2 структур
-void set_PIN_Led();											   // Настройка светодиодов
-void Led_Blink(int led_, unsigned long time_);				   // Функция мигания светодиодом в осномном цикле что программа не зависла и работает
-void init_SPI(int channel_, int speed_);					   // Инициализация канала шины SPI
-void callback_ControlDriver(const pb_msgs::SControlDriver &msg);  // Обратный вызов при опросе топика Head2Data
-void callback_ControlModul(const pb_msgs::SControlModul &msg);	   // Обратный вызов при опросе топика Angle
-void callback_Joy(sensor_msgs::Joy msg);					   // Функция обраьтного вызова по подпичке на топик джойстика nh.subscribe("joy", 16, callback_Joy);
+uint16_t getMax_size_Struct(uint16_t stru1_, uint16_t stru2_);	 // Функция возращает максимальный размер из 2 структур
+void set_PIN_Led();												 // Настройка светодиодов
+void Led_Blink(int led_, unsigned long time_);					 // Функция мигания светодиодом в осномном цикле что программа не зависла и работает
+void init_SPI(int channel_, int speed_);						 // Инициализация канала шины SPI
+void callback_ControlDriver(const pb_msgs::SControlDriver &msg); // Обратный вызов при опросе топика Head2Data
+void callback_ControlModul(const pb_msgs::SControlModul &msg);	 // Обратный вызов при опросе топика Angle
+void callback_Joy(sensor_msgs::Joy msg);						 // Функция обраьтного вызова по подпичке на топик джойстика nh.subscribe("joy", 16, callback_Joy);
 
 STwistDt calcTwistFromWheel(SControl control_);						// Обработка пришедших данных.Обсчитываем одометрию по энкодеру
 STwistDt calcTwistFromMpu(SMpu mpu_, float koef_);					// Обработка пришедших данных.Обсчитываем угловые скорости по энкодеру
@@ -24,10 +24,6 @@ float autoOffsetY(float data_);								// Функция считаем скол
 
 float filtrComplem(float koef_, float oldData_, float newData_); // функция фильтрации, берем старое значение с некоторым весом
 
-
-void sendSPItoModul();//Функция отправки на Modul
-void sendSPItoData();//Функция отправки на Data
-void sendSPItoPrint();//Функция отправки на Print
 // **********************************************************************************
 
 // Функция возращает максимальный размер из 2 структур
@@ -41,7 +37,6 @@ uint16_t getMax_size_Struct(uint16_t stru1_, uint16_t stru2_)
 void set_PIN_Led()
 {
 	pinMode(PIN_LED_BLUE, OUTPUT); // Красный светодиод
-
 }
 
 // Функция мигания светодиодом в осномном цикле что программа не зависла и работает
@@ -81,17 +76,25 @@ void callback_Joy(sensor_msgs::Joy msg)
 	flag_msgJoy = true;
 	msg_joy = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
 }
-// Обратный вызов при опросе топика Head2Data
+// Обратный вызов при опросе топика
 void callback_ControlDriver(const pb_msgs::SControlDriver &msg)
 {
 	flag_msgControlDriver = true;
 	msg_ControlDriver = msg; // Копируем структуру в глобальную переменную для дальнейшей работы с ней.
 							 // ROS_INFO("message_callback_Command.");
 }
-// Обратный вызов при опросе топика Angle
+// Обратный вызов при опросе топика
 void callback_ControlModul(const pb_msgs::SControlModul &msg)
 {
+	flag_msgControlModul = true;
 	msg_ControlModul = msg; // Копируем структуру в глобальную переменную для дальнейшей работы с ней.
+							// ROS_INFO("message_callback_Command.");
+}
+// Обратный вызов при опросе топика
+void callback_ControlPrint(const pb_msgs::SControlPrint &msg)
+{
+	flag_msgControlPrint = true;
+	msg_ControlPrint = msg; // Копируем структуру в глобальную переменную для дальнейшей работы с ней.
 							// ROS_INFO("message_callback_Command.");
 }
 void initArray()
@@ -206,7 +209,7 @@ STwistDt calcTwistFromWheel(SControl control_)
 			{
 				radius = 0; // Едем прямо или назад и все по нулям
 				theta = 0;	// Если едем прямо то угол поворота отклонения от оси равен 0
-							// ROS_INFO("2 EDEM PRIAMO radius = %.4f theta gradus = %.4f ", radius, RAD2DEG(theta));
+						   // ROS_INFO("2 EDEM PRIAMO radius = %.4f theta gradus = %.4f ", radius, RAD2DEG(theta));
 			}
 			else // Едем по радиусу и надо все считать
 			{
@@ -338,7 +341,7 @@ STwistDt calcTwistFromMpu(SMpu mpu_, float koef_)
 
 	// printf(" ||| LinearSpeed vx= % .3f vy=  % .3f vth= % .6f | ", ret.twist.vx, ret.twist.vy, ret.twist.vth);
 	// printf(" |Vel= % .3f % .3f % .3f\n", ret.twist.vx, ret.twist.vy, ret.twist.vth);
-	printf(" | Twist vx = % .3f vy= % .3f th= % .3f || \n", ret.twist.vx, ret.twist.vy, RAD2DEG( ret.twist.vth));
+	printf(" | Twist vx = % .3f vy= % .3f th= % .3f || \n", ret.twist.vx, ret.twist.vy, RAD2DEG(ret.twist.vth));
 	return ret;
 }
 // Функция комплементации угловых скоростей полученных с колес и с датчика MPU и угла поворота
@@ -358,7 +361,7 @@ STwistDt calcTwistUnited(STwistDt wheelTwist_, STwistDt mpuTwist_)
 	ret.twist.vx = wheelTwist_.twist.vx * (1 - koef) + mpuTwist_.twist.vx * koef;
 	ret.twist.vy = wheelTwist_.twist.vy * (1 - koef) + mpuTwist_.twist.vy * koef;
 	ret.twist.vth = wheelTwist_.twist.vth * (1 - koefTh) + mpuTwist_.twist.vth * koefTh;
-	printf("% 6lu |United Wheel | % .3f % .3f | % .3f % .3f || % .3f % .3f || \n", millis(), wheelTwist_.twist.vx, wheelTwist_.twist.vy, mpuTwist_.twist.vx, mpuTwist_.twist.vy,ret.twist.vx,ret.twist.vy,ret.twist.vth);
+	printf("% 6lu |United Wheel | % .3f % .3f | % .3f % .3f || % .3f % .3f || \n", millis(), wheelTwist_.twist.vx, wheelTwist_.twist.vy, mpuTwist_.twist.vx, mpuTwist_.twist.vy, ret.twist.vx, ret.twist.vy, ret.twist.vth);
 
 	return ret;
 }
@@ -440,29 +443,14 @@ void controlAcc(SControl &control_, SControl g_dreamSpeed) // Функция к�
 	// printf(" |factControl % .3f % .3f \n", factControl.speedL, factControl.speedR);
 	control_ = factControl; // Передаем для дальнейшего испонения
 }
-
-//Функция отправки на Modul
-void sendSPItoModul()
+// Функция управления несколькими светодиодами которые отведены для прямого управления нодой data
+void controlLed()
 {
-
+	Data2Driver.led.led[24] = 1;
+	Data2Driver.led.led[25] = 2;
+	Data2Driver.led.led[26] = 3;
+	Data2Driver.led.led[27] = 4;
 }
-//Функция отправки на Data
-void sendSPItoData()
-{
-
-}
-//Функция отправки на Print
-void sendSPItoPrint()
-{
-
-}
-
-
-
-
-
-
-
 
 /*   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!! ПРИМЕР ОТ ВАДИМА КАК НУЖНО СЧИТАТЬ одометрию!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	#define  R2G(val) (val*57.29577951308233)
