@@ -21,11 +21,12 @@ bool sendData2Driver(int channel_, Struct_Driver2Data &structura_receive_, SData
 	// Заполняем буфер данными структуры для передачи
 	SData2Driver *buffer_send = (SData2Driver *)buffer; // Создаем переменную в которую записываем адрес буфера в нужном формате
 	*buffer_send = structura_send_;						// Переписываем по этому адресу данные в буфер
-	
+
 	data_driver_all++;
 	digitalWrite(PIN_SPI_DRIVER, 0);
+	delayMicroseconds(3);
 	rez = wiringPiSPIDataRW(channel_, buffer, sizeof(buffer)); // Передаем и одновременно получаем данные
-	delayMicroseconds(10);
+	delayMicroseconds(3);
 	digitalWrite(PIN_SPI_DRIVER, 1);
 
 	// Извлекаем из буфера данные в формате структуры и копирум данные

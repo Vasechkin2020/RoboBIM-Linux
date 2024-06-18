@@ -34,13 +34,13 @@ int main(int argc, char **argv)
 
     int rez = wiringPiSetup(); // Инициализация библиотеки
     // //rez = wiringPiSetupGpio(); // При такой инициализациипины имеют другие номера, как изначально в распбери ПИ.
-    pinMode(21, OUTPUT); //
-    pinMode(23, OUTPUT); //
-    pinMode(26, OUTPUT); //
+    pinMode(PIN_SPI_MODUL, OUTPUT); //
+    pinMode(PIN_SPI_DRIVER, OUTPUT); //
+    pinMode(PIN_SPI_PRINT, OUTPUT); //
 
-    digitalWrite(21, 1);
-    digitalWrite(23, 1);
-    digitalWrite(26, 1);
+    digitalWrite(PIN_SPI_MODUL, 1);
+    digitalWrite(PIN_SPI_DRIVER, 1);
+    digitalWrite(PIN_SPI_PRINT, 1);
 
     set_PIN_Led();                      // Устанавливаем и обьявляем пины. для вывода анализатора светодиодов и всего прочего
     init_SPI(SPI_CHANNAL_0, SPI_SPEED); // Инициализация нужного канала SPI
@@ -53,7 +53,8 @@ int main(int argc, char **argv)
     last_time = ros::Time::now();
     initArray();
     
-    ROS_INFO("ver -222-");
+    ROS_INFO("ver -2224-");
+    delay(1000);
 
     while (ros::ok())
     {
@@ -116,44 +117,46 @@ int main(int argc, char **argv)
 
         // --------------------------- ОТПРАВКА ДАННЫХ на нижний уровень и разборка и публикация данных полученных с нижнего уровня---------------------------------------------------------------------
 
-        rez_data = sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
-        if (rez_data)                                                     // Если пришли хорошие данные с нижнего уровня, то обрабатываем их и публикуем данные в ROS
+        rezModul = sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
+        if (rezModul)                                                     // Если пришли хорошие данные с нижнего уровня, то обрабатываем их и публикуем данные в ROS
         {
             // СДЕЛАТЬ СКОРОСТЬ ПУБЛИКАЦИИ ЕСЛИ БУДЕТ 100Герц то нафига так часто визуализацию публиковать
             topic.processing_Modul2Data(); // Обрабатываем данные
+            // printf("Modul!!!!!!!!!! \n");
         }
         //----------------------------
-        rez_data = sendData2Print(SPI_CHANNAL_0, Print2Data, Data2Print); ////  Отправляем данные на нижний уровень
-        if (rez_data)                                                     // Если пришли хорошие данные то обрабатываем их и публикуем данные в ROS
+        rezPrint = sendData2Print(SPI_CHANNAL_0, Print2Data, Data2Print); ////  Отправляем данные на нижний уровень
+        if (rezPrint)                                                     // Если пришли хорошие данные то обрабатываем их и публикуем данные в ROS
         {
             topic.processing_Print2Data(); // Обработанные данные записываем их в структуру для публикации в топике и публикуем
-            // printf("GGGGG!!!!!!!!!! \n");
+            // printf("Print!!!!!!!!!! \n");
         }
         //----------------------------
-        rez_data = sendData2Driver(SPI_CHANNAL_0, Driver2Data, Data2Driver); ////  Отправляем данные на нижний уровень
+       rezData = sendData2Driver(SPI_CHANNAL_0, Driver2Data, Data2Driver); ////  Отправляем данные на нижний уровень
         // ROS_INFO("id= %i speedL= %f speedR= %f cheksum = %i", Data2Driver.id, Data2Driver.control.speedL, Data2Driver.control.speedR, Data2Driver.cheksum);
 
-        if (rez_data) // Если пришли хорошие данные то обрабатываем их и публикуем данные в ROS
+        if (rezData) // Если пришли хорошие данные то обрабатываем их и публикуем данные в ROS
         {
             topic.processing_Driver2Data(); // Обработанные данные записываем их в структуру для публикации в топике и публикуем
+            // printf("Driver!!!!!!!!!! \n");
 
-            wheelTwistDt = calcTwistFromWheel(Data2Driver.control); // Обработка пришедших данных. По ним считаем линейные скорости по осям и угловую по углу. Запоминаем dt
-            calcNewOdom(odomWheel, wheelTwistDt);                   // На основе линейных скоростей считаем новую позицию и угол
-            topic.publishOdomWheel();                               // Публикация одометрии по моторам которая получается от начальной точки
+            // wheelTwistDt = calcTwistFromWheel(Data2Driver.control); // Обработка пришедших данных. По ним считаем линейные скорости по осям и угловую по углу. Запоминаем dt
+            // calcNewOdom(odomWheel, wheelTwistDt);                   // На основе линейных скоростей считаем новую позицию и угол
+            // topic.publishOdomWheel();                               // Публикация одометрии по моторам которая получается от начальной точки
 
-            mpuTwistDt = calcTwistFromMpu(Driver2Data.bno055, 0.2); // асчет и оформление в структуру ускорений по осям (линейных скоростей) и  разделить получение угловых скоростей и расчет сновой точки на основе этих скоростей
-            calcNewOdom(odomMpu, mpuTwistDt);                       // Обработка пришедших данных.Обсчитываем одометрию по датчику MPU BNO055
-            topic.publishOdomMpu();
+            // mpuTwistDt = calcTwistFromMpu(Driver2Data.bno055, 0.2); // асчет и оформление в структуру ускорений по осям (линейных скоростей) и  разделить получение угловых скоростей и расчет сновой точки на основе этих скоростей
+            // calcNewOdom(odomMpu, mpuTwistDt);                       // Обработка пришедших данных.Обсчитываем одометрию по датчику MPU BNO055
+            // topic.publishOdomMpu();
 
-            // тут написать функцию комплементации данных угловых скоростей с разными условиями когда и в каком соотношении скомплементировать скорсти с двух источников
-            unitedTwistDt = calcTwistUnited(wheelTwistDt, mpuTwistDt);
-            calcNewOdom(odomUnited, unitedTwistDt); // // На основе линейных скоростей считаем новую позицию и угол
-            topic.publishOdomUnited();              // Публикация одометрии по моторам с корректировкой с верхнего уровня
-            printf("\n");
+            // // тут написать функцию комплементации данных угловых скоростей с разными условиями когда и в каком соотношении скомплементировать скорсти с двух источников
+            // unitedTwistDt = calcTwistUnited(wheelTwistDt, mpuTwistDt);
+            // calcNewOdom(odomUnited, unitedTwistDt); // // На основе линейных скоростей считаем новую позицию и угол
+            // topic.publishOdomUnited();              // Публикация одометрии по моторам с корректировкой с верхнего уровня
         }
         //-----------------------------------------------------------------------------------------------------------------------------------
 
         topic.processingSPI(); // Сбор и публикация статистики обмена по SPI
+        //printf("spi+ \n");
 
         r.sleep(); // Интеллектуальная задержка на указанную частоту
     }

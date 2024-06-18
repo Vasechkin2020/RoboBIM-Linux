@@ -57,8 +57,9 @@ bool sendData2Modul(int channel_, Struct_Modul2Data &structura_receive_, Struct_
 	//  int aa = micros();
 	data_modul_all++;
 	digitalWrite(PIN_SPI_MODUL, 0);
+	delayMicroseconds(3);
 	rez = wiringPiSPIDataRW(channel_, buffer, sizeof(buffer)); // Передаем и одновременно получаем данные
-	delayMicroseconds(10);
+	delayMicroseconds(3);
 	digitalWrite(PIN_SPI_MODUL, 1);
 	// int time_transfer = micros() - aa;
 	// float time_transfer_sec = time_transfer / 1000000.0;

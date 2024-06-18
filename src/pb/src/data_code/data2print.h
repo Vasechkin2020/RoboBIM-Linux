@@ -24,8 +24,9 @@ bool sendData2Print(int channel_, SPrint2Data &structura_receive_, SData2Print &
 
 	data_print_all++;
 	digitalWrite(PIN_SPI_PRINT, 0);
+	delayMicroseconds(3);
 	rez = wiringPiSPIDataRW(channel_, buffer, sizeof(buffer)); // Передаем и одновременно получаем данные
-	delayMicroseconds(10);
+	delayMicroseconds(3);
 	digitalWrite(PIN_SPI_PRINT, 1);
 
 	// Извлекаем из буфера данные в формате структуры и копирум данные
@@ -52,7 +53,7 @@ void collect_Data2Print()
 	Data2Print.controlPrint.mode = msg_ControlPrint.mode;	 //
 	Data2Print.controlPrint.intensity = 2;									 //
 	// Data2Print.controlPrint.speed = (Data2Driver.control.speedL + 0.1);// + Data2Driver.control.speedR) * 0.5; // Так как у левого колеса картридж находится расположен и не можеьт быть н
-	Data2Print.controlPrint.speed = 0.5; //
+	Data2Print.controlPrint.speed = 0.8; //
 }
 
 #endif

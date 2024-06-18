@@ -209,7 +209,7 @@ STwistDt calcTwistFromWheel(SControl control_)
 			{
 				radius = 0; // Едем прямо или назад и все по нулям
 				theta = 0;	// Если едем прямо то угол поворота отклонения от оси равен 0
-						   // ROS_INFO("2 EDEM PRIAMO radius = %.4f theta gradus = %.4f ", radius, RAD2DEG(theta));
+							// ROS_INFO("2 EDEM PRIAMO radius = %.4f theta gradus = %.4f ", radius, RAD2DEG(theta));
 			}
 			else // Едем по радиусу и надо все считать
 			{
@@ -446,10 +446,17 @@ void controlAcc(SControl &control_, SControl g_dreamSpeed) // Функция к�
 // Функция управления несколькими светодиодами которые отведены для прямого управления нодой data
 void controlLed()
 {
-	Data2Driver.led.led[24] = 1;
-	Data2Driver.led.led[25] = 2;
-	Data2Driver.led.led[26] = 3;
-	Data2Driver.led.led[27] = 4;
+	static unsigned long led_time = 0;
+	static int color = 0;
+	if ((millis() - led_time) > 250)
+	{
+		color = 1 - color;
+		led_time = millis();
+	}
+	for (int i = 24; i < 36; i++)
+	{
+		Data2Driver.led.led[i] = color;
+	}
 }
 
 /*   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!! ПРИМЕР ОТ ВАДИМА КАК НУЖНО СЧИТАТЬ одометрию!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
