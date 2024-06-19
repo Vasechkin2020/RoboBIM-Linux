@@ -30,8 +30,9 @@ int main(int argc, char **argv)
     ros::Subscriber subscriber_Lidar = nh.subscribe<sensor_msgs::LaserScan>("/scan", 1000, callback_Lidar);
     ros::Subscriber subscriber_Pillar = nh.subscribe<pb_msgs::topicPillar>("pbStart/Pillar", 1000, callback_Pillar);
     ros::Subscriber subscriber_StartPose2D = nh.subscribe<geometry_msgs::Pose2D>("pbStart/Pose2D", 1000, callback_StartPose2D);
-    ros::Subscriber subscriber_Driver = nh.subscribe<pb_msgs::SDriver2Data>("pbData/Driver", 1000, callback_Driver);
-    ros::Subscriber subscriber_Modul = nh.subscribe<pb_msgs::SModul2Data>("pbData/Modul", 1000, callback_Modul);
+
+    ros::Subscriber subscriber_Driver = nh.subscribe<pb_msgs::Struct_Driver2Data>("pbData/Driver", 1000, callback_Driver);
+    ros::Subscriber subscriber_Modul = nh.subscribe<pb_msgs::Struct_Modul2Data>("pbData/Modul", 1000, callback_Modul);
 
     //---------------------------------------------------------------------------------------------------------------------------
     CTopic topic; // Экземпляр класса для всех публикуемых топиков

@@ -41,7 +41,7 @@ private:
 public:
     CLow(/* args */);
     ~CLow();
-    void parsingDriver(pb_msgs::SDriver2Data data_); // Метод разбирает пришедшее сообщение из топика и копирует данные в переменную для дальнейшего использования
+    void parsingDriver(pb_msgs::Struct_Driver2Data data_); // Метод разбирает пришедшее сообщение из топика и копирует данные в переменную для дальнейшего использования
     SDriver2Data _driver;                         // Тут все переменные что получили от драйвера
     SOdom _encoderOdom;                           // Одометрия по Энкодеру
     SOdom _mpuOdom;                               // Одометрия по MPU BNO055
@@ -59,7 +59,7 @@ CLow::~CLow()
 {
 }
 // Метод разбирает пришедшее сообщение из топика и копирует данные в переменную для дальнейшего использования
-void CLow::parsingDriver(pb_msgs::SDriver2Data data_)
+void CLow::parsingDriver(pb_msgs::Struct_Driver2Data data_)
 {
     _driver.id = data_.id;
     //_driver.motorLeft.rpsEncod = data_.;

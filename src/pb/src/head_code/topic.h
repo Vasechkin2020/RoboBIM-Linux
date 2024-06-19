@@ -71,9 +71,10 @@ private:
     ros::Publisher pub_PoseLidarMode1 = _nh.advertise<geometry_msgs::PoseStamped>("pbMain/PoseLidarMode1", 16); // Это мы публикуем итоговую информацию по позици лидара расчет по mode1
     ros::Publisher pub_PoseLidarMode2 = _nh.advertise<geometry_msgs::PoseStamped>("pbMain/PoseLidarMode2", 16); // Это мы публикуем итоговую информацию по позици лидара расчет по mode2
 
-    ros::Publisher pub_ControlDriver = _nh.advertise<pb_msgs::SControlDriver>("pbMain/ControlDriver", 16); // Это мы публикуем структуру которую отправляем к исполнению на драйвер
-    ros::Publisher pub_ControlModul = _nh.advertise<pb_msgs::SControlModul>("pbMain/ControlModul", 16);    // Это мы публикуем структуру которую отправляем к исполнению на драйвер
-    ros::Publisher pub_ControlPrint = _nh.advertise<pb_msgs::SControlPrint>("pbMain/ControlPrint", 16);    // Это мы публикуем структуру которую отправляем к исполнению на драйвер
+
+    ros::Publisher pub_ControlDriver = _nh.advertise<pb_msgs::Struct_Data2Driver>("pbMain/ControlDriver", 16); // Это мы публикуем структуру которую отправляем к исполнению на драйвер
+    ros::Publisher pub_ControlModul = _nh.advertise<pb_msgs::Struct_Data2Modul>("pbMain/ControlModul", 16);    // Это мы публикуем структуру которую отправляем к исполнению на драйвер
+    ros::Publisher pub_ControlPrint = _nh.advertise<pb_msgs::Struct_Data2Print>("pbMain/ControlPrint", 16);    // Это мы публикуем структуру которую отправляем к исполнению на драйвер
 
     ros::Time ros_time; // Время ROS
 };
@@ -89,7 +90,7 @@ CTopic::~CTopic()
 // Публикация данных для управления Driver
 void CTopic::publicationControlDriver()
 {
-    pb_msgs::SControlDriver data;
+    pb_msgs::Struct_Data2Driver data;
     static unsigned long led_time = 0;
     static int color = 0;
 
@@ -108,12 +109,14 @@ void CTopic::publicationControlDriver()
 // Публикация данных для управления Modul
 void CTopic::publicationControlModul()
 {
-    pb_msgs::SControlModul data;
-    data.mode = 1;
-    data.angle[0] = 30;
-    data.angle[1] = 45;
-    data.angle[2] = 60;
-    data.angle[3] = 85;
+    pb_msgs::Struct_Data2Modul data;
+    data.controlLaser.mode = 1;
+
+    data.controlMotor.mode = 1;
+    data.controlMotor.angle[0] = 30;
+    data.controlMotor.angle[1] = 45;
+    data.controlMotor.angle[2] = 60;
+    data.controlMotor.angle[3] = 85;
     // data.angle[0] = g_angleLaser[0];
     // data.angle[1] = g_angleLaser[1];
     // data.angle[2] = g_angleLaser[2];
@@ -123,7 +126,7 @@ void CTopic::publicationControlModul()
 // Публикация данных для управления Print
 void CTopic::publicationControlPrint()
 {
-    pb_msgs::SControlPrint data;
+    pb_msgs::Struct_Data2Print data;
     pub_ControlPrint.publish(data);
 }
 

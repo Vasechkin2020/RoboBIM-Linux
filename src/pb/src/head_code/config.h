@@ -17,11 +17,12 @@
 #include <nav_msgs/Odometry.h>
 // #include <pb_msgs/point.h>
 
-#include <pb_msgs/SControlDriver.h>
-#include <pb_msgs/SControlModul.h>
-#include <pb_msgs/SControlPrint.h>
-#include <pb_msgs/SDriver2Data.h>
-#include <pb_msgs/SModul2Data.h>
+#include <pb_msgs/Struct_Data2Driver.h>
+#include <pb_msgs/Struct_Data2Modul.h>
+#include <pb_msgs/Struct_Data2Print.h>
+
+#include <pb_msgs/Struct_Driver2Data.h>
+#include <pb_msgs/Struct_Modul2Data.h>
 
 #include <pb_msgs/PillarOut.h>
 #include <pb_msgs/pillar.h>
@@ -53,8 +54,9 @@ const float step_accel_down = MAX_ACCELERATION_DOWN / RATE; // Максимал�
 sensor_msgs::LaserScan::ConstPtr msg_lidar; // Перемеенная в которую сохраняем данные лидара из сообщения
 pb_msgs::topicPillar msg_pillar;            // Перемеенная в которую сохраняем данные по столбам из сообщения
 geometry_msgs::Pose2D msg_startPose2d;      // Перемеенная в которую сохраняем данные о координатах машинки начальных из сообщения
-pb_msgs::SDriver2Data msg_Driver2Data;      // Сообщение которое считываем из топика
-pb_msgs::SModul2Data msg_Modul2Data;        // Сообщение которое считываем из топика
+
+pb_msgs::Struct_Driver2Data msg_Driver2Data;      // Сообщение которое считываем из топика
+pb_msgs::Struct_Modul2Data msg_Modul2Data;        // Сообщение которое считываем из топика
 //-------------------------------------------------------------------------------------------------------
 
 bool flag_msgPillar = false;  // Флаг что пришло сообщение в топик и можно его парсить
@@ -66,8 +68,8 @@ bool flag_dataPillar = false; // Флаг что разобрали данные
 bool flag_dataCar = false;    // Флаг что разобрали данные по координатам машины и можно обсчитывать дальше
 bool flag_dataLidar = false;  // Флаг что разобрали данные по лидару и можно сопоставлять столбы
 
-pb_msgs::SControlDriver Data2Driver;      // Структура с командами которую публикуем и которую потом Driver исполняет
-pb_msgs::SControlDriver Data2Driver_prev; // Структура с командами которую публикуем и которую потом Driver исполняет предыдущее состоние
+pb_msgs::Struct_Data2Driver Data2Driver;      // Структура с командами которую публикуем и которую потом Driver исполняет
+pb_msgs::Struct_Data2Driver Data2Driver_prev; // Структура с командами которую публикуем и которую потом Driver исполняет предыдущее состоние
 
 struct SPoint // Точка
 {
