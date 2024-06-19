@@ -20,11 +20,10 @@ public:
 	void publishOdomMpu();
 	void publishOdomWheel();
 	void publishOdomUnited();
-	void publishControlDriver(pb_msgs::SControlDriver data_); // Публикация данных разобранных из джойстика
 
-	void processingSPI(); // Сбор данных по результатам обмена по шине SPI по обоим контроллерам
-	void processing_Modul2Data(); // Обработка полученных данных и копирование их для публикации в топике
-	void processing_Print2Data(); // Обработка полученных данных и копирование их для публикации в топике
+	void processingSPI();		   // Сбор данных по результатам обмена по шине SPI по обоим контроллерам
+	void processing_Modul2Data();  // Обработка полученных данных и копирование их для публикации в топике
+	void processing_Print2Data();  // Обработка полученных данных и копирование их для публикации в топике
 	void processing_Driver2Data(); // Обработка полученных данных и копирование их для публикации в топике
 
 private:
@@ -32,21 +31,21 @@ private:
 	tf::TransformBroadcaster tfBroadcaster; // Вещание данных преобразования систем координат
 
 	//--------------------------------- ПУБЛИКАЦИЯ В ТОПИКИ -------------------------------------------------
-	pb_msgs::SDriver2Data Driver2Data_msg; // Это структуры которые мы заполняем и потом публикуем
-	ros::Publisher publish_Driver2Data = _nh.advertise<pb_msgs::SDriver2Data>("pbData/Driver", 16);	 // Это мы публикуем структуру которую получили с драйвера
+	pb_msgs::Struct_Driver2Data Driver2Data_msg;														  // Это структуры которые мы заполняем и потом публикуем
+	ros::Publisher publish_Driver2Data = _nh.advertise<pb_msgs::Struct_Driver2Data>("pbData/Driver", 16); // Это мы публикуем структуру которую получили с драйвера
 
-	pb_msgs::Struct_Info_SPI spi_msg;		// Это структуры которые мы заполняем и потом публикуем
-	ros::Publisher publish_Spi = _nh.advertise<pb_msgs::Struct_Info_SPI>("pbData/Spi", 16);			 // Это мы создаем публикатор и определяем название топика в рос
+	pb_msgs::Struct_Modul2Data Modul2Data_msg;														   // Это структуры которые мы заполняем и потом публикуем
+	ros::Publisher publish_Modul2Data = _nh.advertise<pb_msgs::Struct_Modul2Data>("pbData/Modul", 16); // Это мы создаем публикатор и определяем название топика в рос
 
-	pb_msgs::SModul2Data Modul2Data_msg;														  // Это структуры которые мы заполняем и потом публикуем
-	ros::Publisher publish_Modul2Data = _nh.advertise<pb_msgs::SModul2Data>("pbData/Modul", 16); // Это мы создаем публикатор и определяем название топика в рос
+	pb_msgs::Struct_Info_SPI spi_msg;														// Это структуры которые мы заполняем и потом публикуем
+	ros::Publisher publish_Spi = _nh.advertise<pb_msgs::Struct_Info_SPI>("pbData/Spi", 16); // Это мы создаем публикатор и определяем название топика в рос
 
 	nav_msgs::Odometry odomWheel_msg;
+	ros::Publisher publish_OdomWheel = _nh.advertise<nav_msgs::Odometry>("pbData/odom/Wheel", 16); // Это мы создаем публикатор и определяем название топика в рос
 	nav_msgs::Odometry odomUnited_msg;
-	nav_msgs::Odometry odomMpu_msg;
-	ros::Publisher publish_OdomWheel = _nh.advertise<nav_msgs::Odometry>("pbData/odom/Wheel", 16);	 // Это мы создаем публикатор и определяем название топика в рос
 	ros::Publisher publish_OdomUnited = _nh.advertise<nav_msgs::Odometry>("pbData/odom/United", 16); // Это мы создаем публикатор и определяем название топика в рос
-	ros::Publisher publish_OdomMpu = _nh.advertise<nav_msgs::Odometry>("pbData/odom/Mpu", 16);		 // Это мы создаем публикатор и определяем название топика в рос
+	nav_msgs::Odometry odomMpu_msg;
+	ros::Publisher publish_OdomMpu = _nh.advertise<nav_msgs::Odometry>("pbData/odom/Mpu", 16); // Это мы создаем публикатор и определяем название топика в рос
 
 	// ros::Publisher pub_JoyData = _nh.advertise<pb_msgs::SJoy>("pbInfo/JoyData", 16);                       // Это мы публикуем структуру которую сформировали по данным с джойстика
 
@@ -232,10 +231,6 @@ void CTopic::processing_Driver2Data()
 void CTopic::processing_Modul2Data()
 {
 	Modul2Data_msg.header.stamp = ros::Time::now();
-	//----------------------  msg_Modul_info_send ----------------------
-	// modul_motor_msg.id = Modul2Data.id;
-	// modul_lidar_msg.id = Modul2Data.id;
-	// modul_micric_msg.id = Modul2Data.id;
 	Modul2Data_msg.id = Modul2Data.id;
 	Modul2Data_msg.pinMotorEn = Modul2Data.pinMotorEn; // Стутус пина управления драйвером моторов, включен драйвер или нет
 	Modul2Data_msg.statusDataLaser = Modul2Data.statusDataLaser;
@@ -258,7 +253,7 @@ void CTopic::processing_Modul2Data()
 // Обработка полученных данных и копирование их для публикации в топике
 void CTopic::processing_Print2Data()
 {
-	//Нечего публиковать
+	// Нечего публиковать SPI публикую отдельно
 }
 
 #endif

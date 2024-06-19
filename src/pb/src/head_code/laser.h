@@ -94,7 +94,7 @@ void CLaser::calcAnglePillarForLaser(CPillar::SPillar *pillar_, SPoseLidar &pose
             }
         }
     }
-    int tableLaser[4]{-1, -1, -1, -1}; // Таблица в которую собираем итоговые сопоставления лащеров и столбов
+    int tableLaser[4]{-1, -1, -1, -1}; // Таблица в которую собираем итоговые сопоставления лазеров и столбов
     //-----------------------------------------------------------------------
     int count = 0;              // Количество распределённых столбов
     for (int k = 0; k < 4; k++) // Делаем 4 поиска лазеров с 1 столбом. Это максимум возможных вариантов
@@ -189,6 +189,7 @@ void CLaser::calcAnglePillarForLaser(CPillar::SPillar *pillar_, SPoseLidar &pose
     }
     for (int i = 0; i < 4; i++)
     {
+        g_angleLaser[i] = anglePillarInLaser[i];
         ROS_INFO("anglePillarInLaser= %.3f ", anglePillarInLaser[i]);
     }
 }

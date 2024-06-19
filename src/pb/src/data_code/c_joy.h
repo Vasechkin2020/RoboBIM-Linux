@@ -14,7 +14,7 @@ public:
     CJoy(float speed_max_, float radius_min_);
     ~CJoy();
     pb_msgs::SJoy _joy2Head;                        // Структура в которую пишем обработанные данные от джойстика и выдаем наружу из класса
-    pb_msgs::SControlDriver _ControlDriver;         // Тут формируем команды делаем
+    pb_msgs::Struct_Data2Driver _ControlDriver;         // Тут формируем команды делаем
     SControlPrint _controlPrint;                    // Структура в которую пишем обработанные данные от джойстика и выдаем наружу из класса
     void parsingJoy(const sensor_msgs::Joy &data_); // Функция обработки и пробразований данных в мою понятную структуру с кнопками
     void transform();                               // Преобразование кнопок джойстика в реальные команды

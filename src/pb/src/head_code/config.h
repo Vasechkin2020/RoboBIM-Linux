@@ -5,6 +5,8 @@
 #include <tf/transform_broadcaster.h>
 #include <std_msgs/String.h>
 
+#include <wiringPi.h>
+
 #include <sensor_msgs/LaserScan.h>
 #include <sensor_msgs/PointCloud.h>
 
@@ -13,10 +15,14 @@
 #include <geometry_msgs/PoseStamped.h>
 
 #include <nav_msgs/Odometry.h>
-
 // #include <pb_msgs/point.h>
+
 #include <pb_msgs/SControlDriver.h>
+#include <pb_msgs/SControlModul.h>
+#include <pb_msgs/SControlPrint.h>
 #include <pb_msgs/SDriver2Data.h>
+#include <pb_msgs/SModul2Data.h>
+
 #include <pb_msgs/PillarOut.h>
 #include <pb_msgs/pillar.h>
 #include <pb_msgs/topicPillar.h>
@@ -45,9 +51,10 @@ const float step_accel_down = MAX_ACCELERATION_DOWN / RATE; // Максимал�
 
 //--------------------------------- ПОДПИСКА НА ТОПИКИ -------------------------------------------------
 sensor_msgs::LaserScan::ConstPtr msg_lidar; // Перемеенная в которую сохраняем данные лидара из сообщения
-pb_msgs::topicPillar msg_pillar;               // Перемеенная в которую сохраняем данные по столбам из сообщения
+pb_msgs::topicPillar msg_pillar;            // Перемеенная в которую сохраняем данные по столбам из сообщения
 geometry_msgs::Pose2D msg_startPose2d;      // Перемеенная в которую сохраняем данные о координатах машинки начальных из сообщения
-pb_msgs::SDriver2Data msg_Driver2Data;         // Сообщение которое считываем из топика
+pb_msgs::SDriver2Data msg_Driver2Data;      // Сообщение которое считываем из топика
+pb_msgs::SModul2Data msg_Modul2Data;        // Сообщение которое считываем из топика
 //-------------------------------------------------------------------------------------------------------
 
 bool flag_msgPillar = false;  // Флаг что пришло сообщение в топик и можно его парсить

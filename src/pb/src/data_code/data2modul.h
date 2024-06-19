@@ -13,13 +13,15 @@ bool sendData2Modul(int channel_, Struct_Modul2Data &structura_receive_, Struct_
 // Копирование рабочих данных в структуру для передачи
 void Collect_Data2Modul() // Данные для передачи на низкий уровень
 {
-	Data2Modul.controlMotor.mode = msg_ControlModul.mode;   //
+	Data2Modul.controlLaser.mode = msg_ControlModul.controlLaser.mode;
+	
+	Data2Modul.controlMotor.mode = msg_ControlModul.controlMotor.mode;   //
 	//Data2Modul.controlMotor.mode = 1;   //
-	Data2Modul.controlMotor.angle[0] = msg_ControlModul.angle[0]; //
+	Data2Modul.controlMotor.angle[0] = msg_ControlModul.controlMotor.angle[0]; //
 	//Data2Modul.controlMotor.angle[0] = 45; //
-	Data2Modul.controlMotor.angle[1] = msg_ControlModul.angle[1]; //
-	Data2Modul.controlMotor.angle[2] = msg_ControlModul.angle[2]; //
-	Data2Modul.controlMotor.angle[3] = msg_ControlModul.angle[3]; //
+	Data2Modul.controlMotor.angle[1] = msg_ControlModul.controlMotor.angle[1]; //
+	Data2Modul.controlMotor.angle[2] = msg_ControlModul.controlMotor.angle[2]; //
+	Data2Modul.controlMotor.angle[3] = msg_ControlModul.controlMotor.angle[3]; //
 }
 
 

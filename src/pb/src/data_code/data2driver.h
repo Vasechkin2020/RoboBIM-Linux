@@ -4,11 +4,11 @@
 //**************************** ОБЬЯВЛЕНИЕ ПРОЦЕДУР **********************************
 void collect_Data2Driver(); // Данные для передачи с Data на Driver // Копирование данных из сообщения в топике в структуру для передачи по SPI
 // void processing_Driver2Data();																			   // Копирование полученных данных в структуру для публикации в топике
-bool sendData2Driver(int channel_, Struct_Driver2Data &structura_receive_, SData2Driver &structura_send_); // Указываем на каком пине устройство и с какого регистра нужно прочитать данные // Основная функция приема-передачи двух структур на slave контроллер по протоколу SPI
+bool sendData2Driver(int channel_, Struct_Driver2Data &structura_receive_, Struct_Data2Driver &structura_send_); // Указываем на каком пине устройство и с какого регистра нужно прочитать данные // Основная функция приема-передачи двух структур на slave контроллер по протоколу SPI
 
 //***********************************************************************************
 // Основная функция приема-передачи двух структур на slave контроллер по протоколу SPI
-bool sendData2Driver(int channel_, Struct_Driver2Data &structura_receive_, SData2Driver &structura_send_) // Указываем на каком пине устройство и с какого регистра нужно прочитать данные
+bool sendData2Driver(int channel_, Struct_Driver2Data &structura_receive_, Struct_Data2Driver &structura_send_) // Указываем на каком пине устройство и с какого регистра нужно прочитать данные
 {
 	uint8_t rez = false;												// Результат выполнения функции
 	const uint16_t size_structura_receive = sizeof(structura_receive_); // Размер структуры с данными которые получаем
@@ -19,7 +19,7 @@ bool sendData2Driver(int channel_, Struct_Driver2Data &structura_receive_, SData
 	memset(buffer, 0, sizeof(buffer));																							   // Очищаем буфер передачи
 
 	// Заполняем буфер данными структуры для передачи
-	SData2Driver *buffer_send = (SData2Driver *)buffer; // Создаем переменную в которую записываем адрес буфера в нужном формате
+	Struct_Data2Driver *buffer_send = (Struct_Data2Driver *)buffer; // Создаем переменную в которую записываем адрес буфера в нужном формате
 	*buffer_send = structura_send_;						// Переписываем по этому адресу данные в буфер
 
 	data_driver_all++;
@@ -49,6 +49,7 @@ bool sendData2Driver(int channel_, Struct_Driver2Data &structura_receive_, SData
 // Копирование данных из сообщения в топике в структуру для использования
 void collect_Data2Driver()
 {
+	/*
 	if (msg_ControlDriver.pose.flag == true) // Если флаг что новые корректирующие данные пришли то меняем данные
 	{
 		odomUnited.pose.x = 0;
@@ -59,6 +60,7 @@ void collect_Data2Driver()
 		// odomUnited.pose.th = msg_ControlDriver.pose.th;
 		ROS_INFO("Falg true.");
 	}
+	*/
 
 	g_dreamSpeed.speedL = msg_ControlDriver.control.speedL;
 	g_dreamSpeed.speedR = msg_ControlDriver.control.speedR;

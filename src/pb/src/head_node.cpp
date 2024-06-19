@@ -1,3 +1,4 @@
+float g_angleLaser[4]; // Углы на столбы которые акпкдвкм нв нижний угол для управления
 
 #include "head_code/config.h"
 #include "head_code/low.h"
@@ -30,9 +31,11 @@ int main(int argc, char **argv)
     ros::Subscriber subscriber_Pillar = nh.subscribe<pb_msgs::topicPillar>("pbStart/Pillar", 1000, callback_Pillar);
     ros::Subscriber subscriber_StartPose2D = nh.subscribe<geometry_msgs::Pose2D>("pbStart/Pose2D", 1000, callback_StartPose2D);
     ros::Subscriber subscriber_Driver = nh.subscribe<pb_msgs::SDriver2Data>("pbData/Driver", 1000, callback_Driver);
+    ros::Subscriber subscriber_Modul = nh.subscribe<pb_msgs::SModul2Data>("pbData/Modul", 1000, callback_Modul);
+
     //---------------------------------------------------------------------------------------------------------------------------
     CTopic topic; // Экземпляр класса для всех публикуемых топиков
-    CLow low; // Экземпляр класса для всех данных получаемых сноды Data  с нижнего уровня
+    CLow low;     // Экземпляр класса для всех данных получаемых сноды Data  с нижнего уровня
 
     ros::Rate r(RATE);        // Частота в Герцах - задержка
     ros::Duration(1).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
@@ -41,6 +44,7 @@ int main(int argc, char **argv)
     {
         // testFunction();
         ros::spinOnce(); // Опрашиваем ядро ROS и по этой команде наши срабатывают колбеки. Нужно только для подписки на топики
+        topic.transform(laser, g_poseLidar.mode1); // Публикуем трансформации систем координат, задаем по какому расчету трансформировать "odom" в "base"
         printf("+ \n");
 
         if (flag_msgDriver) // Флаг что пришло сообщение от ноды Data по Driver
@@ -79,17 +83,19 @@ int main(int argc, char **argv)
 
             // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! Сделать определние начального угла Theta при запуске путем сканирования лазерами туда-сюда и нахождения минимальной точки и вычисления угла на основе локальных углов
 
-            // topic.transform(laser, g_poseLidar.mode1); // Публикуем трансформации систем координат, задаем по какому расчету трансформировать "odom" в "base"
-            // topic.visulStartPose();                    // Формируем перемнную с собщением для публикации
-            //  topic.visualPillarAll(pillar);   // Формируем перемнную с собщением для публикации
-            // topic.visualPillarPoint(pillar); // Формируем перемнную с собщением для публикации
+            laser.calcAnglePillarForLaser(pillar.pillar, g_poseLidar); // Расчет углов в локальной системе лазеров на столбы для передачи на нижний уровень для исполнения
+            topic.publicationControlModul();                           // Формируем и Публикуем команды для управления Modul
 
-            // topic.visualPoseLidarAll(); // Формируем перемнную с собщением для публикации
-            // topic.visualPoseLidarMode();
+            topic.visulStartPose();                    // Формируем перемнную с собщением для публикации
 
-            // laser.calcAnglePillarForLaser(pillar.pillar, g_poseLidar);      // Расчет углов в локальной системе лазеров на столбы для передачи на нижний уровень для исполнения
-            // topic.visualAngleLaser(laser);     // Формируем перемнную с собщением для публикации
-            // topic.visualPoseAngleLaser(laser); // Формируем перемнную с собщением для публикации
+            topic.visualPillarAll(pillar);             // Формируем перемнную с собщением для публикации
+            topic.visualPillarPoint(pillar);           // Формируем перемнную с собщением для публикации
+
+            topic.visualPoseLidarAll(); // Формируем перемнную с собщением для публикации
+            topic.visualPoseLidarMode();
+            topic.visualPoseAngleLaser(laser);                         // Формируем перемнную с собщением для публикации
+
+            topic.visualAngleLaser(laser);                             // Формируем перемнную с собщением для публикации
         }
 
         // collectCommand();             // Формируем команду на основе полученных данных

@@ -16,9 +16,13 @@
 
 #include <pb_msgs/SControl.h>
 #include <pb_msgs/SLed.h>
-#include <pb_msgs/SControlModul.h>
-#include <pb_msgs/SControlPrint.h>
-#include <pb_msgs/SControlDriver.h>
+
+//#include <pb_msgs/SControlModul.h>
+//#include <pb_msgs/SControlPrint.h>
+#include <pb_msgs/Struct_Data2Print.h>
+#include <pb_msgs/Struct_Data2Modul.h>
+#include <pb_msgs/Struct_Data2Driver.h>
+//#include <pb_msgs/SControlDriver.h>
 
 #include <pb_msgs/SEncoder.h>
 #include <pb_msgs/SMpu.h>
@@ -27,14 +31,14 @@
 #include <pb_msgs/SMotor.h>
 
 
-#include <pb_msgs/SDriver2Data.h>
-#include <pb_msgs/SModul2Data.h>
+#include <pb_msgs/Struct_Driver2Data.h>
+#include <pb_msgs/Struct_Modul2Data.h>
 
 #include <pb_msgs/Struct_Info_SPI.h>
 
-pb_msgs::SControlDriver msg_ControlDriver; // Полученное сообщение из топика Head в Data
-pb_msgs::SControlModul msg_ControlModul;   // Полученное сообщение из топика
-pb_msgs::SControlPrint msg_ControlPrint;   // Полученное сообщение из топика
+pb_msgs::Struct_Data2Driver msg_ControlDriver; // Полученное сообщение из топика Head в Data
+pb_msgs::Struct_Data2Modul msg_ControlModul;   // Полученное сообщение из топика
+pb_msgs::Struct_Data2Print msg_ControlPrint;   // Полученное сообщение из топика
 sensor_msgs::Joy msg_joy;                  // Переменная в которую записываем пришедшее сообщение а колбеке
 
 #define RATE 100 // Частота обмена с нижним уровнев в Герц
@@ -244,14 +248,14 @@ struct SLed
   uint8_t led[NUM_LEDS]; // Маасив через который управляем светодиодами
 };
 // Структура отправляемых данных от Data к контроллеру Driver
-struct SData2Driver
+struct Struct_Data2Driver
 {
   uint32_t id = 0;      // Номер команды по порядку
   SControl control;     // Структура управления машиной
   SLed led;             // Управление светодиодами
   uint32_t cheksum = 0; // Контрольная сумма данных в структуре
 };
-SData2Driver Data2Driver; // Экземпляр структуры отправлемых данных
+Struct_Data2Driver Data2Driver; // Экземпляр структуры отправлемых данных
 
 SControl g_dreamSpeed; // Желаемая скорость
 SPose g_poseControl;   // Позиция с верхнего уровня на которую надо подменить текущую позицию
@@ -266,23 +270,23 @@ struct SControlPrint
   float speed = 0.5;      // Текущая скорость движения при которой надо печатать. От нее зависит интервал между выпрыскиванием чернил Значения по умолчанию используются если нет управления из топиков
 };
 // Структура получаемых данных из Data к Print
-struct SData2Print
+struct Struct_Data2Print
 {
   uint32_t id = 0;            // Id команды
   SControlPrint controlPrint; // Режим печати
   uint32_t cheksum = 0;       // Контрольная сумма данных в структуре
 };
-SData2Print Data2Print; // Экземпляр структуры отправлемых данных
+Struct_Data2Print Data2Print; // Экземпляр структуры отправлемых данных
 
 // Структура в которой все главные переменные передаюся на высокий уровень
-struct SPrint2Data
+struct Struct_Print2Data
 {
   uint32_t id = 0;      // id команды
   SSpi spi;             // Структура по состоянию обмена по шине SPI
   uint32_t cheksum = 0; // Контрольная сумма данных в структуре
 };
 
-SPrint2Data Print2Data; // Экземпляр структуры принимаемых данных
+Struct_Print2Data Print2Data; // Экземпляр структуры принимаемых данных
 
 //****************************************************************************************************************************************************
 // ============================================================

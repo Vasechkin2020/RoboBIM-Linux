@@ -94,6 +94,8 @@ int main(int argc, char **argv)
             Data2Print.controlPrint.status = joy._controlPrint.status; //
             Data2Print.controlPrint.mode = joy._controlPrint.mode;
 
+            
+
             // pub_JoyData.publish(joy._joy2Head); // Публикация данных разобранных из джойстика
             // topic.publicationControlDriver(joy._ControlDriver); // Публикация данных по управлению Driver (для отладки)
         }
@@ -102,6 +104,13 @@ int main(int argc, char **argv)
 
         controlAcc(Data2Driver.control, g_dreamSpeed); // Функция контроля ускорения На вход скорость с которой хотим ехать. После будет скорость с которой поедем фактически с учетом возможностей по ускорению
         controlLed();                                  // Функция управления несколькими светодиодами которые отведены для прямого управления нодой data
+
+            // Data2Modul.controlMotor.mode = 1;   // Ручной вариант проверка
+            // Data2Modul.controlMotor.angle[0] = 45; //
+            // Data2Modul.controlMotor.angle[1] = 45; //
+            // Data2Modul.controlMotor.angle[2] = 45; //
+            // Data2Modul.controlMotor.angle[3] = 45; //
+            
 
         //---------------- Тут увеличиваем айди и считаем контрольную сумму структур для передачи --------------------------------------------------------------------------------------
 

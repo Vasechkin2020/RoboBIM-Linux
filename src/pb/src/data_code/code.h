@@ -7,8 +7,10 @@ uint16_t getMax_size_Struct(uint16_t stru1_, uint16_t stru2_);	 // Функци�
 void set_PIN_Led();												 // Настройка светодиодов
 void Led_Blink(int led_, unsigned long time_);					 // Функция мигания светодиодом в осномном цикле что программа не зависла и работает
 void init_SPI(int channel_, int speed_);						 // Инициализация канала шины SPI
-void callback_ControlDriver(const pb_msgs::SControlDriver &msg); // Обратный вызов при опросе топика Head2Data
-void callback_ControlModul(const pb_msgs::SControlModul &msg);	 // Обратный вызов при опросе топика Angle
+
+void callback_ControlDriver(const pb_msgs::Struct_Data2Driver &msg); // Обратный вызов при опросе топика Driver
+void callback_ControlModul(const pb_msgs::Struct_Data2Modul &msg);	 // Обратный вызов при опросе топика Modul
+void callback_ControlPrint(const pb_msgs::Struct_Data2Print &msg);	 // Обратный вызов при опросе топика Print
 void callback_Joy(sensor_msgs::Joy msg);						 // Функция обраьтного вызова по подпичке на топик джойстика nh.subscribe("joy", 16, callback_Joy);
 
 STwistDt calcTwistFromWheel(SControl control_);						// Обработка пришедших данных.Обсчитываем одометрию по энкодеру
@@ -77,21 +79,21 @@ void callback_Joy(sensor_msgs::Joy msg)
 	msg_joy = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
 }
 // Обратный вызов при опросе топика
-void callback_ControlDriver(const pb_msgs::SControlDriver &msg)
+void callback_ControlDriver(const pb_msgs::Struct_Data2Driver &msg)
 {
 	flag_msgControlDriver = true;
 	msg_ControlDriver = msg; // Копируем структуру в глобальную переменную для дальнейшей работы с ней.
 							 // ROS_INFO("message_callback_Command.");
 }
 // Обратный вызов при опросе топика
-void callback_ControlModul(const pb_msgs::SControlModul &msg)
+void callback_ControlModul(const pb_msgs::Struct_Data2Modul &msg)
 {
 	flag_msgControlModul = true;
 	msg_ControlModul = msg; // Копируем структуру в глобальную переменную для дальнейшей работы с ней.
 							// ROS_INFO("message_callback_Command.");
 }
 // Обратный вызов при опросе топика
-void callback_ControlPrint(const pb_msgs::SControlPrint &msg)
+void callback_ControlPrint(const pb_msgs::Struct_Data2Print &msg)
 {
 	flag_msgControlPrint = true;
 	msg_ControlPrint = msg; // Копируем структуру в глобальную переменную для дальнейшей работы с ней.

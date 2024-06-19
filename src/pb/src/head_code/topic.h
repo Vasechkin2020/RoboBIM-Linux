@@ -4,7 +4,8 @@
 /*
  Класс для функций для формирования топиков в нужном виде и формате и всех публикаций
 */
-#include <ros/ros.h>
+#include "config.h"
+#include "pillar.h"
 
 class CTopic
 {
@@ -15,26 +16,28 @@ public:
     void visualPillarAll(CPillar pillar_);   // Формируем перемнную с собщением для публикации
     void visualPillarPoint(CPillar pillar_); // Формируем перемнную с собщением для публикации
     void visulStartPose();
-    void visualPoseLidarAll();                                 // Формируем перемнную с собщением для публикации по позиции лидара
-    void visualPoseLidarMode();                                // Формируем перемнную с собщением для публикации
-    void visualAngleLaser(CLaser &laser_);                     // Формируем перемнную с собщением для публикации по углам лазера
-    void visualPoseAngleLaser(CLaser &laser_);                 // Формируем перемнную с собщением для публикации по углам лазера
-    void transform(CLaser &laser_, SPose poseLidar_);          // Публикуем трансформации для системы координат
+    void visualPoseLidarAll();                        // Формируем перемнную с собщением для публикации по позиции лидара
+    void visualPoseLidarMode();                       // Формируем перемнную с собщением для публикации
+    void visualAngleLaser(CLaser &laser_);            // Формируем перемнную с собщением для публикации по углам лазера
+    void visualPoseAngleLaser(CLaser &laser_);        // Формируем перемнную с собщением для публикации по углам лазера
+    void transform(CLaser &laser_, SPose poseLidar_); // Публикуем трансформации для системы координат
 
-    void publicationControlDriver(pb_msgs::SControlDriver data_); // Публикация данных разобранных из джойстика
+    void publicationControlDriver(); // Публикация данных для управления Driver
+    void publicationControlModul();  // Публикация данных для управления Modul
+    void publicationControlPrint();  // Публикация данных для управления Print
 
 private:
     ros::NodeHandle _nh;
     tf::TransformBroadcaster tfBroadcaster; // Вещание данных преобразования систем координат
     //--------------------------------- ПУБЛИКАЦИЯ В ТОПИКИ -------------------------------------------------
-    pb_msgs::SAngleLaserLidar angleLLAll_msg;     // Перемеенная в которую сохраняем данные лидара из сообщения
+    pb_msgs::SAngleLaserLidar angleLLAll_msg;  // Перемеенная в которую сохраняем данные лидара из сообщения
     geometry_msgs::PoseStamped poseLaser0_msg; // Позиция лазера установленного на моторе 0
     geometry_msgs::PoseStamped poseLaser1_msg; // Позиция лазера установленного на моторе 1
     geometry_msgs::PoseStamped poseLaser2_msg; // Позиция лазера установленного на моторе 2
     geometry_msgs::PoseStamped poseLaser3_msg; // Позиция лазера установленного на моторе 3
 
     geometry_msgs::PoseStamped startPose_msg;      // Начальная позиция отображаем в RVIZ
-    pb_msgs::Struct_PoseLidar poseLidarAll_msg;       // Обобщенные данные в моем формате о всех вариантах расчета позиции
+    pb_msgs::Struct_PoseLidar poseLidarAll_msg;    // Обобщенные данные в моем формате о всех вариантах расчета позиции
     geometry_msgs::PoseStamped poseLidarMode1_msg; // Перемеенная в которую сохраняем данные лидара из сообщения
     geometry_msgs::PoseStamped poseLidarMode2_msg; // Перемеенная в которую сохраняем данные лидара из сообщения
 
@@ -50,13 +53,13 @@ private:
     // ros::Publisher pub_encoderOdom = _nh.advertise<nav_msgs::Odometry>("pbinfo/encoderOdom", 16);
     // ros::Publisher pub_mpuOdom = _nh.advertise<nav_msgs::Odometry>("pbinfo/mpuOdom", 16);
 
-    ros::Publisher pub_PillarAll = _nh.advertise<pb_msgs::PillarOut>("pbMain/PillarAll", 16);              // Это мы публикуем итоговую информацию по столбам
+    ros::Publisher pub_PillarAll = _nh.advertise<pb_msgs::PillarOut>("pbMain/PillarAll", 16);           // Это мы публикуем итоговую информацию по столбам
     ros::Publisher pub_topicPillar0 = _nh.advertise<geometry_msgs::PointStamped>("pbMain/Pillar0", 16); // Для публикации конкретного столба
     ros::Publisher pub_topicPillar1 = _nh.advertise<geometry_msgs::PointStamped>("pbMain/Pillar1", 16); // Для публикации конкретного столба
     ros::Publisher pub_topicPillar2 = _nh.advertise<geometry_msgs::PointStamped>("pbMain/Pillar2", 16); // Для публикации конкретного столба
     ros::Publisher pub_topicPillar3 = _nh.advertise<geometry_msgs::PointStamped>("pbMain/Pillar3", 16); // Для публикации конкретного столба
 
-    ros::Publisher pub_AngleLLAll = _nh.advertise<pb_msgs::SAngleLaserLidar>("pbMain/AngleLLAll", 16);     // Это мы публикуем итоговую информацию по углам лазера для нижнего уровня
+    ros::Publisher pub_AngleLLAll = _nh.advertise<pb_msgs::SAngleLaserLidar>("pbMain/AngleLLAll", 16);  // Это мы публикуем итоговую информацию по углам лазера для нижнего уровня
     ros::Publisher pub_poseLaser0 = _nh.advertise<geometry_msgs::PoseStamped>("pbMain/PoseLaser0", 16); // Публикатор для позиции лазера на моторе 0
     ros::Publisher pub_poseLaser1 = _nh.advertise<geometry_msgs::PoseStamped>("pbMain/PoseLaser1", 16); // Публикатор для позиции лазера на моторе 1
     ros::Publisher pub_poseLaser2 = _nh.advertise<geometry_msgs::PoseStamped>("pbMain/PoseLaser2", 16); // Публикатор для позиции лазера на моторе 2
@@ -64,11 +67,13 @@ private:
 
     ros::Publisher pub_StartPose = _nh.advertise<geometry_msgs::PoseStamped>("pbMain/StartPose", 16); // Это мы обьявляем структуру для публикации которую сформировали по данным с джойстика
 
-    ros::Publisher pub_poseLidarAll = _nh.advertise<pb_msgs::Struct_PoseLidar>("pbMain/PoseLidarAll", 16);         // Это мы публикуем итоговую информацию по позици лидара обобщенную
+    ros::Publisher pub_poseLidarAll = _nh.advertise<pb_msgs::Struct_PoseLidar>("pbMain/PoseLidarAll", 16);      // Это мы публикуем итоговую информацию по позици лидара обобщенную
     ros::Publisher pub_PoseLidarMode1 = _nh.advertise<geometry_msgs::PoseStamped>("pbMain/PoseLidarMode1", 16); // Это мы публикуем итоговую информацию по позици лидара расчет по mode1
-    ros::Publisher pub_PoseLidarMode2 = _nh.advertise<geometry_msgs::PoseStamped>("pbMain/PoseLidarMode2", 16); // Это мы публикуем итоговую информацию по позици лидара расчет по mode1
+    ros::Publisher pub_PoseLidarMode2 = _nh.advertise<geometry_msgs::PoseStamped>("pbMain/PoseLidarMode2", 16); // Это мы публикуем итоговую информацию по позици лидара расчет по mode2
 
     ros::Publisher pub_ControlDriver = _nh.advertise<pb_msgs::SControlDriver>("pbMain/ControlDriver", 16); // Это мы публикуем структуру которую отправляем к исполнению на драйвер
+    ros::Publisher pub_ControlModul = _nh.advertise<pb_msgs::SControlModul>("pbMain/ControlModul", 16);    // Это мы публикуем структуру которую отправляем к исполнению на драйвер
+    ros::Publisher pub_ControlPrint = _nh.advertise<pb_msgs::SControlPrint>("pbMain/ControlPrint", 16);    // Это мы публикуем структуру которую отправляем к исполнению на драйвер
 
     ros::Time ros_time; // Время ROS
 };
@@ -82,9 +87,44 @@ CTopic::~CTopic()
 }
 
 // Публикация данных для управления Driver
-void CTopic::publicationControlDriver(pb_msgs::SControlDriver data_)
+void CTopic::publicationControlDriver()
 {
-    pub_ControlDriver.publish(data_);
+    pb_msgs::SControlDriver data;
+    static unsigned long led_time = 0;
+    static int color = 0;
+
+    if ((millis() - led_time) > 250)
+    {
+        color = 1 - color;
+        led_time = millis();
+    }
+    for (int i = 0; i < 24; i++)
+    {
+        data.led.led[i] = color;
+    }
+    
+    pub_ControlDriver.publish(data);
+}
+// Публикация данных для управления Modul
+void CTopic::publicationControlModul()
+{
+    pb_msgs::SControlModul data;
+    data.mode = 1;
+    data.angle[0] = 30;
+    data.angle[1] = 45;
+    data.angle[2] = 60;
+    data.angle[3] = 85;
+    // data.angle[0] = g_angleLaser[0];
+    // data.angle[1] = g_angleLaser[1];
+    // data.angle[2] = g_angleLaser[2];
+    // data.angle[3] = g_angleLaser[3];
+    pub_ControlModul.publish(data);
+}
+// Публикация данных для управления Print
+void CTopic::publicationControlPrint()
+{
+    pb_msgs::SControlPrint data;
+    pub_ControlPrint.publish(data);
 }
 
 void CTopic::visulStartPose()

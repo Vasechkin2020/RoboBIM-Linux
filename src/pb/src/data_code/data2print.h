@@ -4,11 +4,11 @@
 //**************************** ОБЬЯВЛЕНИЕ ПРОЦЕДУР **********************************
 void collect_Data2Print(); // Данные для передачи с Data на Print // Копирование данных из сообщения в топике в структуру для передачи по SPI
 // void processing_Print2Data();																			   // Копирование полученных данных в структуру для публикации в топике
-bool sendData2Print(int channel_, SPrint2Data &structura_receive_, SData2Print &structura_send_); // Указываем на каком пине устройство и с какого регистра нужно прочитать данные // Основная функция приема-передачи двух структур на slave контроллер по протоколу SPI
+bool sendData2Print(int channel_, Struct_Print2Data &structura_receive_, Struct_Data2Print &structura_send_); // Указываем на каком пине устройство и с какого регистра нужно прочитать данные // Основная функция приема-передачи двух структур на slave контроллер по протоколу SPI
 
 //***********************************************************************************
 // Основная функция приема-передачи двух структур на slave контроллер по протоколу SPI
-bool sendData2Print(int channel_, SPrint2Data &structura_receive_, SData2Print &structura_send_) // Указываем на каком пине устройство и с какого регистра нужно прочитать данные
+bool sendData2Print(int channel_, Struct_Print2Data &structura_receive_, Struct_Data2Print &structura_send_) // Указываем на каком пине устройство и с какого регистра нужно прочитать данные
 {
 	uint8_t rez = false;												// Результат выполнения функции
 	const uint16_t size_structura_receive = sizeof(structura_receive_); // Размер структуры с данными которые получаем
@@ -19,7 +19,7 @@ bool sendData2Print(int channel_, SPrint2Data &structura_receive_, SData2Print &
 	memset(buffer, 0, sizeof(buffer));																							   // Очищаем буфер передачи
 
 	// Заполняем буфер данными структуры для передачи
-	SData2Print *buffer_send = (SData2Print *)buffer; // Создаем переменную в которую записываем адрес буфера в нужном формате
+	Struct_Data2Print *buffer_send = (Struct_Data2Print *)buffer; // Создаем переменную в которую записываем адрес буфера в нужном формате
 	*buffer_send = structura_send_;					  // Переписываем по этому адресу данные в буфер
 
 	data_print_all++;
@@ -30,8 +30,8 @@ bool sendData2Print(int channel_, SPrint2Data &structura_receive_, SData2Print &
 	digitalWrite(PIN_SPI_PRINT, 1);
 
 	// Извлекаем из буфера данные в формате структуры и копирум данные
-	SPrint2Data *copy_buf_master_receive = (SPrint2Data *)buffer;	   // Создаем переменную в которую пишем адрес буфера в нужном формате
-	SPrint2Data structura_receive_temp;								   // Временная структура, проверить правильные ли пришли данные
+	Struct_Print2Data *copy_buf_master_receive = (Struct_Print2Data *)buffer;	   // Создаем переменную в которую пишем адрес буфера в нужном формате
+	Struct_Print2Data structura_receive_temp;								   // Временная структура, проверить правильные ли пришли данные
 	structura_receive_temp = *copy_buf_master_receive;				   // Копируем из этой перемнной данные в мою структуру
 	uint32_t cheksum_receive = measureCheksum(structura_receive_temp); // Считаем контрольную сумму пришедшей структуры
 
@@ -49,8 +49,8 @@ bool sendData2Print(int channel_, SPrint2Data &structura_receive_, SData2Print &
 // Копирование данных из сообщения в топике в структуру для использования
 void collect_Data2Print()
 {
-	Data2Print.controlPrint.status = msg_ControlPrint.status; //
-	Data2Print.controlPrint.mode = msg_ControlPrint.mode;	 //
+	Data2Print.controlPrint.status = msg_ControlPrint.controlPrint.status; //
+	Data2Print.controlPrint.mode = msg_ControlPrint.controlPrint.mode;	 //
 	Data2Print.controlPrint.intensity = 2;									 //
 	// Data2Print.controlPrint.speed = (Data2Driver.control.speedL + 0.1);// + Data2Driver.control.speedR) * 0.5; // Так как у левого колеса картридж находится расположен и не можеьт быть н
 	Data2Print.controlPrint.speed = 0.8; //

@@ -57,8 +57,7 @@ add_message_files(
   #--------------Структуры для сообщений на данные с MODUL -----------------------------------------
   SMotorSend.msg
   SLaserSend.msg
-  SModul2Data.msg 
-
+  
   SPose.msg    # x,y, theta
   SPoseTrue.msg    # x,y, theta, flag
   STwist.msg    # x,y, theta
@@ -69,20 +68,29 @@ add_message_files(
   SSensor.msg
   SMotor.msg
   SControl.msg
-  SDriver2Data.msg
   SEncoder.msg
+
+  SControlMotor.msg
+  SControlLaser.msg
+  
   #-------------------------------------------------------
   Struct_PoseLidar.msg
-  Struct_Info_SPI.msg
   
   SAngleLL.msg
   SAngleLaserLidar.msg
   
-  SControlPrint.msg
-
   #-------------------------------------------------------
-  SControlModul.msg    # Топик с командой управления углами лазеров
-  SControlDriver.msg
+  Struct_Driver2Data.msg
+  Struct_Modul2Data.msg 
+  
+  Struct_Info_SPI.msg
+    #-------------------------------------------------------
+  #SControlDriver.msg
+
+  Struct_Data2Print.msg
+  Struct_Data2Modul.msg
+  Struct_Data2Driver.msg
+  #-------------------------------------------------------
 
   topicPillar.msg    # Топик с данными координаты реального положения столбов
   PillarOut.msg

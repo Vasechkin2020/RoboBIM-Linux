@@ -181,7 +181,7 @@ add_executable(data_node src/data_node.cpp)
 target_link_libraries(data_node ${catkin_LIBRARIES} -lwiringPi -lpthread)
 
 #add_executable(head_node src/head_node.cpp)
-#target_link_libraries(head_node ${catkin_LIBRARIES})
+#target_link_libraries(head_node ${catkin_LIBRARIES} -lwiringPi -lpthread)
 
 #add_executable(pillar_node src/pillar_node.cpp)
 #target_link_libraries(pillar_node ${catkin_LIBRARIES})

@@ -40,6 +40,11 @@ void callback_Driver(pb_msgs::SDriver2Data msg)
     msg_Driver2Data = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
     flag_msgDriver = true;
 }
+void callback_Modul(pb_msgs::SModul2Data msg)
+{
+    msg_Modul2Data = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
+    flag_msgModul = true;
+}
 
 // Находим минимальную дистанцию из 3 датчиков
 float minDistance(float laserL_, float laserR_, float uzi1_)
