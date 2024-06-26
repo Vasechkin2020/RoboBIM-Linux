@@ -20,7 +20,7 @@ bool sendData2Driver(int channel_, Struct_Driver2Data &structura_receive_, Struc
 
 	// Заполняем буфер данными структуры для передачи
 	Struct_Data2Driver *buffer_send = (Struct_Data2Driver *)buffer; // Создаем переменную в которую записываем адрес буфера в нужном формате
-	*buffer_send = structura_send_;						// Переписываем по этому адресу данные в буфер
+	*buffer_send = structura_send_;									// Переписываем по этому адресу данные в буфер
 
 	data_driver_all++;
 	digitalWrite(PIN_SPI_DRIVER, 0);
@@ -49,6 +49,11 @@ bool sendData2Driver(int channel_, Struct_Driver2Data &structura_receive_, Struc
 // Копирование данных из сообщения в топике в структуру для использования
 void collect_Data2Driver()
 {
+	for (int i = 0; i < 24; i++)
+	{
+		Data2Driver.led.led[i] = msg_ControlDriver.led.led[i];
+	}
+
 	/*
 	if (msg_ControlDriver.pose.flag == true) // Если флаг что новые корректирующие данные пришли то меняем данные
 	{

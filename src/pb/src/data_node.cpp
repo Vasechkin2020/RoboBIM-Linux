@@ -1,6 +1,7 @@
 
 // #include "bcm2835.h"
-#include "lib.h"
+
+#include "genStruct.h" // Тут все общие структуры. Истользуются и Data и Main и Head
 #include "data_code/config.h"
 #include "data_code/c_joy.h"
 CJoy joy(0.5, 0.5); // Обьявляем экземпляр класса в нем вся обработка джойстика
@@ -34,9 +35,9 @@ int main(int argc, char **argv)
 
     int rez = wiringPiSetup(); // Инициализация библиотеки
     // //rez = wiringPiSetupGpio(); // При такой инициализациипины имеют другие номера, как изначально в распбери ПИ.
-    pinMode(PIN_SPI_MODUL, OUTPUT); //
+    pinMode(PIN_SPI_MODUL, OUTPUT);  //
     pinMode(PIN_SPI_DRIVER, OUTPUT); //
-    pinMode(PIN_SPI_PRINT, OUTPUT); //
+    pinMode(PIN_SPI_PRINT, OUTPUT);  //
 
     digitalWrite(PIN_SPI_MODUL, 1);
     digitalWrite(PIN_SPI_DRIVER, 1);
@@ -52,8 +53,8 @@ int main(int argc, char **argv)
     current_time = ros::Time::now();
     last_time = ros::Time::now();
     initArray();
-    
-    ROS_INFO("ver -2224-");
+
+    ROS_INFO("ver -22288-");
     delay(1000);
 
     while (ros::ok())
@@ -64,37 +65,39 @@ int main(int argc, char **argv)
 
         ros::spinOnce();   // Обновление в данных в ядре ROS, по этой команде происходит вызов функции обратного вызова
         topic.transform(); // Трансформация odom to map
+        // printf("%u --- \n", millis());
 
         //-----------------------------------------------------------------------------------------------------------------------------------
         if (flag_msgControlModul) // Если пришло сообщение в топике и сработал колбек
         {
             flag_msgControlModul = false;
+            printf("msgControlModul in... \n");
             Collect_Data2Modul(); // Обрабатываем пришедшие данные и пишем в перемнные для передачи на нижний уровень
         }
         if (flag_msgControlPrint) // Если пришло сообщение в топике и сработал колбек
         {
             flag_msgControlPrint = false;
+            printf("msgControlPrint in... \n");
             collect_Data2Print(); // Обрабатываем пришедшие данные и пишем в переменные для передачи на нижний уровень
         }
         if (flag_msgControlDriver) // Если пришло сообщение в топике и сработал колбек
         {
             flag_msgControlDriver = false;
+            printf("msgControlDriver in... \n");
             collect_Data2Driver(); // Обрабатываем пришедшие данные и пишем в переменные для передачи на нижний уровень
         }
         //----------------------------- ТУТ ВНОСИМ ИЗМЕНЕНИЕ В УПРАВЛЕНИЕ ЕСЛИ ВРУЧНУЮ УПРАВЛЯЕМ ЧЕРЕЗ ДЖОЙСТИК ------------------------------------------------------------------
 
         if (flag_msgJoy) // Если пришло новое сообшение и сработал колбек то разбираем что там пришло
         {
-            flag_msgJoy = false;     // Флаг сбратываем .Приоритет джойстику
-            joy.parsingJoy(msg_joy); // Разбираем и формируем команды из полученного сообщения
-            joy.transform();         // Преобразование кнопок джойстика в реальные команды
-            g_dreamSpeed.speedL = joy._ControlDriver.control.speedL;
+            flag_msgJoy = false;                                     // Флаг сбратываем .Приоритет джойстику
+            joy.parsingJoy(msg_joy);                                 // Разбираем и формируем команды из полученного сообщения
+            joy.transform();                                         // Преобразование кнопок джойстика в реальные команды
+            g_dreamSpeed.speedL = joy._ControlDriver.control.speedL; // Можно упростить и сделать без переменной g_dreamSpeed
             g_dreamSpeed.speedR = joy._ControlDriver.control.speedR;
 
             Data2Print.controlPrint.status = joy._controlPrint.status; //
             Data2Print.controlPrint.mode = joy._controlPrint.mode;
-
-            
 
             // pub_JoyData.publish(joy._joy2Head); // Публикация данных разобранных из джойстика
             // topic.publicationControlDriver(joy._ControlDriver); // Публикация данных по управлению Driver (для отладки)
@@ -105,12 +108,11 @@ int main(int argc, char **argv)
         controlAcc(Data2Driver.control, g_dreamSpeed); // Функция контроля ускорения На вход скорость с которой хотим ехать. После будет скорость с которой поедем фактически с учетом возможностей по ускорению
         controlLed();                                  // Функция управления несколькими светодиодами которые отведены для прямого управления нодой data
 
-            // Data2Modul.controlMotor.mode = 1;   // Ручной вариант проверка
-            // Data2Modul.controlMotor.angle[0] = 45; //
-            // Data2Modul.controlMotor.angle[1] = 45; //
-            // Data2Modul.controlMotor.angle[2] = 45; //
-            // Data2Modul.controlMotor.angle[3] = 45; //
-            
+        // Data2Modul.controlMotor.mode = 1;   // Ручной вариант проверка
+        // Data2Modul.controlMotor.angle[0] = 45; //
+        // Data2Modul.controlMotor.angle[1] = 45; //
+        // Data2Modul.controlMotor.angle[2] = 45; //
+        // Data2Modul.controlMotor.angle[3] = 45; //
 
         //---------------- Тут увеличиваем айди и считаем контрольную сумму структур для передачи --------------------------------------------------------------------------------------
 
@@ -133,6 +135,7 @@ int main(int argc, char **argv)
             topic.processing_Modul2Data(); // Обрабатываем данные
             // printf("Modul!!!!!!!!!! \n");
         }
+
         //----------------------------
         rezPrint = sendData2Print(SPI_CHANNAL_0, Print2Data, Data2Print); ////  Отправляем данные на нижний уровень
         if (rezPrint)                                                     // Если пришли хорошие данные то обрабатываем их и публикуем данные в ROS
@@ -141,7 +144,7 @@ int main(int argc, char **argv)
             // printf("Print!!!!!!!!!! \n");
         }
         //----------------------------
-       rezData = sendData2Driver(SPI_CHANNAL_0, Driver2Data, Data2Driver); ////  Отправляем данные на нижний уровень
+        rezData = sendData2Driver(SPI_CHANNAL_0, Driver2Data, Data2Driver); ////  Отправляем данные на нижний уровень
         // ROS_INFO("id= %i speedL= %f speedR= %f cheksum = %i", Data2Driver.id, Data2Driver.control.speedL, Data2Driver.control.speedR, Data2Driver.cheksum);
 
         if (rezData) // Если пришли хорошие данные то обрабатываем их и публикуем данные в ROS
@@ -165,7 +168,7 @@ int main(int argc, char **argv)
         //-----------------------------------------------------------------------------------------------------------------------------------
 
         topic.processingSPI(); // Сбор и публикация статистики обмена по SPI
-        //printf("spi+ \n");
+        // printf("spi+ \n");
 
         r.sleep(); // Интеллектуальная задержка на указанную частоту
     }

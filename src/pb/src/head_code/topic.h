@@ -16,7 +16,7 @@ public:
     void visualPillarAll(CPillar pillar_);   // Формируем перемнную с собщением для публикации
     void visualPillarPoint(CPillar pillar_); // Формируем перемнную с собщением для публикации
     void visulStartPose();
-    void visualPoseLidarAll();                        // Формируем перемнную с собщением для публикации по позиции лидара
+    void dataPoseLidarAll();                        // Формируем перемнную с собщением для публикации по позиции лидара
     void visualPoseLidarMode();                       // Формируем перемнную с собщением для публикации
     void visualAngleLaser(CLaser &laser_);            // Формируем перемнную с собщением для публикации по углам лазера
     void visualPoseAngleLaser(CLaser &laser_);        // Формируем перемнную с собщением для публикации по углам лазера
@@ -113,14 +113,18 @@ void CTopic::publicationControlModul()
     data.controlLaser.mode = 1;
 
     data.controlMotor.mode = 1;
-    data.controlMotor.angle[0] = 30;
-    data.controlMotor.angle[1] = 45;
-    data.controlMotor.angle[2] = 60;
-    data.controlMotor.angle[3] = 85;
-    // data.angle[0] = g_angleLaser[0];
-    // data.angle[1] = g_angleLaser[1];
-    // data.angle[2] = g_angleLaser[2];
-    // data.angle[3] = g_angleLaser[3];
+    // data.controlMotor.angle[0] = 120;
+    // data.controlMotor.angle[1] = 120;
+    // data.controlMotor.angle[2] = 150;
+    // data.controlMotor.angle[3] = 150;
+    data.controlMotor.angle[0] = g_angleLaser[0];
+    data.controlMotor.numPillar[0] = g_numPillar[0];
+    data.controlMotor.angle[1] = g_angleLaser[1];
+    data.controlMotor.numPillar[1] = g_numPillar[1];
+    data.controlMotor.angle[2] = g_angleLaser[2];
+    data.controlMotor.numPillar[2] = g_numPillar[2];
+    data.controlMotor.angle[3] = g_angleLaser[3];
+    data.controlMotor.numPillar[3] = g_numPillar[3];
     pub_ControlModul.publish(data);
 }
 // Публикация данных для управления Print
@@ -139,7 +143,7 @@ void CTopic::visulStartPose()
     float theta = DEG2RAD(-msg_startPose2d.theta + 90); // + 90 Так как у них оси расположены не так как я меня. У меня ноль вверх а у них вправо и вращение у них против часовой
     geometry_msgs::Quaternion quat = tf::createQuaternionMsgFromYaw(theta);
     startPose_msg.pose.orientation = quat;
-    ROS_INFO("Quaternion x =%.3f y =%.3f z =%.3f w =%.3f theta = %.3f", quat.x, quat.y, quat.z, quat.w, theta);
+    ROS_INFO("startPose_msg Quaternion x =%.3f y =%.3f z =%.3f w =%.3f theta = %.3f", quat.x, quat.y, quat.z, quat.w, theta);
 
     pub_StartPose.publish(startPose_msg); // Публикация полученных данных
 }
@@ -184,7 +188,7 @@ void CTopic::visualPillarAll(CPillar pillar_) // Формируем перемн
         data.status = pillar_.pillar[i].status;
         data.azimuth = pillar_.pillar[i].azimuth;
         data.hypotenuse = pillar_.pillar[i].hypotenuse;
-        data.distance = pillar_.pillar[i].distance;
+        data.distance_lidar = pillar_.pillar[i].distance_lidar;
         data.x_true = pillar_.pillar[i].x_true;
         data.y_true = pillar_.pillar[i].y_true;
         data.theta_true1 = pillar_.pillar[i].theta_true1;
@@ -329,7 +333,7 @@ void CTopic::visualPoseAngleLaser(CLaser &laser_) // Формируем пере
     pub_poseLaser3.publish(poseLaser3_msg);                                                                        // Публикуем информацию по позиции луча лазераустановленного на моторе 0 в своей локальной ситеме координат laser0
 }
 
-void CTopic::visualPoseLidarAll() // Формируем перемнную с собщением для публикации
+void CTopic::dataPoseLidarAll() // Формируем перемнную с собщением для публикации
 {
     poseLidarAll_msg.mmode1.x = g_poseLidar.mode1.x;
     poseLidarAll_msg.mmode1.y = g_poseLidar.mode1.y;

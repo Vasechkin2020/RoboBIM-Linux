@@ -72,6 +72,9 @@ void startPosition(geometry_msgs::Pose2D &startPose2d_)
     g_poseLidar.mode2.x = startPose2d_.x; // Пока считаем что передаем положение центра лидара и поэтому ему присваиваем значение, потом надо будет добавлять смещение до центра поворота между колесами
     g_poseLidar.mode2.y = startPose2d_.y;
     g_poseLidar.mode2.th = startPose2d_.theta;
+    g_poseLidar.mode3.x = startPose2d_.x; // Пока считаем что передаем положение центра лидара и поэтому ему присваиваем значение, потом надо будет добавлять смещение до центра поворота между колесами
+    g_poseLidar.mode3.y = startPose2d_.y;
+    g_poseLidar.mode3.th = startPose2d_.theta;
     ROS_INFO("startPosition lidarPose x= %.3f y= %.3f th= %.3f ", g_poseLidar.mode1.x, g_poseLidar.mode1.y, g_poseLidar.mode1.th);
     ROS_INFO("-------------------------            -------------------------------------");
 }

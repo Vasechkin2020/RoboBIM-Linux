@@ -241,9 +241,11 @@ void CTopic::processing_Modul2Data()
 		Modul2Data_msg.motor[i].position = Modul2Data.motor[i].position;	   //
 		Modul2Data_msg.motor[i].destination = Modul2Data.motor[i].destination; //
 
-		Modul2Data_msg.lidar[i].status = Modul2Data.laser[i].status;	 //
-		Modul2Data_msg.lidar[i].distance = Modul2Data.laser[i].distance; //
-		Modul2Data_msg.lidar[i].angle = Modul2Data.laser[i].angle;		 //
+		Modul2Data_msg.laser[i].status = Modul2Data.laser[i].status;	 //
+		Modul2Data_msg.laser[i].distance = Modul2Data.laser[i].distance; //
+		Modul2Data_msg.laser[i].signalQuality = Modul2Data.laser[i].signalQuality; //
+		Modul2Data_msg.laser[i].angle = Modul2Data.laser[i].angle;		 //
+		Modul2Data_msg.laser[i].numPillar = Modul2Data.laser[i].numPillar;		 //
 
 		Modul2Data_msg.micric[i] = Modul2Data.micric[i]; // Состояние концевиков
 	}

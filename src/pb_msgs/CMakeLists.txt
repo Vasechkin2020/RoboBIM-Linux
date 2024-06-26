@@ -55,49 +55,19 @@ add_message_files(
   pointA.msg    # x,y
   pillar.msg    # 
   #--------------Структуры для сообщений на данные с MODUL -----------------------------------------
-  SMotorSend.msg
-  SLaserSend.msg
   
   SPose.msg    # x,y, theta
   SPoseTrue.msg    # x,y, theta, flag
   STwist.msg    # x,y, theta
   SOdom.msg
-  SMpu.msg
   SEuler.msg    # roll pitch yaw
-  SSpi.msg
-  SSensor.msg
-  SMotor.msg
-  SControl.msg
   SEncoder.msg
-
-  SControlMotor.msg
-  SControlLaser.msg
   
-  #-------------------------------------------------------
-  Struct_PoseLidar.msg
-  
-  SAngleLL.msg
-  SAngleLaserLidar.msg
-  
-  #-------------------------------------------------------
-  Struct_Driver2Data.msg
-  Struct_Modul2Data.msg 
-  
-  Struct_Info_SPI.msg
-    #-------------------------------------------------------
-  #SControlDriver.msg
-
-  Struct_Data2Print.msg
-  Struct_Data2Modul.msg
-  Struct_Data2Driver.msg
-  #-------------------------------------------------------
-
   topicPillar.msg    # Топик с данными координаты реального положения столбов
   PillarOut.msg
   #-------------------------------------------------------
-  SLed.msg
   SJoy.msg
-
+  
   #Struct_Car.msg
   Struct_Odom.msg
   Struct_Servo.msg
@@ -109,6 +79,38 @@ add_message_files(
   DataTimeMy.msg
   data_driver_control.msg
   data_driver_odometr.msg
+  
+  #-------------------------------------------------------
+  Struct_PoseLidar.msg
+  
+  SAngleLL.msg
+  SAngleLaserLidar.msg
+  
+  #-------------------------------------------------------
+  SMotor.msg
+  SMpu.msg
+  SSensor.msg
+  Struct_Driver2Data.msg
+  #-------------------------------------------------------
+  SMotorSend.msg
+  SLaserSend.msg
+  Struct_Modul2Data.msg 
+  #-------------------------------------------------------
+  SSpi.msg
+  Struct_Info_SPI.msg
+  #-------------------------------------------------------
+  SControl.msg
+  SLed.msg
+  Struct_Data2Driver.msg
+  #-------------------------------------------------------
+  SControlMotor.msg
+  SControlLaser.msg
+  Struct_Data2Modul.msg
+  #-------------------------------------------------------
+  SControlPrint.msg
+  Struct_Data2Print.msg
+  #-------------------------------------------------------
+
 )
 
 ## Generate services in the 'srv' folder
