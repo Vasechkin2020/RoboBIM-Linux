@@ -126,6 +126,14 @@ void CTopic::publicationControlModul()
     data.controlMotor.angle[3] = g_angleLaser[3];
     data.controlMotor.numPillar[3] = g_numPillar[3];
     pub_ControlModul.publish(data);
+                printf("++++++++++++++++++publicationControlModul ++++++++++++++++++ \n");
+            for (int i = 0; i < 4; i++)
+            {
+                printf("i = %i ",i);
+                printf(" g_angleLaser = %f ", g_angleLaser[i]);
+                printf(" g_numPillar = %i \n", g_numPillar[i]);
+            }
+            printf("++++++++++++++++++++++++++++++++++++ \n");
 }
 // Публикация данных для управления Print
 void CTopic::publicationControlPrint()
@@ -342,6 +350,10 @@ void CTopic::dataPoseLidarAll() // Формируем перемнную с со
     poseLidarAll_msg.mmode2.x = g_poseLidar.mode2.x;
     poseLidarAll_msg.mmode2.y = g_poseLidar.mode2.y;
     poseLidarAll_msg.mmode2.th = g_poseLidar.mode2.th;
+
+    poseLidarAll_msg.mmode3.x = g_poseLidar.mode3.x;
+    poseLidarAll_msg.mmode3.y = g_poseLidar.mode3.y;
+    poseLidarAll_msg.mmode3.th = g_poseLidar.mode3.th;
 
     pub_poseLidarAll.publish(poseLidarAll_msg); // Публикуем информацию по позиции лидара
 }

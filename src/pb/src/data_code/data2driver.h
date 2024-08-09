@@ -2,7 +2,7 @@
 #define DATA2DRIVER_H
 
 //**************************** ОБЬЯВЛЕНИЕ ПРОЦЕДУР **********************************
-void collect_Data2Driver(); // Данные для передачи с Data на Driver // Копирование данных из сообщения в топике в структуру для передачи по SPI
+void collect_Data2Driver(int data_); // Данные для передачи с Data на Driver // Копирование данных из сообщения в топике в структуру для передачи по SPI
 // void processing_Driver2Data();																			   // Копирование полученных данных в структуру для публикации в топике
 bool sendData2Driver(int channel_, Struct_Driver2Data &structura_receive_, Struct_Data2Driver &structura_send_); // Указываем на каком пине устройство и с какого регистра нужно прочитать данные // Основная функция приема-передачи двух структур на slave контроллер по протоколу SPI
 
@@ -47,32 +47,39 @@ bool sendData2Driver(int channel_, Struct_Driver2Data &structura_receive_, Struc
 	}
 }
 // Копирование данных из сообщения в топике в структуру для использования
-void collect_Data2Driver()
+void collect_Data2Driver(int data_)
 {
-	for (int i = 0; i < 24; i++)
+	if (data_ == 1) // Данные из топика
 	{
-		Data2Driver.led.led[i] = msg_ControlDriver.led.led[i];
-	}
+		for (int i = 0; i < 24; i++)
+		{
+			Data2Driver.led.led[i] = msg_ControlDriver.led.led[i];
+		}
 
-	/*
-	if (msg_ControlDriver.pose.flag == true) // Если флаг что новые корректирующие данные пришли то меняем данные
+		/*
+		if (msg_ControlDriver.pose.flag == true) // Если флаг что новые корректирующие данные пришли то меняем данные
+		{
+			odomUnited.pose.x = 0;
+			odomUnited.pose.y = 0;
+			odomUnited.pose.th = 0;
+			// odomUnited.pose.x = msg_ControlDriver.pose.x;
+			// odomUnited.pose.y = msg_ControlDriver.pose.y;
+			// odomUnited.pose.th = msg_ControlDriver.pose.th;
+			ROS_INFO("Falg true.");
+		}
+		*/
+
+		g_dreamSpeed.speedL = msg_ControlDriver.control.speedL;
+		g_dreamSpeed.speedR = msg_ControlDriver.control.speedR;
+		// Data2Driver.control.speedL = 0.1;
+		// Data2Driver.control.speedR = 0.1;
+
+		// Data2Driver.led.num_program = msg_ControlDriver.led.num_program;
+	}
+	else // Двнные если нет топика сколько-то времени
 	{
-		odomUnited.pose.x = 0;
-		odomUnited.pose.y = 0;
-		odomUnited.pose.th = 0;
-		// odomUnited.pose.x = msg_ControlDriver.pose.x;
-		// odomUnited.pose.y = msg_ControlDriver.pose.y;
-		// odomUnited.pose.th = msg_ControlDriver.pose.th;
-		ROS_INFO("Falg true.");
+
 	}
-	*/
-
-	g_dreamSpeed.speedL = msg_ControlDriver.control.speedL;
-	g_dreamSpeed.speedR = msg_ControlDriver.control.speedR;
-	// Data2Driver.control.speedL = 0.1;
-	// Data2Driver.control.speedR = 0.1;
-
-	// Data2Driver.led.num_program = msg_ControlDriver.led.num_program;
 }
 
 #endif

@@ -32,20 +32,20 @@ private:
 
 	//--------------------------------- ПУБЛИКАЦИЯ В ТОПИКИ -------------------------------------------------
 	pb_msgs::Struct_Driver2Data Driver2Data_msg;														  // Это структуры которые мы заполняем и потом публикуем
-	ros::Publisher publish_Driver2Data = _nh.advertise<pb_msgs::Struct_Driver2Data>("pbData/Driver", 16); // Это мы публикуем структуру которую получили с драйвера
+	ros::Publisher publish_Driver2Data = _nh.advertise<pb_msgs::Struct_Driver2Data>("pbData/Driver", 3); // Это мы публикуем структуру которую получили с драйвера
 
 	pb_msgs::Struct_Modul2Data Modul2Data_msg;														   // Это структуры которые мы заполняем и потом публикуем
-	ros::Publisher publish_Modul2Data = _nh.advertise<pb_msgs::Struct_Modul2Data>("pbData/Modul", 16); // Это мы создаем публикатор и определяем название топика в рос
+	ros::Publisher publish_Modul2Data = _nh.advertise<pb_msgs::Struct_Modul2Data>("pbData/Modul", 3); // Это мы создаем публикатор и определяем название топика в рос
 
 	pb_msgs::Struct_Info_SPI spi_msg;														// Это структуры которые мы заполняем и потом публикуем
-	ros::Publisher publish_Spi = _nh.advertise<pb_msgs::Struct_Info_SPI>("pbData/Spi", 16); // Это мы создаем публикатор и определяем название топика в рос
+	ros::Publisher publish_Spi = _nh.advertise<pb_msgs::Struct_Info_SPI>("pbData/Spi", 3); // Это мы создаем публикатор и определяем название топика в рос
 
 	nav_msgs::Odometry odomWheel_msg;
-	ros::Publisher publish_OdomWheel = _nh.advertise<nav_msgs::Odometry>("pbData/odom/Wheel", 16); // Это мы создаем публикатор и определяем название топика в рос
+	ros::Publisher publish_OdomWheel = _nh.advertise<nav_msgs::Odometry>("pbData/odom/Wheel", 3); // Это мы создаем публикатор и определяем название топика в рос
 	nav_msgs::Odometry odomUnited_msg;
-	ros::Publisher publish_OdomUnited = _nh.advertise<nav_msgs::Odometry>("pbData/odom/United", 16); // Это мы создаем публикатор и определяем название топика в рос
+	ros::Publisher publish_OdomUnited = _nh.advertise<nav_msgs::Odometry>("pbData/odom/United", 3); // Это мы создаем публикатор и определяем название топика в рос
 	nav_msgs::Odometry odomMpu_msg;
-	ros::Publisher publish_OdomMpu = _nh.advertise<nav_msgs::Odometry>("pbData/odom/Mpu", 16); // Это мы создаем публикатор и определяем название топика в рос
+	ros::Publisher publish_OdomMpu = _nh.advertise<nav_msgs::Odometry>("pbData/odom/Mpu", 3); // Это мы создаем публикатор и определяем название топика в рос
 
 	// ros::Publisher pub_JoyData = _nh.advertise<pb_msgs::SJoy>("pbInfo/JoyData", 16);                       // Это мы публикуем структуру которую сформировали по данным с джойстика
 

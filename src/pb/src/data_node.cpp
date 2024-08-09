@@ -54,8 +54,23 @@ int main(int argc, char **argv)
     last_time = ros::Time::now();
     initArray();
 
-    ROS_INFO("ver -22288-");
-    delay(1000);
+    ROS_INFO("ver -3384-");
+
+    Data2Modul.id++;                                       //= 0x1F1F1F1F;
+    Data2Modul.controlMotor.mode = 0;                      // Ручной вариант проверка
+    Data2Modul.cheksum = measureCheksum(Data2Modul);       // Считаем контрольную сумму отправляемой структуры// тут нужно посчитать контрольную сумму структуры
+    sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
+    ros::Duration(0, 100000).sleep();                      // Подождем пока все обьявится и инициализируется внутри ROS
+
+    Data2Modul.id++;                                       //= 0x1F1F1F1F;
+    Data2Modul.controlMotor.mode = 9;                      // Ручной вариант проверка
+    Data2Modul.cheksum = measureCheksum(Data2Modul);       // Считаем контрольную сумму отправляемой структуры// тут нужно посчитать контрольную сумму структуры
+    sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
+    ros::Duration(5).sleep();                              // Подождем пока все обьявится и инициализируется внутри ROS
+    Data2Modul.id++;                                       //= 0x1F1F1F1F;
+    Data2Modul.controlMotor.mode = 1;                      // Ручной вариант проверка
+    Data2Modul.cheksum = measureCheksum(Data2Modul);       // Считаем контрольную сумму отправляемой структуры// тут нужно посчитать контрольную сумму структуры
+    sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
 
     while (ros::ok())
     {
@@ -72,20 +87,29 @@ int main(int argc, char **argv)
         {
             flag_msgControlModul = false;
             printf("msgControlModul in... \n");
-            Collect_Data2Modul(); // Обрабатываем пришедшие данные и пишем в перемнные для передачи на нижний уровень
+            Collect_Data2Modul(1); // Обрабатываем пришедшие данные и пишем в перемнные для передачи на нижний уровень
         }
         if (flag_msgControlPrint) // Если пришло сообщение в топике и сработал колбек
         {
             flag_msgControlPrint = false;
             printf("msgControlPrint in... \n");
-            collect_Data2Print(); // Обрабатываем пришедшие данные и пишем в переменные для передачи на нижний уровень
+            collect_Data2Print(1); // Обрабатываем пришедшие данные и пишем в переменные для передачи на нижний уровень
         }
         if (flag_msgControlDriver) // Если пришло сообщение в топике и сработал колбек
         {
             flag_msgControlDriver = false;
             printf("msgControlDriver in... \n");
-            collect_Data2Driver(); // Обрабатываем пришедшие данные и пишем в переменные для передачи на нижний уровень
+            collect_Data2Driver(1); // Обрабатываем пришедшие данные и пишем в переменные для передачи на нижний уровень
         }
+
+        //----------------------------- ТУТ Смотрим по времени, если нет данных по топикам то отправляем значения по умолчанию ------------------------------------------------------------------
+        if (millis() - timeSpiModul > 3000) // Если по топикам не пришли данные больше 3 секунд то отправляем значения по умолчанию
+            Collect_Data2Modul(0);
+        if (millis() - timeSpiDriver > 3000) // Если по топикам не пришли данные больше 3 секунд то отправляем значения по умолчанию
+            collect_Data2Driver(0);
+        if (millis() - timeSpiPrint > 3000) // Если по топикам не пришли данные больше 3 секунд то отправляем значения по умолчанию
+            collect_Data2Print(0);
+
         //----------------------------- ТУТ ВНОСИМ ИЗМЕНЕНИЕ В УПРАВЛЕНИЕ ЕСЛИ ВРУЧНУЮ УПРАВЛЯЕМ ЧЕРЕЗ ДЖОЙСТИК ------------------------------------------------------------------
 
         if (flag_msgJoy) // Если пришло новое сообшение и сработал колбек то разбираем что там пришло
@@ -108,10 +132,16 @@ int main(int argc, char **argv)
         controlAcc(Data2Driver.control, g_dreamSpeed); // Функция контроля ускорения На вход скорость с которой хотим ехать. После будет скорость с которой поедем фактически с учетом возможностей по ускорению
         controlLed();                                  // Функция управления несколькими светодиодами которые отведены для прямого управления нодой data
 
-        // Data2Modul.controlMotor.mode = 1;   // Ручной вариант проверка
+        Data2Modul.controlLaser.mode = 1;      // Ручной вариант проверка
+        Data2Modul.controlMotor.mode = 1;      // Ручной вариант проверка
         // Data2Modul.controlMotor.angle[0] = 45; //
-        // Data2Modul.controlMotor.angle[1] = 45; //
+        // Data2Modul.controlMotor.angle[1] = 135; //
         // Data2Modul.controlMotor.angle[2] = 45; //
+        // Data2Modul.controlMotor.angle[3] = 135; //
+
+        // Data2Modul.controlMotor.angle[0] = 135; //
+        // Data2Modul.controlMotor.angle[1] = 45; //
+        // Data2Modul.controlMotor.angle[2] = 135; //
         // Data2Modul.controlMotor.angle[3] = 45; //
 
         //---------------- Тут увеличиваем айди и считаем контрольную сумму структур для передачи --------------------------------------------------------------------------------------

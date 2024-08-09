@@ -32,7 +32,7 @@
 #include <pb_msgs/Struct_PoseLidar.h>
 // #include <data/pointA.h>
 
-#define RATE 1 // Частота шага
+#define RATE 3 // Частота шага
 
 #define OFFSET_LAZER 0.05 // Оффсет лоя лазера с учетом напечатанного крепления.Если крепление дургое то и офсет надо перезамерить....
 
@@ -218,7 +218,7 @@ float angleThetaFromPoint(SPoint point_) // Возвращает от -180 до 
 // Задаем угол на точку от оси У вверх которая и расстояние до точки
 SPoint pointFromTetha(float angle_, float distance_) // Возвращает от -180 до +180
 {
-    ROS_INFO("angle_= %f distance_ = %f ", angle_, distance_);
+    //printf(" pointFromTetha angle_= %f distance_ = %f ", angle_, distance_);
     SPoint ret;
     angle_ = DEG2RAD(angle_); // Превращаем в радианы, так как приходит в градусах
     if (angle_ < 90)
@@ -232,7 +232,7 @@ SPoint pointFromTetha(float angle_, float distance_) // Возвращает о�
         ret.x = cos(angle_) * distance_;
         ret.y = -sin(angle_) * distance_;
     }
-    ROS_INFO("x= %f y = %f \n", ret.x, ret.y);
+    //printf("x= %f y = %f \n", ret.x, ret.y);
     return ret;
 }
 

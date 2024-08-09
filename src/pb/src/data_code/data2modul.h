@@ -3,28 +3,41 @@
 
 //**************************** ОБЬЯВЛЕНИЕ ПРОЦЕДУР **********************************
 
-void Collect_Data2Modul();																					  // Данные для передачи на низкий уровень //Копирование рабочих данных в структуру для передачи
+void Collect_Data2Modul(int data_);																			  // Данные для передачи на низкий уровень //Копирование рабочих данных в структуру для передачи
 void dataProcessing_Modul();																				  // Обработка полученных данных и копирование их для публикации в топике
 bool sendData2Modul(int channel_, Struct_Modul2Data &structura_receive_, Struct_Data2Modul &structura_send_); // Основная функция приема-передачи двух структур на slave контроллер по протоколу SPI
 
 //***********************************************************************************
 
 // Копирование рабочих данных в структуру для передачи
-void Collect_Data2Modul() // Данные для передачи на низкий уровень
+void Collect_Data2Modul(int data_) // Данные для передачи на низкий уровень
 {
-	Data2Modul.controlLaser.mode = msg_ControlModul.controlLaser.mode;
-	Data2Modul.controlMotor.mode = msg_ControlModul.controlMotor.mode; //
-	for (int i = 0; i < 4; i++)
+	if (data_ == 1)
 	{
-		Data2Modul.controlMotor.angle[i] = msg_ControlModul.controlMotor.angle[i];		   //
-		Data2Modul.controlMotor.numPillar[i] = msg_ControlModul.controlMotor.numPillar[i]; //
-	}
+		Data2Modul.controlLaser.mode = msg_ControlModul.controlLaser.mode;
+		Data2Modul.controlMotor.mode = msg_ControlModul.controlMotor.mode; //
+		for (int i = 0; i < 4; i++)
+		{
+			Data2Modul.controlMotor.angle[i] = msg_ControlModul.controlMotor.angle[i];		   //
+			Data2Modul.controlMotor.numPillar[i] = msg_ControlModul.controlMotor.numPillar[i]; //
+		}
 
-	// Data2Modul.controlMotor.mode = 1;   //
-	// Data2Modul.controlMotor.angle[0] = 45; //
-	//  Data2Modul.controlMotor.angle[1] = msg_ControlModul.controlMotor.angle[1]; //
-	//  Data2Modul.controlMotor.angle[2] = msg_ControlModul.controlMotor.angle[2]; //
-	//  Data2Modul.controlMotor.angle[3] = msg_ControlModul.controlMotor.angle[3]; //
+		// Data2Modul.controlMotor.mode = 1;   //
+		// Data2Modul.controlMotor.angle[0] = 45; //
+		//  Data2Modul.controlMotor.angle[1] = msg_ControlModul.controlMotor.angle[1]; //
+		//  Data2Modul.controlMotor.angle[2] = msg_ControlModul.controlMotor.angle[2]; //
+		//  Data2Modul.controlMotor.angle[3] = msg_ControlModul.controlMotor.angle[3]; //
+	}
+	else
+	{
+		Data2Modul.controlLaser.mode = 0;
+		Data2Modul.controlMotor.mode = 0; //
+		for (int i = 0; i < 4; i++)
+		{
+			Data2Modul.controlMotor.angle[i] = 0;	  //
+			Data2Modul.controlMotor.numPillar[i] = -1; //
+		}
+	}
 }
 
 // Основная функция приема-передачи двух структур на slave контроллер по протоколу SPI

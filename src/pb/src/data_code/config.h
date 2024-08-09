@@ -36,6 +36,10 @@
 
 #include <pb_msgs/Struct_Info_SPI.h>
 
+u_int64_t timeSpiModul = 0; // Время когда пришла команда по топикам
+u_int64_t timeSpiDriver = 0; // Время когда пришла команда по топикам
+u_int64_t timeSpiPrint = 0; // Время когда пришла команда по топикам
+
 pb_msgs::Struct_Data2Driver msg_ControlDriver; // Полученное сообщение из топика Head в Data
 pb_msgs::Struct_Data2Modul msg_ControlModul;   // Полученное сообщение из топика
 pb_msgs::Struct_Data2Print msg_ControlPrint;   // Полученное сообщение из топика

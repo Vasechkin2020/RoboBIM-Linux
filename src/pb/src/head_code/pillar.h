@@ -99,7 +99,7 @@ CPillar::~CPillar()
 SPose CPillar::getLocationMode3(SPose pose_) // На вход подается последняя полученная/посчитанная позиция лидара
 {
     ROS_INFO("=== getLocationMode3");
-    // ROS_INFO("pose IN x= %.3f y= %.3f theta= %.3f ", pose_.x, pose_.y, pose_.theta);
+    ROS_INFO("pose IN x= %.3f y= %.3f th= %.3f ", pose_.x, pose_.y, pose_.th);
     // ROS_INFO("---"); //
     float a1, a2;
     SCircle c1, c2;
@@ -114,6 +114,7 @@ SPose CPillar::getLocationMode3(SPose pose_) // На вход подается �
         {
             c1.x = pillar[i].x_true; // Формируем окружности
             c1.y = pillar[i].y_true;
+            ROS_INFO("distance_laser= %f i= %i",pillar[i].distance_laser,i);
             c1.r = pillar[i].distance_laser + PILLAR_RADIUS;
             c2.x = pillar[j].x_true;
             c2.y = pillar[j].y_true;
@@ -121,6 +122,7 @@ SPose CPillar::getLocationMode3(SPose pose_) // На вход подается �
             int rez = getCrossing(c1, c2, pose_, point, 0.1); // Считаем пересечение окружнойстей и в итоге получаем текущее положение по 2 окружностям отбираем те точки котрые не дальше 0,1 метра
             if (rez == 1)                                     // Если результат True значит нашли пересечения иначе пропускаем
             {
+                printf("getCrossing ");
                 poseLidarMode3[count_poseLidarMode3].x = point.x;
                 poseLidarMode3[count_poseLidarMode3].y = point.y;
                 count_poseLidarMode3++;

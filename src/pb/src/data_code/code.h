@@ -82,6 +82,7 @@ void callback_Joy(sensor_msgs::Joy msg)
 void callback_ControlDriver(const pb_msgs::Struct_Data2Driver &msg)
 {
 	flag_msgControlDriver = true;
+	timeSpiDriver = millis();
 	msg_ControlDriver = msg; // Копируем структуру в глобальную переменную для дальнейшей работы с ней.
 							 // ROS_INFO("message_callback_Command.");
 }
@@ -89,13 +90,15 @@ void callback_ControlDriver(const pb_msgs::Struct_Data2Driver &msg)
 void callback_ControlModul(const pb_msgs::Struct_Data2Modul &msg)
 {
 	flag_msgControlModul = true;
+	timeSpiModul = millis();
 	msg_ControlModul = msg; // Копируем структуру в глобальную переменную для дальнейшей работы с ней.
 							// ROS_INFO("message_callback_Command.");
-}
+} 
 // Обратный вызов при опросе топика
 void callback_ControlPrint(const pb_msgs::Struct_Data2Print &msg)
 {
 	flag_msgControlPrint = true;
+	timeSpiPrint = millis();
 	msg_ControlPrint = msg; // Копируем структуру в глобальную переменную для дальнейшей работы с ней.
 							// ROS_INFO("message_callback_Command.");
 }
