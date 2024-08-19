@@ -14,7 +14,7 @@ CJoy joy(0.5, 0.5); // Обьявляем экземпляр класса в н�
 int main(int argc, char **argv)
 {
     ROS_INFO("%s -------------------------------------------------------", NN);
-    ROS_WARN("%s Start Data_Node printBIM(c) 2024 printBIM.com ver. 1.331 ", NN);
+    ROS_WARN("%s Start Data_Node printBIM(c) 2024 printBIM.com ver. 1.333 ", NN);
     ROS_INFO("%s -------------------------------------------------------", NN);
 
     ros::init(argc, argv, "data_node");
@@ -132,12 +132,12 @@ int main(int argc, char **argv)
         controlAcc(Data2Driver.control, g_dreamSpeed); // Функция контроля ускорения На вход скорость с которой хотим ехать. После будет скорость с которой поедем фактически с учетом возможностей по ускорению
         controlLed();                                  // Функция управления несколькими светодиодами которые отведены для прямого управления нодой data
 
-        Data2Modul.controlLaser.mode = 1;      // Ручной вариант проверка
-        Data2Modul.controlMotor.mode = 1;      // Ручной вариант проверка
-        // Data2Modul.controlMotor.angle[0] = 45; //
-        // Data2Modul.controlMotor.angle[1] = 135; //
-        // Data2Modul.controlMotor.angle[2] = 45; //
-        // Data2Modul.controlMotor.angle[3] = 135; //
+        Data2Modul.controlLaser.mode = 1;           // Ручной вариант проверка
+        Data2Modul.controlMotor.mode = 1;           // Ручной вариант проверка
+        Data2Modul.controlMotor.angle[0] = 67.6; //
+        Data2Modul.controlMotor.angle[1] = 42.5;     //
+        Data2Modul.controlMotor.angle[2] = 143.6;      //
+        Data2Modul.controlMotor.angle[3] = 105.7;     //
 
         // Data2Modul.controlMotor.angle[0] = 135; //
         // Data2Modul.controlMotor.angle[1] = 45; //

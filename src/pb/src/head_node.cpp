@@ -105,7 +105,7 @@ int main(int argc, char **argv)
             flag_dataLidar = false;
             pillar.comparisonPillar();                                      // Сопоставляем столбы
             g_poseLidar.mode1 = pillar.getLocationMode1(g_poseLidar.mode1); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
-            g_poseLidar.mode2 = pillar.getLocationMode2(g_poseLidar.mode2); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
+            //g_poseLidar.mode2 = pillar.getLocationMode2(g_poseLidar.mode2); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
             // g_poseLidar.mode3 = pillar.getLocationMode3(g_poseLidar.mode1); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
 
             laser.calcAnglePillarForLaser(pillar.pillar, g_poseLidar); // Расчет углов в локальной системе лазеров на столбы для передачи на нижний уровень для исполнения
