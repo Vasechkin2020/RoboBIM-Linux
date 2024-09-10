@@ -31,13 +31,13 @@ private:
 	tf::TransformBroadcaster tfBroadcaster; // Вещание данных преобразования систем координат
 
 	//--------------------------------- ПУБЛИКАЦИЯ В ТОПИКИ -------------------------------------------------
-	pb_msgs::Struct_Driver2Data Driver2Data_msg;														  // Это структуры которые мы заполняем и потом публикуем
+	pb_msgs::Struct_Driver2Data Driver2Data_msg;														 // Это структуры которые мы заполняем и потом публикуем
 	ros::Publisher publish_Driver2Data = _nh.advertise<pb_msgs::Struct_Driver2Data>("pbData/Driver", 3); // Это мы публикуем структуру которую получили с драйвера
 
-	pb_msgs::Struct_Modul2Data Modul2Data_msg;														   // Это структуры которые мы заполняем и потом публикуем
+	pb_msgs::Struct_Modul2Data Modul2Data_msg;														  // Это структуры которые мы заполняем и потом публикуем
 	ros::Publisher publish_Modul2Data = _nh.advertise<pb_msgs::Struct_Modul2Data>("pbData/Modul", 3); // Это мы создаем публикатор и определяем название топика в рос
 
-	pb_msgs::Struct_Info_SPI spi_msg;														// Это структуры которые мы заполняем и потом публикуем
+	pb_msgs::Struct_Info_SPI spi_msg;													   // Это структуры которые мы заполняем и потом публикуем
 	ros::Publisher publish_Spi = _nh.advertise<pb_msgs::Struct_Info_SPI>("pbData/Spi", 3); // Это мы создаем публикатор и определяем название топика в рос
 
 	nav_msgs::Odometry odomWheel_msg;
@@ -241,11 +241,11 @@ void CTopic::processing_Modul2Data()
 		Modul2Data_msg.motor[i].position = Modul2Data.motor[i].position;	   //
 		Modul2Data_msg.motor[i].destination = Modul2Data.motor[i].destination; //
 
-		Modul2Data_msg.laser[i].status = Modul2Data.laser[i].status;	 //
-		Modul2Data_msg.laser[i].distance = Modul2Data.laser[i].distance; //
-		Modul2Data_msg.laser[i].signalQuality = Modul2Data.laser[i].signalQuality; //
-		Modul2Data_msg.laser[i].angle = Modul2Data.laser[i].angle;		 //
-		Modul2Data_msg.laser[i].numPillar = Modul2Data.laser[i].numPillar;		 //
+		Modul2Data_msg.laser[i].status = Modul2Data.laser[i].status;					  //
+		Modul2Data_msg.laser[i].distance = Modul2Data.laser[i].distance + offSetLaser[i]; // Прибавляем поправочные значения полученные при калибровке
+		Modul2Data_msg.laser[i].signalQuality = Modul2Data.laser[i].signalQuality;		  //
+		Modul2Data_msg.laser[i].angle = Modul2Data.laser[i].angle;						  //
+		Modul2Data_msg.laser[i].numPillar = Modul2Data.laser[i].numPillar;				  //
 
 		Modul2Data_msg.micric[i] = Modul2Data.micric[i]; // Состояние концевиков
 	}
