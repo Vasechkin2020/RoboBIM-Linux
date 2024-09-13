@@ -16,7 +16,7 @@ public:
     void visualPillarAll(CPillar pillar_);   // Формируем перемнную с собщением для публикации
     void visualPillarPoint(CPillar pillar_); // Формируем перемнную с собщением для публикации
     void visulStartPose();
-    void dataPoseLidarAll();                        // Формируем перемнную с собщением для публикации по позиции лидара
+    void dataPoseLidarAll();                          // Формируем перемнную с собщением для публикации по позиции лидара
     void visualPoseLidarMode();                       // Формируем перемнную с собщением для публикации
     void visualAngleLaser(CLaser &laser_);            // Формируем перемнную с собщением для публикации по углам лазера
     void visualPoseAngleLaser(CLaser &laser_);        // Формируем перемнную с собщением для публикации по углам лазера
@@ -25,6 +25,17 @@ public:
     void publicationControlDriver(); // Публикация данных для управления Driver
     void publicationControlModul();  // Публикация данных для управления Modul
     void publicationControlPrint();  // Публикация данных для управления Print
+
+    // Перенес из data_node **************
+    void transform(); // Публикуем трансформации для системы координат
+    void transformWheel(SPose pose_);
+    void transformUnited(SPose pose_);
+    void transformMpu(SPose pose_);
+
+    void publishOdomMpu();
+    void publishOdomWheel();
+    void publishOdomUnited();
+    //***********************
 
 private:
     ros::NodeHandle _nh;
@@ -53,29 +64,40 @@ private:
     // ros::Publisher pub_encoderOdom = _nh.advertise<nav_msgs::Odometry>("pbinfo/encoderOdom", 16);
     // ros::Publisher pub_mpuOdom = _nh.advertise<nav_msgs::Odometry>("pbinfo/mpuOdom", 16);
 
-    ros::Publisher pub_PillarAll = _nh.advertise<pb_msgs::PillarOut>("pbMain/PillarAll", 16);           // Это мы публикуем итоговую информацию по столбам
-    ros::Publisher pub_topicPillar0 = _nh.advertise<geometry_msgs::PointStamped>("pbMain/Pillar0", 16); // Для публикации конкретного столба
-    ros::Publisher pub_topicPillar1 = _nh.advertise<geometry_msgs::PointStamped>("pbMain/Pillar1", 16); // Для публикации конкретного столба
-    ros::Publisher pub_topicPillar2 = _nh.advertise<geometry_msgs::PointStamped>("pbMain/Pillar2", 16); // Для публикации конкретного столба
-    ros::Publisher pub_topicPillar3 = _nh.advertise<geometry_msgs::PointStamped>("pbMain/Pillar3", 16); // Для публикации конкретного столба
-
-    ros::Publisher pub_AngleLLAll = _nh.advertise<pb_msgs::SAngleLaserLidar>("pbMain/AngleLLAll", 16);  // Это мы публикуем итоговую информацию по углам лазера для нижнего уровня
-    ros::Publisher pub_poseLaser0 = _nh.advertise<geometry_msgs::PoseStamped>("pbMain/PoseLaser0", 16); // Публикатор для позиции лазера на моторе 0
-    ros::Publisher pub_poseLaser1 = _nh.advertise<geometry_msgs::PoseStamped>("pbMain/PoseLaser1", 16); // Публикатор для позиции лазера на моторе 1
-    ros::Publisher pub_poseLaser2 = _nh.advertise<geometry_msgs::PoseStamped>("pbMain/PoseLaser2", 16); // Публикатор для позиции лазера на моторе 2
-    ros::Publisher pub_poseLaser3 = _nh.advertise<geometry_msgs::PoseStamped>("pbMain/PoseLaser3", 16); // Публикатор для позиции лазера на моторе 3
-
-    ros::Publisher pub_StartPose = _nh.advertise<geometry_msgs::PoseStamped>("pbMain/StartPose", 16); // Это мы обьявляем структуру для публикации которую сформировали по данным с джойстика
-
-    ros::Publisher pub_poseLidarAll = _nh.advertise<pb_msgs::Struct_PoseLidar>("pbMain/PoseLidarAll", 16);      // Это мы публикуем итоговую информацию по позици лидара обобщенную
-    ros::Publisher pub_PoseLidarMode1 = _nh.advertise<geometry_msgs::PoseStamped>("pbMain/PoseLidarMode1", 16); // Это мы публикуем итоговую информацию по позици лидара расчет по mode1
-    ros::Publisher pub_PoseLidarMode2 = _nh.advertise<geometry_msgs::PoseStamped>("pbMain/PoseLidarMode2", 16); // Это мы публикуем итоговую информацию по позици лидара расчет по mode2
-
+    ros::Publisher pub_poseLidarAll = _nh.advertise<pb_msgs::Struct_PoseLidar>("pbMain/ModeAll", 16); // Это мы публикуем итоговую информацию по позици лидара обобщенную
 
     ros::Publisher pub_ControlDriver = _nh.advertise<pb_msgs::Struct_Data2Driver>("pbMain/ControlDriver", 16); // Это мы публикуем структуру которую отправляем к исполнению на драйвер
     ros::Publisher pub_ControlModul = _nh.advertise<pb_msgs::Struct_Data2Modul>("pbMain/ControlModul", 16);    // Это мы публикуем структуру которую отправляем к исполнению на драйвер
     ros::Publisher pub_ControlPrint = _nh.advertise<pb_msgs::Struct_Data2Print>("pbMain/ControlPrint", 16);    // Это мы публикуем структуру которую отправляем к исполнению на драйвер
 
+    ros::Publisher pub_AngleLLAll = _nh.advertise<pb_msgs::SAngleLaserLidar>("pbMain/AngleLLAll", 16); // Это мы публикуем итоговую информацию по углам лазера для нижнего уровня
+    ros::Publisher pub_PillarAll = _nh.advertise<pb_msgs::PillarOut>("pbMain/PillarAll", 16);          // Это мы публикуем итоговую обобщенную информацию по столбам где все данные указаны НАФИГА?
+
+    ros::Publisher pub_StartPose = _nh.advertise<geometry_msgs::PoseStamped>("pbRviz/StartPose", 16);   // Для публикации стартовой позиции
+    ros::Publisher pub_topicPillar0 = _nh.advertise<geometry_msgs::PointStamped>("pbRviz/Pillar0", 16); // Для публикации конкретного столба
+    ros::Publisher pub_topicPillar1 = _nh.advertise<geometry_msgs::PointStamped>("pbRviz/Pillar1", 16); // Для публикации конкретного столба
+    ros::Publisher pub_topicPillar2 = _nh.advertise<geometry_msgs::PointStamped>("pbRviz/Pillar2", 16); // Для публикации конкретного столба
+    ros::Publisher pub_topicPillar3 = _nh.advertise<geometry_msgs::PointStamped>("pbRviz/Pillar3", 16); // Для публикации конкретного столба
+
+    ros::Publisher pub_poseLaser0 = _nh.advertise<geometry_msgs::PoseStamped>("pbRviz/PoseLaser0", 16); // Публикатор для позиции лазера на моторе 0
+    ros::Publisher pub_poseLaser1 = _nh.advertise<geometry_msgs::PoseStamped>("pbRviz/PoseLaser1", 16); // Публикатор для позиции лазера на моторе 1
+    ros::Publisher pub_poseLaser2 = _nh.advertise<geometry_msgs::PoseStamped>("pbRviz/PoseLaser2", 16); // Публикатор для позиции лазера на моторе 2
+    ros::Publisher pub_poseLaser3 = _nh.advertise<geometry_msgs::PoseStamped>("pbRviz/PoseLaser3", 16); // Публикатор для позиции лазера на моторе 3
+
+    ros::Publisher pub_PoseLidarMode1 = _nh.advertise<geometry_msgs::PoseStamped>("pbRviz/PoseLidarMode1", 16); // Это мы публикуем итоговую информацию по позици лидара расчет по mode1
+    ros::Publisher pub_PoseLidarMode2 = _nh.advertise<geometry_msgs::PoseStamped>("pbRviz/PoseLidarMode2", 16); // Это мы публикуем итоговую информацию по позици лидара расчет по mode2
+
+    // Перенес из data_node ***************
+    nav_msgs::Odometry odomWheel_msg;
+    ros::Publisher publish_OdomWheel = _nh.advertise<nav_msgs::Odometry>("pbMain/odom/Wheel", 3); // Это мы создаем публикатор и определяем название топика в рос
+    // nav_msgs::Odometry odomUnited_msg;
+    // ros::Publisher publish_OdomUnited = _nh.advertise<nav_msgs::Odometry>("pbData/odom/United", 3); // Это мы создаем публикатор и определяем название топика в рос
+    // nav_msgs::Odometry odomMpu_msg;
+    // ros::Publisher publish_OdomMpu = _nh.advertise<nav_msgs::Odometry>("pbData/odom/Mpu", 3); // Это мы создаем публикатор и определяем название топика в рос
+
+    // ros::Publisher pub_encoderOdom = _nh.advertise<nav_msgs::Odometry>("pbinfo/encoderOdom", 16);
+    // ros::Publisher pub_mpuOdom = _nh.advertise<nav_msgs::Odometry>("pbinfo/mpuOdom", 16);
+    //*******************
     ros::Time ros_time; // Время ROS
 };
 
@@ -103,7 +125,7 @@ void CTopic::publicationControlDriver()
     {
         data.led.led[i] = color;
     }
-    
+
     pub_ControlDriver.publish(data);
 }
 // Публикация данных для управления Modul
@@ -126,14 +148,14 @@ void CTopic::publicationControlModul()
     data.controlMotor.angle[3] = g_angleLaser[3];
     data.controlMotor.numPillar[3] = g_numPillar[3];
     pub_ControlModul.publish(data);
-                printf("++++++++++++++++++publicationControlModul ++++++++++++++++++ \n");
-            for (int i = 0; i < 4; i++)
-            {
-                printf("i = %i ",i);
-                printf(" g_angleLaser = %f ", g_angleLaser[i]);
-                printf(" g_numPillar = %i \n", g_numPillar[i]);
-            }
-            printf("++++++++++++++++++++++++++++++++++++ \n");
+    printf("++++++++++++++++++publicationControlModul ++++++++++++++++++ \n");
+    for (int i = 0; i < 4; i++)
+    {
+        printf("i = %i ", i);
+        printf(" g_angleLaser = %f ", g_angleLaser[i]);
+        printf(" g_numPillar = %i \n", g_numPillar[i]);
+    }
+    printf("++++++++++++++++++++++++++++++++++++ \n");
 }
 // Публикация данных для управления Print
 void CTopic::publicationControlPrint()
@@ -343,17 +365,21 @@ void CTopic::visualPoseAngleLaser(CLaser &laser_) // Формируем пере
 
 void CTopic::dataPoseLidarAll() // Формируем перемнную с собщением для публикации
 {
-    poseLidarAll_msg.mmode1.x = g_poseLidar.mode1.x;
-    poseLidarAll_msg.mmode1.y = g_poseLidar.mode1.y;
-    poseLidarAll_msg.mmode1.th = g_poseLidar.mode1.th;
+    poseLidarAll_msg.mode0.x = g_poseLidar.mode0.x;
+    poseLidarAll_msg.mode0.y = g_poseLidar.mode0.y;
+    poseLidarAll_msg.mode0.th = g_poseLidar.mode0.th;
 
-    poseLidarAll_msg.mmode2.x = g_poseLidar.mode2.x;
-    poseLidarAll_msg.mmode2.y = g_poseLidar.mode2.y;
-    poseLidarAll_msg.mmode2.th = g_poseLidar.mode2.th;
+    poseLidarAll_msg.mode1.x = g_poseLidar.mode1.x;
+    poseLidarAll_msg.mode1.y = g_poseLidar.mode1.y;
+    poseLidarAll_msg.mode1.th = g_poseLidar.mode1.th;
 
-    poseLidarAll_msg.mmode3.x = g_poseLidar.mode3.x;
-    poseLidarAll_msg.mmode3.y = g_poseLidar.mode3.y;
-    poseLidarAll_msg.mmode3.th = g_poseLidar.mode3.th;
+    poseLidarAll_msg.mode2.x = g_poseLidar.mode2.x;
+    poseLidarAll_msg.mode2.y = g_poseLidar.mode2.y;
+    poseLidarAll_msg.mode2.th = g_poseLidar.mode2.th;
+
+    poseLidarAll_msg.mode3.x = g_poseLidar.mode3.x;
+    poseLidarAll_msg.mode3.y = g_poseLidar.mode3.y;
+    poseLidarAll_msg.mode3.th = g_poseLidar.mode3.th;
 
     pub_poseLidarAll.publish(poseLidarAll_msg); // Публикуем информацию по позиции лидара
 }
@@ -376,5 +402,111 @@ void CTopic::visualPoseLidarMode() // Формируем перемнную с �
     poseLidarMode2_msg.pose.orientation = tf::createQuaternionMsgFromYaw(DEG2RAD(-g_poseLidar.mode2.th + 90)); // + 90 Так как у них оси расположены не так как я меня. У меня ноль вверх а у них вправо и вращение у них против часовой
     pub_PoseLidarMode2.publish(poseLidarMode2_msg);                                                            // Публикуем информацию по позиции лидара mode2
 }
+
+
+
+void CTopic::transform() // Публикуем системы трансформаций из одних систем координат в другие
+{
+	ros_time = ros::Time::now(); // Время ROS
+	// --------------------------------- map odom  ---------------------------------------
+	geometry_msgs::TransformStamped tfMapOdom;
+	tfMapOdom.header.stamp = ros_time;
+	tfMapOdom.header.frame_id = "map";
+	tfMapOdom.child_frame_id = "odom";
+	tfMapOdom.transform.translation.x = 0.0;
+	tfMapOdom.transform.translation.y = 0.0;
+	tfMapOdom.transform.translation.z = 0.0;
+	tfMapOdom.transform.rotation = tf::createQuaternionMsgFromYaw(DEG2RAD(0)); // Из градусов в радианы далле подладить под своё представление
+	tfBroadcaster.sendTransform(tfMapOdom);									   // Публикация системы преобразования из odom в map Тут динамически, а статически выглядит так   <node pkg="tf" type="static_transform_publisher" name="static_map_odom_tf" args="0 0 0 0 0 0 map odom 100" /> <!--http://wiki.ros.org/tf-->
+}
+void CTopic::transformWheel(SPose pose_) // Публикуем системы трансормаций из одних систем координат в другие
+{
+	geometry_msgs::TransformStamped tfOdomWheel;
+	tfOdomWheel.header.stamp = ros_time;
+	tfOdomWheel.header.frame_id = "odom";
+	tfOdomWheel.child_frame_id = "wheel";
+	tfOdomWheel.transform.translation.x = pose_.x;
+	tfOdomWheel.transform.translation.y = pose_.y;
+	tfOdomWheel.transform.translation.z = 0.1;
+	tfOdomWheel.transform.rotation = tf::createQuaternionMsgFromYaw(-pose_.th); // Из градусов в радианы далее подладить под своё представление
+	tfBroadcaster.sendTransform(tfOdomWheel);									// Публикация системы преобразования из odom в map Тут динамически, а статически выглядит так   <node pkg="tf" type="static_transform_publisher" name="static_map_odom_tf" args="0 0 0 0 0 0 map odom 100" /> <!--http://wiki.ros.org/tf-->
+}
+void CTopic::transformUnited(SPose pose_) // Публикуем системы трансормаций из одних систем координат в другие
+{
+	geometry_msgs::TransformStamped tfOdomUnited;
+	tfOdomUnited.header.stamp = ros_time;
+	tfOdomUnited.header.frame_id = "odom";
+	tfOdomUnited.child_frame_id = "united";
+	tfOdomUnited.transform.translation.x = pose_.x;
+	tfOdomUnited.transform.translation.y = pose_.y;
+	tfOdomUnited.transform.translation.z = 0.1;
+	tfOdomUnited.transform.rotation = tf::createQuaternionMsgFromYaw(-pose_.th); // Из градусов в радианы далее подладить под своё представление
+	tfBroadcaster.sendTransform(tfOdomUnited);									 // Публикация системы преобразования из odom в map Тут динамически, а статически выглядит так   <node pkg="tf" type="static_transform_publisher" name="static_map_odom_tf" args="0 0 0 0 0 0 map odom 100" /> <!--http://wiki.ros.org/tf-->
+}
+void CTopic::transformMpu(SPose pose_) // Публикуем системы трансормаций из одних систем координат в другие
+{
+	geometry_msgs::TransformStamped tfOdomMpu;
+	tfOdomMpu.header.stamp = ros_time;
+	tfOdomMpu.header.frame_id = "odom";
+	tfOdomMpu.child_frame_id = "mpu";
+	tfOdomMpu.transform.translation.x = pose_.x;
+	tfOdomMpu.transform.translation.y = pose_.y;
+	tfOdomMpu.transform.translation.z = 0.2;
+	tfOdomMpu.transform.rotation = tf::createQuaternionMsgFromYaw(-pose_.th); // Из градусов в радианы далее подладить под своё представление
+	tfBroadcaster.sendTransform(tfOdomMpu);									  // Публикация системы преобразования из odom в map Тут динамически, а статически выглядит так   <node pkg="tf" type="static_transform_publisher" name="static_map_odom_tf" args="0 0 0 0 0 0 map odom 100" /> <!--http://wiki.ros.org/tf-->
+}
+
+
+void CTopic::publishOdomWheel()
+{
+	transformWheel(odomWheel.pose);				   // Публиация системы трансформации
+	odomWheel_msg.header.stamp = ros::Time::now(); // Время ROS
+	odomWheel_msg.header.frame_id = "odom";		   // Поза в этом сообщении должна быть указана в системе координат, заданной header.frame_id.
+	// set the position
+	odomWheel_msg.pose.pose.position.x = odomWheel.pose.x;
+	odomWheel_msg.pose.pose.position.y = odomWheel.pose.y;
+	geometry_msgs::Quaternion quat = tf::createQuaternionMsgFromYaw(-odomWheel.pose.th);
+	odomWheel_msg.pose.pose.orientation = quat;
+	// set the velocity
+	odomWheel_msg.child_frame_id = "odom"; // Поворот в этом сообщении должен быть указан в системе координат, заданной child_frame_id
+	odomWheel_msg.twist.twist.linear.x = odomWheel.twist.vx;
+	odomWheel_msg.twist.twist.linear.y = odomWheel.twist.vy;
+	odomWheel_msg.twist.twist.angular.z = odomWheel.twist.vth;
+	publish_OdomWheel.publish(odomWheel_msg); // Публикация полученных данных
+}
+// void CTopic::publishOdomUnited()
+// {
+// 	transformUnited(odomUnited.pose);				// Публиация системы трансформации
+// 	odomUnited_msg.header.stamp = ros::Time::now(); // Время ROS
+// 	odomUnited_msg.header.frame_id = "odom";		// Поза в этом сообщении должна быть указана в системе координат, заданной header.frame_id.
+// 	// set the position
+// 	odomUnited_msg.pose.pose.position.x = odomUnited.pose.x;
+// 	odomUnited_msg.pose.pose.position.y = odomUnited.pose.y;
+// 	geometry_msgs::Quaternion quat = tf::createQuaternionMsgFromYaw(-odomUnited.pose.th);
+// 	odomUnited_msg.pose.pose.orientation = quat;
+// 	// set the velocity
+// 	odomUnited_msg.child_frame_id = "odom"; // Поворот в этом сообщении должен быть указан в системе координат, заданной child_frame_id
+// 	odomUnited_msg.twist.twist.linear.x = odomUnited.twist.vx;
+// 	odomUnited_msg.twist.twist.linear.y = odomUnited.twist.vy;
+// 	odomUnited_msg.twist.twist.angular.z = odomUnited.twist.vth;
+// 	publish_OdomUnited.publish(odomUnited_msg); // Публикация полученных данных
+// }
+// void CTopic::publishOdomMpu()
+// {
+// 	transformMpu(odomMpu.pose);
+// 	odomMpu_msg.header.stamp = ros::Time::now(); // Время ROS
+// 	odomMpu_msg.header.frame_id = "odom";		 // Поза в этом сообщении должна быть указана в системе координат, заданной header.frame_id.
+// 	// set the position
+// 	odomMpu_msg.pose.pose.position.x = odomMpu.pose.x;
+// 	odomMpu_msg.pose.pose.position.y = odomMpu.pose.y;
+// 	geometry_msgs::Quaternion quat = tf::createQuaternionMsgFromYaw(odomMpu.pose.th);
+// 	odomMpu_msg.pose.pose.orientation = quat;
+// 	// set the velocity
+// 	odomMpu_msg.child_frame_id = "odom"; // Поворот в этом сообщении должен быть указан в системе координат, заданной child_frame_id
+// 	odomMpu_msg.twist.twist.linear.x = odomMpu.twist.vx;
+// 	odomMpu_msg.twist.twist.linear.y = odomMpu.twist.vy;
+// 	odomMpu_msg.twist.twist.angular.z = odomMpu.twist.vth;
+// 	publish_OdomMpu.publish(odomMpu_msg); // Публикация полученных данных
+// }
 
 #endif

@@ -81,7 +81,6 @@ struct SMpu // Структура с данными со всех датчико
   SXyz angleEuler;
   SXyz linear;
 };
-
 // Структура состояния датчика расстония
 struct SSensor
 {

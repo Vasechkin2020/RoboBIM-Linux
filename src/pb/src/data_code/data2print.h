@@ -3,7 +3,6 @@
 
 //**************************** ОБЬЯВЛЕНИЕ ПРОЦЕДУР **********************************
 void collect_Data2Print(int data_); // Данные для передачи с Data на Print // Копирование данных из сообщения в топике в структуру для передачи по SPI
-// void processing_Print2Data();																			   // Копирование полученных данных в структуру для публикации в топике
 bool sendData2Print(int channel_, Struct_Print2Data &structura_receive_, Struct_Data2Print &structura_send_); // Указываем на каком пине устройство и с какого регистра нужно прочитать данные // Основная функция приема-передачи двух структур на slave контроллер по протоколу SPI
 
 //***********************************************************************************
@@ -51,6 +50,7 @@ void collect_Data2Print(int data_)
 {
 	if (data_ == 1)
 	{
+		printf("collect_Data2Print in... \n");
 		Data2Print.controlPrint.status = msg_ControlPrint.controlPrint.status; //
 		Data2Print.controlPrint.mode = msg_ControlPrint.controlPrint.mode;	   //
 		Data2Print.controlPrint.intensity = 2;								   //

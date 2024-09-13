@@ -462,6 +462,7 @@ int main(int argc, char *argv[])
     }
 
     // done!
+    printf("STOP MOTOR \n");
     drv->setMotorSpeed(0);
     softPwmStop (PIN_PWM);  // Это мой стоп моего ШИМ чурез WiringPi
     drv->stop();

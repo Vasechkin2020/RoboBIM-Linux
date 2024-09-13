@@ -470,7 +470,7 @@ void CPillar::parsingPillar(pb_msgs::topicPillar &pillar_)
         countPillar++;
         ROS_INFO("pillarTrue[ %i ].x= %.3f pillarTrue[ %i ].y= %.3f ", i, pillar[i].x_true, i, pillar[i].y_true);
     }
-    ROS_INFO("-------------------------               -------------------------------------");
+    ROS_INFO("-------------------------               ------------------------------------- \n");
 }
 
 // Функция сопоставления истинных столбов с лидарными
@@ -511,7 +511,7 @@ void CPillar::comparisonPillar()
             }
         }
     }
-    ROS_INFO("===");
+    ROS_INFO("=== \n");
 }
 
 // Функция которую вызываем из колбека по расчету места столбов. Поиск лидарных столбов.
@@ -633,8 +633,8 @@ void CPillar::parsingLidar(const sensor_msgs::LaserScan::ConstPtr &scan, SPose &
         }
     }
 
-    ROS_INFO("Found countPillarLidar= %i", countPillarLidar);
-    ROS_INFO("===");
+    ROS_INFO("Found countPillarLidar= %i \n", countPillarLidar);
+    //ROS_INFO("===");
 
     // ROS_INFO("End");
 }

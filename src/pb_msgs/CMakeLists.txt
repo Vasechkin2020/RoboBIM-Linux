@@ -110,6 +110,7 @@ add_message_files(
   SControlPrint.msg
   Struct_Data2Print.msg
   #-------------------------------------------------------
+  SSetSpeed.msg
 
 )
 

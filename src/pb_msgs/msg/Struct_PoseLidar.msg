@@ -1,3 +1,4 @@
-SPose mmode1
-SPose mmode2
-SPose mmode3
+SPose mode0
+SPose mode1
+SPose mode2
+SPose mode3

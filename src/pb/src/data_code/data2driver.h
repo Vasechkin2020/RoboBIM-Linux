@@ -3,7 +3,6 @@
 
 //**************************** ОБЬЯВЛЕНИЕ ПРОЦЕДУР **********************************
 void collect_Data2Driver(int data_); // Данные для передачи с Data на Driver // Копирование данных из сообщения в топике в структуру для передачи по SPI
-// void processing_Driver2Data();																			   // Копирование полученных данных в структуру для публикации в топике
 bool sendData2Driver(int channel_, Struct_Driver2Data &structura_receive_, Struct_Data2Driver &structura_send_); // Указываем на каком пине устройство и с какого регистра нужно прочитать данные // Основная функция приема-передачи двух структур на slave контроллер по протоколу SPI
 
 //***********************************************************************************
@@ -51,6 +50,7 @@ void collect_Data2Driver(int data_)
 {
 	if (data_ == 1) // Данные из топика
 	{
+		printf("collect_Data2Driver in... \n");
 		for (int i = 0; i < 24; i++)
 		{
 			Data2Driver.led.led[i] = msg_ControlDriver.led.led[i];

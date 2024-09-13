@@ -23,7 +23,8 @@
 			"variant": "cpp",
 			"random": "cpp",
 			"*.tcc": "cpp",
-			"complex": "cpp"
+			"complex": "cpp",
+			"thread": "cpp"
 		},
 		"ros.distro": "melodic"
 	}

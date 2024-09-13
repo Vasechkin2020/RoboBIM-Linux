@@ -22,7 +22,7 @@ CPillar pillar; // Обьявляем экземпляр класса в нем 
 int main(int argc, char **argv)
 {
     ROS_INFO("%s -------------------------------------------------------------", NN);
-    ROS_WARN("%s        Main Module PrintBIM ROS 1.0 Raspberry Pi 4B  ver 1.132 ", NN);
+    ROS_WARN("%s        Main Module PrintBIM ROS 1.0 Raspberry Pi 4B  ver 1.1344 ", NN);
     ROS_ERROR("%s ------------------ROS_ERROR----------------------------------", NN);
 
     ros::init(argc, argv, "head_node");
@@ -36,86 +36,100 @@ int main(int argc, char **argv)
 
     ros::Subscriber subscriber_Driver = nh.subscribe<pb_msgs::Struct_Driver2Data>("pbData/Driver", 1000, callback_Driver);
     ros::Subscriber subscriber_Modul = nh.subscribe<pb_msgs::Struct_Modul2Data>("pbData/Modul", 1000, callback_Modul);
+    ros::Subscriber subscriber_Speed = nh.subscribe<pb_msgs::SSetSpeed>("pbData/Speed", 1000, callback_Speed);
 
     //---------------------------------------------------------------------------------------------------------------------------
     CTopic topic;       // Экземпляр класса для всех публикуемых топиков
     CDataNode dataNode; // Экземпляр класса для всех данных получаемых с ноды Data  с нижнего уровня
     // g_poseLidar.mode3 = pillar.getLocationMode3(g_poseLidar.mode3); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
 
+    initArray();
+
     ros::Rate r(RATE);        // Частота в Герцах - задержка
-    ros::Duration(1).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
+    ros::Duration(2).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
 
     while (ros::ok())
     {
         // testFunction();
         ros::spinOnce();                           // Опрашиваем ядро ROS и по этой команде наши срабатывают колбеки. Нужно только для подписки на топики
         topic.transform(laser, g_poseLidar.mode1); // Публикуем трансформации систем координат, задаем по какому расчету трансформировать "odom" в "base"
-        printf("%u --- \n", millis());
+        //topic.transform(); // Трансформация odom to map
+        printf("%u --- \n\n\n", millis());
         //************************************************************ ОБРАБОТКА ДАННЫХ ИЗ ТОПИКОВ ЧТО ПОДПИСАНЫ ********************************************
         if (flag_msgDriver) // Флаг что пришло сообщение от ноды Data по Driver. Тут пишем какую-то обработку данных если нужно.
         {
             flag_msgDriver = false;
             printf("msg_Driver2Data in... \n");
-            // dataNode.parsingDriver(msg_Driver2Data);
+            //dataNode.parsingDriver(msg_Driver2Data);
         }
-
         if (flag_msgModul) // Флаг что пришло сообщение от ноды Data по Modul. Тут пишем какую-то обработку данных если нужно.
         {
             flag_msgModul = false;
-            printf("flag_msgModul in... \n");
-            printf("++++++++++++++++++IN ++++++++++++++++++ \n");
-            for (int i = 0; i < 4; i++)
-            {
-                printf("distance = %f ", msg_Modul2Data.laser[i].distance);
-                printf("angle = %f ", msg_Modul2Data.laser[i].angle);
-                printf("numPillar = %i \n", msg_Modul2Data.laser[i].numPillar);
-            }
-            printf("++++++++++++++++++++++++++++++++++++ \n");
-            laser.calcPointPillarFromLaser(pillar.pillar); // Расчитываем кординаты столбов а лидарной системе по дистанции и углу с лазеров на Modul
+            printf("msg_Modul2Data in... \n");
+            // printf("++++++++++ data from msgModul in ++++++++ \n");
+            // for (int i = 0; i < 4; i++)
+            // {
+            //     printf("distance = %f ", msg_Modul2Data.laser[i].distance);
+            //     printf("angle = %f ", msg_Modul2Data.laser[i].angle);
+            //     printf("numPillar = %i \n", msg_Modul2Data.laser[i].numPillar);
+            // }
+            // printf("++++++++++++++++++++++++++++++++++++ \n");
+            //laser.calcPointPillarFromLaser(pillar.pillar); // Расчитываем кординаты столбов а лидарной системе по дистанции и углу с лазеров на Modul
         }
+
+        if (flag_msgSpeed) // Флаг что пришло сообщение от ноды Data по Speed. 
+        {
+            flag_msgSpeed = false;
+            wheelTwistDt = calcTwistFromWheel(msg_Speed); // Обработка пришедших данных. По ним считаем линейные скорости по осям и угловую по углу. Запоминаем dt
+            calcNewOdom(odomWheel, wheelTwistDt);                   // На основе линейных скоростей считаем новую позицию и угол
+            topic.publishOdomWheel();                               // Публикация одометрии по моторам которая получается от начальной точки
+
+        }
+
 
         //***************************************************************************************************************************************************
         if (flag_msgCar) // Флаг что пришло сообщение о начальных координатах машинки
         {
             flag_msgCar = false;
-            printf("flag_msgCar in... \n");
+            printf("startPosition in... \n");
             startPosition(msg_startPose2d); // Определяем начальное положение
             flag_dataCar = true;
-        }
-
-        if (flag_msgLidar && flag_dataCar) // Если пришло сообщение в топик от лидара и мы уже разобрали данные по координатам машинки, а значит можем грубо посчитать где стоят столбы.
-        {
-            flag_msgLidar = false;
-            pillar.parsingLidar(msg_lidar, g_poseLidar.mode1); // Разбираем пришедшие данные и ищем там столбы.
-            printf("parsingLidar in... \n");
-            flag_dataLidar = true;
         }
         if (flag_msgPillar) // Флаг что пришло сообщение о истинных координатах столбов
         {
             flag_msgPillar = false;
-            printf("flag_msgPillar in... \n");
+            printf("parsingPillar in... \n");
             pillar.parsingPillar(msg_pillar); // Разбираем пришедшие данные Заполняем массив правильных координат.
             flag_dataPillar = true;
         }
+        //***************************************************************************************************************************************************
+
+        if (flag_msgLidar && flag_dataCar && flag_dataPillar) // Если пришло сообщение в топик от лидара и мы уже разобрали данные по координатам машинки, а значит можем грубо посчитать где стоят столбы.  И знаем где истинные столбы
+        {
+            flag_msgLidar = false;
+            printf("parsingLidar in... \n");
+            pillar.parsingLidar(msg_lidar, g_poseLidar.mode1); // Разбираем пришедшие данные и ищем там столбы.
+            flag_dataLidar = true;
+        }
 
         ROS_INFO("flag_dataPillar= %i flag_dataLidar= %i", flag_dataPillar, flag_dataLidar);
+
         if (flag_dataPillar && flag_dataLidar) // Если поступили данные и мы их разобрали по истинным координатоам столбов и есть данные по столюам с лидара то начинаем сопоставлять и публиковать сопоставленные столбы
         {
             // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! Сделать определние начального угла Theta при запуске путем сканирования лазерами туда-сюда и нахождения минимальной точки и вычисления угла на основе локальных углов
             flag_dataLidar = false;
             pillar.comparisonPillar();                                      // Сопоставляем столбы
             g_poseLidar.mode1 = pillar.getLocationMode1(g_poseLidar.mode1); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
-            //g_poseLidar.mode2 = pillar.getLocationMode2(g_poseLidar.mode2); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
+            g_poseLidar.mode2 = pillar.getLocationMode2(g_poseLidar.mode2); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
             // g_poseLidar.mode3 = pillar.getLocationMode3(g_poseLidar.mode1); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
-
-            laser.calcAnglePillarForLaser(pillar.pillar, g_poseLidar); // Расчет углов в локальной системе лазеров на столбы для передачи на нижний уровень для исполнения
+            topic.dataPoseLidarAll(); // Формируем перемнную с собщением для публикации
 
             //-------------------------------------------------------------------------
-            topic.dataPoseLidarAll(); // Формируем перемнную с собщением для публикации
+            //laser.calcAnglePillarForLaser(pillar.pillar, g_poseLidar); // Расчет углов в локальной системе лазеров на столбы для передачи на нижний уровень для исполнения
 
             //************************************************************ ОБРАБОТКА ДАННЫХ И ФОРМИРОВАНИЕ СООБЩЕНИЙ И ПУБЛИКАЦИЯ ТОПИКОВ С ДАННЫМИ  ********************************************
             // topic.publicationControlDriver(); // Формируем и Публикуем команды для управления Driver
-            topic.publicationControlModul(); // Формируем и Публикуем команды для управления Modul
+            // topic.publicationControlModul(); // Формируем и Публикуем команды для управления Modul
             // topic.publicationControlPrint();  // Формируем и Публикуем команды для управления Print
 
             //**********************************************************************************************************************************************************************************
@@ -127,6 +141,18 @@ int main(int argc, char **argv)
             // topic.visualPoseAngleLaser(laser); // Формируем перемнную с собщением для публикации
 
             // topic.visualAngleLaser(laser); // Формируем перемнную с собщением для публикации
+
+            //---------------
+
+            // mpuTwistDt = calcTwistFromMpu(Driver2Data.bno055, 0.2); // Расчет и оформление в структуру ускорений по осям (линейных скоростей) и  разделить получение угловых скоростей и расчет сновой точки на основе этих скоростей
+            // calcNewOdom(odomMpu, mpuTwistDt);                       // Обработка пришедших данных.Обсчитываем одометрию по датчику MPU BNO055
+            // topic.publishOdomMpu();
+
+            // // тут написать функцию комплементации данных угловых скоростей с разными условиями когда и в каком соотношении скомплементировать скорсти с двух источников
+            // unitedTwistDt = calcTwistUnited(wheelTwistDt, mpuTwistDt);
+            // calcNewOdom(odomUnited, unitedTwistDt); // // На основе линейных скоростей считаем новую позицию и угол
+            // topic.publishOdomUnited();              // Публикация одометрии по моторам с корректировкой с верхнего уровня
+            //-------------------------
         }
 
         // ros::spinOnce(); // Опрашиваем ядро ROS и по этой команде наши срабатывают колбеки. Нужно только для подписки на топики

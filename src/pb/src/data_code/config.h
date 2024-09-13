@@ -6,7 +6,7 @@
 #include <ros/console.h>
 #include <tf/transform_broadcaster.h>
 #include <std_msgs/String.h>
-#include <nav_msgs/Odometry.h>
+
 
 #include <sensor_msgs/Joy.h>
 #include <pb_msgs/SJoy.h>
@@ -17,23 +17,15 @@
 #include <pb_msgs/SControl.h>
 #include <pb_msgs/SLed.h>
 
-// #include <pb_msgs/SControlModul.h>
-// #include <pb_msgs/SControlPrint.h>
 #include <pb_msgs/Struct_Data2Print.h>
 #include <pb_msgs/Struct_Data2Modul.h>
 #include <pb_msgs/Struct_Data2Driver.h>
-// #include <pb_msgs/SControlDriver.h>
-
-#include <pb_msgs/SEncoder.h>
-#include <pb_msgs/SMpu.h>
-#include <pb_msgs/Struct_Odom.h>
-#include <pb_msgs/SSensor.h>
-#include <pb_msgs/SMotor.h>
 
 #include <pb_msgs/Struct_Driver2Data.h>
 #include <pb_msgs/Struct_Modul2Data.h>
 
 #include <pb_msgs/Struct_Info_SPI.h>
+#include <pb_msgs/SSetSpeed.h>
 
 u_int64_t timeSpiModul = 0;  // Время когда пришла команда по топикам
 u_int64_t timeSpiDriver = 0; // Время когда пришла команда по топикам
@@ -62,13 +54,6 @@ sensor_msgs::Joy msg_joy;                      // Переменная в кот
 #define SIZE_BUFF 192            // Размер буфера, стараться делать кратно 32
 unsigned char buffer[SIZE_BUFF]; // Буфер в 1 байт в который пишем передаваемый байт и в котором оказывется принятый байт
 //---------------------------------------------------------------------------------------
-
-#define DISTANCE_WHEELS 0.38 // Растояние между колесами робота. подобрал экспериментально Влияет на правильность круга
-#define DIAMETR 0.151        // Влияет на правильность длинны через расчет скорости
-#define RADIUS (DIAMETR / 2)
-#define PERIMETR (DIAMETR * M_PI)
-#define RAD2DEG(x) ((x) * 180. / M_PI) // Перевод из радиан в градусы
-#define DEG2RAD(x) ((x) * M_PI / 180.) // Перевод из градусов в радианы
 #define ACCELERATION 1.0               // Оборота за секунду в квадрате rps
 bool rezModul = false;
 bool rezPrint = false;
@@ -88,9 +73,6 @@ bool flag_msgControlDriver = false; // Флаг что пришло сообще
 bool flag_msgControlModul = false;  // Флаг что пришло сообщение в топик и можно его парсить
 bool flag_msgControlPrint = false;  // Флаг что пришло сообщение в топик и можно его парсить
 
-float linearOffsetX[128];
-float linearOffsetY[128];
-
 //============================================================================================================================================================
 Struct_Data2Driver Data2Driver; // Экземпляр структуры отправлемых данных
 Struct_Data2Modul Data2Modul;   // Экземпляр структуры отправлемых данных
@@ -104,39 +86,6 @@ const uint32_t size_stucturs = sizeof(Struct_Driver2Data);
 
 SSpi spi; // Переменная где все данные по обмену
 
-struct SEuler
-{
-  float roll = 0;  // Крен в право  влево
-  float pitch = 0; // Тангаж вверх или вних
-  float yaw = 0;   // Поворот по часовой мом против часовой
-};
-
-// Структура для углов наклонов
-struct STwist
-{
-  double vx = 0;  // Линейная скорость движения робота по оси X
-  double vy = 0;  // Линейная скорость движения робота по оси Y
-  double vth = 0; // Угловая скорость вращения робота
-};
-// Структура для одометрии
-struct SOdom
-{
-  SPose pose;
-  STwist twist;
-};
-SOdom odomWheel;  // Высчитанная одометрия по энкодеру без корректировок
-SOdom odomMpu;    // Высчитанная одомтрия по датчику mpu cкорректированная
-SOdom odomUnited; // Высчитанная одометрия по энкодеру скорректированная
-
-struct STwistDt
-{
-  STwist twist;
-  double dt = 0.0;
-};
-STwistDt mpuTwistDt;    // Скорости полученные по mpu и интревал который прошел с предыдущего измерения
-STwistDt wheelTwistDt;  // Скорости полученные по ecoder и интревал который прошел с предыдущего измерения
-STwistDt unitedTwistDt; // Обьединенные комплементратный способом Скорости и интервал
-
 // ************************************************************* Struct_Data2Driver *********************
 struct SPoseTrue
 {
@@ -149,10 +98,8 @@ struct SPoseTrue
 
 SControl g_dreamSpeed; // Желаемая скорость
 SPose g_poseControl;   // Позиция с верхнего уровня на которую надо подменить текущую позицию
-//****************************************************************************************************************************************************
 
 //****************************************************************************************************************************************************
-// ============================================================
 // Функция возвращает контрольную сумму структуры без последних 4 байтов, оформленна как шаблон. Может разные структуры обсчитывать, как разные типы данных входных
 template <typename T>
 uint32_t measureCheksum(const T &structura_)
