@@ -52,7 +52,7 @@ void callback_Pillar(pb_msgs::topicPillar msg)
 void callback_StartPose2D(geometry_msgs::Pose2D msg)
 {
     msg_startPose2d = msg; // Пишем в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
-    flag_msgCar = true;
+    flag_msgStartPose = true;
 }
 void callback_Driver(pb_msgs::Struct_Driver2Data msg)
 {

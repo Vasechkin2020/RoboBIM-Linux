@@ -100,7 +100,7 @@ void CTopic::processing_Driver2Data()
 
 	Driver2Data_msg.motor.status = Driver2Data.motor.status;
 	Driver2Data_msg.motor.rpsEncodL = Driver2Data.motor.rpsEncodL;
-	Driver2Data_msg.motor.rpsEncodL = Driver2Data.motor.rpsEncodR;
+	Driver2Data_msg.motor.rpsEncodR = Driver2Data.motor.rpsEncodR;
 
 	Driver2Data_msg.mpu.status = Driver2Data.bno055.status;
 	Driver2Data_msg.mpu.angleEuler.roll = Driver2Data.bno055.angleEuler.x;
