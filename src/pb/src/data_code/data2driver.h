@@ -50,7 +50,7 @@ void collect_Data2Driver(int data_)
 {
 	if (data_ == 1) // Данные из топика
 	{
-		printf("collect_Data2Driver in... \n");
+		//printf("collect_Data2Driver in... \n");
 		for (int i = 0; i < 24; i++)
 		{
 			Data2Driver.led.led[i] = msg_ControlDriver.led.led[i];

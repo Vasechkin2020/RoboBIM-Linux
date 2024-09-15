@@ -12,7 +12,7 @@ void collect_Data2Modul(int data_) // Данные для передачи на 
 {
 	if (data_ == 1)
 	{
-	printf("сollect_Data2Modul in... \n");
+	//printf("сollect_Data2Modul in... \n");
 		Data2Modul.controlLaser.mode = msg_ControlModul.controlLaser.mode;
 		Data2Modul.controlMotor.mode = msg_ControlModul.controlMotor.mode; //
 		for (int i = 0; i < 4; i++)

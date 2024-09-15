@@ -1,0 +1,3 @@
+<launch>
+  <node pkg="pb" type="data_node" name="data_node" output ="screen"/>
+</launch>

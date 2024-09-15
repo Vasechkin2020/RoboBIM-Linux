@@ -61,7 +61,6 @@ int main(int argc, char **argv)
             flag_msgStartPose = false;
             printf("startPosition in... \n");
             startPosition(msg_startPose2d); // Определяем начальное положение
-            topic.visulStartPose();         // Отобращение стрелкой где начало стартовой позиции и куда направлен нос платформы
             flag_startPose = true;
         }
         if (flag_msgPillar) // Флаг что пришло сообщение о истинных координатах столбов
@@ -69,7 +68,6 @@ int main(int argc, char **argv)
             flag_msgPillar = false;
             printf("parsingPillar in... \n");
             pillar.parsingPillar(msg_pillar); // Разбираем пришедшие данные Заполняем массив правильных координат.
-            topic.visualPillarPoint(pillar);  // Отображение места размещения столбов
             flag_dataPillar = true;
         }
 
@@ -142,7 +140,11 @@ int main(int argc, char **argv)
 
             //************************************************************ ОБРАБОТКА ДАННЫХ И ФОРМИРОВАНИЕ СООБЩЕНИЙ И ПУБЛИКАЦИЯ ТОПИКОВ С ДАННЫМИ  ********************************************
             // topic.publicationAngleLaser(laser); // Формируем перемнную с собщением для публикации
-            // topic.visualPillarAll(pillar);   // Публикуем всю обобщенную информацию по столбам
+            // topic.visualPillarAll(pillar);   // Публикуем всю обобщенную информацию по столб
+            
+            // Публикуем тут так как если один раз опубликовать то они исчезают через некоторое время.
+            topic.visualPillarPoint(pillar);  // Отображение места размещения столбов
+            topic.visulStartPose();         // Отобращение стрелкой где начало стартовой позиции и куда направлен нос платформы
         }
 
         topic.dataPoseLidarAll(); // Публикуем все варианты расчета позиций mode 0.1.2.3.4

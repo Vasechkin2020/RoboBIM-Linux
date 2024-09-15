@@ -50,7 +50,7 @@ void collect_Data2Print(int data_)
 {
 	if (data_ == 1)
 	{
-		printf("collect_Data2Print in... \n");
+		//printf("collect_Data2Print in... \n");
 		Data2Print.controlPrint.status = msg_ControlPrint.controlPrint.status; //
 		Data2Print.controlPrint.mode = msg_ControlPrint.controlPrint.mode;	   //
 		Data2Print.controlPrint.intensity = 2;								   //
