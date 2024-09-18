@@ -1,7 +1,7 @@
 #ifndef GENSTRUCT_H
 #define GENSTRUCT_H
 #include </opt/ros/melodic/include/ros/ros.h>
-#include <ros/ros.h>
+#include </opt/ros/melodic/include/ros/time.h>
 
 //============================================================================================================================================================
 // Структура передаваемых данных из Data к Modul

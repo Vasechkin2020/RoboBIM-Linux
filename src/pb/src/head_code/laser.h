@@ -229,7 +229,7 @@ void CLaser::calcPointPillarFromLaser(CPillar::SPillar *pillar_) // Расчет
         printf("Local x= %f y= %f ", p_laser.x, p_laser.y);
         p_lidar = pointLocal2Global(p_laser, _poseLaser[msg_Modul2Data.laser[i].numPillar]); // Превести координаты в лидарную систему учитывая каким лазером светили
         // ROS_INFO("Global x= %f y= %f ",p_lidar.x,p_lidar.y);
-        len = vectorLen(p_lidar, P00); // Находим растояние до столба влидврной систме
+        len = vectorLen(p_lidar, P00); // Находим растояние до столба в лидврной систме
         printf(" Global len = %f \n", len);
         pillar_[msg_Modul2Data.laser[i].numPillar].distance_laser = len; // Записываем для дальнейшей обработки
     }

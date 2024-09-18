@@ -11,7 +11,9 @@ void callback_ControlDriver(const pb_msgs::Struct_Data2Driver &msg); // Обра
 void callback_ControlModul(const pb_msgs::Struct_Data2Modul &msg);	 // Обратный вызов при опросе топика Modul
 void callback_ControlPrint(const pb_msgs::Struct_Data2Print &msg);	 // Обратный вызов при опросе топика Print
 void callback_Joy(sensor_msgs::Joy msg);						 // Функция обраьтного вызова по подпичке на топик джойстика nh.subscribe("joy", 16, callback_Joy);
-void controlAcc(SControl &control_, SControl g_dreamSpeed); // Функция контроля ускорения
+void controlAcc(SControl dreamSpeed_); // Функция контроля ускорения
+
+SControl speedToRps(SControl speed_); // Конвертация скорости из метров в секунду в обороты в секунду для передачи на нижний уровень
 
 // **********************************************************************************
 // Функция возращает максимальный размер из 2 структур
@@ -88,50 +90,56 @@ void callback_ControlPrint(const pb_msgs::Struct_Data2Print &msg)
 							// ROS_INFO("message_callback_Command.");
 }
 // Функция контроля ускорения
-void controlAcc(SControl &control_, SControl g_dreamSpeed) 
+void controlAcc(SControl dreamSpeed_) 
 {
-	static SControl factControl;				 // Фактически ранее установленная скорость переданная на моторы
 	static unsigned long time = micros();		 // Время предыдущего расчета// Функция из WiringPi.// Замеряем интервалы по времени между запросами данных
 	unsigned long time_now = micros();			 // Время в которое делаем расчет
 	double dt = ((time_now - time) / 1000000.0); // Интервал расчета переводим сразу в секунды Находим интревал между текущим и предыдущим расчетом в секундах
 	time = time_now;
 	float accel = ACCELERATION * dt; // Ускорение
-	// printf("g_dreamSpeed % .3f % .3f ", g_dreamSpeed.speedL, g_dreamSpeed.speedR);
-	if (g_dreamSpeed.speedL != factControl.speedL) // Если скорость с которой хотим крутиться не равна тому что была ранее установлена, то меняем с учетом ускорения
+	//printf("dreamSpeed_ % .3f % .3f accel= % .5f dt= % .5f", dreamSpeed_.speedL, dreamSpeed_.speedR, accel, dt);
+	if (dreamSpeed_.speedL != g_factSpeed.speedL) // Если скорость с которой хотим крутиться не равна тому что была ранее установлена, то меняем с учетом ускорения
 	{
-		// printf("g_dreamSpeed % f : % f : acc= % f | ", g_dreamSpeed.speedL, g_dreamSpeed.speedR, accel);
-		if (factControl.speedL < g_dreamSpeed.speedL) // Если меньше чем надо то прибавим оборотов
+		// printf("dreamSpeed_ % f : % f : acc= % f | ", dreamSpeed_.speedL, dreamSpeed_.speedR, accel);
+		if (g_factSpeed.speedL < dreamSpeed_.speedL) // Если меньше чем надо то прибавим оборотов
 		{
-			factControl.speedL = factControl.speedL + accel; // К старой скорости прибавляем ускорение за этот промежуток
-			if (factControl.speedL > g_dreamSpeed.speedL)	 // Если стала больше то ровняем
-				factControl.speedL = g_dreamSpeed.speedL;
+			g_factSpeed.speedL = g_factSpeed.speedL + accel; // К старой скорости прибавляем ускорение за этот промежуток
+			if (g_factSpeed.speedL > dreamSpeed_.speedL)	 // Если стала больше то ровняем
+				g_factSpeed.speedL = dreamSpeed_.speedL;
 		}
-		if (factControl.speedL > g_dreamSpeed.speedL) // Если меньше чем надо то прибавим оборотов
+		if (g_factSpeed.speedL > dreamSpeed_.speedL) // Если меньше чем надо то прибавим оборотов
 		{
-			factControl.speedL = factControl.speedL - accel; // К старой скорости прибавляем ускорение за этот промежуток
-			if (factControl.speedL < g_dreamSpeed.speedL)	 // Если стала меньше нужной то далаем какая должна быть
-				factControl.speedL = g_dreamSpeed.speedL;
+			g_factSpeed.speedL = g_factSpeed.speedL - accel; // К старой скорости прибавляем ускорение за этот промежуток
+			if (g_factSpeed.speedL < dreamSpeed_.speedL)	 // Если стала меньше нужной то далаем какая должна быть
+				g_factSpeed.speedL = dreamSpeed_.speedL;
 		}
 	}
-	if (g_dreamSpeed.speedR != factControl.speedR) // Если скорость с которой хотим крутиться не равна тому что была ранее установлена, то меняем с учетом ускорения
+	if (dreamSpeed_.speedR != g_factSpeed.speedR) // Если скорость с которой хотим крутиться не равна тому что была ранее установлена, то меняем с учетом ускорения
 	{
-		if (factControl.speedR < g_dreamSpeed.speedR) // Если меньше чем надо то прибавим оборотов
+		if (g_factSpeed.speedR < dreamSpeed_.speedR) // Если меньше чем надо то прибавим оборотов
 		{
-			factControl.speedR = factControl.speedR + accel; // К старой скорости прибавляем ускорение за этот промежуток
-			if (factControl.speedR > g_dreamSpeed.speedR)	 // Если стала больше то ровняем
-				factControl.speedR = g_dreamSpeed.speedR;
+			g_factSpeed.speedR = g_factSpeed.speedR + accel; // К старой скорости прибавляем ускорение за этот промежуток
+			if (g_factSpeed.speedR > dreamSpeed_.speedR)	 // Если стала больше то ровняем
+				g_factSpeed.speedR = dreamSpeed_.speedR;
 		}
-		if (factControl.speedR > g_dreamSpeed.speedR) // Если меньше чем надо то прибавим оборотов
+		if (g_factSpeed.speedR > dreamSpeed_.speedR) // Если меньше чем надо то прибавим оборотов
 		{
-			factControl.speedR = factControl.speedR - accel; // К старой скорости прибавляем ускорение за этот промежуток
-			if (factControl.speedR < g_dreamSpeed.speedR)	 // Если стала меньше нужной то далаем какая должна быть
-				factControl.speedR = g_dreamSpeed.speedR;
+			g_factSpeed.speedR = g_factSpeed.speedR - accel; // К старой скорости прибавляем ускорение за этот промежуток
+			if (g_factSpeed.speedR < dreamSpeed_.speedR)	 // Если стала меньше нужной то далаем какая должна быть
+				g_factSpeed.speedR = dreamSpeed_.speedR;
 		}
 	}
-	// printf("factControl % f : % f : acc= % f \n ", factControl.speedL, factControl.speedR);
-	// printf(" |factControl % .3f % .3f \n", factControl.speedL, factControl.speedR);
-	control_ = factControl; // Передаем для дальнейшего испонения
+	//printf("g_factSpeed % f : % f : acc= % f \n ", g_factSpeed.speedL, g_factSpeed.speedR);
+	//printf(" |g_factSpeed % .3f % .3f \n", g_factSpeed.speedL, g_factSpeed.speedR);
 }
+// Конвертация скорости из метров в секунду в обороты в секунду для передачи на нижний уровень
+SControl speedToRps(SControl speed_)
+{
+	speed_.speedL = speed_.speedL / PERIMETR * KOEF_ODOM; //Делим скорость вметрах на периметр колеса и умножаем на дополнительный коеффициент который вручную подобрал что-бы одометрия соответствовала реальности
+	speed_.speedR = speed_.speedR / PERIMETR * KOEF_ODOM; //Делим скорость вметрах на периметр колеса и умножаем на дополнительный коеффициент который вручную подобрал что-бы одометрия соответствовала реальности
+	return speed_;
+}
+
 // Функция управления несколькими светодиодами которые отведены для прямого управления нодой data
 void controlLed()
 {

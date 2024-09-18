@@ -8,7 +8,7 @@
     <param name="x1" type="double" value="3.5" />
     <param name="y1" type="double" value="0.0" />
 
-    <param name="x2" type="double" value="0.2" />
+    <param name="x2" type="double" value="0.4" />
     <param name="y2" type="double" value="0.2" />
 
     <param name="x3" type="double" value="0.4" />

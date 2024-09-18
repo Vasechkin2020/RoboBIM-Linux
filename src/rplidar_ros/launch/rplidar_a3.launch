@@ -11,5 +11,6 @@
   <!--param name="scan_mode"    type="string"   value="Boost"/-->
   <param name="scan_mode"           type="string" value="Sensitivity"/>
   <!--param name="scan_mode"    type="string"   value="Stability"/-->
+  <!--param name="scan_mode"    type="string"   value="DenseBoost"/-->
   </node>
 </launch>
