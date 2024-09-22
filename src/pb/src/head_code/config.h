@@ -15,6 +15,7 @@
 #include <geometry_msgs/PoseStamped.h>
 
 #include <nav_msgs/Odometry.h>
+#include <visualization_msgs/Marker.h>
 // #include <pb_msgs/point.h>
 
 #include <pb_msgs/Struct_Data2Driver.h>
@@ -53,11 +54,11 @@
 #define MAX_RADIUS 0.5                                  // Максимальный радиус поворота робота
 #define SPEED_STANDART 0.5                              // Стандартная скорость робота
 #define SPEED_ROTATION 0.2                              // Скорость вращения робота
-#define MAX_ACCELERATION_UP 0.4                         // Максимальное ускорение робота
-const float step_accel_up = MAX_ACCELERATION_UP / RATE; // Максимальное ускорение робота с учтом частоты шага (цикл) работы программы
+// #define MAX_ACCELERATION_UP 0.4                         // Максимальное ускорение робота
+// const float step_accel_up = MAX_ACCELERATION_UP / RATE; // Максимальное ускорение робота с учтом частоты шага (цикл) работы программы
 
-#define MAX_ACCELERATION_DOWN 0.7                           // Максимальное замедление робота
-const float step_accel_down = MAX_ACCELERATION_DOWN / RATE; // Максимальное замедление робота с учтом частоты шага (цикл) работы программы
+// #define MAX_ACCELERATION_DOWN 0.7                           // Максимальное замедление робота
+// const float step_accel_down = MAX_ACCELERATION_DOWN / RATE; // Максимальное замедление робота с учтом частоты шага (цикл) работы программы
 
 #define RAD2DEG(x) ((x) * 180. / M_PI) // Первод из радиан в градусы
 #define DEG2RAD(x) ((x) * M_PI / 180.) // Первод из градусов в радианы
@@ -161,7 +162,11 @@ struct SPoseLidar // Варианты расчетов координат лид
     SPose mode1;  // Для лидара по растоянию
     SPose mode2; // Для оидара по углу
     SPose mode3; // Для лазерных датчиков
-};
+    SPose mode4; // Для IMU
+    SPose mode5; // Для скомплементированногоо mode1 на одометрию mode0
+    SPose mode10; // Для итогового - скомплементированного всеми способавми положения
+    
+    };
 
 //************************************** ОБЬЯВЛЯЕМ ФУНКЦИИ **********************************
 float sqr(float x_);                                                    // Функция возведния в квадрат
@@ -242,6 +247,18 @@ SPoint pointGlobal2Local(SPoint pointGlobal_, SPose poseLocal_)
     ret.y = ynew;
     return ret;
 }
+SPoint pointGlobal2LocalRos(SPoint pointGlobal_, SPose poseLocal_) // Вариант поворота по стандарту РОС что вращение против часовой
+{
+    SPoint ret;
+    float theta = DEG2RAD(-poseLocal_.th); // Превращаем в радианы из градусов
+    float x = pointGlobal_.x - poseLocal_.x;
+    float y = pointGlobal_.y - poseLocal_.y;
+    float xnew = x * cos(theta) - y * sin(theta); // Поворачиваем по формулам поворота системы координат
+    float ynew = x * sin(theta) + y * cos(theta);
+    ret.x = xnew; // Добавляем смещение
+    ret.y = ynew;
+    return ret;
+}
 // Преобразование координат точки из Локальной системы координат в Глобальную
 // Задаем координаты точки в Локальной системе и задаем позицию самой Локальной системы в координатах Глобальной системы
 // Получаем координаты точки в Глобальной системе
@@ -263,6 +280,11 @@ SPoint pointLocal2Global(SPoint pointLocal_, SPose poseLocal_)
 float angleThetaFromPoint(SPoint point_) // Возвращает от -180 до +180
 {
     float ret = RAD2DEG(atan2(point_.x, point_.y));
+    return ret;
+}
+float angleThetaFromPointRos(SPoint point_) // Возвращает от -180 до +180 Родгонял под првила ROS по осям
+{
+    float ret = RAD2DEG(atan2(point_.y, point_.x));
     return ret;
 }
 // Получение координат точки по углу и расстоянию

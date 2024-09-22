@@ -91,15 +91,26 @@ void startPosition(geometry_msgs::Pose2D &startPose2d_)
     g_poseLidar.mode0.x = startPose2d_.x; // Пока считаем что передаем положение центра лидара и поэтому ему присваиваем значение, потом надо будет добавлять смещение до центра поворота между колесами
     g_poseLidar.mode0.y = startPose2d_.y;
     g_poseLidar.mode0.th = startPose2d_.theta;
-    g_poseLidar.mode1.x = startPose2d_.x; // Пока считаем что передаем положение центра лидара и поэтому ему присваиваем значение, потом надо будет добавлять смещение до центра поворота между колесами
+    
+	g_poseLidar.mode1.x = startPose2d_.x; // Пока считаем что передаем положение центра лидара и поэтому ему присваиваем значение, потом надо будет добавлять смещение до центра поворота между колесами
     g_poseLidar.mode1.y = startPose2d_.y;
     g_poseLidar.mode1.th = startPose2d_.theta;
-    g_poseLidar.mode2.x = startPose2d_.x; // Пока считаем что передаем положение центра лидара и поэтому ему присваиваем значение, потом надо будет добавлять смещение до центра поворота между колесами
+    
+	g_poseLidar.mode2.x = startPose2d_.x; // Пока считаем что передаем положение центра лидара и поэтому ему присваиваем значение, потом надо будет добавлять смещение до центра поворота между колесами
     g_poseLidar.mode2.y = startPose2d_.y;
     g_poseLidar.mode2.th = startPose2d_.theta;
-    g_poseLidar.mode3.x = startPose2d_.x; // Пока считаем что передаем положение центра лидара и поэтому ему присваиваем значение, потом надо будет добавлять смещение до центра поворота между колесами
+    
+	g_poseLidar.mode3.x = startPose2d_.x; // Пока считаем что передаем положение центра лидара и поэтому ему присваиваем значение, потом надо будет добавлять смещение до центра поворота между колесами
     g_poseLidar.mode3.y = startPose2d_.y;
     g_poseLidar.mode3.th = startPose2d_.theta;
+    
+	g_poseLidar.mode4.x = startPose2d_.x; // Пока считаем что передаем положение центра лидара и поэтому ему присваиваем значение, потом надо будет добавлять смещение до центра поворота между колесами
+    g_poseLidar.mode4.y = startPose2d_.y;
+    g_poseLidar.mode4.th = startPose2d_.theta;
+
+    g_poseLidar.mode10.x = startPose2d_.x; // Пока считаем что передаем положение центра лидара и поэтому ему присваиваем значение, потом надо будет добавлять смещение до центра поворота между колесами
+    g_poseLidar.mode10.y = startPose2d_.y;
+    g_poseLidar.mode10.th = startPose2d_.theta;
 
 	odomWheel.pose.x = startPose2d_.x;
 	odomWheel.pose.y = startPose2d_.y;
@@ -250,10 +261,6 @@ void calcNewOdom(SOdom &odom_, STwistDt data_) // На вход подаются
 	if (odom_.pose.th < 0)
 		(odom_.pose.th += (2 * M_PI));
 	printf(" =pose.x= % .3f y= % .3f th= % .3f \n", odom_.pose.x, odom_.pose.y, RAD2DEG(odom_.pose.th));
-
-	g_poseLidar.mode0.x = odom_.pose.x;
-	g_poseLidar.mode0.y = odom_.pose.y;
-	g_poseLidar.mode0.th = RAD2DEG(odom_.pose.th);
 }
 
 
