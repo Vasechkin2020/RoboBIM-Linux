@@ -139,6 +139,8 @@ int main(int argc, char **argv)
         if (flag_startPose && flag_dataPillar) // Если уже разобрали данные по координатам машинки, а значит можем грубо посчитать направление на столбы.  И знаем где истинные столбы
         {
             laser.calcAnglePillarForLaser(pillar.pillar, g_poseLidar.mode10); // Расчет углов в локальной системе лазеров на столбы для передачи на нижний уровень для исполнения
+            topic.publicationControlModul(); // Формируем и Публикуем команды для управления Modul
+            
             // Публикуем тут так как если один раз опубликовать то они исчезают через некоторое время.
             topic.transformBase(g_poseLidar.mode1);  // Публикуем трансформации систем координат, задаем по какому расчету трансформировать
             topic.transformLidar(g_poseLidar.mode1); // Публикуем трансформации систем координат, задаем по какому расчету трансформировать
@@ -151,7 +153,6 @@ int main(int argc, char **argv)
         topic.publicationPoseLidarAll(); // Публикуем все варианты расчета позиций mode 0.1.2.3.4
 
         // topic.publicationControlDriver(); // Формируем и Публикуем команды для управления Driver
-        topic.publicationControlModul(); // Формируем и Публикуем команды для управления Modul
         topic.publicationControlPrint(); // Формируем и Публикуем команды для управления Print
 
         r.sleep(); // Интеллектуальная задержка на указанную частоту

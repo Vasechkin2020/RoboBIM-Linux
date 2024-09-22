@@ -85,8 +85,8 @@ void CLaser::pillar_1(SMatrixPillar (&matrixLaserPillar_)[4][5], SMatrixPillar (
     {
         for (int i = 0; i < 4; i++) // Перебираем лазеры
         {
-            printf("Laser i= %i ", i);
-            printf("matrixLaserPillar[i][4]= %i \n", matrixLaserPillar_[i][4].n); // Матрица Лазеров-Столбов. В ней строки - номера лазеров, столюцы - номера столбов которые лазер может обслуживать Столбец 5 для записи количества столбов
+            // printf("Laser i= %i ", i);
+            // printf("matrixLaserPillar[i][4]= %i \n", matrixLaserPillar_[i][4].n); // Матрица Лазеров-Столбов. В ней строки - номера лазеров, столюцы - номера столбов которые лазер может обслуживать Столбец 5 для записи количества столбов
             if (matrixLaserPillar_[i][4].n == 1)                                  // Если есть только 1 столб, то его и назначаем
             {
                 int numPillar = -1;
@@ -174,9 +174,9 @@ void CLaser::calcAnglePillarForLaser(CPillar::SPillar *pillar_, SPose &poseLidar
                 printf("mojet obsujit %i \n", j);
             }
         }
-        printf("---\n");
         // printf("=\n");
     }
+    printf("---\n");
     SMatrixPillar tableLaser[4]; // {-1, -1, -1, -1}; // Таблица в которую собираем итоговые сопоставления лазеров и столбов
     for (int i = 0; i < 4; i++)
     {
@@ -188,62 +188,20 @@ void CLaser::calcAnglePillarForLaser(CPillar::SPillar *pillar_, SPose &poseLidar
     int count = 0; // Количество распределённых столбов
 
     pillar_1(matrixLaserPillar, tableLaser, count); // Сопоставление столбов если их может однозначно обслуживать только один лазер
-    // for (int k = 0; k < 4; k++) // Делаем 4 поиска лазеров с 1 столбом. Это максимум возможных вариантов
-    // {
-    //     // printf(" Num variant k= %i \n", k);
-    //     for (int i = 0; i < 4; i++) // Перебираем лазеры
-    //     {
-    //         printf("Laser i= %i ", i);
-    //         printf("matrixLaserPillar[i][4]= %i \n", matrixLaserPillar[i][4].n); // Матрица Лазеров-Столбов. В ней строки - номера лазеров, столюцы - номера столбов которые лазер может обслуживать Столбец 5 для записи количества столбов
-    //         if (matrixLaserPillar[i][4].n == 1)                                  // Если есть только 1 столб, то его и назначаем
-    //         {
-    //             int numPillar = -1;
-    //             float angle_pillar = 0;
-    //             for (int m = 0; m < 4; m++)
-    //             {
-    //                 numPillar = matrixLaserPillar[i][m].n;        // Запоминаем номер столба.
-    //                 angle_pillar = matrixLaserPillar[i][m].angle; // Запоминаем угол на столб.
-    //                 if (numPillar >= 0)                           // Ищем номер этого столба, в какой он ячейке? он будет не равен -1
-    //                 {
-    //                     break; // Нашли что надо и перестаем перебирать
-    //                 }
-    //             }
-
-    //             tableLaser[i].n = numPillar;        // Номер в маассиве это номер лазера, а значение номер столба который лазеру назначен
-    //             tableLaser[i].angle = angle_pillar; // Номер в маассиве это номер лазера, а значение номер столба который лазеру назначен
-    //             count++;                            // Есть распредленный столб
-    //             matrixLaserPillar[i][4].n = 0;      // Обнуляем счетчик столбов
-    //             printf("numPillar00= %i angle_pillar % .3f \n", tableLaser[i].n, tableLaser[i].angle);
-    //             // Нужно назначить и убрать из матрицы у других лазеров этот столб
-    //             // for (int n = 0; n < 4; n++) // Перебираем лазеры
-    //             // {
-    //             //     for (int j = 0; j < 4; j++) // Перебираем столбы
-    //             //     {
-    //             //         if (matrixLaserPillar[n][j].n == tableLaser[i].n) // Если там есть такой столб, то его убираем и уменьшаем счетчик
-    //             //         {
-    //             //             matrixLaserPillar[n][j].n = -1;
-    //             //             matrixLaserPillar[n][4].n--;
-    //             //         }
-    //             //     }
-    //             // }
-    //             deleteNum (matrixLaserPillar,tableLaser[i].n); //Убираем из двухмерного массива уже сопоставленный столб из других вариантов
-    //         }
-    //     }
-    // }
     //-----------------------------------------------------------------------
     ROS_INFO("!!!! Pillar warn... % i", count);
 
     for (int i = 0; i < 4; i++)
     {
-        printf("numPillar11= %i angle_pillar % .3f \n", tableLaser[i].n, tableLaser[i].angle);
+        //printf("numPillar11= %i angle_pillar % .3f \n", tableLaser[i].n, tableLaser[i].angle);
     }
 
     for (int k = 0; k < 4; k++) // Делаем 4 поиска лазеров с 2 столбом. Это максимум возможных вариантов
     {
-        ROS_WARN("!!!! Pillar warn... % i", count);
+        //ROS_WARN("!!!! Pillar warn... % i", count);
         for (int i = 0; i < 4; i++) // Перебираем лазеры, это строки матрицы
         {
-            printf(" %i matrixLaserPillar2[i][4]= %i \n", i, matrixLaserPillar[i][4].n); // Матрица Лазеров-Столбов. В ней строки - номера лазеров, столюцы - номера столбов которые лазер может обслуживать Столбец 5 для записи количества столбов
+            //printf(" %i matrixLaserPillar2[i][4]= %i \n", i, matrixLaserPillar[i][4].n); // Матрица Лазеров-Столбов. В ней строки - номера лазеров, столюцы - номера столбов которые лазер может обслуживать Столбец 5 для записи количества столбов
             if (matrixLaserPillar[i][4].n == 2)                                          // Если остались лазеры у которых еще 2 столба в возможном обслуживании, то выбор делаем по минимальному углу от осевого
             {
                 float minAngle = 180; // Начальный самый большой
@@ -254,14 +212,14 @@ void CLaser::calcAnglePillarForLaser(CPillar::SPillar *pillar_, SPose &poseLidar
                     if (matrixLaserPillar[i][j].n >= 0) // Находим номера столбов
                     {
                         float a = abs(matrixLaserPillar[i][j].angle - 90); // Считаем угол от осевого, а он 90 градусов
-                        printf("a= % .3f minAngle = % .3f === ", a, minAngle);
+                        //printf("a= % .3f minAngle = % .3f === ", a, minAngle);
                         if (a < minAngle)
                         {
-                            printf("i= %i j= %i a= % .3f ", i, j, a);
+                            //printf("i= %i j= %i a= % .3f ", i, j, a);
                             minAngle = a;
                             angleNum = matrixLaserPillar[i][j].angle;
                             minNum = matrixLaserPillar[i][j].n; // Запоминаем номер столба
-                            printf(" minNum %i minAngle % .3f \n", minNum, minAngle);
+                            //printf(" minNum %i minAngle % .3f \n", minNum, minAngle);
                         }
                     }
                 }
@@ -274,73 +232,12 @@ void CLaser::calcAnglePillarForLaser(CPillar::SPillar *pillar_, SPose &poseLidar
 
                 // Нужно назначить и убрать из матрицы у других лазеров этот столб
                 deleteNum(matrixLaserPillar, tableLaser[i].n); // Убираем из двухмерного массива уже сопоставленный столб из других вариантов
-                // for (int n = 0; n < 4; n++) // Перебираем лазеры
-                // {
-                //     for (int j = 0; j < 4; j++) // Перебираем столбы
-                //     {
-                //         if (matrixLaserPillar[n][j].n == tableLaser[i].n) // Если там есть такой столб, то его убираем и уменьшаем счетчик
-                //         {
-                //             matrixLaserPillar[n][j].n = -1;
-                //             matrixLaserPillar[n][4].n--;
-                //         }
-                //     }
-                // }
                 break; // Прерываем перебор, так как двойки могли стать в 1 и нужен перебор по единице
             }
         }
         pillar_1(matrixLaserPillar, tableLaser, count); // Сопоставление столбов если их может однозначно обслуживать только один лазер
     }
-    //-----------------------------------------------------------------------
-    // ROS_INFO("!!!! Pillar warn 2... % i", count);
-
-    // for (int i = 0; i < 4; i++)
-    // {
-    //     printf("numPillar44= %i angle_pillar % .3f \n", tableLaser[i].n, tableLaser[i].angle);
-    // }
-    //-----------------------------------------------------------------------
-
-    //********************************
-    // pillar_1(matrixLaserPillar, tableLaser, count); // Сопоставление столбов если их может однозначно обслуживать только один лазер
-    // for (int i = 0; i < 4; i++) // Перебираем лазеры
-    // {
-    //     printf("Laser i= %i ", i);
-    //     printf("matrixLaserPillar[i][4]= %i \n", matrixLaserPillar[i][4].n); // Матрица Лазеров-Столбов. В ней строки - номера лазеров, столюцы - номера столбов которые лазер может обслуживать Столбец 5 для записи количества столбов
-    //     if (matrixLaserPillar[i][4].n == 1)                                  // Если есть только 1 столб, то его и назначаем
-    //     {
-    //         int numPillar = -1;
-    //         float angle_pillar = 0;
-    //         for (int m = 0; m < 4; m++)
-    //         {
-    //             numPillar = matrixLaserPillar[i][m].n;        // Запоминаем номер столба.
-    //             angle_pillar = matrixLaserPillar[i][m].angle; // Запоминаем номер столба.
-    //             if (numPillar >= 0)                           // Ищем номер этого столба, в какой он ячейке? он будет не равен -1
-    //             {
-    //                 break; // Нашли что надо и перестаем перебирать
-    //             }
-    //         }
-
-    //         tableLaser[i].n = numPillar;        // Номер в маассиве это номер лазера, а значение номер столба который лазеру назначен
-    //         tableLaser[i].angle = angle_pillar; // Номер в маассиве это номер лазера, а значение номер столба который лазеру назначен
-    //         count++;                            // Есть распредленный столб
-    //         matrixLaserPillar[i][4].n = 0;      // Обнуляем счетчик столбов
-    //         printf("numPillar66= %i angle_pillar % .3f \n", tableLaser[i].n, tableLaser[i].angle);
-    //         // Нужно назначить и убрать из матрицы у других лазеров этот столб
-    //         deleteNum(matrixLaserPillar, tableLaser[i].n); // Убираем из двухмерного массива уже сопоставленный столб из других вариантов
-    //         // for (int n = 0; n < 4; n++) // Перебираем лазеры
-    //         // {
-    //         //     for (int j = 0; j < 4; j++) // Перебираем столбы
-    //         //     {
-    //         //         if (matrixLaserPillar[n][j].n == tableLaser[i].n) // Если там есть такой столб, то его убираем и уменьшаем счетчик
-    //         //         {
-    //         //             matrixLaserPillar[n][j].n = -1;
-    //         //             matrixLaserPillar[n][4].n--;
-    //         //         }
-    //         //     }
-    //         // }
-    //     }
-    // }
-    //***********************************
-
+   
     ROS_INFO("!!!! Pillar warn REZULTAT... % i", count);
     printf(" === \n");
     for (int i = 0; i < 4; i++)
