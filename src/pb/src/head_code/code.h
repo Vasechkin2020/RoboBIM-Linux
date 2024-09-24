@@ -114,7 +114,9 @@ void startPosition(geometry_msgs::Pose2D &startPose2d_)
 
 	odomWheel.pose.x = startPose2d_.x;
 	odomWheel.pose.y = startPose2d_.y;
-	odomWheel.pose.th = startPose2d_.theta;
+	odomWheel.pose.th = DEG2RAD(startPose2d_.theta); // В одометрии угол в радианах
+
+	printf("START RAD2DEG(odomWheel.pose.th) = % .3f \n",RAD2DEG(odomWheel.pose.th));
 
     ROS_INFO("startPosition lidarPose x= %.3f y= %.3f th= %.3f ", g_poseLidar.mode1.x, g_poseLidar.mode1.y, g_poseLidar.mode1.th);
     ROS_INFO("-------------------------            ------------------------------------- \n");
@@ -241,17 +243,24 @@ void calcNewOdom(SOdom &odom_, STwistDt data_) // На вход подаются
 	SPoint pointLoc;
 	pointLoc.x = data_.twist.vx * data_.dt; // Находим проекции скорсти на оси за интревал времени это коокрдинаты нашей точки в локальной системе координат
 	pointLoc.y = data_.twist.vy * data_.dt;
-	//printf(" pointLoc.x= % .3f y= % .3f dt= % .3f th= % .3f | ", pointLoc.x, pointLoc.y, data_.dt, RAD2DEG(odom_.pose.th));
+	printf(" Local system pointLoc.x= % .3f y= % .3f dt= % .3f th= % .3f | \n", pointLoc.x, pointLoc.y, data_.dt, RAD2DEG(odom_.pose.th));
 
 	// printf("DO pose.x= %.3f pose.y= %.3f pose.th= %.3f / ", odom_.pose.x, odom_.pose.y, RAD2DEG(odom_.pose.th));
 	// Находим смещние по осям матрица координаты точки из локальной системы координат в глобальной
 	double delta_x = pointLoc.x * cos(odom_.pose.th) + pointLoc.y * sin(odom_.pose.th);
 	double delta_y = -pointLoc.x * sin(odom_.pose.th) + pointLoc.y * cos(odom_.pose.th);
-	printf("delta.x= % .3f y= % .3f | ", delta_x, delta_y);
-
+	printf("Global system delta.x= % .3f y= % .3f | \n", delta_x, delta_y);
 	// Меняем координаты и угол на основе вычислений
-	odom_.pose.x += delta_x; // Вычисляем координаты
-	odom_.pose.y += delta_y; // Вычисляем координаты
+	// odom_.pose.x += delta_x; // Вычисляем координаты
+	// odom_.pose.y += delta_y; // Вычисляем координаты
+
+
+	SPoint pointGlob = pointLocal2GlobalRosRAD(pointLoc, odom_.pose);
+	printf("Global system x= % .3f y= % .3f | \n", pointGlob.x, pointGlob.y);
+
+
+	odom_.pose.x = pointGlob.x; // Вычисляем координаты
+	odom_.pose.y = pointGlob.y; // Вычисляем координаты
 
 	// printf("twist.x= %.4f y= %.4f th= %.4f gradus ", bno055.twist.vx, bno055.twist.vy, bno055.twist.vth);
 	// Меняем координаты и угол на основе вычислений
@@ -260,7 +269,8 @@ void calcNewOdom(SOdom &odom_, STwistDt data_) // На вход подаются
 		(odom_.pose.th -= (2 * M_PI));
 	if (odom_.pose.th < 0)
 		(odom_.pose.th += (2 * M_PI));
-	printf(" =pose.x= % .3f y= % .3f th= % .3f \n", odom_.pose.x, odom_.pose.y, RAD2DEG(odom_.pose.th));
+
+	printf("Global system pose.x= % .3f y= % .3f th= % .3f \n", odom_.pose.x, odom_.pose.y, RAD2DEG(odom_.pose.th));
 }
 
 
@@ -345,8 +355,8 @@ STwistDt calcTwistFromWheel(pb_msgs::SSetSpeed control_)
 	//printf (" theta = %.3f \n", theta);
 	// Находим линейные скорости из моего вектора скорости. Я задаю общую скорость движения (длинна вектора), ее надо разложить на проекции по осям x y. Это будут линейные скорости
 	// speed = 0.26;
-	twist.vx = speed * sin(theta * dt); // Проекция моей скорости на ось Y получаем линейную скорость по оси за секунуду
-	twist.vy = speed * cos(theta * dt); // Проекция моей скорости на ось X получаем линейную скорость по оси за секунуду
+	twist.vx = speed * cos(theta * dt); // Проекция моей скорости на ось X получаем линейную скорость по оси за секунуду
+	twist.vy = speed * sin(theta * dt); // Проекция моей скорости на ось Y получаем линейную скорость по оси за секунуду
 	twist.vth = theta;					// Угловая скорость в радианах.
 
 	printf("% 6lu |Wheel % .3f % .3f \n", millis(), twist.vx, twist.vy);
