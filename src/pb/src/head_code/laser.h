@@ -80,7 +80,7 @@ void CLaser::deleteNum(SMatrixPillar (&matrixLaserPillar_)[4][5], int num_)
 
 void CLaser::pillar_1(SMatrixPillar (&matrixLaserPillar_)[4][5], SMatrixPillar (&tableLaser_)[4], int &count_) // Сопоставление столба если может обслужить только 1 лазер
 {
-    printf("Start pillar_1... \n");
+    //printf("Start pillar_1... \n");
     for (int k = 0; k < 4; k++) // Делаем 4 поиска лазеров с 1 столбом. Это максимум возможных вариантов
     {
         for (int i = 0; i < 4; i++) // Перебираем лазеры
@@ -105,7 +105,7 @@ void CLaser::pillar_1(SMatrixPillar (&matrixLaserPillar_)[4][5], SMatrixPillar (
                 tableLaser_[i].angle = angle_pillar; // Номер в маассиве это номер лазера, а значение номер столба который лазеру назначен
                 count_++;                            // Есть распредленный столб
                 matrixLaserPillar_[i][4].n = 0;      // Обнуляем счетчик столбов
-                printf("numPillar00= %i angle_pillar % .3f \n", tableLaser_[i].n, tableLaser_[i].angle);
+                //printf("numPillar00= %i angle_pillar % .3f \n", tableLaser_[i].n, tableLaser_[i].angle);
                 // Нужно назначить и убрать из матрицы у других лазеров этот столб
                 // for (int n = 0; n < 4; n++) // Перебираем лазеры
                 // {
@@ -122,7 +122,7 @@ void CLaser::pillar_1(SMatrixPillar (&matrixLaserPillar_)[4][5], SMatrixPillar (
             }
         }
     }
-    printf("End pillar_1... \n");
+    //printf("End pillar_1... \n");
 }
 
 // Расчет углов в локальной системе лазеров на столбы для передачи на нижний уровень для исполнения
@@ -143,9 +143,9 @@ void CLaser::calcAnglePillarForLaser(CPillar::SPillar *pillar_, SPose &poseLidar
         pointGlobal.x = pillar_[i].x_true; // Берем глобальные истинные координаты столба
         pointGlobal.y = pillar_[i].y_true;
         pointPillarInLidar[i] = pointGlobal2LocalRos(pointGlobal, poseLidar); // получим координаты столба в системе "Base"
-        printf("Koordinat %i in /Base/ x= % .3f y= % .3f \n", i, pointPillarInLidar[i].x, pointPillarInLidar[i].y);
+        //printf("Koordinat %i in /Base/ x= % .3f y= % .3f \n", i, pointPillarInLidar[i].x, pointPillarInLidar[i].y);
     }
-    printf("----\n");
+    //printf("----\n");
     // Очищаем матрицу от прошлых значений записываем везде -1
     for (int i = 0; i < 4; i++) // Перебираем лазеры
     {
@@ -159,7 +159,7 @@ void CLaser::calcAnglePillarForLaser(CPillar::SPillar *pillar_, SPose &poseLidar
     // Для каждого лазера находим какие столбы он видит и может обслуживать. Для этого каждый столб перводим в локальную систему координат лазера и считаем угол на какой надо повернуться чтобы в него попасть
     for (int i = 0; i < 4; i++) // Перебираем лазеры
     {
-        printf("Laser %i \n", i);
+        //printf("Laser %i \n", i);
         for (int j = 0; j < 4; j++) // Перебираем столбы
         {
             SPoint pointTemp = pointGlobal2LocalRos(pointPillarInLidar[j], _poseLaser[i]); // получим координаты столба в лазерной системе /laser/
@@ -170,13 +170,13 @@ void CLaser::calcAnglePillarForLaser(CPillar::SPillar *pillar_, SPose &poseLidar
                 matrixLaserPillar[i][matrixLaserPillar[i][4].n].n = j;        // Записываем номер столба который можем обслужить этим лазером
                 matrixLaserPillar[i][matrixLaserPillar[i][4].n].angle = alfa; // Записываем угол в /Laser/ системе при котором попадаем на столб
                 matrixLaserPillar[i][4].n++;                                  // Считаем годные столбы
-                printf("angle Alfa in /Laser/ = % .3f ", alfa);
-                printf("mojet obsujit %i \n", j);
+                // printf("angle Alfa in /Laser/ = % .3f ", alfa);
+                // printf("mojet obsujit %i \n", j);
             }
         }
         // printf("=\n");
     }
-    printf("---\n");
+    //printf("---\n");
     SMatrixPillar tableLaser[4]; // {-1, -1, -1, -1}; // Таблица в которую собираем итоговые сопоставления лазеров и столбов
     for (int i = 0; i < 4; i++)
     {
@@ -189,7 +189,7 @@ void CLaser::calcAnglePillarForLaser(CPillar::SPillar *pillar_, SPose &poseLidar
 
     pillar_1(matrixLaserPillar, tableLaser, count); // Сопоставление столбов если их может однозначно обслуживать только один лазер
     //-----------------------------------------------------------------------
-    ROS_INFO("!!!! Pillar warn... % i", count);
+    //ROS_INFO("!!!! Pillar warn... % i", count);
 
     for (int i = 0; i < 4; i++)
     {
@@ -223,12 +223,12 @@ void CLaser::calcAnglePillarForLaser(CPillar::SPillar *pillar_, SPose &poseLidar
                         }
                     }
                 }
-                printf(" ITOG minNum %i minAngle % .3f \n", minNum, minAngle);
+                //printf(" ITOG minNum %i minAngle % .3f \n", minNum, minAngle);
                 tableLaser[i].n = minNum;
                 tableLaser[i].angle = angleNum;
                 count++;                       // Есть распредленный столб
                 matrixLaserPillar[i][4].n = 0; // Обнуляем счетчик столбов которые он может обслужить у данного лазера, так как он распределен
-                printf("numPillar33= %i angle_pillar % .3f \n", tableLaser[i].n, tableLaser[i].angle);
+                //printf("numPillar33= %i angle_pillar % .3f \n", tableLaser[i].n, tableLaser[i].angle);
 
                 // Нужно назначить и убрать из матрицы у других лазеров этот столб
                 deleteNum(matrixLaserPillar, tableLaser[i].n); // Убираем из двухмерного массива уже сопоставленный столб из других вариантов
@@ -238,13 +238,13 @@ void CLaser::calcAnglePillarForLaser(CPillar::SPillar *pillar_, SPose &poseLidar
         pillar_1(matrixLaserPillar, tableLaser, count); // Сопоставление столбов если их может однозначно обслуживать только один лазер
     }
    
-    ROS_INFO("!!!! Pillar warn REZULTAT... % i", count);
-    printf(" === \n");
-    for (int i = 0; i < 4; i++)
-    {
-        printf("REZULTAT numPillar77= %i angle_pillar % .3f \n", tableLaser[i].n, tableLaser[i].angle);
-    }
-    printf(" === \n");
+    // printf("!!!! Pillar warn REZULTAT... % i", count);
+    // printf(" === \n");
+    // for (int i = 0; i < 4; i++)
+    // {
+    //     printf("REZULTAT numPillar77= %i angle_pillar % .3f \n", tableLaser[i].n, tableLaser[i].angle);
+    // }
+    // printf(" === \n");
 
     // Распределяем столбы по лазерам. Каждый обслуживает свой сектор
     // ROS_INFO("---");
@@ -267,58 +267,63 @@ void CLaser::calcAnglePillarForLaser(CPillar::SPillar *pillar_, SPose &poseLidar
     //         anglePillarInLaser[i] = 0;
     //     }
     // }
-    ROS_INFO("---");
     for (int i = 0; i < 4; i++)
     {
         anglePillarInLaser[i] = tableLaser[i].angle; // Для визуализации в RVIZ
         g_angleLaser[i] = tableLaser[i].angle;       // Для топика ?
         g_numPillar[i] = tableLaser[i].n;
-        ROS_INFO("g_angleLaser= %.3f g_numPillar = %i ", g_angleLaser[i], g_numPillar[i]);
+        printf(" angle= %.3f numPillar = %i |", g_angleLaser[i], g_numPillar[i]);
     }
-    ROS_INFO("---");
+    printf("\n");
 }
 
 void CLaser::calcPointPillarFromLaser(CPillar::SPillar *pillar_) // Расчет положения столбов в лидарной системе на основании данных с датчиков
 {
-    // Сначала на идеальных данных сделать Меняем на фиксы идеальные
-    msg_Modul2Data.laser[0].distance = 2.805 - OFFSET_LAZER;
-    msg_Modul2Data.laser[0].angle = 67.43;
+    //Сначала на идеальных данных сделать Меняем на фиксы идеальные
+    // msg_Modul2Data.laser[0].distance = 2.76343;
+    // msg_Modul2Data.laser[0].angle = 67.5522;
     // msg_Modul2Data.laser[0].numPillar = 0;
 
-    msg_Modul2Data.laser[1].distance = 1.279 - OFFSET_LAZER;
-    msg_Modul2Data.laser[1].angle = 42.55;
+    // msg_Modul2Data.laser[1].distance = 1.23827;
+    // msg_Modul2Data.laser[1].angle = 42.463;
     // msg_Modul2Data.laser[1].numPillar = 1;
 
-    msg_Modul2Data.laser[2].distance = 1.599 - OFFSET_LAZER;
-    msg_Modul2Data.laser[2].angle = 143.6;
+    // msg_Modul2Data.laser[2].distance = 1.35932;
+    // msg_Modul2Data.laser[2].angle = 144.737;
     // msg_Modul2Data.laser[2].numPillar = 2;
 
-    msg_Modul2Data.laser[3].distance = 2.980 - OFFSET_LAZER;
-    msg_Modul2Data.laser[3].angle = 105.43;
+    // msg_Modul2Data.laser[3].distance = 2.93866;
+    // msg_Modul2Data.laser[3].angle = 105.687;
     // msg_Modul2Data.laser[3].numPillar = 3;
 
     SPoint p_laser;
     SPoint p_lidar;
     SPoint P00;
     float len;
+    printf(" MODE 3 calcPointPillarFromLaser /////////////// \n");
     for (int i = 0; i < 4; i++)
     {
-        printf(" ");
-        msg_Modul2Data.laser[i].distance += OFFSET_LAZER; // Добавляем смещение по креплению. Зависит от напечатанного крепления
-        printf("distance = %f ", msg_Modul2Data.laser[i].distance);
-        printf(" numPillar = %i ", msg_Modul2Data.laser[i].numPillar);
+        // printf("distance SRC = %f \n", msg_Modul2Data.laser[i].distance);
+        msg_Modul2Data.laser[i].distance += (OFFSET_LAZER); // Добавляем смещение по креплению. Зависит от напечатанного крепления
+        //printf("distance + OFFSET = %f \n", msg_Modul2Data.laser[i].distance);
+        msg_Modul2Data.laser[i].distance += (PILLAR_RADIUS); // Добавляем смещение по креплению. Зависит от напечатанного крепления
+        // printf("distance + RADIUS = %f \n", msg_Modul2Data.laser[i].distance);
+        // printf(" numPillar = %i ", msg_Modul2Data.laser[i].numPillar);
         p_laser = pointFromTetha(msg_Modul2Data.laser[i].angle, msg_Modul2Data.laser[i].distance); // По расстоянию и углу куда был напрвлен лазер посчитать координаты в лазерной систме координат
-        printf("Local x= %f y= %f ", p_laser.x, p_laser.y);
-        p_lidar = pointLocal2Global(p_laser, _poseLaser[msg_Modul2Data.laser[i].numPillar]); // Превести координаты в лидарную систему учитывая каким лазером светили
-        // ROS_INFO("Global x= %f y= %f ",p_lidar.x,p_lidar.y);
-        len = vectorLen(p_lidar, P00); // Находим растояние до столба в лидврной систме
-        printf(" Global len = %f \n", len);
+        // printf("Local x= %f y= %f ", p_laser.x, p_laser.y);
+        // printf("Local Angle Theta = %f \n", _poseLaser[msg_Modul2Data.laser[i].numPillar].th);
+        p_lidar = pointLocal2GlobalRos(p_laser, _poseLaser[msg_Modul2Data.laser[i].numPillar]); // Превести координаты в /Base/ систему учитывая каким лазером светили
+        // printf("Global x= %f y= %f ",p_lidar.x,p_lidar.y);
+        len = vectorLen(p_lidar, P00); // Находим растояние до столба в лидарной систме
+        // printf(" Global len = %f \n", len);
         pillar_[msg_Modul2Data.laser[i].numPillar].distance_laser = len; // Записываем для дальнейшей обработки
     }
+        printf("/// distance_laser |");
     for (int i = 0; i < 4; i++)
     {
-        printf("distance_laser= %f i= %i \n", pillar_[i].distance_laser, i);
+        printf(" dist = %f i= %i |", pillar_[i].distance_laser, i);
     }
+        printf("\n");
 
     // SPoint p1_laser = pointFromTetha(msg_Modul2Data.laser[1].angle, msg_Modul2Data.laser[1].distance);
     // SPoint p2_laser = pointFromTetha(msg_Modul2Data.laser[2].angle, msg_Modul2Data.laser[2].distance);

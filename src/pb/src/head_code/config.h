@@ -41,11 +41,11 @@
 
 // #include <data/pointA.h>
 
-#define RATE 25 // Частота шага
+#define RATE 100 // Частота шага
 
 #define OFFSET_LAZER 0.042 // Оффсет лоя лазера с учетом напечатанного крепления.Если крепление дургое то и офсет надо перезамерить....
 
-#define DISTANCE_LAZER 0.39 // Середина стандартного дипазона датчика лазерного в стандартном положении
+//#define DISTANCE_LAZER 0.39 // Середина стандартного дипазона датчика лазерного в стандартном положении
 #define DIAPAZON 0.04       // Диапазон +- лазерного датчика
 
 #define DISTANCE_WHEELS 0.38 // Растояние между колесами робота. подобрал экспериментально Влияет на правильность круга
@@ -286,17 +286,17 @@ SPoint pointLocal2GlobalRos(SPoint pointLocal_, SPose poseLocal_)
 }
 SPoint pointLocal2GlobalRosRAD(SPoint pointLocal_, SPose poseLocal_)
 {
-    printf("IN poseLocal_.x= % .3f poseLocal_.y= % .3f \n", poseLocal_.x, poseLocal_.y);
+    //printf("IN poseLocal_.x= % .3f poseLocal_.y= % .3f \n", poseLocal_.x, poseLocal_.y);
     SPoint ret;
     float theta = -(poseLocal_.th); //
     // theta = 0; //
     float x = pointLocal_.x;
     float y = pointLocal_.y;
     
-    printf("1 pointLocal_.x= % .3f pointLocal_.y= % .3f th= % .3f ",pointLocal_.x,pointLocal_.y, theta);
+    //printf("1 pointLocal_.x= % .3f pointLocal_.y= % .3f th= % .3f ",pointLocal_.x,pointLocal_.y, theta);
     float xnew = x * cos(theta) + y * sin(theta); // Поворачиваем по формулам поворота системы координат
     float ynew = -x * sin(theta) + y * cos(theta);
-    printf("xnew= % .3f ynew= % .3f \n", xnew, ynew);
+    //printf("xnew= % .3f ynew= % .3f \n", xnew, ynew);
 
     // theta = -theta;
     // printf("2 pointLocal_.x= % .3f pointLocal_.y= % .3f th= % .3f ",pointLocal_.x,pointLocal_.y, theta);
@@ -308,7 +308,7 @@ SPoint pointLocal2GlobalRosRAD(SPoint pointLocal_, SPose poseLocal_)
     ret.x = xnew + poseLocal_.x; // Добавляем смещение
     ret.y = ynew + poseLocal_.y;
 
-    printf("ret.x= % .3f ret.y= % .3f \n", ret.x, ret.y);
+    //printf("ret.x= % .3f ret.y= % .3f \n", ret.x, ret.y);
 
     return ret;
 }
@@ -331,17 +331,17 @@ SPoint pointFromTetha(float angle_, float distance_) // Возвращает о�
 {
     // printf(" pointFromTetha angle_= %f distance_ = %f ", angle_, distance_);
     SPoint ret;
-    angle_ = DEG2RAD(angle_); // Превращаем в радианы, так как приходит в градусах
-    if (angle_ < 90)
+    angle_ = - DEG2RAD(angle_); // Превращаем в радианы, так как приходит в градусах МИнут так как положительные углы вправо по часовой
+    if (abs (angle_) < 90)
     {
-        ret.x = sin(angle_) * distance_;
-        ret.y = cos(angle_) * distance_;
+        ret.x = cos(angle_) * distance_;
+        ret.y = sin(angle_) * distance_;
     }
     else
     {
         angle_ = angle_ - 90;
-        ret.x = cos(angle_) * distance_;
-        ret.y = -sin(angle_) * distance_;
+        ret.x = -sin(angle_) * distance_;
+        ret.y = cos(angle_) * distance_;
     }
     // printf("x= %f y = %f \n", ret.x, ret.y);
     return ret;

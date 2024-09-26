@@ -243,20 +243,20 @@ void calcNewOdom(SOdom &odom_, STwistDt data_) // На вход подаются
 	SPoint pointLoc;
 	pointLoc.x = data_.twist.vx * data_.dt; // Находим проекции скорсти на оси за интревал времени это коокрдинаты нашей точки в локальной системе координат
 	pointLoc.y = data_.twist.vy * data_.dt;
-	printf(" Local system pointLoc.x= % .3f y= % .3f dt= % .3f th= % .3f | \n", pointLoc.x, pointLoc.y, data_.dt, RAD2DEG(odom_.pose.th));
+	//printf(" Local system pointLoc.x= % .3f y= % .3f dt= % .3f th= % .3f | \n", pointLoc.x, pointLoc.y, data_.dt, RAD2DEG(odom_.pose.th));
 
 	// printf("DO pose.x= %.3f pose.y= %.3f pose.th= %.3f / ", odom_.pose.x, odom_.pose.y, RAD2DEG(odom_.pose.th));
 	// Находим смещние по осям матрица координаты точки из локальной системы координат в глобальной
 	double delta_x = pointLoc.x * cos(odom_.pose.th) + pointLoc.y * sin(odom_.pose.th);
 	double delta_y = -pointLoc.x * sin(odom_.pose.th) + pointLoc.y * cos(odom_.pose.th);
-	printf("Global system delta.x= % .3f y= % .3f | \n", delta_x, delta_y);
+	//printf("Global system delta.x= % .3f y= % .3f | \n", delta_x, delta_y);
 	// Меняем координаты и угол на основе вычислений
 	// odom_.pose.x += delta_x; // Вычисляем координаты
 	// odom_.pose.y += delta_y; // Вычисляем координаты
 
 
 	SPoint pointGlob = pointLocal2GlobalRosRAD(pointLoc, odom_.pose);
-	printf("Global system x= % .3f y= % .3f | \n", pointGlob.x, pointGlob.y);
+	//printf("Global system x= % .3f y= % .3f | \n", pointGlob.x, pointGlob.y);
 
 
 	odom_.pose.x = pointGlob.x; // Вычисляем координаты
@@ -270,7 +270,7 @@ void calcNewOdom(SOdom &odom_, STwistDt data_) // На вход подаются
 	if (odom_.pose.th < 0)
 		(odom_.pose.th += (2 * M_PI));
 
-	printf("Global system pose.x= % .3f y= % .3f th= % .3f \n", odom_.pose.x, odom_.pose.y, RAD2DEG(odom_.pose.th));
+	ROS_WARN("MODE0 pose.x= % .3f y= % .3f th= % .3f ", odom_.pose.x, odom_.pose.y, RAD2DEG(odom_.pose.th));
 }
 
 
@@ -287,7 +287,7 @@ STwistDt calcTwistFromWheel(pb_msgs::SSetSpeed control_)
 	static unsigned long time = micros();		 // Время предыдущего расчета// Функция из WiringPi.
 	unsigned long time_now = micros();			 // Время в которое делаем расчет
 	double dt = ((time_now - time) / 1000000.0); // Интервал расчета переводим сразу в секунды Находим интревал между текущим и предыдущим расчетом в секундах
-	printf("calc dt= %f \n", dt);
+	printf("calc dt= %f | ", dt);
 	time = time_now;
 	if (dt < 0.005) // При первом запуске просто выходим из функции
 	{
@@ -304,7 +304,7 @@ STwistDt calcTwistFromWheel(pb_msgs::SSetSpeed control_)
 	double sumSpeed = speedL + speedR;
 	double deltaSpeed = speedL - speedR;
 	double speed = (speedR + speedL) / 2.0; // Находим скорость всего обьекта.
-	printf("speed car= %.6f / \n", speed);
+	printf("speed car= %.6f | ", speed);
 	//*******************************************************************************************************************************************************
 	double w = deltaSpeed / DISTANCE_WHEELS; // Находим уголовую скорость движения по радиусу. Плюс по часовой минус против часовой
 											 // ROS_INFO("speedL= %.4f speedR= %.4f speed= %.4f w = %.4f ///  ", speedL, speedR, speed, RAD2DEG(w));
@@ -359,7 +359,7 @@ STwistDt calcTwistFromWheel(pb_msgs::SSetSpeed control_)
 	twist.vy = speed * sin(theta * dt); // Проекция моей скорости на ось Y получаем линейную скорость по оси за секунуду
 	twist.vth = theta;					// Угловая скорость в радианах.
 
-	printf("% 6lu |Wheel % .3f % .3f \n", millis(), twist.vx, twist.vy);
+	printf(" Wheel % .3f % .3f \n", twist.vx, twist.vy);
 	// printf("vy= % .4f", twist.vy);
 	// printf("speed= %.4f twist.vth = %.4f / sin(twist.vth )= %.4f cos(twist.vth ) = %.4f / ", speed, RAD2DEG(twist.vth), sin(twist.vth ), cos(twist.vth ));
 	// printf("speed= %.4f twist.vth = %.8f / ", speed, RAD2DEG(twist.vth));

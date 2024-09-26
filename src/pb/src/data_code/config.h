@@ -66,7 +66,7 @@ bool rezModul = false;
 bool rezPrint = false;
 bool rezData = false;
 
-float offSetLaser[4] {0.019, 0.01, 0.01, 0.017}; // Поправочные значения для датчиков расстояния на модуле
+float offSetLaser[4] {0.011, 0.005, 0.005, 0.006}; // Поправочные значения для датчиков расстояния на модуле
 
 int data_driver_all = 0;
 int data_driver_bed = 0;
