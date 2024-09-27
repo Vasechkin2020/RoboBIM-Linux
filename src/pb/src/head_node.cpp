@@ -78,19 +78,41 @@ int main(int argc, char **argv)
         if (flag_msgLidar && flag_startPose && flag_dataPillar) // Если пришло сообщение в топик от лидара и мы уже разобрали данные по координатам машинки, а значит можем грубо посчитать где стоят столбы.  И знаем где истинные столбы
         {
             flag_msgLidar = false;
-            
+
             pillar.parsingLidar(msg_lidar, g_poseLidar.mode1); // Разбираем пришедшие данные и ищем там столбы.
             pillar.comparisonPillar();                         // Сопоставляем столбы
             // topic.publicationPillarAll(pillar);                // Публикуем всю обобщенную информацию по столб
 
-            g_poseLidar.mode1 = pillar.getLocationMode1(g_poseLidar.mode1); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
-            // pillar.getLocationMode1(g_poseLidar.mode1); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
-            g_poseLidar.mode2 = pillar.getLocationMode2(g_poseLidar.mode1); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
-            // pillar.getLocationMode2(g_poseLidar.mode1); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
+            pillar.getLocationMode1(g_poseLidar.mode1, g_poseLidar.mode1); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
+            pillar.getLocationMode2(g_poseLidar.mode2, g_poseLidar.mode1); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
+
             // topic.visualPoseLidarMode_1_2();                                // Отобращение стрелкой где начало и куда смотрит в Mode0 1 2
             topic.visualPublishOdomMode_1(); // Отобращение стрелкой где начало и куда смотрит в Mode0 1 2
             topic.visualPublishOdomMode_2(); // Отобращение стрелкой где начало и куда смотрит в Mode0 1 2
-            
+
+            if (isnan(g_poseLidar.mode2.x) || isnan(g_poseLidar.mode2.y) || isnan(g_poseLidar.mode2.th))
+            {
+                exit(0);
+            }
+
+            // Комплементация положения
+            // ROS_WARN("1odomMode10.pose.x = % .3f odomMode10.pose.y = % .3f odomMode10.pose.th = %.3f", odomMode10.pose.x, odomMode10.pose.y, RAD2DEG(odomMode10.pose.th));
+
+            odomMode10.pose.x = 0.8 * odomMode10.pose.x + 0.2 * g_poseLidar.mode1.x;
+            odomMode10.pose.y = 0.8 * odomMode10.pose.y + 0.2 * g_poseLidar.mode1.y;
+            // Комплементация угла
+            float mediumTheta = (g_poseLidar.mode1.th + g_poseLidar.mode2.th) / 2.0;
+            // printf("mediumTheta DEG= %.3f mediumTheta RAD= %.3f \n", mediumTheta, DEG2RAD(mediumTheta));
+            odomMode10.pose.th = 0.8 * odomMode10.pose.th + 0.2 * DEG2RAD(mediumTheta);
+            ROS_WARN("odomMode10.pose.x = % .3f odomMode10.pose.y = % .3f odomMode10.pose.th = %.3f", odomMode10.pose.x, odomMode10.pose.y, RAD2DEG(odomMode10.pose.th));
+            if (isnan(odomMode10.pose.x) || isnan(odomMode10.pose.y) || isnan(odomMode10.pose.th))
+            {
+                exit(0);
+            }
+            // Копируем в переменную для применения там где использую g_poseLidar
+            g_poseLidar.mode10.x = odomMode10.pose.x;
+            g_poseLidar.mode10.y = odomMode10.pose.y;
+            g_poseLidar.mode10.th = RAD2DEG(odomMode10.pose.th);
         }
 
         // 25 Hz ************************************************************ ОБРАБОТКА ДАННЫХ ИЗ ТОПИКОВ ЧТО ПОДПИСАНЫ  СРАБАТЫВАЕТ КАК ОТПРАВЛЯЕТ DATA_NODE  ********************************************
@@ -101,14 +123,16 @@ int main(int argc, char **argv)
             // for (int i = 0; i < 4; i++)
             //     printf("distance = % .3f angle = % .3f numPillar = %i \n", msg_Modul2Data.laser[i].distance, msg_Modul2Data.laser[i].angle, msg_Modul2Data.laser[i].numPillar);
             // printf("+++ \n");
-            // laser.calcPointPillarFromLaser(pillar.pillar); // Расчитываем Расстояние до столбов в /Odom/ системе
-            // g_poseLidar.mode3 = pillar.getLocationMode3(g_poseLidar.mode1); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
-            // pillar.getLocationMode3(g_poseLidar.mode0); // Считаем текущие координаты оасстоянию до по столбов На вход старая позиция лидара, на выходе новая позиция лидара
+            laser.calcPointPillarFromLaser(pillar.pillar); // Расчитываем Расстояние до столбов в /Odom/ системе
+            pillar.getLocationMode3(g_poseLidar.mode3, g_poseLidar.mode1); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
 
-            //topic.publicationAngleLaser(laser); // Формируем перемнную с собщением для публикации
-
+            // topic.publicationAngleLaser(laser); // Формируем перемнную с собщением для публикации
+            if (isnan(g_poseLidar.mode3.x) || isnan(g_poseLidar.mode3.y) || isnan(g_poseLidar.mode3.th))
+            {
+                printf("STOP MODE 3 \n");
+                exit(0);
+            }
         }
-
 
         if (flag_msgDriver) // Флаг что пришло сообщение от ноды Data по Driver. Тут пишем какую-то обработку данных если нужно.
         {
@@ -119,22 +143,17 @@ int main(int argc, char **argv)
         //-------------------------------
         if (flag_msgSpeed) // Флаг что пришло сообщение от ноды Data по Speed. Это будет MODE_0
         {
-            //printf("1 RAD2DEG(odomWheel.pose.th) = % .3f \n", RAD2DEG(odomWheel.pose.th));
+            // printf("1 RAD2DEG(odomMode0.pose.th) = % .3f \n", RAD2DEG(odomMode0.pose.th));
             flag_msgSpeed = false;
             wheelTwistDt = calcTwistFromWheel(msg_Speed); // Обработка пришедших данных. По ним считаем линейные скорости по осям и угловую по углу. Запоминаем dt
-            calcNewOdom(odomWheel, wheelTwistDt);         // На основе линейных скоростей считаем новую позицию и угол
-            g_poseLidar.mode0.x = odomWheel.pose.x;
-            g_poseLidar.mode0.y = odomWheel.pose.y;
-            //printf("2 RAD2DEG(odomWheel.pose.th) = % .3f \n", RAD2DEG(odomWheel.pose.th));
-            g_poseLidar.mode0.th = RAD2DEG(odomWheel.pose.th);
-            topic.visualPublishOdomMode_0(); // Публикация одометрии по моторам которая получается от начальной точки
+            calcNewOdom(odomMode0, wheelTwistDt);         // На основе линейных скоростей считаем новую позицию и угол по колесам
+            calcNewOdom(odomMode10, wheelTwistDt);        // На основе линейных скоростей считаем новую позицию и угол для скомплементированной одометрии 100 Герц считаем и потом 10 Герц правим
             //---------------
-            // g_poseLidar.mode10.x = (g_poseLidar.mode0.x + g_poseLidar.mode1.x + g_poseLidar.mode2.x) / 3.0;
-            // g_poseLidar.mode10.y = (g_poseLidar.mode0.y + g_poseLidar.mode1.y + g_poseLidar.mode2.y) / 3.0;
-            // g_poseLidar.mode10.th = (g_poseLidar.mode0.th + g_poseLidar.mode1.th + g_poseLidar.mode2.th) / 3.0;
-            g_poseLidar.mode10.x = (g_poseLidar.mode0.x + g_poseLidar.mode1.x) / 2.0;
-            g_poseLidar.mode10.y = (g_poseLidar.mode0.y + g_poseLidar.mode1.y) / 2.0;
-            g_poseLidar.mode10.th = (g_poseLidar.mode0.th + g_poseLidar.mode1.th) / 2.0;
+            g_poseLidar.mode0.x = odomMode0.pose.x;
+            g_poseLidar.mode0.y = odomMode0.pose.y;
+            g_poseLidar.mode0.th = RAD2DEG(odomMode0.pose.th);
+            // printf("2 RAD2DEG(odomMode0.pose.th) = % .3f \n", RAD2DEG(odomMode0.pose.th));
+            topic.visualPublishOdomMode_0(); // Публикация одометрии по моторам которая получается от начальной точки
 
             // mpuTwistDt = calcTwistFromMpu(Driver2Data.bno055, 0.2); // Расчет и оформление в структуру ускорений по осям (линейных скоростей) и  разделить получение угловых скоростей и расчет сновой точки на основе этих скоростей
             // calcNewOdom(odomMpu, mpuTwistDt);                       // Обработка пришедших данных.Обсчитываем одометрию по датчику MPU BNO055
@@ -149,16 +168,16 @@ int main(int argc, char **argv)
 
         if (flag_startPose && flag_dataPillar) // Если уже разобрали данные по координатам машинки, а значит можем грубо посчитать направление на столбы.  И знаем где истинные столбы
         {
-            laser.calcAnglePillarForLaser(pillar.pillar, g_poseLidar.mode0); // Расчет углов в локальной системе лазеров на столбы для передачи на нижний уровень для исполнения
+            laser.calcAnglePillarForLaser(pillar.pillar, g_poseLidar.mode10); // Расчет углов в локальной системе лазеров на столбы для передачи на нижний уровень для исполнения
             topic.publicationControlModul();                                  // Формируем и Публикуем команды для управления Modul
 
             // Публикуем тут так как если один раз опубликовать то они исчезают через некоторое время.
-            topic.transformBase(g_poseLidar.mode0); // Публикуем трансформации систем координат, задаем по какому расчету трансформировать
-            topic.transformLidar(g_poseLidar.mode1); // Публикуем трансформации систем координат, задаем по какому расчету трансформировать
-            topic.transformLaser(laser);             // Публикуем трансформации систем координат, задаем по какому расчету трансформировать
-            topic.visulStartPose();                  // Отобращение стрелкой где начало стартовой позиции и куда направлен нос платформы
-            topic.visualPillarPoint(pillar);         // Отображение места размещения столбов
-            topic.visualPoseAngleLaser(laser);       // Отобращение стрелкой где начало и куда смотрят лазеры
+            topic.transformBase(g_poseLidar.mode10);  // Публикуем трансформации систем координат, задаем по какому расчету трансформировать
+            topic.transformLidar(g_poseLidar.mode10); // Публикуем трансформации систем координат, задаем по какому расчету трансформировать
+            topic.transformLaser(laser);              // Публикуем трансформации систем координат, задаем по какому расчету трансформировать
+            topic.visulStartPose();                   // Отобращение стрелкой где начало стартовой позиции и куда направлен нос платформы
+            topic.visualPillarPoint(pillar);          // Отображение места размещения столбов
+            topic.visualPoseAngleLaser(laser);        // Отобращение стрелкой где начало и куда смотрят лазеры
         }
         //-------------------------------------------------------------------------
         topic.publicationPoseLidarAll(); // Публикуем все варианты расчета позиций mode 0.1.2.3.4

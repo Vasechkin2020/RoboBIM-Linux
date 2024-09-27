@@ -112,11 +112,14 @@ void startPosition(geometry_msgs::Pose2D &startPose2d_)
     g_poseLidar.mode10.y = startPose2d_.y;
     g_poseLidar.mode10.th = startPose2d_.theta;
 
-	odomWheel.pose.x = startPose2d_.x;
-	odomWheel.pose.y = startPose2d_.y;
-	odomWheel.pose.th = DEG2RAD(startPose2d_.theta); // В одометрии угол в радианах
+	odomMode0.pose.x = startPose2d_.x;
+	odomMode0.pose.y = startPose2d_.y;
+	odomMode0.pose.th = DEG2RAD(startPose2d_.theta); // В одометрии угол в радианах
+	odomMode10.pose.x = startPose2d_.x;
+	odomMode10.pose.y = startPose2d_.y;
+	odomMode10.pose.th = DEG2RAD(startPose2d_.theta); // В одометрии угол в радианах
 
-	printf("START RAD2DEG(odomWheel.pose.th) = % .3f \n",RAD2DEG(odomWheel.pose.th));
+	printf("START RAD2DEG(odomMode0.pose.th) = % .3f \n",RAD2DEG(odomMode0.pose.th));
 
     ROS_INFO("startPosition lidarPose x= %.3f y= %.3f th= %.3f ", g_poseLidar.mode1.x, g_poseLidar.mode1.y, g_poseLidar.mode1.th);
     ROS_INFO("-------------------------            ------------------------------------- \n");
@@ -234,6 +237,7 @@ void testFunction()
 // Обработка пришедших данных.Обсчитываем одометрию по энкодеру
 void calcNewOdom(SOdom &odom_, STwistDt data_) // На вход подаются старая одометрия и новые угловая угловая скорость. Возвращается новая позиция по данным угловым скоростям
 {
+	//ROS_INFO("IN calcNewOdom pose.x= % .3f y= % .3f th= % .3f ", odom_.pose.x, odom_.pose.y, RAD2DEG(odom_.pose.th));
 	if (data_.dt < 0.005) // Если пришли данные с нулевой дельтой то сразу выходим и ничего не считаем
 	{
 		printf("calcNewOdom dt< 0.005 !!!! \n");
@@ -270,7 +274,7 @@ void calcNewOdom(SOdom &odom_, STwistDt data_) // На вход подаются
 	if (odom_.pose.th < 0)
 		(odom_.pose.th += (2 * M_PI));
 
-	ROS_WARN("MODE0 pose.x= % .3f y= % .3f th= % .3f ", odom_.pose.x, odom_.pose.y, RAD2DEG(odom_.pose.th));
+	ROS_WARN("OUT calcNewOdom pose.x= % .3f y= % .3f th= % .3f ", odom_.pose.x, odom_.pose.y, RAD2DEG(odom_.pose.th));
 }
 
 
@@ -406,8 +410,8 @@ STwistDt calcTwistFromWheel(pb_msgs::SSetSpeed control_)
 
 		// printf("pose.x= % .3f y= % .3f th= % .3f ", pose.x, pose.y, RAD2DEG(pose.th));
 
-		odomWheel.pose = pose;
-		odomWheel.twist = twist;
+		odomMode0.pose = pose;
+		odomMode0.twist = twist;
 	}
 }
 */

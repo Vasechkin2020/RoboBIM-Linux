@@ -419,16 +419,16 @@ void CTopic::visualPublishOdomMode_0()
     mode0_msg.header.stamp = ros::Time::now(); // Время ROS
     mode0_msg.header.frame_id = "odom";        // Поза в этом сообщении должна быть указана в системе координат, заданной header.frame_id.
     // set the position
-    mode0_msg.pose.pose.position.x = odomWheel.pose.x;
-    mode0_msg.pose.pose.position.y = odomWheel.pose.y;
-    //geometry_msgs::Quaternion quat = tf::createQuaternionMsgFromYaw(-odomWheel.pose.th + DEG2RAD(90)); // Минус так как вращение у меня по часовой а не по "буравчику" и + 90 так как считал я что 0 градусов это по оси Y Глядел на стену надо переписывать
-    geometry_msgs::Quaternion quat = tf::createQuaternionMsgFromYaw(odomWheel.pose.th); // Минус так как вращение у меня по часовой а не по "буравчику" и + 90 так как считал я что 0 градусов это по оси Y Глядел на стену надо переписывать
+    mode0_msg.pose.pose.position.x = odomMode0.pose.x;
+    mode0_msg.pose.pose.position.y = odomMode0.pose.y;
+    //geometry_msgs::Quaternion quat = tf::createQuaternionMsgFromYaw(-odomMode0.pose.th + DEG2RAD(90)); // Минус так как вращение у меня по часовой а не по "буравчику" и + 90 так как считал я что 0 градусов это по оси Y Глядел на стену надо переписывать
+    geometry_msgs::Quaternion quat = tf::createQuaternionMsgFromYaw(odomMode0.pose.th); // Минус так как вращение у меня по часовой а не по "буравчику" и + 90 так как считал я что 0 градусов это по оси Y Глядел на стену надо переписывать
     mode0_msg.pose.pose.orientation = quat;
     // set the velocity
     mode0_msg.child_frame_id = "odom"; // Поворот в этом сообщении должен быть указан в системе координат, заданной child_frame_id
-    mode0_msg.twist.twist.linear.x = odomWheel.twist.vx;
-    mode0_msg.twist.twist.linear.y = odomWheel.twist.vy;
-    mode0_msg.twist.twist.angular.z = odomWheel.twist.vth;
+    mode0_msg.twist.twist.linear.x = odomMode0.twist.vx;
+    mode0_msg.twist.twist.linear.y = odomMode0.twist.vy;
+    mode0_msg.twist.twist.angular.z = odomMode0.twist.vth;
     publish_Mode0.publish(mode0_msg); // Публикация полученных данных
 
     // Публиация системы трансформации для TF Решил что для одометрии не нужно еще и системы координат публиковать TF
@@ -436,10 +436,10 @@ void CTopic::visualPublishOdomMode_0()
     // tfOdomWheel.header.stamp = ros_time;
     // tfOdomWheel.header.frame_id = "odom";
     // tfOdomWheel.child_frame_id = "wheel";
-    // tfOdomWheel.transform.translation.x = odomWheel.pose.x;
-    // tfOdomWheel.transform.translation.y = odomWheel.pose.y;
+    // tfOdomWheel.transform.translation.x = odomMode0.pose.x;
+    // tfOdomWheel.transform.translation.y = odomMode0.pose.y;
     // tfOdomWheel.transform.translation.z = 0.1;
-    // tfOdomWheel.transform.rotation = tf::createQuaternionMsgFromYaw(-odomWheel.pose.th); // Из градусов в радианы далее подладить под своё представление
+    // tfOdomWheel.transform.rotation = tf::createQuaternionMsgFromYaw(-odomMode0.pose.th); // Из градусов в радианы далее подладить под своё представление
     // tfBroadcaster.sendTransform(tfOdomWheel);
     //-------------------------------------------
 }
