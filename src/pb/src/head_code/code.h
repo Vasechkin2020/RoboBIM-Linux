@@ -4,11 +4,15 @@
 // #include "pillar.h"
 //**************************** ОБЬЯВЛЕНИЕ ПРОЦЕДУР **********************************
 void callback_Lidar(sensor_msgs::LaserScan::ConstPtr msg); //
-void callback_Pillar(pb_msgs::topicPillar msg);               //
-void callback_StartPose2D(pb_msgs::point msg);                //
+void callback_Pillar(pb_msgs::topicPillar msg);			   //
+void callback_StartPose2D(pb_msgs::point msg);			   //
 
-void callback_Driver(pb_msgs::Struct_Driver2Data msg);              //
+void callback_Driver(pb_msgs::Struct_Driver2Data msg); //
 void callback_Modul(pb_msgs::Struct_Modul2Data msg);
+
+void calculationOdometry(); // Расчет одометрии и применения ее для всех режимов
+
+void poseComplementMode10(); // Комплеиентация Odom10
 
 long map(long x, long in_min, long in_max, long out_min, long out_max); // Переводит значение из одного диапазона в другой, взял из Ардуино
 
@@ -16,22 +20,23 @@ void startPosition(geometry_msgs::Pose2D &startPose2d_); // Разбираем �
 
 void testFunction(); // Тест математических ипрочих функций
 
+void angleMPU(); // Расчет угла положения на сонове данных сдатчика MPU
+
 float minDistance(float laserL_, float laserR_, float uzi1_); // Находим минимальную дистанцию из 3 датчиков
 // pb_msgs::SControlDriver speedCorrect(pb_msgs::SDriver2Data Driver2Data_msg_, pb_msgs::SControlDriver Data2Driver_); // Корректировка скорости движения в зависимости от датчиков растояния перед
 // void collectCommand(); // //Функция формирования команды для нижнего уровня на основе всех полученных данных, датчиков и анализа ситуации
 
 // **********************************************************************************
-void calcNewOdom(SOdom &odom_, STwistDt data_); // На вход подаются старая одометрия и новые угловая угловая скорость. Возвращается новая позиция по данным угловым скоростям // Обработка пришедших данных.Обсчитываем одометрию по энкодеру
-STwistDt calcTwistFromWheel(pb_msgs::SSetSpeed control_);						// Обработка пришедших данных.Обсчитываем одометрию по энкодеру
+void calcNewOdom(SOdom &odom_, STwistDt data_);						// На вход подаются старая одометрия и новые угловая угловая скорость. Возвращается новая позиция по данным угловым скоростям // Обработка пришедших данных.Обсчитываем одометрию по энкодеру
+STwistDt calcTwistFromWheel(pb_msgs::SSetSpeed control_);			// Обработка пришедших данных.Обсчитываем одометрию по энкодеру
 STwistDt calcTwistFromMpu(SMpu mpu_, float koef_);					// Обработка пришедших данных.Обсчитываем угловые скорости по энкодеру
 STwistDt calcTwistUnited(STwistDt wheelTwist_, STwistDt mpuTwist_); // Функция комплементации угловых скоростей полученных с колес и с датчика MPU и угла поворота
-float autoOffsetX(float data_);								// Функция считаем скользящее среднее из 128 элементов как офсет значений при стоянии на месте
-float autoOffsetY(float data_);								// Функция считаем скользящее среднее из 128 элементов как офсет значений при стоянии на месте
-float filtrComplem(float koef_, float oldData_, float newData_); // функция фильтрации, берем старое значение с некоторым весом
+float autoOffsetX(float data_);										// Функция считаем скользящее среднее из 128 элементов как офсет значений при стоянии на месте
+float autoOffsetY(float data_);										// Функция считаем скользящее среднее из 128 элементов как офсет значений при стоянии на месте
+float filtrComplem(float koef_, float oldData_, float newData_);	// функция фильтрации, берем старое значение с некоторым весом
 // void calculateOdometryFromMpu(SMpu mpu_);					   // Обработка пришедших данных.Обсчитываем одометрию по энкодеру
 
 void initArray();
-
 
 // функция фильтрации, берем старое значение с некоторым весом
 float filtrComplem(float koef_, float oldData_, float newData_)
@@ -41,76 +46,84 @@ float filtrComplem(float koef_, float oldData_, float newData_)
 
 void callback_Lidar(sensor_msgs::LaserScan::ConstPtr msg)
 {
-    msg_lidar = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
-    flag_msgLidar = true;
+	msg_lidar = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
+	flag_msgLidar = true;
 }
 void callback_Pillar(pb_msgs::topicPillar msg)
 {
-    msg_pillar = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
-    flag_msgPillar = true;
+	msg_pillar = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
+	flag_msgPillar = true;
 }
 void callback_StartPose2D(geometry_msgs::Pose2D msg)
 {
-    msg_startPose2d = msg; // Пишем в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
-    flag_msgStartPose = true;
+	msg_startPose2d = msg; // Пишем в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
+	flag_msgStartPose = true;
 }
 void callback_Driver(pb_msgs::Struct_Driver2Data msg)
 {
-    msg_Driver2Data = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
-    flag_msgDriver = true;
+	msg_Driver2Data = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
+	flag_msgDriver = true;
 }
 void callback_Modul(pb_msgs::Struct_Modul2Data msg)
 {
-    msg_Modul2Data = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
-    flag_msgModul = true;
+	msg_Modul2Data = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
+	flag_msgModul = true;
 }
 void callback_Speed(pb_msgs::SSetSpeed msg)
 {
-    msg_Speed = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
-    flag_msgSpeed = true;
+	msg_Speed = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
+	flag_msgSpeed = true;
 }
 
 // Находим минимальную дистанцию из 3 датчиков
 float minDistance(float laserL_, float laserR_, float uzi1_)
 {
-    float min = laserL_;
-    if (laserR_ < min)
-    {
-        min = laserR_;
-    }
-    if (uzi1_ < min)
-    {
-        min = uzi1_;
-    }
-    return min;
+	float min = laserL_;
+	if (laserR_ < min)
+	{
+		min = laserR_;
+	}
+	if (uzi1_ < min)
+	{
+		min = uzi1_;
+	}
+	return min;
 }
 // Разбираем топик со стартовой позицией робота
 void startPosition(geometry_msgs::Pose2D &startPose2d_)
 {
-    ROS_INFO("------------------------- startPosition -------------------------------------");
-    g_poseLidar.mode0.x = startPose2d_.x; // Пока считаем что передаем положение центра лидара и поэтому ему присваиваем значение, потом надо будет добавлять смещение до центра поворота между колесами
-    g_poseLidar.mode0.y = startPose2d_.y;
-    g_poseLidar.mode0.th = startPose2d_.theta;
-    
-	g_poseLidar.mode1.x = startPose2d_.x; // Пока считаем что передаем положение центра лидара и поэтому ему присваиваем значение, потом надо будет добавлять смещение до центра поворота между колесами
-    g_poseLidar.mode1.y = startPose2d_.y;
-    g_poseLidar.mode1.th = startPose2d_.theta;
-    
-	g_poseLidar.mode2.x = startPose2d_.x; // Пока считаем что передаем положение центра лидара и поэтому ему присваиваем значение, потом надо будет добавлять смещение до центра поворота между колесами
-    g_poseLidar.mode2.y = startPose2d_.y;
-    g_poseLidar.mode2.th = startPose2d_.theta;
-    
-	g_poseLidar.mode3.x = startPose2d_.x; // Пока считаем что передаем положение центра лидара и поэтому ему присваиваем значение, потом надо будет добавлять смещение до центра поворота между колесами
-    g_poseLidar.mode3.y = startPose2d_.y;
-    g_poseLidar.mode3.th = startPose2d_.theta;
-    
-	g_poseLidar.mode4.x = startPose2d_.x; // Пока считаем что передаем положение центра лидара и поэтому ему присваиваем значение, потом надо будет добавлять смещение до центра поворота между колесами
-    g_poseLidar.mode4.y = startPose2d_.y;
-    g_poseLidar.mode4.th = startPose2d_.theta;
+	ROS_INFO("------------------------- startPosition -------------------------------------");
+	g_poseLidar.mode0.x = startPose2d_.x; // Пока считаем что передаем положение центра лидара и поэтому ему присваиваем значение, потом надо будет добавлять смещение до центра поворота между колесами
+	g_poseLidar.mode0.y = startPose2d_.y;
+	g_poseLidar.mode0.th = startPose2d_.theta;
 
-    g_poseLidar.mode10.x = startPose2d_.x; // Пока считаем что передаем положение центра лидара и поэтому ему присваиваем значение, потом надо будет добавлять смещение до центра поворота между колесами
-    g_poseLidar.mode10.y = startPose2d_.y;
-    g_poseLidar.mode10.th = startPose2d_.theta;
+	// g_poseLidar.mode1.x = startPose2d_.x; // Пока считаем что передаем положение центра лидара и поэтому ему присваиваем значение, потом надо будет добавлять смещение до центра поворота между колесами
+	// g_poseLidar.mode1.y = startPose2d_.y;
+	// g_poseLidar.mode1.th = startPose2d_.theta;
+
+	// g_poseLidar.mode2.x = startPose2d_.x; // Пока считаем что передаем положение центра лидара и поэтому ему присваиваем значение, потом надо будет добавлять смещение до центра поворота между колесами
+	// g_poseLidar.mode2.y = startPose2d_.y;
+	// g_poseLidar.mode2.th = startPose2d_.theta;
+
+	// g_poseLidar.mode3.x = startPose2d_.x; // Пока считаем что передаем положение центра лидара и поэтому ему присваиваем значение, потом надо будет добавлять смещение до центра поворота между колесами
+	// g_poseLidar.mode3.y = startPose2d_.y;
+	// g_poseLidar.mode3.th = startPose2d_.theta;
+
+	// g_poseLidar.mode4.x = startPose2d_.x; // Пока считаем что передаем положение центра лидара и поэтому ему присваиваем значение, потом надо будет добавлять смещение до центра поворота между колесами
+	// g_poseLidar.mode4.y = startPose2d_.y;
+	// g_poseLidar.mode4.th = startPose2d_.theta;
+
+	// g_poseLidar.mode10.x = startPose2d_.x; // Пока считаем что передаем положение центра лидара и поэтому ему присваиваем значение, потом надо будет добавлять смещение до центра поворота между колесами
+	// g_poseLidar.mode10.y = startPose2d_.y;
+	// g_poseLidar.mode10.th = startPose2d_.theta;
+
+	g_poseLidar.mode1 = g_poseLidar.mode0;
+	g_poseLidar.mode2 = g_poseLidar.mode0;
+	g_poseLidar.mode3 = g_poseLidar.mode0;
+	g_poseLidar.mode4 = g_poseLidar.mode0;
+	g_poseLidar.mode10 = g_poseLidar.mode0;
+
+	g_angleMPU = startPose2d_.theta;
 
 	odomMode0.pose.x = startPose2d_.x;
 	odomMode0.pose.y = startPose2d_.y;
@@ -119,16 +132,16 @@ void startPosition(geometry_msgs::Pose2D &startPose2d_)
 	odomMode10.pose.y = startPose2d_.y;
 	odomMode10.pose.th = DEG2RAD(startPose2d_.theta); // В одометрии угол в радианах
 
-	printf("START RAD2DEG(odomMode0.pose.th) = % .3f \n",RAD2DEG(odomMode0.pose.th));
+	printf("START RAD2DEG(odomMode0.pose.th) = % .3f \n", RAD2DEG(odomMode0.pose.th));
 
-    ROS_INFO("startPosition lidarPose x= %.3f y= %.3f th= %.3f ", g_poseLidar.mode1.x, g_poseLidar.mode1.y, g_poseLidar.mode1.th);
-    ROS_INFO("-------------------------            ------------------------------------- \n");
+	ROS_INFO("startPosition lidarPose x= %.3f y= %.3f th= %.3f ", g_poseLidar.mode1.x, g_poseLidar.mode1.y, g_poseLidar.mode1.th);
+	ROS_INFO("-------------------------            ------------------------------------- \n");
 }
 
 // Переводит значение из одного диапазона в другой, взял из Ардуино
 long map(long x, long in_min, long in_max, long out_min, long out_max)
 {
-    return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+	return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
 // Корректировка скорости движения в зависимости от датчиков растояния перед
@@ -213,31 +226,31 @@ long map(long x, long in_min, long in_max, long out_min, long out_max)
 void testFunction()
 {
 
-    // SPoint test1;
-    // SPose test2;
-    // test1.x = 1376.27;
-    // test1.y = 1079.32;
+	// SPoint test1;
+	// SPose test2;
+	// test1.x = 1376.27;
+	// test1.y = 1079.32;
 
-    // test2.x= 500;
-    // test2.y= 900;
-    // test2.th= 15;
+	// test2.x= 500;
+	// test2.y= 900;
+	// test2.th= 15;
 
-    // SPoint ggg = pointGlobal2Local(test1,test2);
+	// SPoint ggg = pointGlobal2Local(test1,test2);
 
-    // test1.x=800;
-    // test1.y=400;
-    // ggg = pointLocal2Global(test1,test2);
+	// test1.x=800;
+	// test1.y=400;
+	// ggg = pointLocal2Global(test1,test2);
 
-    // test1.x=2699.55;
-    // test1.y=428.29;
+	// test1.x=2699.55;
+	// test1.y=428.29;
 
-    // float rrr = angleThetaFromPoint(test1);
+	// float rrr = angleThetaFromPoint(test1);
 }
 
 // Обработка пришедших данных.Обсчитываем одометрию по энкодеру
 void calcNewOdom(SOdom &odom_, STwistDt data_) // На вход подаются старая одометрия и новые угловая угловая скорость. Возвращается новая позиция по данным угловым скоростям
 {
-	//ROS_INFO("IN calcNewOdom pose.x= % .3f y= % .3f th= % .3f ", odom_.pose.x, odom_.pose.y, RAD2DEG(odom_.pose.th));
+	// ROS_INFO("IN calcNewOdom pose.x= % .3f y= % .3f th= % .3f ", odom_.pose.x, odom_.pose.y, RAD2DEG(odom_.pose.th));
 	if (data_.dt < 0.005) // Если пришли данные с нулевой дельтой то сразу выходим и ничего не считаем
 	{
 		printf("calcNewOdom dt< 0.005 !!!! \n");
@@ -247,21 +260,19 @@ void calcNewOdom(SOdom &odom_, STwistDt data_) // На вход подаются
 	SPoint pointLoc;
 	pointLoc.x = data_.twist.vx * data_.dt; // Находим проекции скорсти на оси за интревал времени это коокрдинаты нашей точки в локальной системе координат
 	pointLoc.y = data_.twist.vy * data_.dt;
-	//printf(" Local system pointLoc.x= % .3f y= % .3f dt= % .3f th= % .3f | \n", pointLoc.x, pointLoc.y, data_.dt, RAD2DEG(odom_.pose.th));
+	// printf(" Local system pointLoc.x= % .3f y= % .3f dt= % .3f th= % .3f | \n", pointLoc.x, pointLoc.y, data_.dt, RAD2DEG(odom_.pose.th));
 
 	// printf("DO pose.x= %.3f pose.y= %.3f pose.th= %.3f / ", odom_.pose.x, odom_.pose.y, RAD2DEG(odom_.pose.th));
 	// Находим смещние по осям матрица координаты точки из локальной системы координат в глобальной
 	double delta_x = pointLoc.x * cos(odom_.pose.th) + pointLoc.y * sin(odom_.pose.th);
 	double delta_y = -pointLoc.x * sin(odom_.pose.th) + pointLoc.y * cos(odom_.pose.th);
-	//printf("Global system delta.x= % .3f y= % .3f | \n", delta_x, delta_y);
-	// Меняем координаты и угол на основе вычислений
-	// odom_.pose.x += delta_x; // Вычисляем координаты
-	// odom_.pose.y += delta_y; // Вычисляем координаты
-
+	// printf("Global system delta.x= % .3f y= % .3f | \n", delta_x, delta_y);
+	//  Меняем координаты и угол на основе вычислений
+	//  odom_.pose.x += delta_x; // Вычисляем координаты
+	//  odom_.pose.y += delta_y; // Вычисляем координаты
 
 	SPoint pointGlob = pointLocal2GlobalRosRAD(pointLoc, odom_.pose);
-	//printf("Global system x= % .3f y= % .3f | \n", pointGlob.x, pointGlob.y);
-
+	// printf("Global system x= % .3f y= % .3f | \n", pointGlob.x, pointGlob.y);
 
 	odom_.pose.x = pointGlob.x; // Вычисляем координаты
 	odom_.pose.y = pointGlob.y; // Вычисляем координаты
@@ -276,7 +287,6 @@ void calcNewOdom(SOdom &odom_, STwistDt data_) // На вход подаются
 
 	ROS_WARN("OUT calcNewOdom pose.x= % .3f y= % .3f th= % .3f ", odom_.pose.x, odom_.pose.y, RAD2DEG(odom_.pose.th));
 }
-
 
 // Обработка пришедших данных.Обсчитываем одометрию по энкодеру
 STwistDt calcTwistFromWheel(pb_msgs::SSetSpeed control_)
@@ -345,7 +355,7 @@ STwistDt calcTwistFromWheel(pb_msgs::SSetSpeed control_)
 			{
 				radius = 0; // Едем прямо или назад и все по нулям
 				theta = 0;	// Если едем прямо то угол поворота отклонения от оси равен 0
-				//ROS_INFO("2 EDEM PRIAMO radius = %.4f theta gradus = %.4f ", radius, RAD2DEG(theta));
+							// ROS_INFO("2 EDEM PRIAMO radius = %.4f theta gradus = %.4f ", radius, RAD2DEG(theta));
 			}
 			else // Едем по радиусу и надо все считать
 			{
@@ -356,9 +366,9 @@ STwistDt calcTwistFromWheel(pb_msgs::SSetSpeed control_)
 		}
 	}
 
-	//printf (" theta = %.3f \n", theta);
-	// Находим линейные скорости из моего вектора скорости. Я задаю общую скорость движения (длинна вектора), ее надо разложить на проекции по осям x y. Это будут линейные скорости
-	// speed = 0.26;
+	// printf (" theta = %.3f \n", theta);
+	//  Находим линейные скорости из моего вектора скорости. Я задаю общую скорость движения (длинна вектора), ее надо разложить на проекции по осям x y. Это будут линейные скорости
+	//  speed = 0.26;
 	twist.vx = speed * cos(theta * dt); // Проекция моей скорости на ось X получаем линейную скорость по оси за секунуду
 	twist.vy = speed * sin(theta * dt); // Проекция моей скорости на ось Y получаем линейную скорость по оси за секунуду
 	twist.vth = theta;					// Угловая скорость в радианах.
@@ -502,7 +512,6 @@ STwistDt calcTwistUnited(STwistDt wheelTwist_, STwistDt mpuTwist_)
 	return ret;
 }
 
-
 void initArray()
 {
 	for (int i = 0; i < 128; i++)
@@ -546,7 +555,72 @@ float autoOffsetY(float data_)
 	// printf(" sumX= % .3f ", sum);
 	return sum / k;
 }
+// Расчет угла положения на сонове данных сдатчика MPU
+void angleMPU()
+{
+	static float predAngleZ = 0;
+	static bool first = true;
+	printf("flag_msgDriver in... ");
+	if (first) // Делаем в первый приход данных
+	{
+		predAngleZ = msg_Driver2Data.mpu.angleEuler.yaw; // Запоминаяем угол поворота Для следующего обсчета
+		first = false;
+		printf("First start -> ");
+	}
+	else // Всегда кроме первого
+	{
+		g_angleMPU += (msg_Driver2Data.mpu.angleEuler.yaw - predAngleZ); // Меняем угол поворота увеличивая на разницу. Разобраться с 360 и переходом через 0
+		predAngleZ = msg_Driver2Data.mpu.angleEuler.yaw;				 // Запоминаяем угол поворота Для следующего обсчета
+																		 // dataNode.parsingDriver(msg_Driver2Data);
+	}
+	printf("g_angleMPU = % .3f \n", g_angleMPU);
+}
+// Расчет одометрии и применения ее для всех режимов
+void calculationOdometry()
+{
+	// printf("1 RAD2DEG(odomMode0.pose.th) = % .3f \n", RAD2DEG(odomMode0.pose.th));
+	wheelTwistDt = calcTwistFromWheel(msg_Speed); // Обработка пришедших данных. По ним считаем линейные скорости по осям и угловую по углу. Запоминаем dt
+	calcNewOdom(odomMode0, wheelTwistDt);		  // На основе линейных скоростей считаем новую позицию и угол по колесам
+	calcNewOdom(odomMode10, wheelTwistDt);		  // На основе линейных скоростей считаем новую позицию и угол для скомплементированной одометрии 100 Герц считаем и потом 10 Герц правим
+	//---------------
+	g_poseLidar.mode0.x = odomMode0.pose.x;
+	g_poseLidar.mode0.y = odomMode0.pose.y;
+	g_poseLidar.mode0.th = RAD2DEG(odomMode0.pose.th);
 
+	topic.visualPublishOdomMode_0(); // Публикация одометрии по моторам которая получается от начальной точки
+	// printf("2 RAD2DEG(odomMode0.pose.th) = % .3f \n", RAD2DEG(odomMode0.pose.th));
+
+	// mpuTwistDt = calcTwistFromMpu(Driver2Data.bno055, 0.2); // Расчет и оформление в структуру ускорений по осям (линейных скоростей) и  разделить получение угловых скоростей и расчет сновой точки на основе этих скоростей
+	// calcNewOdom(odomMpu, mpuTwistDt);                       // Обработка пришедших данных.Обсчитываем одометрию по датчику MPU BNO055
+	// topic.publishOdomMpu();
+
+	// // тут написать функцию комплементации данных угловых скоростей с разными условиями когда и в каком соотношении скомплементировать скорсти с двух источников
+	// unitedTwistDt = calcTwistUnited(wheelTwistDt, mpuTwistDt);
+	// calcNewOdom(odomUnited, unitedTwistDt); // // На основе линейных скоростей считаем новую позицию и угол
+	// topic.publishOdomUnited();              // Публикация одометрии по моторам с корректировкой с верхнего уровня
+	//-------------------------
+}
+// Комплеиентация Odom10
+void poseComplementMode10()
+{
+	// ROS_WARN("1odomMode10.pose.x = % .3f odomMode10.pose.y = % .3f odomMode10.pose.th = %.3f", odomMode10.pose.x, odomMode10.pose.y, RAD2DEG(odomMode10.pose.th));
+	odomMode10.pose.x = 0.8 * odomMode10.pose.x + 0.2 * g_poseLidar.mode1.x;
+	odomMode10.pose.y = 0.8 * odomMode10.pose.y + 0.2 * g_poseLidar.mode1.y;
+	// Комплементация угла
+	float mediumTheta = (g_poseLidar.mode1.th + g_poseLidar.mode2.th) / 2.0;
+	// printf("mediumTheta DEG= %.3f mediumTheta RAD= %.3f \n", mediumTheta, DEG2RAD(mediumTheta));
+	odomMode10.pose.th = 0.6 * g_angleMPU + 0.3 * odomMode10.pose.th + 0.1 * DEG2RAD(mediumTheta);
+	printf("g_angleMPU = % .3f odomMode10.pose.th = % .3f mediumTheta = % .3f \n", g_angleMPU, odomMode10.pose.th, DEG2RAD(mediumTheta));
+	ROS_WARN("odomMode10.pose.x = % .3f odomMode10.pose.y = % .3f odomMode10.pose.th = %.3f", odomMode10.pose.x, odomMode10.pose.y, RAD2DEG(odomMode10.pose.th));
+	if (isnan(odomMode10.pose.x) || isnan(odomMode10.pose.y) || isnan(odomMode10.pose.th))
+	{
+		exit(0);
+	}
+	// Копируем в переменную для применения там где использую g_poseLidar
+	g_poseLidar.mode10.x = odomMode10.pose.x;
+	g_poseLidar.mode10.y = odomMode10.pose.y;
+	g_poseLidar.mode10.th = RAD2DEG(odomMode10.pose.th);
+}
 /*   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!! ПРИМЕР ОТ ВАДИМА КАК НУЖНО СЧИТАТЬ одометрию!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	#define  R2G(val) (val*57.29577951308233)
 	#define  G2R(val) (val/57.29577951308233)
@@ -683,7 +757,5 @@ float autoOffsetY(float data_)
 // odom_enc.th += delta_th; // Прибавляем к текущему углу и получаем новый угол куда смотрит наш робот
 
 // printf("x= %.2f y= %.2f th= %.3f  time= %u \n", g_odom_enc.x, g_odom_enc.y, g_odom_enc.th, millis());
-
-
 
 #endif

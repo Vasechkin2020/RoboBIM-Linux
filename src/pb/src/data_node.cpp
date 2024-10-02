@@ -25,7 +25,7 @@ int main(int argc, char **argv)
 
     ros::Subscriber sub_ControlModul = nh.subscribe("pbMain/ControlModul", 16, callback_ControlModul, ros::TransportHints().tcpNoDelay(true));    // Это мы подписываемся на то что публигует Main для Modul
     ros::Subscriber sub_ControlPrint = nh.subscribe("pbMain/ControlPrint", 16, callback_ControlPrint, ros::TransportHints().tcpNoDelay(true));    // Это мы подписываемся на то что публигует Main для Print
-    ros::Subscriber sub_ControlDriver = nh.subscribe("pbMain/ControlDriver", 16, callback_ControlDriver, ros::TransportHints().tcpNoDelay(true)); // Это мы подписываемся на то что публигует Main для Data
+    ros::Subscriber sub_ControlDriver = nh.subscribe("pbControl/ControlDriver", 16, callback_ControlDriver, ros::TransportHints().tcpNoDelay(true)); // Это мы подписываемся на то что публигует Main для Data
     ros::Subscriber subscriber_Joy = nh.subscribe("joy", 16, callback_Joy);                                                                       // Это мы подписываемся на то что публикует нода джойстика
 
     // sub_low_state = _nh.subscribe("/low_state", 1, &IOInterface::_lowStateCallback, this, ros::TransportHints().tcpNoDelay(true)); // От Максима пример

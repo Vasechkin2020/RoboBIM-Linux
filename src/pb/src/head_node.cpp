@@ -1,22 +1,28 @@
-float g_angleLaser[4]; // Углы на столбы которые акпкдвкм нв нижний угол для управления
-int g_numPillar[4];    // Номр столба до которого измеряем расстояние лазером
 
 #include "genStruct.h" // Тут все общие структуры. Истользуются и Data и Main и Head
+
+float g_angleMPU = 0;   // Глобальная перемнная угла получаемого с MPU куда смотрим
+float g_angleLaser[4];  // Углы на столбы которые акпкдвкм нв нижний угол для управления
+int g_numPillar[4];     // Номр столба до которого измеряем расстояние лазером
+
 #include "head_code/laser.h"
 CLaser laser;
 
 #include "head_code/config.h"
-#include "head_code/dataNode.h"
 
+SPoseLidar g_poseLidar; // Позиции лидара по расчетам Центральная система координат
 // #include "head_code/car.h"
 // CCar car; // Обьявляем экземпляр класса в нем вся обработка и обсчет машинки как обьекта
 
-SPoseLidar g_poseLidar; // Позиции лидара по расчетам Центральная система координат
 
 #include "head_code/pillar.h"
 CPillar pillar; // Обьявляем экземпляр класса в нем вся обработка и обсчет столбов
 
 #include "head_code/topic.h" // Файл для функций для формирования топиков в нужном виде и формате
+CTopic topic;                // Экземпляр класса для всех публикуемых топиков
+
+#include "head_code/dataNode.h"
+CDataNode dataNode; // Экземпляр класса для всех данных получаемых с ноды Data  с нижнего уровня
 #include "head_code/code.h"
 
 int main(int argc, char **argv)
@@ -39,8 +45,6 @@ int main(int argc, char **argv)
     ros::Subscriber subscriber_Speed = nh.subscribe<pb_msgs::SSetSpeed>("pbData/Speed", 1000, callback_Speed);
 
     //---------------------------------------------------------------------------------------------------------------------------
-    CTopic topic;       // Экземпляр класса для всех публикуемых топиков
-    CDataNode dataNode; // Экземпляр класса для всех данных получаемых с ноды Data  с нижнего уровня
     // g_poseLidar.mode3 = pillar.getLocationMode3(g_poseLidar.mode3); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
 
     initArray();
@@ -94,25 +98,7 @@ int main(int argc, char **argv)
             {
                 exit(0);
             }
-
-            // Комплементация положения
-            // ROS_WARN("1odomMode10.pose.x = % .3f odomMode10.pose.y = % .3f odomMode10.pose.th = %.3f", odomMode10.pose.x, odomMode10.pose.y, RAD2DEG(odomMode10.pose.th));
-
-            odomMode10.pose.x = 0.8 * odomMode10.pose.x + 0.2 * g_poseLidar.mode1.x;
-            odomMode10.pose.y = 0.8 * odomMode10.pose.y + 0.2 * g_poseLidar.mode1.y;
-            // Комплементация угла
-            float mediumTheta = (g_poseLidar.mode1.th + g_poseLidar.mode2.th) / 2.0;
-            // printf("mediumTheta DEG= %.3f mediumTheta RAD= %.3f \n", mediumTheta, DEG2RAD(mediumTheta));
-            odomMode10.pose.th = 0.8 * odomMode10.pose.th + 0.2 * DEG2RAD(mediumTheta);
-            ROS_WARN("odomMode10.pose.x = % .3f odomMode10.pose.y = % .3f odomMode10.pose.th = %.3f", odomMode10.pose.x, odomMode10.pose.y, RAD2DEG(odomMode10.pose.th));
-            if (isnan(odomMode10.pose.x) || isnan(odomMode10.pose.y) || isnan(odomMode10.pose.th))
-            {
-                exit(0);
-            }
-            // Копируем в переменную для применения там где использую g_poseLidar
-            g_poseLidar.mode10.x = odomMode10.pose.x;
-            g_poseLidar.mode10.y = odomMode10.pose.y;
-            g_poseLidar.mode10.th = RAD2DEG(odomMode10.pose.th);
+            poseComplementMode10(); // Комплеиентация Odom10// Комплементация положения
         }
 
         // 25 Hz ************************************************************ ОБРАБОТКА ДАННЫХ ИЗ ТОПИКОВ ЧТО ПОДПИСАНЫ  СРАБАТЫВАЕТ КАК ОТПРАВЛЯЕТ DATA_NODE  ********************************************
@@ -123,8 +109,9 @@ int main(int argc, char **argv)
             // for (int i = 0; i < 4; i++)
             //     printf("distance = % .3f angle = % .3f numPillar = %i \n", msg_Modul2Data.laser[i].distance, msg_Modul2Data.laser[i].angle, msg_Modul2Data.laser[i].numPillar);
             // printf("+++ \n");
-            laser.calcPointPillarFromLaser(pillar.pillar); // Расчитываем Расстояние до столбов в /Odom/ системе
+            laser.calcPointPillarFromLaser(pillar.pillar);                 // Расчитываем Расстояние до столбов в /Odom/ системе
             pillar.getLocationMode3(g_poseLidar.mode3, g_poseLidar.mode1); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
+            topic.visualPublishOdomMode_3();                               // Отобращение стрелкой где начало и куда смотрит в Mode3
 
             // topic.publicationAngleLaser(laser); // Формируем перемнную с собщением для публикации
             if (isnan(g_poseLidar.mode3.x) || isnan(g_poseLidar.mode3.y) || isnan(g_poseLidar.mode3.th))
@@ -137,33 +124,13 @@ int main(int argc, char **argv)
         if (flag_msgDriver) // Флаг что пришло сообщение от ноды Data по Driver. Тут пишем какую-то обработку данных если нужно.
         {
             flag_msgDriver = false;
-            // printf("msg_Driver2Data in... \n");
-            //  dataNode.parsingDriver(msg_Driver2Data);
+            angleMPU(); // Расчет угла положения на основе данных с датчика MPU
         }
         //-------------------------------
         if (flag_msgSpeed) // Флаг что пришло сообщение от ноды Data по Speed. Это будет MODE_0
         {
-            // printf("1 RAD2DEG(odomMode0.pose.th) = % .3f \n", RAD2DEG(odomMode0.pose.th));
             flag_msgSpeed = false;
-            wheelTwistDt = calcTwistFromWheel(msg_Speed); // Обработка пришедших данных. По ним считаем линейные скорости по осям и угловую по углу. Запоминаем dt
-            calcNewOdom(odomMode0, wheelTwistDt);         // На основе линейных скоростей считаем новую позицию и угол по колесам
-            calcNewOdom(odomMode10, wheelTwistDt);        // На основе линейных скоростей считаем новую позицию и угол для скомплементированной одометрии 100 Герц считаем и потом 10 Герц правим
-            //---------------
-            g_poseLidar.mode0.x = odomMode0.pose.x;
-            g_poseLidar.mode0.y = odomMode0.pose.y;
-            g_poseLidar.mode0.th = RAD2DEG(odomMode0.pose.th);
-            // printf("2 RAD2DEG(odomMode0.pose.th) = % .3f \n", RAD2DEG(odomMode0.pose.th));
-            topic.visualPublishOdomMode_0(); // Публикация одометрии по моторам которая получается от начальной точки
-
-            // mpuTwistDt = calcTwistFromMpu(Driver2Data.bno055, 0.2); // Расчет и оформление в структуру ускорений по осям (линейных скоростей) и  разделить получение угловых скоростей и расчет сновой точки на основе этих скоростей
-            // calcNewOdom(odomMpu, mpuTwistDt);                       // Обработка пришедших данных.Обсчитываем одометрию по датчику MPU BNO055
-            // topic.publishOdomMpu();
-
-            // // тут написать функцию комплементации данных угловых скоростей с разными условиями когда и в каком соотношении скомплементировать скорсти с двух источников
-            // unitedTwistDt = calcTwistUnited(wheelTwistDt, mpuTwistDt);
-            // calcNewOdom(odomUnited, unitedTwistDt); // // На основе линейных скоростей считаем новую позицию и угол
-            // topic.publishOdomUnited();              // Публикация одометрии по моторам с корректировкой с верхнего уровня
-            //-------------------------
+            calculationOdometry();           // Расчет одометрии и применения ее для всех режимов
         }
 
         if (flag_startPose && flag_dataPillar) // Если уже разобрали данные по координатам машинки, а значит можем грубо посчитать направление на столбы.  И знаем где истинные столбы
@@ -178,6 +145,7 @@ int main(int argc, char **argv)
             topic.visulStartPose();                   // Отобращение стрелкой где начало стартовой позиции и куда направлен нос платформы
             topic.visualPillarPoint(pillar);          // Отображение места размещения столбов
             topic.visualPoseAngleLaser(laser);        // Отобращение стрелкой где начало и куда смотрят лазеры
+            // topic.visualPublishOdomMode_11();         // Отобращение стрелкой где начало и куда смотрит в Mode11 Это по Калману
         }
         //-------------------------------------------------------------------------
         topic.publicationPoseLidarAll(); // Публикуем все варианты расчета позиций mode 0.1.2.3.4

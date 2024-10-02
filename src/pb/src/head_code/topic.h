@@ -22,7 +22,7 @@ public:
     void visualPoseAngleLaser(CLaser &laser_); // Формируем перемнную с собщением для публикации по углам лазера
 
     void publicationPoseLidarAll();             // Формируем перемнную с собщением для публикации по позиции лидара
-    void publicationControlDriver();            // Публикация данных для управления Driver
+    //void publicationControlDriver();            // Публикация данных для управления Driver
     void publicationControlModul();             // Публикация данных для управления Modul
     void publicationControlPrint();             // Публикация данных для управления Print
     void publicationAngleLaser(CLaser &laser_); // Формируем перемнную с собщением для публикации по углам лазера
@@ -37,6 +37,8 @@ public:
     void visualPublishOdomMode_0();
     void visualPublishOdomMode_1();
     void visualPublishOdomMode_2();
+    void visualPublishOdomMode_3();
+    void visualPublishOdomMode_11();
 
     // void publishOdomMpu();
     // void publishOdomUnited();
@@ -71,7 +73,7 @@ private:
 
     ros::Publisher pub_poseLidarAll = _nh.advertise<pb_msgs::Struct_PoseLidar>("pbMain/ModeAll", 16); // Это мы публикуем итоговую информацию по позици лидара обобщенную
 
-    ros::Publisher pub_ControlDriver = _nh.advertise<pb_msgs::Struct_Data2Driver>("pbMain/ControlDriver", 16); // Это мы публикуем структуру которую отправляем к исполнению на драйвер
+    //ros::Publisher pub_ControlDriver = _nh.advertise<pb_msgs::Struct_Data2Driver>("pbMain/ControlDriver", 16); // Это мы публикуем структуру которую отправляем к исполнению на драйвер
     ros::Publisher pub_ControlModul = _nh.advertise<pb_msgs::Struct_Data2Modul>("pbMain/ControlModul", 16);    // Это мы публикуем структуру которую отправляем к исполнению на драйвер
     ros::Publisher pub_ControlPrint = _nh.advertise<pb_msgs::Struct_Data2Print>("pbMain/ControlPrint", 16);    // Это мы публикуем структуру которую отправляем к исполнению на драйвер
 
@@ -95,6 +97,7 @@ private:
     ros::Publisher publish_Mode1 = _nh.advertise<nav_msgs::Odometry>("pbRviz/mode1", 8); // Это мы создаем публикатор и определяем название топика в рос
     ros::Publisher publish_Mode2 = _nh.advertise<nav_msgs::Odometry>("pbRviz/mode2", 8); // Это мы создаем публикатор и определяем название топика в рос
     ros::Publisher publish_Mode3 = _nh.advertise<nav_msgs::Odometry>("pbRviz/mode3", 8); // Это мы создаем публикатор и определяем название топика в рос
+    ros::Publisher publish_Mode11 = _nh.advertise<nav_msgs::Odometry>("pbRviz/mode3", 8); // Это мы создаем публикатор и определяем название топика в рос
 
     // ros::Publisher pub_PoseLidarMode1 = _nh.advertise<geometry_msgs::PoseStamped>("pbRviz/PoseLidarMode1", 16); // Это мы публикуем итоговую информацию по позици лидара расчет по mode1
     // ros::Publisher pub_PoseLidarMode2 = _nh.advertise<geometry_msgs::PoseStamped>("pbRviz/PoseLidarMode2", 16); // Это мы публикуем итоговую информацию по позици лидара расчет по mode2
@@ -119,25 +122,25 @@ CTopic::~CTopic()
 {
 }
 
-// Публикация данных для управления Driver
-void CTopic::publicationControlDriver()
-{
-    pb_msgs::Struct_Data2Driver data;
-    static unsigned long led_time = 0;
-    static int color = 0;
+// // Публикация данных для управления Driver
+// void CTopic::publicationControlDriver()
+// {
+//     pb_msgs::Struct_Data2Driver data;
+//     static unsigned long led_time = 0;
+//     static int color = 0;
 
-    if ((millis() - led_time) > 250)
-    {
-        color = 1 - color;
-        led_time = millis();
-    }
-    for (int i = 0; i < 24; i++)
-    {
-        data.led.led[i] = color;
-    }
+//     if ((millis() - led_time) > 250)
+//     {
+//         color = 1 - color;
+//         led_time = millis();
+//     }
+//     for (int i = 0; i < 24; i++)
+//     {
+//         data.led.led[i] = color;
+//     }
 
-    pub_ControlDriver.publish(data);
-}
+//     pub_ControlDriver.publish(data);
+// }
 // Публикация данных для управления Modul
 void CTopic::publicationControlModul()
 {
@@ -411,6 +414,44 @@ void CTopic::visualPublishOdomMode_2()
     // poseLidarMode2_msg.pose.position.y = g_poseLidar.mode2.y;
     // poseLidarMode2_msg.pose.orientation = tf::createQuaternionMsgFromYaw(DEG2RAD(-g_poseLidar.mode2.th + 90)); // + 90 Так как у них оси расположены не так как я меня. У меня ноль вверх а у них вправо и вращение у них против часовой
     // pub_PoseLidarMode2.publish(poseLidarMode2_msg);                                                            // Публикуем информацию по позиции лидара mode2
+}
+// Отобращение стрелкой где начало и куда смотрит в Mode3
+void CTopic::visualPublishOdomMode_3()
+{
+    // Публикация Одометрии
+    nav_msgs::Odometry mode_msg;
+    mode_msg.header.stamp = ros::Time::now(); // Время ROS
+    mode_msg.header.frame_id = "odom";        // Поза в этом сообщении должна быть указана в системе координат, заданной header.frame_id.
+    // set the position
+    mode_msg.pose.pose.position.x = g_poseLidar.mode3.x;
+    mode_msg.pose.pose.position.y = g_poseLidar.mode3.y;
+    geometry_msgs::Quaternion quat = tf::createQuaternionMsgFromYaw(DEG2RAD(g_poseLidar.mode3.th)); // Минус так как вращение у меня по часовой а не по "буравчику" и + 90 так как считал я что 0 градусов это по оси Y Глядел на стену надо переписывать
+    mode_msg.pose.pose.orientation = quat;
+    // set the velocity
+    mode_msg.child_frame_id = "odom"; // Поворот в этом сообщении должен быть указан в системе координат, заданной child_frame_id
+    mode_msg.twist.twist.linear.x = 0;
+    mode_msg.twist.twist.linear.y = 0;
+    mode_msg.twist.twist.angular.z = 0;
+    publish_Mode3.publish(mode_msg); // Публикация полученных данных
+}
+// Отобращение стрелкой где начало и куда смотрит в Mode11
+void CTopic::visualPublishOdomMode_11()
+{
+    // Публикация Одометрии
+    nav_msgs::Odometry mode_msg;
+    mode_msg.header.stamp = ros::Time::now(); // Время ROS
+    mode_msg.header.frame_id = "odom";        // Поза в этом сообщении должна быть указана в системе координат, заданной header.frame_id.
+    // set the position
+    mode_msg.pose.pose.position.x = g_poseLidar.mode11.x;
+    mode_msg.pose.pose.position.y = g_poseLidar.mode11.y;
+    geometry_msgs::Quaternion quat = tf::createQuaternionMsgFromYaw(DEG2RAD(g_poseLidar.mode11.th)); // Минус так как вращение у меня по часовой а не по "буравчику" и + 90 так как считал я что 0 градусов это по оси Y Глядел на стену надо переписывать
+    mode_msg.pose.pose.orientation = quat;
+    // set the velocity
+    mode_msg.child_frame_id = "odom"; // Поворот в этом сообщении должен быть указан в системе координат, заданной child_frame_id
+    mode_msg.twist.twist.linear.x = 0;
+    mode_msg.twist.twist.linear.y = 0;
+    mode_msg.twist.twist.angular.z = 0;
+    publish_Mode11.publish(mode_msg); // Публикация полученных данных
 }
 
 void CTopic::visualPublishOdomMode_0()

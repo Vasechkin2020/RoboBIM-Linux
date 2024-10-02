@@ -726,7 +726,7 @@ void CPillar::poiskPillar(int a_, int b_, SLidar *lidarData, SPose &poseLidarMod
         pillarLidar[countPillarLidar].angle_middle = angle_middle;         // Берем середину столба, хотя из-за вращения происходит смещения и лучше бы еще как-то уточнять
         // pillarLidar[countPillarLidar].azimuth = (angle_min + angle_middle) / 2.0; // Итоговый угол на столб. Пока считаем как угол на минимум. Или можно усреднять например со средним углом. Нало посмотреть что будет точнее
         // pillarLidar[countPillarLidar].azimuth = angle_middle_min; // Итоговый угол на столб. Берется как средний по точкам расчетный
-        pillarLidar[countPillarLidar].azimuth = angle_middle; // Итоговый угол на столб. Берется как средний по точкам расчетный
+        pillarLidar[countPillarLidar].azimuth = angle_middle + OFFSET_ANGLE; // Итоговый угол на столб. Берется как средний по точкам расчетный
         pillarLidar[countPillarLidar].dist_min = dist_min;
         pillarLidar[countPillarLidar].width = width;
         pillarLidar[countPillarLidar].x_lidarXY = cos(DEG2RAD(-pillarLidar[countPillarLidar].azimuth)) * (pillarLidar[countPillarLidar].dist_min + PILLAR_RADIUS); // Находим координаты по формулам. К минимальному растоянию прибавляем радиус столба
