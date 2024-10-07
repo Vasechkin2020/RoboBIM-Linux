@@ -355,7 +355,7 @@ STwistDt calcTwistFromWheel(pb_msgs::SSetSpeed control_)
 			{
 				radius = 0; // Едем прямо или назад и все по нулям
 				theta = 0;	// Если едем прямо то угол поворота отклонения от оси равен 0
-							// ROS_INFO("2 EDEM PRIAMO radius = %.4f theta gradus = %.4f ", radius, RAD2DEG(theta));
+						   // ROS_INFO("2 EDEM PRIAMO radius = %.4f theta gradus = %.4f ", radius, RAD2DEG(theta));
 			}
 			else // Едем по радиусу и надо все считать
 			{
@@ -581,13 +581,12 @@ void calculationOdometry()
 	// printf("1 RAD2DEG(odomMode0.pose.th) = % .3f \n", RAD2DEG(odomMode0.pose.th));
 	wheelTwistDt = calcTwistFromWheel(msg_Speed); // Обработка пришедших данных. По ним считаем линейные скорости по осям и угловую по углу. Запоминаем dt
 	calcNewOdom(odomMode0, wheelTwistDt);		  // На основе линейных скоростей считаем новую позицию и угол по колесам
-	calcNewOdom(odomMode10, wheelTwistDt);		  // На основе линейных скоростей считаем новую позицию и угол для скомплементированной одометрии 100 Герц считаем и потом 10 Герц правим
-	//---------------
 	g_poseLidar.mode0.x = odomMode0.pose.x;
 	g_poseLidar.mode0.y = odomMode0.pose.y;
 	g_poseLidar.mode0.th = RAD2DEG(odomMode0.pose.th);
+	//---------------
+	calcNewOdom(odomMode10, wheelTwistDt); // На основе линейных скоростей считаем новую позицию и угол для скомплементированной одометрии 100 Герц считаем и потом 10 Герц правим
 
-	topic.visualPublishOdomMode_0(); // Публикация одометрии по моторам которая получается от начальной точки
 	// printf("2 RAD2DEG(odomMode0.pose.th) = % .3f \n", RAD2DEG(odomMode0.pose.th));
 
 	// mpuTwistDt = calcTwistFromMpu(Driver2Data.bno055, 0.2); // Расчет и оформление в структуру ускорений по осям (линейных скоростей) и  разделить получение угловых скоростей и расчет сновой точки на основе этих скоростей
@@ -757,5 +756,10 @@ void poseComplementMode10()
 // odom_enc.th += delta_th; // Прибавляем к текущему углу и получаем новый угол куда смотрит наш робот
 
 // printf("x= %.2f y= %.2f th= %.3f  time= %u \n", g_odom_enc.x, g_odom_enc.y, g_odom_enc.th, millis());
+
+void startColibrovka()
+{
+
+}
 
 #endif

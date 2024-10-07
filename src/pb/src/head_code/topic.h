@@ -23,7 +23,7 @@ public:
 
     void publicationPoseLidarAll();             // Формируем перемнную с собщением для публикации по позиции лидара
     //void publicationControlDriver();            // Публикация данных для управления Driver
-    void publicationControlModul();             // Публикация данных для управления Modul
+    void publicationControlModul(pb_msgs::Struct_Data2Modul data_);             // Публикация данных для управления Modul
     void publicationControlPrint();             // Публикация данных для управления Print
     void publicationAngleLaser(CLaser &laser_); // Формируем перемнную с собщением для публикации по углам лазера
     void publicationPillarAll(CPillar pillar_); // Формируем перемнную с собщением для публикации
@@ -142,25 +142,25 @@ CTopic::~CTopic()
 //     pub_ControlDriver.publish(data);
 // }
 // Публикация данных для управления Modul
-void CTopic::publicationControlModul()
+void CTopic::publicationControlModul(pb_msgs::Struct_Data2Modul data_)
 {
-    pb_msgs::Struct_Data2Modul data;
-    data.controlLaser.mode = 1;
+    // ;
+    // data.controlLaser.mode = 1;
 
-    data.controlMotor.mode = 1;
-    // data.controlMotor.angle[0] = 120;
-    // data.controlMotor.angle[1] = 120;
-    // data.controlMotor.angle[2] = 150;
-    // data.controlMotor.angle[3] = 150;
-    data.controlMotor.angle[0] = g_angleLaser[0];
-    data.controlMotor.numPillar[0] = g_numPillar[0];
-    data.controlMotor.angle[1] = g_angleLaser[1];
-    data.controlMotor.numPillar[1] = g_numPillar[1];
-    data.controlMotor.angle[2] = g_angleLaser[2];
-    data.controlMotor.numPillar[2] = g_numPillar[2];
-    data.controlMotor.angle[3] = g_angleLaser[3];
-    data.controlMotor.numPillar[3] = g_numPillar[3];
-    pub_ControlModul.publish(data);
+    // data.controlMotor.mode = 1;
+    // // data.controlMotor.angle[0] = 120;
+    // // data.controlMotor.angle[1] = 120;
+    // // data.controlMotor.angle[2] = 150;
+    // // data.controlMotor.angle[3] = 150;
+    // data.controlMotor.angle[0] = g_angleLaser[0];
+    // data.controlMotor.numPillar[0] = g_numPillar[0];
+    // data.controlMotor.angle[1] = g_angleLaser[1];
+    // data.controlMotor.numPillar[1] = g_numPillar[1];
+    // data.controlMotor.angle[2] = g_angleLaser[2];
+    // data.controlMotor.numPillar[2] = g_numPillar[2];
+    // data.controlMotor.angle[3] = g_angleLaser[3];
+    // data.controlMotor.numPillar[3] = g_numPillar[3];
+    pub_ControlModul.publish(data_);
     // printf("++++++++++++++++++publicationControlModul ++++++++++++++++++ \n");
     // for (int i = 0; i < 4; i++)
     // {

@@ -190,4 +190,37 @@ struct SPose
 //     SSensor uzi;
 // };
 
+//************************************** ОБЬЯВЛЯЕМ ФУНКЦИИ **********************************
+float sqr(float x_);                                                    // Функция возведния в квадрат
+float ctan(float x_);                                                   // Функция котангенса угла
+float vectorLen(SPoint point1, SPoint point2);                          // Функция нахождения длинны вектора
+void normalizeVector(double &x, double &y, double &z);                  // Нормализация вектора
+
+// Функция возведения в квадрат
+float sqr(float x_)
+{
+    return x_ * x_;
+}
+// Функция котангенса
+float ctan(float x_)
+{
+    return 1 / tan(x_);
+}
+float vectorLen(SPoint point1, SPoint point2) // Функция возвращает длинну вектора, фактически растояние по прямой между двумя точкам
+{
+    float dx = abs(point2.x - point1.x); // Находим разницу в координатах
+    float dy = abs(point2.y - point1.y); //
+    float len = sqrt(sqr(dx) + sqr(dy)); // Теорема пифагора
+    return len;
+}
+
+void normalizeVector(double &x, double &y, double &z)
+{
+    double norm = sqrt(x * x + y * y + z * z);
+
+    x /= norm;
+    y /= norm;
+    z /= norm;
+}
+
 #endif
