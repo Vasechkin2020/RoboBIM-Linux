@@ -35,6 +35,7 @@ void collect_Data2Modul(int data_) // Данные для передачи на 
 
 // Основная функция приема-передачи двух структур на slave контроллер по протоколу SPI
 bool sendData2Modul(int channel_, Struct_Modul2Data &structura_receive_, Struct_Data2Modul &structura_send_) // Указываем на каком пине устройство и с какого регистра нужно прочитать данные
+//bool sendData2Modul(int channel_, STest &structura_receive_, STest &structura_send_) // Указываем на каком пине устройство и с какого регистра нужно прочитать данные
 {
 	uint8_t rez = false;												// Результат выполнения функции
 	const uint16_t size_structura_receive = sizeof(structura_receive_); // Размер структуры с данными которые получаем
@@ -43,10 +44,11 @@ bool sendData2Modul(int channel_, Struct_Modul2Data &structura_receive_, Struct_
 
 	// uint16_t max_size_stuct = getMax_size_Struct(size_structura_receive, size_structura_send); // Какая из структур больше
 	const uint16_t max_size_stuct = (size_structura_receive < size_structura_send) ? size_structura_send : size_structura_receive; // Какая из структур больше
-	memset(buffer, 0, sizeof(buffer));																							   // Очищаем буфер передачи
+	memset(bufferModul, 0, sizeof(bufferModul));																							   // Очищаем буфер передачи
 
 	// Заполняем буфер данными структуры для передачи
-	Struct_Data2Modul *buffer_send = (Struct_Data2Modul *)buffer; // Создаем переменную в которую записываем адрес буфера в нужном формате
+	Struct_Data2Modul *buffer_send = (Struct_Data2Modul *)bufferModul; // Создаем переменную в которую записываем адрес буфера в нужном формате
+	//STest *buffer_send = (STest *)buffer; // Создаем переменную в которую записываем адрес буфера в нужном формате
 	*buffer_send = structura_send_;								  // Переписываем по этому адресу данные в буфер
 
 	// for (int i = 0; i < 16; i++)
@@ -66,7 +68,7 @@ bool sendData2Modul(int channel_, Struct_Modul2Data &structura_receive_, Struct_
 	data_modul_all++;
 	digitalWrite(PIN_SPI_MODUL, 0);
 	delayMicroseconds(3);
-	rez = wiringPiSPIDataRW(channel_, buffer, sizeof(buffer)); // Передаем и одновременно получаем данные
+	rez = wiringPiSPIDataRW(channel_, bufferModul, sizeof(bufferModul)); // Передаем и одновременно получаем данные
 	delayMicroseconds(3);
 	digitalWrite(PIN_SPI_MODUL, 1);
 	// int time_transfer = micros() - aa;
@@ -85,10 +87,12 @@ bool sendData2Modul(int channel_, Struct_Modul2Data &structura_receive_, Struct_
 
 	// Извлекаем из буфера данные в формате структуры и копирум данные
 
-	Struct_Modul2Data *copy_buf_master_receive = (Struct_Modul2Data *)buffer; // Создаем переменную в которую пишем адрес буфера в нужном формате
+	Struct_Modul2Data *copy_buf_master_receive = (Struct_Modul2Data *)bufferModul; // Создаем переменную в которую пишем адрес буфера в нужном формате
+	//STest *copy_buf_master_receive = (STest *)buffer; // Создаем переменную в которую пишем адрес буфера в нужном формате
 	// structura_receive_ = *copy_buf_master_receive;						  // Копируем из этой перемнной данные в мою структуру
 	// uint32_t cheksum_receive = measureCheksum(structura_receive_);		  // Считаем контрольную сумму пришедшей структуры
 	Struct_Modul2Data structura_receive_temp;						   // Временная структура, проверить правильные ли пришли данные
+	//STest structura_receive_temp;						   // Временная структура, проверить правильные ли пришли данные
 	structura_receive_temp = *copy_buf_master_receive;				   // Копируем из этой перемнной данные в мою структуру
 	uint32_t cheksum_receive = measureCheksum(structura_receive_temp); // Считаем контрольную сумму пришедшей структуры
 
@@ -100,7 +104,7 @@ bool sendData2Modul(int channel_, Struct_Modul2Data &structura_receive_, Struct_
 	//  }
 	//  	printf("\n");
 
-	uint32_t cheksum_buf = measureCheksum(buffer); // Считаем контрольную сумму пришедшей структуры
+	uint32_t cheksum_buf = measureCheksum(bufferModul); // Считаем контрольную сумму пришедшей структуры
 
 	// printf(" Получили: Id %i, cheksum %i", structura_receive_.id, structura_receive_.cheksum);
 	//  printf(" capacity_real %f, capacity_percent %f", structura_receive_.capacity_real, structura_receive_.capacity_percent);
@@ -115,6 +119,7 @@ bool sendData2Modul(int channel_, Struct_Modul2Data &structura_receive_, Struct_
 	// Serial.println(String(micros()) + " copy_DataHL_Control_receive bmp280.pressure= " + copy_DataHL_Control_receive.bmp280.pressure);
 	//  Serial.println(String(micros()) + " copy_DataHL_Control_receive.cheksum_receive= " + copy_DataHL_Control_receive.cheksum);
 	// printf(" measureCheksum= %i \n", cheksum_receive);
+	
 	if (cheksum_receive != structura_receive_temp.cheksum || structura_receive_temp.cheksum == 0) // Если наша чек сумма совпадает с последним байтом где чексума переданных данных
 	{
 		data_modul_bed++;
@@ -125,6 +130,7 @@ bool sendData2Modul(int channel_, Struct_Modul2Data &structura_receive_, Struct_
 		structura_receive_ = structura_receive_temp; // Копируем хорошие данные уже в итоговую структуру, если плохие то они просто пропадают и не портят прошлые
 		return true;
 	}
+	return false;
 }
 
 #endif

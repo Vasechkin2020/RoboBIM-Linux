@@ -23,10 +23,10 @@ int main(int argc, char **argv)
     CTopic topic; // Экземпляр класса для всех публикуемых топиков
     ros::Rate r(RATE);
 
-    ros::Subscriber sub_ControlModul = nh.subscribe("pbMain/ControlModul", 16, callback_ControlModul, ros::TransportHints().tcpNoDelay(true));    // Это мы подписываемся на то что публигует Main для Modul
-    ros::Subscriber sub_ControlPrint = nh.subscribe("pbMain/ControlPrint", 16, callback_ControlPrint, ros::TransportHints().tcpNoDelay(true));    // Это мы подписываемся на то что публигует Main для Print
+    ros::Subscriber sub_ControlModul = nh.subscribe("pbMain/ControlModul", 16, callback_ControlModul, ros::TransportHints().tcpNoDelay(true));       // Это мы подписываемся на то что публигует Main для Modul
+    ros::Subscriber sub_ControlPrint = nh.subscribe("pbMain/ControlPrint", 16, callback_ControlPrint, ros::TransportHints().tcpNoDelay(true));       // Это мы подписываемся на то что публигует Main для Print
     ros::Subscriber sub_ControlDriver = nh.subscribe("pbControl/ControlDriver", 16, callback_ControlDriver, ros::TransportHints().tcpNoDelay(true)); // Это мы подписываемся на то что публигует Main для Data
-    ros::Subscriber subscriber_Joy = nh.subscribe("joy", 16, callback_Joy);                                                                       // Это мы подписываемся на то что публикует нода джойстика
+    ros::Subscriber subscriber_Joy = nh.subscribe("joy", 16, callback_Joy);                                                                          // Это мы подписываемся на то что публикует нода джойстика
 
     // sub_low_state = _nh.subscribe("/low_state", 1, &IOInterface::_lowStateCallback, this, ros::TransportHints().tcpNoDelay(true)); // От Максима пример
 
@@ -50,27 +50,27 @@ int main(int argc, char **argv)
     last_time = ros::Time::now();
     // double dt = (current_time - last_time).toSec();
 
-    printf("Start test laser... Waiting 10 sec... \n");
-    ros::Duration(1).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
+    // printf("Start test laser... Waiting 10 sec... \n");
+    // ros::Duration(1).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
 
-    Data2Modul.id++;                                       //= 0x1F1F1F1F;
-    Data2Modul.controlMotor.mode = 0;                      // Ручной вариант проверка
-    Data2Modul.cheksum = measureCheksum(Data2Modul);       // Считаем контрольную сумму отправляемой структуры// тут нужно посчитать контрольную сумму структуры
-    sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
-    ros::Duration(0, 100000).sleep();                      // Подождем пока все обьявится и инициализируется внутри ROS
+    // Data2Modul.id++;                                 //= 0x1F1F1F1F;
+    // Data2Modul.controlMotor.mode = 0;                // Ручной вариант проверка
+    // Data2Modul.cheksum = measureCheksum(Data2Modul); // Считаем контрольную сумму отправляемой структуры// тут нужно посчитать контрольную сумму структуры
+    // // sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
+    // ros::Duration(0, 100000).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
 
-    Data2Modul.id++;                                       //= 0x1F1F1F1F;
-    Data2Modul.controlMotor.mode = 9;                      // Ручной вариант проверка
-    Data2Modul.cheksum = measureCheksum(Data2Modul);       // Считаем контрольную сумму отправляемой структуры// тут нужно посчитать контрольную сумму структуры
-    sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
-    ros::Duration(5).sleep();                              // Подождем пока все обьявится и инициализируется внутри ROS
+    // Data2Modul.id++;                                 //= 0x1F1F1F1F;
+    // Data2Modul.controlMotor.mode = 9;                // Ручной вариант проверка
+    // Data2Modul.cheksum = measureCheksum(Data2Modul); // Считаем контрольную сумму отправляемой структуры// тут нужно посчитать контрольную сумму структуры
+    //                                                  //    sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
+    // ros::Duration(5).sleep();                        // Подождем пока все обьявится и инициализируется внутри ROS
 
-    Data2Modul.id++;                                       //= 0x1F1F1F1F;
-    Data2Modul.controlMotor.mode = 1;                      // Ручной вариант проверка
-    Data2Modul.cheksum = measureCheksum(Data2Modul);       // Считаем контрольную сумму отправляемой структуры// тут нужно посчитать контрольную сумму структуры
-    sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
-    ros::Duration(1).sleep();                              // Подождем пока все обьявится и инициализируется внутри ROS
-    uint64_t timeWork = millis();                          // Время работы ноды
+    // Data2Modul.id++;                                 //= 0x1F1F1F1F;
+    // Data2Modul.controlMotor.mode = 1;                // Ручной вариант проверка
+    // Data2Modul.cheksum = measureCheksum(Data2Modul); // Считаем контрольную сумму отправляемой структуры// тут нужно посчитать контрольную сумму структуры
+    //                                                  //  sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
+    // ros::Duration(1).sleep();                        // Подождем пока все обьявится и инициализируется внутри ROS
+    uint64_t timeWork = millis(); // Время работы ноды
     ROS_INFO("End Setup ver -4445-\n");
 
     while (ros::ok())
@@ -129,16 +129,16 @@ int main(int argc, char **argv)
 
         //---------------- Тут какие-то постоянные данные вносятся в ручном режиме или алгоритмы корректировки данных перед передачей --------------------------------------------------------------------------------------
 
-        //printf("g_dreamSpeed.L = %f g_dreamSpeed.R= %f \n",g_dreamSpeed.speedL,g_dreamSpeed.speedR);
-        controlAcc(g_dreamSpeed);                      // Функция контроля ускорения На вход скорость с которой хотим ехать. После будет скорость с которой поедем фактически с учетом возможностей по ускорению
-        //printf("g_factSpeed.L = %f g_factSpeed.R= %f \n",g_factSpeed.speedL,g_factSpeed.speedR);
+        // printf("g_dreamSpeed.L = %f g_dreamSpeed.R= %f \n",g_dreamSpeed.speedL,g_dreamSpeed.speedR);
+        controlAcc(g_dreamSpeed); // Функция контроля ускорения На вход скорость с которой хотим ехать. После будет скорость с которой поедем фактически с учетом возможностей по ускорению
+        // printf("g_factSpeed.L = %f g_factSpeed.R= %f \n",g_factSpeed.speedL,g_factSpeed.speedR);
         Data2Driver.control = speedToRps(g_factSpeed); // Конвертация скорости из метров в секунду в обороты в секунду для передачи на нижний уровень
-        //printf("Data2Driver.controlL = %f Data2Driver.controlR= %f \n \n",Data2Driver.control.speedL,Data2Driver.control.speedR);
-        controlLed();                                  // Функция управления несколькими светодиодами которые отведены для прямого управления нодой data
+        // printf("Data2Driver.controlL = %f Data2Driver.controlR= %f \n \n",Data2Driver.control.speedL,Data2Driver.control.speedR);
+        controlLed(); // Функция управления несколькими светодиодами которые отведены для прямого управления нодой data
 
         // Data2Modul.controlLaser.mode = 1;           // Ручной вариант проверка
         // Data2Modul.controlMotor.mode = 1;           // Ручной вариант проверка
-        
+
         // Data2Modul.controlMotor.angle[0] = 67.6; //
         // Data2Modul.controlMotor.angle[1] = 42.5;     //
         // Data2Modul.controlMotor.angle[2] = 143.6;      //
@@ -157,21 +157,35 @@ int main(int argc, char **argv)
         // --------------------------- ОТПРАВКА ДАННЫХ на нижний уровень и разборка и публикация данных полученных с нижнего уровня---------------------------------------------------------------------
         Data2Modul.id++;                                 //= 0x1F1F1F1F;
         Data2Modul.cheksum = measureCheksum(Data2Modul); // Считаем контрольную сумму отправляемой структуры// тут нужно посчитать контрольную сумму структуры
-        // printf("Отправляем: Id %i, чек= %i  ", Data2Modul.id, Data2Modul.cheksum);
+                                                         // printf("Отправляем: Id %i, чек= %i  ", Data2Modul.id, Data2Modul.cheksum);
+                                                         // rezModul = sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
+
+        //rezModul = sendData2Modul(SPI_CHANNAL_0, Modul2Test, Test2Modul); // Обмен данными с нижним уровнем
         rezModul = sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
-        if (rezModul)                                                     // Если пришли хорошие данные с нижнего уровня, то обрабатываем их и публикуем данные в ROS
+
+        // uint8_t test[4]{0x01, 0x04, 0xFF, 0xAA};
+        // uint8_t test[2]{0x01, 0x02};
+        // digitalWrite(PIN_SPI_MODUL, 0);
+        // delayMicroseconds(1);
+        // printf("out- %#x %#x %#x %#x\n", test[0], test[1], test[2], test[3]);
+        // rez = wiringPiSPIDataRW(SPI_CHANNAL_0, test, 4); // Передаем и одновременно получаем данные
+        // printf(" in- %#X %#X %#X %#X\n\n", test[0], test[1], test[2], test[3]);
+        // delayMicroseconds(1);
+        // digitalWrite(PIN_SPI_MODUL, 1);
+
+        if (rezModul) // Если пришли хорошие данные с нижнего уровня, то обрабатываем их и публикуем данные в ROS
         {
             // СДЕЛАТЬ СКОРОСТЬ ПУБЛИКАЦИИ ЕСЛИ БУДЕТ 100Герц то нафига так часто визуализацию публиковать
             topic.processing_Modul2Data(); // Обрабатываем данные
         }
         //----------------------------
-        Data2Print.id++;                                                  //= 0x1F1F1F1F;
-        Data2Print.cheksum = measureCheksum(Data2Print);                  // Считаем контрольную сумму отправляемой структуры// тут нужно посчитать контрольную сумму структуры
-        rezPrint = sendData2Print(SPI_CHANNAL_0, Print2Data, Data2Print); ////  Отправляем данные на нижний уровень
-        if (rezPrint)                                                     // Если пришли хорошие данные то обрабатываем их и публикуем данные в ROS
-        {
-            topic.processing_Print2Data(); // Обработанные данные записываем их в структуру для публикации в топике и публикуем
-        }
+        // Data2Print.id++;                                                  //= 0x1F1F1F1F;
+        // Data2Print.cheksum = measureCheksum(Data2Print);                  // Считаем контрольную сумму отправляемой структуры// тут нужно посчитать контрольную сумму структуры
+        // rezPrint = sendData2Print(SPI_CHANNAL_0, Print2Data, Data2Print); ////  Отправляем данные на нижний уровень
+        // if (rezPrint)                                                     // Если пришли хорошие данные то обрабатываем их и публикуем данные в ROS
+        // {
+        //     topic.processing_Print2Data(); // Обработанные данные записываем их в структуру для публикации в топике и публикуем
+        // }
         //----------------------------
         Data2Driver.id++;                                                   //= 0x1F1F1F1F; Считаем каждый раз сколько отправляем, даже если не было изменений в данных ни от джойстика ни от топика от Head
         Data2Driver.cheksum = measureCheksum(Data2Driver);                  // Пересчитываем  контрольную сумму отправляемой структуры

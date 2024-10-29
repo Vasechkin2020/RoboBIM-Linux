@@ -11,11 +11,19 @@ struct SControlLaser
 };
 struct SControlMotor
 {
-  uint32_t mode = 0;     // Текущий режим работы 0 - режим колибровки концевиков 1 - обычное управление моторами по углу
-  float angle[4];        // Углы в которые нужно повернультя в локальной системе
-  int32_t numPillar[4]{-1,-1,-1,-1}; // Номер столба до которого измеряем расстояние
+  uint32_t mode = 0;                    // Текущий режим работы 0 - режим колибровки концевиков 1 - обычное управление моторами по углу
+  float angle[4];                       // Углы в которые нужно повернультя в локальной системе
+  int32_t numPillar[4]{-1, -1, -1, -1}; // Номер столба до которого измеряем расстояние
 };
 
+struct STest
+{
+  uint8_t byte0 = 0x00;
+  uint8_t byte1 = 0x01;
+  uint8_t byte2 = 0x02;
+  uint8_t byte3 = 0x03;
+  float fff = 3.1415;
+};
 // Структура получаемых данных от Data к контроллеру Modul
 struct Struct_Data2Modul
 {
@@ -28,7 +36,7 @@ struct Struct_Data2Modul
 struct SLaserSend
 {
   uint32_t status = 0;        // Статус датчика или ошибки
-  float distance = 0;      // Последнее измерение
+  float distance = 0;         // Последнее измерение
   uint32_t signalQuality = 0; // Качество сигнала
   float angle = 0;            // Положение при последнем измерении
   int32_t numPillar = -1;     // Номер столба до которого измерили расстояние
@@ -191,36 +199,36 @@ struct SPose
 // };
 
 //************************************** ОБЬЯВЛЯЕМ ФУНКЦИИ **********************************
-float sqr(float x_);                                                    // Функция возведния в квадрат
-float ctan(float x_);                                                   // Функция котангенса угла
-float vectorLen(SPoint point1, SPoint point2);                          // Функция нахождения длинны вектора
-void normalizeVector(double &x, double &y, double &z);                  // Нормализация вектора
+float sqr(float x_);                                   // Функция возведния в квадрат
+float ctan(float x_);                                  // Функция котангенса угла
+float vectorLen(SPoint point1, SPoint point2);         // Функция нахождения длинны вектора
+void normalizeVector(double &x, double &y, double &z); // Нормализация вектора
 
 // Функция возведения в квадрат
 float sqr(float x_)
 {
-    return x_ * x_;
+  return x_ * x_;
 }
 // Функция котангенса
 float ctan(float x_)
 {
-    return 1 / tan(x_);
+  return 1 / tan(x_);
 }
 float vectorLen(SPoint point1, SPoint point2) // Функция возвращает длинну вектора, фактически растояние по прямой между двумя точкам
 {
-    float dx = abs(point2.x - point1.x); // Находим разницу в координатах
-    float dy = abs(point2.y - point1.y); //
-    float len = sqrt(sqr(dx) + sqr(dy)); // Теорема пифагора
-    return len;
+  float dx = abs(point2.x - point1.x); // Находим разницу в координатах
+  float dy = abs(point2.y - point1.y); //
+  float len = sqrt(sqr(dx) + sqr(dy)); // Теорема пифагора
+  return len;
 }
 
 void normalizeVector(double &x, double &y, double &z)
 {
-    double norm = sqrt(x * x + y * y + z * z);
+  double norm = sqrt(x * x + y * y + z * z);
 
-    x /= norm;
-    y /= norm;
-    z /= norm;
+  x /= norm;
+  y /= norm;
+  z /= norm;
 }
 
 #endif

@@ -7,7 +7,6 @@
 #include <tf/transform_broadcaster.h>
 #include <std_msgs/String.h>
 
-
 #include <sensor_msgs/Joy.h>
 #include <pb_msgs/SJoy.h>
 
@@ -48,25 +47,21 @@ sensor_msgs::Joy msg_joy;                      // Переменная в кот
 //---------------------------------------------------------------------------------------
 #define SPI_CHANNAL_0 0   // Какой из двух каналов инициализируем
 #define SPI_CHANNAL_1 1   // Какой из двух каналов инициализируем
-#define SPI_SPEED 1000000 // Скорость работы шины SPI
+#define SPI_SPEED 4000000 // Скорость работы шины SPI
 //---------------------------------------------------------------------------------------
-// ПЕРЕДЕЛАТЬ НА БУФЕРЫ РАЗНОГО РАЗМЕРА!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#define SIZE_BUFF 192            // Размер буфера, стараться делать кратно 32
-unsigned char buffer[SIZE_BUFF]; // Буфер в 1 байт в который пишем передаваемый байт и в котором оказывется принятый байт
-//---------------------------------------------------------------------------------------
-#define ACCELERATION 0.5               // Метры в секунду в квадрате м/с
 
-#define DIAMETR 0.151        // Влияет на правильность длинны через расчет скорости
+#define ACCELERATION 0.5 // Метры в секунду в квадрате м/с
+
+#define DIAMETR 0.151 // Влияет на правильность длинны через расчет скорости
 #define RADIUS (DIAMETR / 2)
 #define PERIMETR (DIAMETR * M_PI)
 #define KOEF_ODOM 1.0000; // Коефициент для одометрии. подбираем экспериментально, что-бы было точно движение и расчет
-
 
 bool rezModul = false;
 bool rezPrint = false;
 bool rezData = false;
 
-float offSetLaser[4] {0.011, 0.005, 0.005, 0.006}; // Поправочные значения для датчиков расстояния на модуле
+float offSetLaser[4]{0.011, 0.005, 0.005, 0.006}; // Поправочные значения для датчиков расстояния на модуле
 
 int data_driver_all = 0;
 int data_driver_bed = 0;
@@ -89,6 +84,34 @@ Struct_Driver2Data Driver2Data; // Тело робота. тут все пере
 Struct_Modul2Data Modul2Data;
 Struct_Print2Data Print2Data; // Экземпляр структуры принимаемых данных
 
+
+const uint16_t size_structura_Data2Driver = sizeof(Data2Driver); // Размер структуры с данными которые получаем
+const uint16_t size_structura_Driver2Data = sizeof(Driver2Data); // Размер структуры с данными которые получаем
+const uint16_t max_size_stuct1 = (size_structura_Data2Driver < size_structura_Driver2Data) ? size_structura_Driver2Data : size_structura_Data2Driver; // Какая из структур больше 80
+
+const uint16_t size_structura_Data2Modul = sizeof(Data2Modul); // Размер структуры с данными которые получаем
+const uint16_t size_structura_Modul2Data = sizeof(Modul2Data); // Размер структуры с данными которые получаем
+const uint16_t max_size_stuct2 = (size_structura_Data2Modul < size_structura_Modul2Data) ? size_structura_Modul2Data : size_structura_Data2Modul; // Какая из структур больше 168
+
+const uint16_t size_structura_Data2Print = sizeof(Data2Print); // Размер структуры с данными которые получаем
+const uint16_t size_structura_Print2Data = sizeof(Print2Data); // Размер структуры с данными которые получаем
+const uint16_t max_size_stuct3 = (size_structura_Data2Print < size_structura_Print2Data) ? size_structura_Print2Data : size_structura_Data2Print; // Какая из структур больше 24
+
+// ПЕРЕДЕЛАТЬ НА БУФЕРЫ РАЗНОГО РАЗМЕРА - СДЕЛАЛ !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+//#define SIZE_BUFF 192            // Размер буфера, стараться делать кратно 32
+#define SIZE_BUFF_DRIVER 96            // Размер буфера, стараться делать кратно 32
+unsigned char bufferDriver[SIZE_BUFF_DRIVER]; // Буфер в 1 байт в который пишем передаваемый байт и в котором оказывется принятый байт
+
+#define SIZE_BUFF_PRINT 24            // Размер буфера, стараться делать кратно 32
+unsigned char bufferPrint[SIZE_BUFF_PRINT]; // Буфер в 1 байт в который пишем передаваемый байт и в котором оказывется принятый байт
+
+#define SIZE_BUFF_MODUL 168            // Размер буфера, стараться делать кратно 32 для ESP, для STM непонятно пока
+unsigned char bufferModul[SIZE_BUFF_MODUL]; // Буфер в 1 байт в который пишем передаваемый байт и в котором оказывется принятый байт
+//---------------------------------------------------------------------------------------
+
+STest Modul2Test;
+STest Test2Modul;
+
 const uint32_t size_stucturs = sizeof(Struct_Driver2Data);
 
 SSpi spi; // Переменная где все данные по обмену
@@ -104,7 +127,7 @@ struct SPoseTrue
 //****************************************************************************************************************************************************
 
 SControl g_dreamSpeed; // Желаемая скорость
-SControl g_factSpeed;	 // Фактически ранее установленная скорость переданная на моторы и в топик в метрах за секунду
+SControl g_factSpeed;  // Фактически ранее установленная скорость переданная на моторы и в топик в метрах за секунду
 SPose g_poseControl;   // Позиция с верхнего уровня на которую надо подменить текущую позицию
 
 //****************************************************************************************************************************************************

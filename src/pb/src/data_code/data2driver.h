@@ -15,21 +15,21 @@ bool sendData2Driver(int channel_, Struct_Driver2Data &structura_receive_, Struc
 	uint8_t *adr_structura_send = (uint8_t *)(&structura_send_);		// Запоминаем адрес начала структуры. Используем для побайтной передачи
 
 	const uint16_t max_size_stuct = (size_structura_receive < size_structura_send) ? size_structura_send : size_structura_receive; // Какая из структур больше
-	memset(buffer, 0, sizeof(buffer));																							   // Очищаем буфер передачи
+	memset(bufferDriver, 0, sizeof(bufferDriver));																							   // Очищаем буфер передачи
 
 	// Заполняем буфер данными структуры для передачи
-	Struct_Data2Driver *buffer_send = (Struct_Data2Driver *)buffer; // Создаем переменную в которую записываем адрес буфера в нужном формате
+	Struct_Data2Driver *buffer_send = (Struct_Data2Driver *)bufferDriver; // Создаем переменную в которую записываем адрес буфера в нужном формате
 	*buffer_send = structura_send_;									// Переписываем по этому адресу данные в буфер
 
 	data_driver_all++;
 	digitalWrite(PIN_SPI_DRIVER, 0);
 	delayMicroseconds(3);
-	rez = wiringPiSPIDataRW(channel_, buffer, sizeof(buffer)); // Передаем и одновременно получаем данные
+	rez = wiringPiSPIDataRW(channel_, bufferDriver, sizeof(bufferDriver)); // Передаем и одновременно получаем данные
 	delayMicroseconds(3);
 	digitalWrite(PIN_SPI_DRIVER, 1);
 
 	// Извлекаем из буфера данные в формате структуры и копирум данные
-	Struct_Driver2Data *copy_buf_master_receive = (Struct_Driver2Data *)buffer; // Создаем переменную в которую пишем адрес буфера в нужном формате
+	Struct_Driver2Data *copy_buf_master_receive = (Struct_Driver2Data *)bufferDriver; // Создаем переменную в которую пишем адрес буфера в нужном формате
 	Struct_Driver2Data structura_receive_temp;									// Временная структура, проверить правильные ли пришли данные
 	structura_receive_temp = *copy_buf_master_receive;							// Копируем из этой перемнной данные в мою структуру
 	uint32_t cheksum_receive = measureCheksum(structura_receive_temp);			// Считаем контрольную сумму пришедшей структуры
