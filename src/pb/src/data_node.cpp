@@ -50,26 +50,27 @@ int main(int argc, char **argv)
     last_time = ros::Time::now();
     // double dt = (current_time - last_time).toSec();
 
-    // printf("Start test laser... Waiting 10 sec... \n");
-    // ros::Duration(1).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
+    printf("Start test laser... Waiting 10 sec... \n");
+    ros::Duration(1).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
 
-    // Data2Modul.id++;                                 //= 0x1F1F1F1F;
-    // Data2Modul.controlMotor.mode = 0;                // Ручной вариант проверка
-    // Data2Modul.cheksum = measureCheksum(Data2Modul); // Считаем контрольную сумму отправляемой структуры// тут нужно посчитать контрольную сумму структуры
-    // // sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
-    // ros::Duration(0, 100000).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
+    // Data2Modul.id++;                                       //= 0x1F1F1F1F;
+    // Data2Modul.controlMotor.mode = 0;                      // Ручной вариант проверка
+    // Data2Modul.cheksum = measureCheksum(Data2Modul);       // Считаем контрольную сумму отправляемой структуры// тут нужно посчитать контрольную сумму структуры
+    // sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
+    // ros::Duration(1).sleep();                      // Подождем пока все обьявится и инициализируется внутри ROS
 
-    // Data2Modul.id++;                                 //= 0x1F1F1F1F;
-    // Data2Modul.controlMotor.mode = 9;                // Ручной вариант проверка
-    // Data2Modul.cheksum = measureCheksum(Data2Modul); // Считаем контрольную сумму отправляемой структуры// тут нужно посчитать контрольную сумму структуры
-    //                                                  //    sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
-    // ros::Duration(5).sleep();                        // Подождем пока все обьявится и инициализируется внутри ROS
+    Data2Modul.id++;                                       //= 0x1F1F1F1F;
+    Data2Modul.controlMotor.mode = 9;                      // Ручной вариант проверка
+    Data2Modul.cheksum = measureCheksum(Data2Modul);       // Считаем контрольную сумму отправляемой структуры// тут нужно посчитать контрольную сумму структуры
+    sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
+    ros::Duration(8).sleep();                              // Подождем пока все обьявится и инициализируется внутри ROS
 
-    // Data2Modul.id++;                                 //= 0x1F1F1F1F;
-    // Data2Modul.controlMotor.mode = 1;                // Ручной вариант проверка
-    // Data2Modul.cheksum = measureCheksum(Data2Modul); // Считаем контрольную сумму отправляемой структуры// тут нужно посчитать контрольную сумму структуры
-    //                                                  //  sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
-    // ros::Duration(1).sleep();                        // Подождем пока все обьявится и инициализируется внутри ROS
+    // Data2Modul.id++;                                       //= 0x1F1F1F1F;
+    // Data2Modul.controlMotor.mode = 1;                      // Ручной вариант проверка
+    // Data2Modul.cheksum = measureCheksum(Data2Modul);       // Считаем контрольную сумму отправляемой структуры// тут нужно посчитать контрольную сумму структуры
+    // sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
+    // ros::Duration(1).sleep();                              // Подождем пока все обьявится и инициализируется внутри ROS
+
     uint64_t timeWork = millis(); // Время работы ноды
     ROS_INFO("End Setup ver -4445-\n");
 
@@ -136,18 +137,19 @@ int main(int argc, char **argv)
         // printf("Data2Driver.controlL = %f Data2Driver.controlR= %f \n \n",Data2Driver.control.speedL,Data2Driver.control.speedR);
         controlLed(); // Функция управления несколькими светодиодами которые отведены для прямого управления нодой data
 
-        // Data2Modul.controlLaser.mode = 1;           // Ручной вариант проверка
-        // Data2Modul.controlMotor.mode = 1;           // Ручной вариант проверка
+        Data2Modul.controlMotor.mode = 1; // Ручной вариант проверка
+
+        Data2Modul.controlLaser.mode = 2; // Ручной вариант проверка
 
         // Data2Modul.controlMotor.angle[0] = 67.6; //
         // Data2Modul.controlMotor.angle[1] = 42.5;     //
         // Data2Modul.controlMotor.angle[2] = 143.6;      //
         // Data2Modul.controlMotor.angle[3] = 105.7;     //
 
-        // Data2Modul.controlMotor.angle[0] = 45; //
-        // Data2Modul.controlMotor.angle[1] = 135; //
-        // Data2Modul.controlMotor.angle[2] = 45; //
-        // Data2Modul.controlMotor.angle[3] = 135; //
+        Data2Modul.controlMotor.angle[0] = 45;  //
+        Data2Modul.controlMotor.angle[1] = 135; //
+        Data2Modul.controlMotor.angle[2] = 45;  //
+        Data2Modul.controlMotor.angle[3] = 135; //
 
         // Data2Modul.controlMotor.angle[0] = 135; //
         // Data2Modul.controlMotor.angle[1] = 45; //
@@ -160,7 +162,7 @@ int main(int argc, char **argv)
                                                          // printf("Отправляем: Id %i, чек= %i  ", Data2Modul.id, Data2Modul.cheksum);
                                                          // rezModul = sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
 
-        //rezModul = sendData2Modul(SPI_CHANNAL_0, Modul2Test, Test2Modul); // Обмен данными с нижним уровнем
+        // rezModul = sendData2Modul(SPI_CHANNAL_0, Modul2Test, Test2Modul); // Обмен данными с нижним уровнем
         rezModul = sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
 
         // uint8_t test[4]{0x01, 0x04, 0xFF, 0xAA};
@@ -193,7 +195,7 @@ int main(int argc, char **argv)
         // ROS_INFO("id= %i speedL= %f speedR= %f cheksum = %i", Data2Driver.id, Data2Driver.control.speedL, Data2Driver.control.speedR, Data2Driver.cheksum);
         if (rezData) // Если пришли хорошие данные то обрабатываем их и публикуем данные в ROS
         {
-            topic.processing_Driver2Data();                 // Обработанные данные записываем их в структуру для публикации в топике и публикуем
+            topic.processing_Driver2Data();         // Обработанные данные записываем их в структуру для публикации в топике и публикуем
             topic.processing_SetSpeed(g_factSpeed); // Заполнение и публикация заданной скорости Публикуем если только ее успешно отправили на нижний уровень
         }
         //-----------------------------------------------------------------------------------------------------------------------------------

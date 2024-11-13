@@ -39,6 +39,7 @@ struct SLaserSend
   float distance = 0;         // Последнее измерение
   uint32_t signalQuality = 0; // Качество сигнала
   float angle = 0;            // Положение при последнем измерении
+  uint32_t time;          // Время измерения от начала запуска программы
   int32_t numPillar = -1;     // Номер столба до которого измерили расстояние
 };
 
@@ -54,6 +55,19 @@ struct SSpi
   uint32_t all = 0;
   uint32_t bed = 0;
 };
+struct SXyz //
+{
+  float x = 0;
+  float y = 0;
+  float z = 0;
+};
+struct SMpu // Структура с данными со всех датчиков, отправляем наверх
+{
+  int32_t status = 0; // статус состояния
+  SXyz angleEuler;
+  SXyz linear;
+};
+
 // Структура в которой все главные переменные передаюся на высокий уровень от Modul к Data
 struct Struct_Modul2Data
 {
@@ -64,6 +78,7 @@ struct Struct_Modul2Data
   SLaserSend laser[4];          // Структура по состоянию лазеров
   uint32_t statusDataLaser = 0; // Статус обновления данных с лазерных датчиков
   uint32_t micric[4];           // Структура по состоянию концевиков
+  SMpu bno055;      // Данные с датчика BNO055
   SSpi spi;                     // Структура по состоянию обмена по шине SPI
 
   uint32_t cheksum = 0; // Контрольная сумма данных в структуре
@@ -77,18 +92,7 @@ struct SMotor
   float rpsEncodL = 0; // Реальная скорость вращения по енкодерам( обороты в секунду)
   float rpsEncodR = 0; // Реальная скорость вращения по енкодерам( обороты в секунду)
 };
-struct SXyz //
-{
-  float x = 0;
-  float y = 0;
-  float z = 0;
-};
-struct SMpu // Структура с данными со всех датчиков, отправляем наверх
-{
-  int32_t status = 0; // статус состояния
-  SXyz angleEuler;
-  SXyz linear;
-};
+
 // Структура состояния датчика расстония
 struct SSensor
 {

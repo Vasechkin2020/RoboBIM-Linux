@@ -137,6 +137,7 @@ void CTopic::processing_Modul2Data()
 		Modul2Data_msg.laser[i].distance = Modul2Data.laser[i].distance + offSetLaser[i]; // Прибавляем поправочные значения полученные при калибровке
 		Modul2Data_msg.laser[i].signalQuality = Modul2Data.laser[i].signalQuality;		  //
 		Modul2Data_msg.laser[i].angle = Modul2Data.laser[i].angle;						  //
+		Modul2Data_msg.laser[i].time = Modul2Data.laser[i].time;						  //
 		Modul2Data_msg.laser[i].numPillar = Modul2Data.laser[i].numPillar;				  //
 
 		Modul2Data_msg.micric[i] = Modul2Data.micric[i]; // Состояние концевиков
