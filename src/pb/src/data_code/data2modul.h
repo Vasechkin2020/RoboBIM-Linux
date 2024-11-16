@@ -106,7 +106,8 @@ bool sendData2Modul(int channel_, Struct_Modul2Data &structura_receive_, Struct_
 
 	uint32_t cheksum_buf = measureCheksum(bufferModul); // Считаем контрольную сумму пришедшей структуры
 
-	// printf(" Получили: Id %i, cheksum %i", structura_receive_.id, structura_receive_.cheksum);
+	//printf(" Получили: Id %0#6lX, cheksum %0#6lX cheksum_receive %0#6lX ", structura_receive_temp.id, structura_receive_temp.cheksum, cheksum_receive);
+	
 	//  printf(" capacity_real %f, capacity_percent %f", structura_receive_.capacity_real, structura_receive_.capacity_percent);
 	//  printf(" inVoltage %f, current_mA %f", structura_receive_.INA219.inVoltage, structura_receive_.INA219.current_mA);
 	//  printf(" radius %f, startStop %i", structura_receive_.radius, structura_receive_.startStop);
@@ -123,11 +124,13 @@ bool sendData2Modul(int channel_, Struct_Modul2Data &structura_receive_, Struct_
 	if (cheksum_receive != structura_receive_temp.cheksum || structura_receive_temp.cheksum == 0) // Если наша чек сумма совпадает с последним байтом где чексума переданных данных
 	{
 		data_modul_bed++;
+		printf("Data Err \n");
 		return false;
 	}
 	else // Все хорошо возвращаем Ок
 	{
 		structura_receive_ = structura_receive_temp; // Копируем хорошие данные уже в итоговую структуру, если плохие то они просто пропадают и не портят прошлые
+		printf("Data OK \n");
 		return true;
 	}
 	return false;
