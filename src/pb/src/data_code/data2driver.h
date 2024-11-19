@@ -78,6 +78,8 @@ void collect_Data2Driver(int data_)
 	}
 	else // Двнные если нет топика сколько-то времени
 	{
+		g_dreamSpeed.speedL = 0;
+		g_dreamSpeed.speedR = 0;
 
 	}
 }

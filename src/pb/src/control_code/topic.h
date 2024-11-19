@@ -45,7 +45,7 @@ void CTopic::publicationControlDriver()
     {
         data.led.led[i] = color;
     }
-
+    
     data.control = controlSpeed.control;
     pub_ControlDriver.publish(data);
 }

@@ -130,7 +130,7 @@ bool sendData2Modul(int channel_, Struct_Modul2Data &structura_receive_, Struct_
 	else // Все хорошо возвращаем Ок
 	{
 		structura_receive_ = structura_receive_temp; // Копируем хорошие данные уже в итоговую структуру, если плохие то они просто пропадают и не портят прошлые
-		printf("Data OK \n");
+		// printf("Data OK \n");
 		return true;
 	}
 	return false;

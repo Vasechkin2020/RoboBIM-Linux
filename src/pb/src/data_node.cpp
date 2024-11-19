@@ -51,7 +51,7 @@ int main(int argc, char **argv)
     // double dt = (current_time - last_time).toSec();
 
     printf("Start test laser... Waiting 10 sec... \n");
-    //ros::Duration(1).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
+    ros::Duration(1).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
 
     // Data2Modul.id++;                                       //= 0x1F1F1F1F;
     // Data2Modul.controlMotor.mode = 0;                      // Ручной вариант проверка
@@ -59,11 +59,12 @@ int main(int argc, char **argv)
     // sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
     // ros::Duration(1).sleep();                      // Подождем пока все обьявится и инициализируется внутри ROS
 
-    // Data2Modul.id++;                                       //= 0x1F1F1F1F;
-    // Data2Modul.controlMotor.mode = 9;                      // Ручной вариант проверка
-    // Data2Modul.cheksum = measureCheksum(Data2Modul);       // Считаем контрольную сумму отправляемой структуры// тут нужно посчитать контрольную сумму структуры
-    // sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
-    // ros::Duration(8).sleep();                              // Подождем пока все обьявится и инициализируется внутри ROS
+    Data2Modul.id++;                                       //= 0x1F1F1F1F;
+    Data2Modul.controlMotor.mode = 9;                      // Ручной вариант проверка
+    Data2Modul.controlLaser.mode = 0;                      // Ручной вариант проверка
+    Data2Modul.cheksum = measureCheksum(Data2Modul);       // Считаем контрольную сумму отправляемой структуры// тут нужно посчитать контрольную сумму структуры
+    sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
+    ros::Duration(10).sleep();                             // Подождем пока все обьявится и инициализируется внутри ROS
 
     // Data2Modul.id++;                                       //= 0x1F1F1F1F;
     // Data2Modul.controlMotor.mode = 1;                      // Ручной вариант проверка
@@ -137,18 +138,18 @@ int main(int argc, char **argv)
         // printf("Data2Driver.controlL = %f Data2Driver.controlR= %f \n \n",Data2Driver.control.speedL,Data2Driver.control.speedR);
         controlLed(); // Функция управления несколькими светодиодами которые отведены для прямого управления нодой data
 
-        // Data2Modul.controlMotor.mode = 1; // Ручной вариант проверка
-        // Data2Modul.controlLaser.mode = 1; // Ручной вариант проверка
+        Data2Modul.controlMotor.mode = 1; // Ручной вариант проверка
+        Data2Modul.controlLaser.mode = 1; // Ручной вариант проверка
 
         // Data2Modul.controlMotor.angle[0] = 67.6; //
         // Data2Modul.controlMotor.angle[1] = 42.5;     //
         // Data2Modul.controlMotor.angle[2] = 143.6;      //
         // Data2Modul.controlMotor.angle[3] = 105.7;     //
 
-        // Data2Modul.controlMotor.angle[0] = 45;  //
-        // Data2Modul.controlMotor.angle[1] = 135; //
-        // Data2Modul.controlMotor.angle[2] = 45;  //
-        // Data2Modul.controlMotor.angle[3] = 135; //
+        Data2Modul.controlMotor.angle[0] = 45;  //
+        Data2Modul.controlMotor.angle[1] = 135; //
+        Data2Modul.controlMotor.angle[2] = 45;  //
+        Data2Modul.controlMotor.angle[3] = 135; //
 
         // Data2Modul.controlMotor.angle[0] = 135; //
         // Data2Modul.controlMotor.angle[1] = 45; //
@@ -203,6 +204,11 @@ int main(int argc, char **argv)
         r.sleep();             // Интеллектуальная задержка на указанную частоту
     }
     //! isnan(rez_data); // true если nan
+    Data2Modul.id++;                                       //= 0x1F1F1F1F;
+    Data2Modul.controlMotor.mode = 0;                      // Ручной вариант проверка
+    Data2Modul.controlLaser.mode = 0;                      // Ручной вариант проверка
+    Data2Modul.cheksum = measureCheksum(Data2Modul);       // Считаем контрольную сумму отправляемой структуры// тут нужно посчитать контрольную сумму структуры
+    sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
     printf("Data Node STOP \n");
     return 0;
 }

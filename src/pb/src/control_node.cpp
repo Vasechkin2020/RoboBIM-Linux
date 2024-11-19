@@ -27,9 +27,9 @@ int main(int argc, char **argv)
     bool flagCommand = true; // Флаг можно исполнять каманду
     int i = 0;
 
-    std::list<int> numbers{ 1, 2, 3, 4, 5 };
+    std::list<int> numbers{1, 2, 3, 4, 5};
     std::list<SCommand> listok;
-    //list int listok;
+    // list int listok;
 
     while (ros::ok())
     {
@@ -73,11 +73,13 @@ int main(int argc, char **argv)
         // {
         //     flag_msgSpeed = false;
         // }
-        
+
         topic.publicationControlDriver(); // Формируем и Публикуем команды для управления Driver
         r.sleep();                        // Интеллектуальная задержка на указанную частоту
     }
-
+    controlSpeed.control.speedL = 0;
+    controlSpeed.control.speedR = 0;
+    topic.publicationControlDriver(); // Формируем и Публикуем команды для управления Driver
     printf("Control node STOP \n");
     return 0;
 }
