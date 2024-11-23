@@ -74,6 +74,7 @@ int main(int argc, char **argv)
 
     uint64_t timeWork = millis(); // Время работы ноды
     ROS_INFO("End Setup ver -5555-\n");
+    
 
     while (ros::ok())
     {
