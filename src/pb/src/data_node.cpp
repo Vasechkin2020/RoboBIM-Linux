@@ -141,15 +141,15 @@ int main(int argc, char **argv)
         Data2Modul.controlMotor.mode = 1; // Ручной вариант проверка
         Data2Modul.controlLaser.mode = 1; // Ручной вариант проверка
 
-        // Data2Modul.controlMotor.angle[0] = 67.6; //
-        // Data2Modul.controlMotor.angle[1] = 42.5;     //
-        // Data2Modul.controlMotor.angle[2] = 143.6;      //
-        // Data2Modul.controlMotor.angle[3] = 105.7;     //
+        Data2Modul.controlMotor.angle[0] = 67.6; //
+        Data2Modul.controlMotor.angle[1] = 42.5;     //
+        Data2Modul.controlMotor.angle[2] = 143.6;      //
+        Data2Modul.controlMotor.angle[3] = 105.7;     //
 
-        Data2Modul.controlMotor.angle[0] = 45;  //
-        Data2Modul.controlMotor.angle[1] = 135; //
-        Data2Modul.controlMotor.angle[2] = 45;  //
-        Data2Modul.controlMotor.angle[3] = 135; //
+        // Data2Modul.controlMotor.angle[0] = 45;  //
+        // Data2Modul.controlMotor.angle[1] = 135; //
+        // Data2Modul.controlMotor.angle[2] = 45;  //
+        // Data2Modul.controlMotor.angle[3] = 135; //
 
         // Data2Modul.controlMotor.angle[0] = 135; //
         // Data2Modul.controlMotor.angle[1] = 45; //
