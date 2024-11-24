@@ -97,26 +97,6 @@ void startPosition(geometry_msgs::Pose2D &startPose2d_)
 	g_poseLidar.mode0.y = startPose2d_.y;
 	g_poseLidar.mode0.th = startPose2d_.theta;
 
-	// g_poseLidar.mode1.x = startPose2d_.x; // Пока считаем что передаем положение центра лидара и поэтому ему присваиваем значение, потом надо будет добавлять смещение до центра поворота между колесами
-	// g_poseLidar.mode1.y = startPose2d_.y;
-	// g_poseLidar.mode1.th = startPose2d_.theta;
-
-	// g_poseLidar.mode2.x = startPose2d_.x; // Пока считаем что передаем положение центра лидара и поэтому ему присваиваем значение, потом надо будет добавлять смещение до центра поворота между колесами
-	// g_poseLidar.mode2.y = startPose2d_.y;
-	// g_poseLidar.mode2.th = startPose2d_.theta;
-
-	// g_poseLidar.mode3.x = startPose2d_.x; // Пока считаем что передаем положение центра лидара и поэтому ему присваиваем значение, потом надо будет добавлять смещение до центра поворота между колесами
-	// g_poseLidar.mode3.y = startPose2d_.y;
-	// g_poseLidar.mode3.th = startPose2d_.theta;
-
-	// g_poseLidar.mode4.x = startPose2d_.x; // Пока считаем что передаем положение центра лидара и поэтому ему присваиваем значение, потом надо будет добавлять смещение до центра поворота между колесами
-	// g_poseLidar.mode4.y = startPose2d_.y;
-	// g_poseLidar.mode4.th = startPose2d_.theta;
-
-	// g_poseLidar.mode10.x = startPose2d_.x; // Пока считаем что передаем положение центра лидара и поэтому ему присваиваем значение, потом надо будет добавлять смещение до центра поворота между колесами
-	// g_poseLidar.mode10.y = startPose2d_.y;
-	// g_poseLidar.mode10.th = startPose2d_.theta;
-
 	g_poseLidar.mode1 = g_poseLidar.mode0;
 	g_poseLidar.mode2 = g_poseLidar.mode0;
 	g_poseLidar.mode3 = g_poseLidar.mode0;
