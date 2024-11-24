@@ -5,23 +5,23 @@ float g_angleMPU = 0;  // Глобальная перемнная угла по�
 float g_angleLaser[4]; // Углы на столбы которые акпкдвкм нв нижний угол для управления
 int g_numPillar[4];    // Номр столба до которого измеряем расстояние лазером
 
-#include "head_code/laser.h"
+#include "pos_code/laser.h"
 CLaser laser;
 
-#include "head_code/config.h"
+#include "pos_code/config.h"
 
 SPoseLidar g_poseLidar; // Позиции лидара по расчетам Центральная система координат
-// #include "head_code/car.h"
+// #include "pos_code/car.h"
 // CCar car; // Обьявляем экземпляр класса в нем вся обработка и обсчет машинки как обьекта
 
-#include "head_code/pillar.h"
+#include "pos_code/pillar.h"
 CPillar pillar; // Обьявляем экземпляр класса в нем вся обработка и обсчет столбов
 
-#include "head_code/topic.h" // Файл для функций для формирования топиков в нужном виде и формате
+#include "pos_code/topic.h" // Файл для функций для формирования топиков в нужном виде и формате
 
-#include "head_code/dataNode.h"
+#include "pos_code/dataNode.h"
 CDataNode dataNode; // Экземпляр класса для всех данных получаемых с ноды Data  с нижнего уровня
-#include "head_code/code.h"
+#include "pos_code/code.h"
 
 int main(int argc, char **argv)
 {
@@ -29,7 +29,7 @@ int main(int argc, char **argv)
     ROS_WARN("%s        Main Module PrintBIM ROS 1.0 Raspberry Pi 4B  ver 1.1366 ", NN);
     ROS_ERROR("%s ------------------ROS_ERROR----------------------------------", NN);
 
-    ros::init(argc, argv, "head_node");
+    ros::init(argc, argv, "pos_node");
     // topic.init(argc, argv);
     ros::NodeHandle nh;
     CTopic topic; // Экземпляр класса для всех публикуемых топиков

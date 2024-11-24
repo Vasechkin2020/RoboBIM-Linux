@@ -4,7 +4,7 @@
   <include file="$(find rplidar_ros)/launch/rplidar.launch" />
 
   <node pkg="data" type="data_node" name="data_node" output ="screen"/>
-  <node pkg="head" type="head_node" name="head_node" output ="screen"/>
+  <node pkg="pos" type="pos_node" name="pos_node" output ="screen"/>
 
   <node pkg="tf" type="static_transform_publisher" name="laser_link" args="0.0 0.0 0.0 0.0 0.0 0.0 /base_link /laser 50" />
   <node pkg="tf" type="static_transform_publisher" name="map_odom" args="0.0 0.0 0.0 0.0 0.0 0.0 /map /odom 50" />

@@ -97,7 +97,7 @@ SCommand commandArray[16]; // Массив команд
 #define CYAN "\x1b[36;40m"
 #define NORM "\x1b[0m"
 
-#define NN "\x1b[32;40m Head_node"
+#define NN "\x1b[32;40m control_node"
 
 void my_printInfo()
 {

@@ -381,7 +381,7 @@ SPoint pointFromTetha(float angle_, float distance_) // Возвращает о�
 #define CYAN "\x1b[36;40m"
 #define NORM "\x1b[0m"
 
-#define NN "\x1b[32;40m Head_node"
+#define NN "\x1b[32;40m pos_node"
 
 void my_printInfo()
 {

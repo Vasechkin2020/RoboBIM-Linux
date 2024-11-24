@@ -180,8 +180,8 @@ include_directories(
 add_executable(data_node src/data_node.cpp)
 target_link_libraries(data_node ${catkin_LIBRARIES} -lwiringPi -lpthread)
 
-add_executable(head_node src/head_node.cpp)
-target_link_libraries(head_node ${catkin_LIBRARIES} -lwiringPi -lpthread)
+add_executable(pos_node src/pos_node.cpp)
+target_link_libraries(pos_node ${catkin_LIBRARIES} -lwiringPi -lpthread)
 
 add_executable(control_node src/control_node.cpp)
 target_link_libraries(control_node ${catkin_LIBRARIES} -lwiringPi -lpthread)
