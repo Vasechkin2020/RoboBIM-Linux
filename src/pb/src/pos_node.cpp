@@ -22,6 +22,7 @@ CPillar pillar; // Обьявляем экземпляр класса в нем 
 #include "pos_code/dataNode.h"
 CDataNode dataNode; // Экземпляр класса для всех данных получаемых с ноды Data  с нижнего уровня
 #include "pos_code/code.h"
+#include "pos_code/kalman.h"
 
 int main(int argc, char **argv)
 {
