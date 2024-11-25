@@ -22,9 +22,7 @@ public:
     void visualPoseAngleLaser(CLaser &laser_); // Формируем перемнную с собщением для публикации по углам лазера
 
     void publicationPoseLidarAll();             // Формируем перемнную с собщением для публикации по позиции лидара
-    //void publicationControlDriver();            // Публикация данных для управления Driver
     void publicationControlModul(pb_msgs::Struct_Data2Modul data_);             // Публикация данных для управления Modul
-    void publicationControlPrint();             // Публикация данных для управления Print
     void publicationAngleLaser(CLaser &laser_); // Формируем перемнную с собщением для публикации по углам лазера
     void publicationPillarAll(CPillar pillar_); // Формируем перемнную с собщением для публикации
 
@@ -122,25 +120,6 @@ CTopic::~CTopic()
 {
 }
 
-// // Публикация данных для управления Driver
-// void CTopic::publicationControlDriver()
-// {
-//     pb_msgs::Struct_Data2Driver data;
-//     static unsigned long led_time = 0;
-//     static int color = 0;
-
-//     if ((millis() - led_time) > 250)
-//     {
-//         color = 1 - color;
-//         led_time = millis();
-//     }
-//     for (int i = 0; i < 24; i++)
-//     {
-//         data.led.led[i] = color;
-//     }
-
-//     pub_ControlDriver.publish(data);
-// }
 // Публикация данных для управления Modul
 void CTopic::publicationControlModul(pb_msgs::Struct_Data2Modul data_)
 {
@@ -170,13 +149,6 @@ void CTopic::publicationControlModul(pb_msgs::Struct_Data2Modul data_)
     // }
     // printf("++++++++++++++++++++++++++++++++++++ \n");
 }
-// Публикация данных для управления Print
-void CTopic::publicationControlPrint()
-{
-    pb_msgs::Struct_Data2Print data;
-    pub_ControlPrint.publish(data);
-}
-
 void CTopic::visulStartPose()
 {
     startPose_msg.header.stamp = ros::Time::now(); // Время ROS

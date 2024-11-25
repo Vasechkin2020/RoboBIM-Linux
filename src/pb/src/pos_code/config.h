@@ -94,7 +94,7 @@ pb_msgs::Struct_Data2Driver Data2Driver_prev; // Структура с кома�
 float linearOffsetX[128];
 float linearOffsetY[128];
 
-bool modeColibrovka = true;
+bool modeColibrovka = false;
 // struct SEuler
 // {
 //   float roll = 0;  // Крен в право  влево

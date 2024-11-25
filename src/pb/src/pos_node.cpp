@@ -164,9 +164,6 @@ int main(int argc, char **argv)
             topic.visualPoseAngleLaser(laser);        // Отобращение стрелкой где начало и куда смотрят лазеры
             // topic.visualPublishOdomMode_11();         // Отобращение стрелкой где начало и куда смотрит в Mode11 Это по Калману
             topic.publicationPoseLidarAll(); // Публикуем все варианты расчета позиций mode 0.1.2.3.4
-
-            // topic.publicationControlDriver(); // Формируем и Публикуем команды для управления Driver
-            // topic.publicationControlPrint(); // Формируем и Публикуем команды для управления Print
         }
 
         static u_int64_t timeMil = millis();
