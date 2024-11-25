@@ -15,7 +15,7 @@ int main(int argc, char **argv)
 {
 
     ROS_INFO("%s -------------------------------------------------------", NN);
-    ROS_WARN("%s Start Data_Node printBIM(c) 2024 printBIM.com ver. 1.3344 ", NN);
+    ROS_WARN("%s Start Data_Node printBIM(c) 2024 printBIM.com ver. 1.4 ", NN);
     ROS_INFO("%s -------------------------------------------------------", NN);
 
     ros::init(argc, argv, "data_node");
@@ -23,7 +23,7 @@ int main(int argc, char **argv)
     CTopic topic; // Экземпляр класса для всех публикуемых топиков
     ros::Rate r(RATE);
 
-    ros::Subscriber sub_ControlModul = nh.subscribe("pbMain/ControlModul", 16, callback_ControlModul, ros::TransportHints().tcpNoDelay(true));       // Это мы подписываемся на то что публигует Main для Modul
+    ros::Subscriber sub_ControlModul = nh.subscribe("pbPos/ControlModul", 16, callback_ControlModul, ros::TransportHints().tcpNoDelay(true));       // Это мы подписываемся на то что публигует Main для Modul
     ros::Subscriber sub_ControlPrint = nh.subscribe("pbMain/ControlPrint", 16, callback_ControlPrint, ros::TransportHints().tcpNoDelay(true));       // Это мы подписываемся на то что публигует Main для Print
     ros::Subscriber sub_ControlDriver = nh.subscribe("pbControl/ControlDriver", 16, callback_ControlDriver, ros::TransportHints().tcpNoDelay(true)); // Это мы подписываемся на то что публигует Main для Data
     ros::Subscriber subscriber_Joy = nh.subscribe("joy", 16, callback_Joy);                                                                          // Это мы подписываемся на то что публикует нода джойстика

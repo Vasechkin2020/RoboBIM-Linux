@@ -272,9 +272,9 @@ void CLaser::calcAnglePillarForLaser(CPillar::SPillar *pillar_, SPose &poseLidar
         anglePillarInLaser[i] = tableLaser[i].angle; // Для визуализации в RVIZ
         g_angleLaser[i] = tableLaser[i].angle;       // Для топика ?
         g_numPillar[i] = tableLaser[i].n;
-        printf(" angle= %.3f numPillar = %i |", g_angleLaser[i], g_numPillar[i]);
+        //printf(" angle= %.3f numPillar = %i |", g_angleLaser[i], g_numPillar[i]);
     }
-    printf("\n");
+    // printf("\n");
 }
 
 void CLaser::calcPointPillarFromLaser(CPillar::SPillar *pillar_) // Расчет положения столбов в лидарной системе на основании данных с датчиков
