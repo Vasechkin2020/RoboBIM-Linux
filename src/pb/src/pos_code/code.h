@@ -564,8 +564,6 @@ void calcMode0()
 	g_poseLidar.mode0.y = odomMode0.pose.y;
 	g_poseLidar.mode0.th = RAD2DEG(odomMode0.pose.th);
 	//---------------
-	calcNewOdom(odomMode10, g_linAngVel.wheel); // На основе линейных скоростей считаем новую позицию и угол для скомплементированной одометрии 100 Герц считаем и потом 10 Герц правим
-
 	// printf("2 RAD2DEG(odomMode0.pose.th) = % .3f \n", RAD2DEG(odomMode0.pose.th));
 
 	// mpuTwistDt = calcTwistFromMpu(Driver2Data.bno055, 0.2); // Расчет и оформление в структуру ускорений по осям (линейных скоростей) и  разделить получение угловых скоростей и расчет сновой точки на основе этих скоростей
