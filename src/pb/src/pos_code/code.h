@@ -265,7 +265,7 @@ void calcNewOdom(SOdom &odom_, STwistDt data_) // На вход подаются
 	if (odom_.pose.th < 0)
 		(odom_.pose.th += (2 * M_PI));
 
-	ROS_WARN("OUT calcNewOdom pose.x= % .3f y= % .3f th= % .3f ", odom_.pose.x, odom_.pose.y, RAD2DEG(odom_.pose.th));
+	//ROS_WARN("OUT calcNewOdom pose.x= % .3f y= % .3f th= % .3f ", odom_.pose.x, odom_.pose.y, RAD2DEG(odom_.pose.th));
 }
 
 // Обработка пришедших данных.Обсчитываем одометрию по энкодеру
@@ -563,6 +563,8 @@ void calcMode0()
 	g_poseLidar.mode0.x = odomMode0.pose.x;
 	g_poseLidar.mode0.y = odomMode0.pose.y;
 	g_poseLidar.mode0.th = RAD2DEG(odomMode0.pose.th);
+
+	ROS_WARN("MODE0 pose.x= %.3f y= %.3f theta= %.3f ", g_poseLidar.mode0.x, g_poseLidar.mode0.y, g_poseLidar.mode0.th);
 	//---------------
 	// printf("2 RAD2DEG(odomMode0.pose.th) = % .3f \n", RAD2DEG(odomMode0.pose.th));
 
@@ -591,7 +593,7 @@ void calcMode123()
 	else
 	{
 		g_poseLidar.mode123 = pose;
-		//ROS_WARN("mode123.x = % .3f y = % .3f th = %.3f", g_poseLidar.mode123.x, g_poseLidar.mode123.y, g_poseLidar.mode123.th);
+		ROS_WARN("MODE123.x= % .3f y= % .3f theta= %.3f", g_poseLidar.mode123.x, g_poseLidar.mode123.y, g_poseLidar.mode123.th);
 	}
 }
 /*   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!! ПРИМЕР ОТ ВАДИМА КАК НУЖНО СЧИТАТЬ одометрию!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

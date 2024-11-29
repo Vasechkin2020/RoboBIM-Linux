@@ -48,32 +48,32 @@ float minDistance(float laserL_, float laserR_, float uzi1_)
 void initCommandArray()
 {
 	commandArray[0].mode = 1;
-	commandArray[0].duration = 5000;
-	commandArray[0].velL = 0.1;
-	commandArray[0].velR = 0.1;
+	commandArray[0].duration = 20000;
+	commandArray[0].velL = 0.05;
+	commandArray[0].velR = 0.05;
 	
 	commandArray[1].mode = 1;
-	commandArray[1].duration = 2000;
-	commandArray[1].velL = 0.2;
-	commandArray[1].velR = 0.2;
+	commandArray[1].duration = 22000;
+	commandArray[1].velL = 0.1;
+	commandArray[1].velR = 0.1;
 	
 	commandArray[2].mode = 1;
-	commandArray[2].duration = 1000;
+	commandArray[2].duration = 3000;
 	commandArray[2].velL = 0;
 	commandArray[2].velR = 0;
 	
 	commandArray[3].mode = 1;
-	commandArray[3].duration = 5000;
-	commandArray[3].velL = -0.1;
-	commandArray[3].velR = -0.1;
+	commandArray[3].duration = 20000;
+	commandArray[3].velL = -0.05;
+	commandArray[3].velR = -0.05;
 
 	commandArray[4].mode = 1;
-	commandArray[4].duration = 2000;
-	commandArray[4].velL = -0.2;
-	commandArray[4].velR = -0.2;
+	commandArray[4].duration = 22000;
+	commandArray[4].velL = -0.1;
+	commandArray[4].velR = -0.1;
 
 	commandArray[5].mode = 1;
-	commandArray[5].duration = 1000;
+	commandArray[5].duration = 50000;
 	commandArray[5].velL = 0;
 	commandArray[5].velR = 0;
 	

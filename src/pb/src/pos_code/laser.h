@@ -300,10 +300,10 @@ void CLaser::calcPointPillarFromLaser(CPillar::SPillar *pillar_) // Расчет
     SPoint p_lidar;
     SPoint P00;
     float len;
-    printf(" MODE 3 calcPointPillarFromLaser /////////////// \n");
+    printf(" MODE 3 calcPointPillarFromLaser ");
     for (int i = 0; i < 4; i++)
     {
-        // printf("distance SRC = %f \n", msg_Modul2Data.laser[i].distance);
+        //printf("distance SRC = %f \n", msg_Modul2Data.laser[i].distance);
         msg_Modul2Data.laser[i].distance += (OFFSET_LAZER); // Добавляем смещение по креплению. Зависит от напечатанного крепления
         //printf("distance + OFFSET = %f \n", msg_Modul2Data.laser[i].distance);
         msg_Modul2Data.laser[i].distance += (PILLAR_RADIUS); // Добавляем смещение по креплению. Зависит от напечатанного крепления
@@ -318,7 +318,7 @@ void CLaser::calcPointPillarFromLaser(CPillar::SPillar *pillar_) // Расчет
         // printf(" Global len = %f \n", len);
         pillar_[msg_Modul2Data.laser[i].numPillar].distance_laser = len; // Записываем для дальнейшей обработки
     }
-        printf("/// distance_laser |");
+        printf("/ distance_laser |");
     for (int i = 0; i < 4; i++)
     {
         printf(" dist = %f i= %i |", pillar_[i].distance_laser, i);
