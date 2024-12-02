@@ -93,11 +93,11 @@ private:
     ros::Publisher pub_poseLaser2 = _nh.advertise<geometry_msgs::PoseStamped>("pbRviz/PoseLaser2", 16); // Публикатор для позиции лазера на моторе 2
     ros::Publisher pub_poseLaser3 = _nh.advertise<geometry_msgs::PoseStamped>("pbRviz/PoseLaser3", 16); // Публикатор для позиции лазера на моторе 3
 
-    ros::Publisher publish_Mode0 = _nh.advertise<nav_msgs::Odometry>("pbRviz/mode0", 8);  // Это мы создаем публикатор и определяем название топика в рос
-    ros::Publisher publish_Mode1 = _nh.advertise<nav_msgs::Odometry>("pbRviz/mode1", 8);  // Это мы создаем публикатор и определяем название топика в рос
-    ros::Publisher publish_Mode2 = _nh.advertise<nav_msgs::Odometry>("pbRviz/mode2", 8);  // Это мы создаем публикатор и определяем название топика в рос
-    ros::Publisher publish_Mode3 = _nh.advertise<nav_msgs::Odometry>("pbRviz/mode3", 8);  // Это мы создаем публикатор и определяем название топика в рос
-    ros::Publisher publish_Mode123 = _nh.advertise<nav_msgs::Odometry>("pbRviz/mode123", 8);  // Это мы создаем публикатор и определяем название топика в рос
+    ros::Publisher publish_Mode0 = _nh.advertise<nav_msgs::Odometry>("pbRviz/mode0", 8);     // Это мы создаем публикатор и определяем название топика в рос
+    ros::Publisher publish_Mode1 = _nh.advertise<nav_msgs::Odometry>("pbRviz/mode1", 8);     // Это мы создаем публикатор и определяем название топика в рос
+    ros::Publisher publish_Mode2 = _nh.advertise<nav_msgs::Odometry>("pbRviz/mode2", 8);     // Это мы создаем публикатор и определяем название топика в рос
+    ros::Publisher publish_Mode3 = _nh.advertise<nav_msgs::Odometry>("pbRviz/mode3", 8);     // Это мы создаем публикатор и определяем название топика в рос
+    ros::Publisher publish_Mode123 = _nh.advertise<nav_msgs::Odometry>("pbRviz/mode123", 8); // Это мы создаем публикатор и определяем название топика в рос
 
     ros::Publisher publish_Mode11 = _nh.advertise<nav_msgs::Odometry>("pbRviz/odom11", 8); // Это мы создаем публикатор и определяем название топика в рос
     ros::Publisher publish_Mode12 = _nh.advertise<nav_msgs::Odometry>("pbRviz/odom12", 8); // Это мы создаем публикатор и определяем название топика в рос
@@ -415,7 +415,6 @@ void CTopic::visualPublishOdomMode_123()
     publish_Mode123.publish(mode_msg); // Публикация полученных данных
 }
 
-
 // Отобращение стрелкой где начало и куда смотрит в Mode11
 void CTopic::visualPublishOdomMode_11()
 {
@@ -430,7 +429,7 @@ void CTopic::visualPublishOdomMode_11()
     mode_msg.pose.pose.orientation = quat;
     // set the velocity
     mode_msg.child_frame_id = "odom"; // Поворот в этом сообщении должен быть указан в системе координат, заданной child_frame_id
-    mode_msg.twist.twist.linear.x =odomMode11.twist.vx;
+    mode_msg.twist.twist.linear.x = odomMode11.twist.vx;
     mode_msg.twist.twist.linear.y = odomMode11.twist.vy;
     mode_msg.twist.twist.angular.z = odomMode11.twist.vth;
     publish_Mode11.publish(mode_msg); // Публикация полученных данных
@@ -449,7 +448,7 @@ void CTopic::visualPublishOdomMode_12()
     mode_msg.pose.pose.orientation = quat;
     // set the velocity
     mode_msg.child_frame_id = "odom"; // Поворот в этом сообщении должен быть указан в системе координат, заданной child_frame_id
-    mode_msg.twist.twist.linear.x =odomMode12.twist.vx;
+    mode_msg.twist.twist.linear.x = odomMode12.twist.vx;
     mode_msg.twist.twist.linear.y = odomMode12.twist.vy;
     mode_msg.twist.twist.angular.z = odomMode12.twist.vth;
     publish_Mode12.publish(mode_msg); // Публикация полученных данных
@@ -468,7 +467,7 @@ void CTopic::visualPublishOdomMode_13()
     mode_msg.pose.pose.orientation = quat;
     // set the velocity
     mode_msg.child_frame_id = "odom"; // Поворот в этом сообщении должен быть указан в системе координат, заданной child_frame_id
-    mode_msg.twist.twist.linear.x =odomMode13.twist.vx;
+    mode_msg.twist.twist.linear.x = odomMode13.twist.vx;
     mode_msg.twist.twist.linear.y = odomMode13.twist.vy;
     mode_msg.twist.twist.angular.z = odomMode13.twist.vth;
     publish_Mode13.publish(mode_msg); // Публикация полученных данных
