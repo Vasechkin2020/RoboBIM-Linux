@@ -1,6 +1,7 @@
 #ifndef CODE_H
 #define CODE_H
 
+#include "kalman.h"
 // #include "pillar.h"
 //**************************** ОБЬЯВЛЕНИЕ ПРОЦЕДУР **********************************
 void callback_Lidar(sensor_msgs::LaserScan::ConstPtr msg); //
@@ -23,6 +24,12 @@ void testFunction(); // Тест математических ипрочих ф�
 void angleMPU(); // Расчет угла положения на сонове данных сдатчика MPU
 
 float minDistance(float laserL_, float laserR_, float uzi1_); // Находим минимальную дистанцию из 3 датчиков
+
+extern CKalman kalman11;
+extern CKalman kalman12;
+extern CKalman kalman13;
+void initKalman(); // Задаем коэфициенты для Калмана
+
 // pb_msgs::SControlDriver speedCorrect(pb_msgs::SDriver2Data Driver2Data_msg_, pb_msgs::SControlDriver Data2Driver_); // Корректировка скорости движения в зависимости от датчиков растояния перед
 // void collectCommand(); // //Функция формирования команды для нижнего уровня на основе всех полученных данных, датчиков и анализа ситуации
 
@@ -108,9 +115,9 @@ void startPosition(geometry_msgs::Pose2D &startPose2d_)
 	odomMode0.pose.x = startPose2d_.x;
 	odomMode0.pose.y = startPose2d_.y;
 	odomMode0.pose.th = DEG2RAD(startPose2d_.theta); // В одометрии угол в радианах
-	odomMode10.pose.x = startPose2d_.x;
-	odomMode10.pose.y = startPose2d_.y;
-	odomMode10.pose.th = DEG2RAD(startPose2d_.theta); // В одометрии угол в радианах
+	odomMode11 = odomMode0; // Присваиваем начальное значение в во все одометрии
+	odomMode12 = odomMode0;
+	odomMode13 = odomMode0;
 
 	printf("START RAD2DEG(odomMode0.pose.th) = % .3f \n", RAD2DEG(odomMode0.pose.th));
 
@@ -265,7 +272,7 @@ void calcNewOdom(SOdom &odom_, STwistDt data_) // На вход подаются
 	if (odom_.pose.th < 0)
 		(odom_.pose.th += (2 * M_PI));
 
-	//ROS_WARN("OUT calcNewOdom pose.x= % .3f y= % .3f th= % .3f ", odom_.pose.x, odom_.pose.y, RAD2DEG(odom_.pose.th));
+	// ROS_WARN("OUT calcNewOdom pose.x= % .3f y= % .3f th= % .3f ", odom_.pose.x, odom_.pose.y, RAD2DEG(odom_.pose.th));
 }
 
 // Обработка пришедших данных.Обсчитываем одометрию по энкодеру
@@ -335,7 +342,7 @@ STwistDt calcTwistFromWheel(pb_msgs::SSetSpeed control_)
 			{
 				radius = 0; // Едем прямо или назад и все по нулям
 				theta = 0;	// Если едем прямо то угол поворота отклонения от оси равен 0
-						   // ROS_INFO("2 EDEM PRIAMO radius = %.4f theta gradus = %.4f ", radius, RAD2DEG(theta));
+							// ROS_INFO("2 EDEM PRIAMO radius = %.4f theta gradus = %.4f ", radius, RAD2DEG(theta));
 			}
 			else // Едем по радиусу и надо все считать
 			{
@@ -578,6 +585,28 @@ void calcMode0()
 	// topic.publishOdomUnited();              // Публикация одометрии по моторам с корректировкой с верхнего уровня
 	//-------------------------
 }
+// Расчет одометрии и применения ее для всех режимов 
+void calcMode11()
+{
+	// printf("1 RAD2DEG(odomMode0.pose.th) = % .3f \n", RAD2DEG(odomMode0.pose.th));
+	calcNewOdom(odomMode11, g_linAngVel.wheel); // На основе линейных скоростей считаем новую позицию и угол по колесам
+	ROS_WARN("odomMode11 pose.x= %.3f y= %.3f theta= %.2f ", odomMode11.pose.x, odomMode11.pose.y, odomMode11.pose.th);
+}
+// Расчет одометрии и применения ее для всех режимов 
+void calcMode12()
+{
+	// printf("1 RAD2DEG(odomMode0.pose.th) = % .3f \n", RAD2DEG(odomMode0.pose.th));
+	calcNewOdom(odomMode12, g_linAngVel.wheel); // На основе линейных скоростей считаем новую позицию и угол по колесам
+	ROS_WARN("odomMode12 pose.x= %.3f y= %.3f theta= %.2f ", odomMode12.pose.x, odomMode12.pose.y, odomMode12.pose.th);
+}
+// Расчет одометрии и применения ее для всех режимов 
+void calcMode13()
+{
+	// printf("1 RAD2DEG(odomMode0.pose.th) = % .3f \n", RAD2DEG(odomMode0.pose.th));
+	calcNewOdom(odomMode13, g_linAngVel.wheel); // На основе линейных скоростей считаем новую позицию и угол по колесам
+	ROS_WARN("odomModeE13 pose.x= %.3f y= %.3f theta= %.2f ", odomMode13.pose.x, odomMode13.pose.y, odomMode13.pose.th);
+}
+
 // Комплементация Mode123 это усреднение данных по Mode0 Mode2 Mode3
 void calcMode123()
 {
@@ -931,5 +960,17 @@ void startColibrovka(CTopic &topic)
 					//modeColibrovka = false;
 					*/
 }
+// Задаем коэфициенты для Калмана
+void initKalman() 
+{
 
+	kalman11.setParametrX(1, 1);
+	kalman11.setParametrY(1, 1);
+
+	kalman12.setParametrX(1, 1);
+	kalman12.setParametrY(1, 1);
+
+	kalman13.setParametrX(1, 1);
+	kalman13.setParametrY(1, 1);
+}
 #endif
