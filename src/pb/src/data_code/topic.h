@@ -102,11 +102,6 @@ void CTopic::processing_Driver2Data()
 	Driver2Data_msg.motor.rpsEncodL = Driver2Data.motor.rpsEncodL;
 	Driver2Data_msg.motor.rpsEncodR = Driver2Data.motor.rpsEncodR;
 
-	Driver2Data_msg.mpu.status = Driver2Data.bno055.status;
-	Driver2Data_msg.mpu.angleEuler.roll = Driver2Data.bno055.angleEuler.x;
-	Driver2Data_msg.mpu.angleEuler.pitch = Driver2Data.bno055.angleEuler.y;
-	Driver2Data_msg.mpu.angleEuler.yaw = Driver2Data.bno055.angleEuler.z;
-
 	Driver2Data_msg.laserL.status = Driver2Data.laserL.status;
 	Driver2Data_msg.laserL.distance = Driver2Data.laserL.distance;
 
@@ -125,7 +120,6 @@ void CTopic::processing_Modul2Data()
 	Modul2Data_msg.header.stamp = ros::Time::now();
 	Modul2Data_msg.id = Modul2Data.id;
 	Modul2Data_msg.pinMotorEn = Modul2Data.pinMotorEn; // Стутус пина управления драйвером моторов, включен драйвер или нет
-	Modul2Data_msg.statusDataLaser = Modul2Data.statusDataLaser;
 
 	for (int i = 0; i < 4; i++)
 	{

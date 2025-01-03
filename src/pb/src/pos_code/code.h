@@ -550,14 +550,14 @@ void angleMPU()
 	printf("flag_msgDriver in... ");
 	if (first) // Делаем в первый приход данных
 	{
-		predAngleZ = msg_Driver2Data.mpu.angleEuler.yaw; // Запоминаяем угол поворота Для следующего обсчета
+		predAngleZ = msg_Modul2Data.mpu.angleEuler.yaw; // Запоминаяем угол поворота Для следующего обсчета
 		first = false;
 		printf("First start -> ");
 	}
 	else // Всегда кроме первого
 	{
-		g_angleMPU += (msg_Driver2Data.mpu.angleEuler.yaw - predAngleZ); // Меняем угол поворота увеличивая на разницу. Разобраться с 360 и переходом через 0
-		predAngleZ = msg_Driver2Data.mpu.angleEuler.yaw;				 // Запоминаяем угол поворота Для следующего обсчета
+		g_angleMPU += (msg_Modul2Data.mpu.angleEuler.yaw - predAngleZ); // Меняем угол поворота увеличивая на разницу. Разобраться с 360 и переходом через 0
+		predAngleZ = msg_Modul2Data.mpu.angleEuler.yaw;				 // Запоминаяем угол поворота Для следующего обсчета
 																		 // dataNode.parsingDriver(msg_Driver2Data);
 	}
 	printf("g_angleMPU = % .3f \n", g_angleMPU);

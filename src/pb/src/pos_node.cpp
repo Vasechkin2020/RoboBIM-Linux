@@ -28,6 +28,7 @@ CKalman kalman11;
 CKalman kalman12;
 CKalman kalman13;
 
+
 int main(int argc, char **argv)
 {
     ROS_INFO("%s -------------------------------------------------------------", NN);
@@ -194,7 +195,6 @@ int main(int argc, char **argv)
             topic.visulStartPose();                  // Отобращение стрелкой где начало стартовой позиции и куда направлен нос платформы
             topic.visualPillarPoint(pillar);         // Отображение места размещения столбов
             topic.visualPoseAngleLaser(laser);       // Отобращение стрелкой где начало и куда смотрят лазеры
-            // topic.visualPublishOdomMode_11();         // Отобращение стрелкой где начало и куда смотрит в Mode11 Это по Калману
             topic.publicationPoseLidarAll(); // Публикуем все варианты расчета позиций mode 0.1.2.3.4
         }
 

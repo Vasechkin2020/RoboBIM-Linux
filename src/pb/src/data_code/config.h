@@ -16,6 +16,8 @@
 #include <pb_msgs/SControl.h>
 #include <pb_msgs/SLed.h>
 
+#include <pb_msgs/SXyz.h>
+
 #include <pb_msgs/Struct_Data2Print.h>
 #include <pb_msgs/Struct_Data2Modul.h>
 #include <pb_msgs/Struct_Data2Driver.h>
@@ -99,7 +101,7 @@ const uint16_t max_size_stuct1 = (size_structura_Data2Driver < size_structura_Dr
 
 const uint16_t size_structura_Data2Modul = sizeof(Data2Modul); // Размер структуры с данными которые получаем
 const uint16_t size_structura_Modul2Data = sizeof(Modul2Data); // Размер структуры с данными которые получаем
-const uint16_t max_size_stuct2 = (size_structura_Data2Modul < size_structura_Modul2Data) ? size_structura_Modul2Data : size_structura_Data2Modul; // Какая из структур больше 212
+const uint16_t max_size_stuct2 = (size_structura_Data2Modul < size_structura_Modul2Data) ? size_structura_Modul2Data : size_structura_Data2Modul; // Какая из структур больше 236
 
 const uint16_t size_structura_Data2Print = sizeof(Data2Print); // Размер структуры с данными которые получаем
 const uint16_t size_structura_Print2Data = sizeof(Print2Data); // Размер структуры с данными которые получаем
@@ -113,7 +115,7 @@ unsigned char bufferDriver[SIZE_BUFF_DRIVER]; // Буфер в 1 байт в к�
 #define SIZE_BUFF_PRINT 24            // Размер буфера, стараться делать кратно 32
 unsigned char bufferPrint[SIZE_BUFF_PRINT]; // Буфер в 1 байт в который пишем передаваемый байт и в котором оказывется принятый байт
 
-#define SIZE_BUFF_MODUL 212            // Размер буфера, стараться делать кратно 32 для ESP, для STM непонятно пока
+#define SIZE_BUFF_MODUL 236            // Размер буфера, стараться делать кратно 32 для ESP, для STM непонятно пока
 unsigned char bufferModul[SIZE_BUFF_MODUL]; // Буфер в 1 байт в который пишем передаваемый байт и в котором оказывется принятый байт
 //---------------------------------------------------------------------------------------
 
