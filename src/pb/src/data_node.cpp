@@ -139,13 +139,13 @@ int main(int argc, char **argv)
         // printf("Data2Driver.controlL = %f Data2Driver.controlR= %f \n \n",Data2Driver.control.speedL,Data2Driver.control.speedR);
         controlLed(); // Функция управления несколькими светодиодами которые отведены для прямого управления нодой data
 
-        // Data2Modul.controlMotor.mode = 1; // Ручной вариант проверка
-        // Data2Modul.controlLaser.mode = 1; // Ручной вариант проверка
+        Data2Modul.controlMotor.mode = 1; // Ручной вариант проверка
+        Data2Modul.controlLaser.mode = 1; // Ручной вариант проверка
 
-        // Data2Modul.controlMotor.angle[0] = 67.6; //
-        // Data2Modul.controlMotor.angle[1] = 34.6;     //
-        // Data2Modul.controlMotor.angle[2] = 143.6;      //
-        // Data2Modul.controlMotor.angle[3] = 105.7;     //
+        Data2Modul.controlMotor.angle[0] = 67.6; //
+        Data2Modul.controlMotor.angle[1] = 34.6;     //
+        Data2Modul.controlMotor.angle[2] = 143.6;      //
+        Data2Modul.controlMotor.angle[3] = 105.7;     //
 
         // Data2Modul.controlMotor.angle[1] = 42.5;     //
 

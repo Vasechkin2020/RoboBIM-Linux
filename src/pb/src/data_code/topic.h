@@ -16,7 +16,7 @@ public:
 	void processing_Modul2Data();  // Обработка полученных данных и копирование их для публикации в топике
 	void processing_Print2Data();  // Обработка полученных данных и копирование их для публикации в топике
 	void processing_Driver2Data(); // Обработка полученных данных и копирование их для публикации в топике
-	
+
 	void processing_SetSpeed(SControl &control_); // Копирование данных скорости в структуру и публикация в топик
 
 private:
@@ -31,11 +31,11 @@ private:
 	pb_msgs::Struct_Info_SPI spi_msg;													   // Это структуры которые мы заполняем и потом публикуем
 	ros::Publisher publish_Spi = _nh.advertise<pb_msgs::Struct_Info_SPI>("pbData/Spi", 3); // Это мы создаем публикатор и определяем название топика в рос
 
-	pb_msgs::SSetSpeed setSpeed_msg;													   // Это структуры которые мы заполняем и потом публикуем
+	pb_msgs::SSetSpeed setSpeed_msg;													 // Это структуры которые мы заполняем и потом публикуем
 	ros::Publisher publish_Speed = _nh.advertise<pb_msgs::SSetSpeed>("pbData/Speed", 3); // Это мы создаем публикатор и определяем название топика в рос
 
-    // ros::Publisher pub_JoyData = _nh.advertise<pb_msgs::SJoy>("pbInfo/JoyData", 16);                       // Это мы публикуем структуру которую сформировали по данным с джойстика
-	
+	// ros::Publisher pub_JoyData = _nh.advertise<pb_msgs::SJoy>("pbInfo/JoyData", 16);                       // Это мы публикуем структуру которую сформировали по данным с джойстика
+
 	ros::Time ros_time; // Время ROS
 };
 
@@ -51,7 +51,6 @@ CTopic::~CTopic()
 // {
 //     pub_ControlDriver.publish(data_);
 // }
-
 
 // Сбор данных по результатам обмена по шине SPI по обоим контроллерам
 void CTopic::processingSPI()
@@ -120,6 +119,17 @@ void CTopic::processing_Modul2Data()
 	Modul2Data_msg.header.stamp = ros::Time::now();
 	Modul2Data_msg.id = Modul2Data.id;
 	Modul2Data_msg.pinMotorEn = Modul2Data.pinMotorEn; // Стутус пина управления драйвером моторов, включен драйвер или нет
+	
+	Modul2Data_msg.mpu.status = Modul2Data.bno055.status;
+	Modul2Data_msg.mpu.rate = Modul2Data.bno055.rate;
+	
+	Modul2Data_msg.mpu.angleEuler.roll = Modul2Data.bno055.angleEuler.x;
+	Modul2Data_msg.mpu.angleEuler.pitch = Modul2Data.bno055.angleEuler.y;
+	Modul2Data_msg.mpu.angleEuler.yaw = Modul2Data.bno055.angleEuler.z;
+	
+	Modul2Data_msg.mpu.linear.x = Modul2Data.bno055.linear.x;
+	Modul2Data_msg.mpu.linear.y = Modul2Data.bno055.linear.y;
+	Modul2Data_msg.mpu.linear.z = Modul2Data.bno055.linear.z;
 
 	for (int i = 0; i < 4; i++)
 	{
@@ -133,6 +143,7 @@ void CTopic::processing_Modul2Data()
 		Modul2Data_msg.laser[i].angle = Modul2Data.laser[i].angle;						  //
 		Modul2Data_msg.laser[i].time = Modul2Data.laser[i].time;						  //
 		Modul2Data_msg.laser[i].numPillar = Modul2Data.laser[i].numPillar;				  //
+		Modul2Data_msg.laser[i].rate = Modul2Data.laser[i].rate;						  //
 
 		Modul2Data_msg.micric[i] = Modul2Data.micric[i]; // Состояние концевиков
 	}
