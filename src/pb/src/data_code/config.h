@@ -40,7 +40,7 @@ sensor_msgs::Joy msg_joy;                      // Переменная в кот
 #define PRINTBIM23
 // #define PRINTBIM25
 
-#define RATE 100   // Частота обмена с нижним уровнев в Герц
+#define RATE 100 // Частота обмена с нижним уровнев в Герц
 //---------------------------------------------------------------------------------------
 // Посмотреть пины командой <gpio readall> Пины имеют соответсвие между BMC и wiringpi
 #define PIN_LED_BLUE 4 // Мигает в цикле что работает
@@ -66,12 +66,12 @@ bool rezModul = false;
 bool rezPrint = false;
 bool rezData = false;
 
-#ifdef PRINTBIM23
-float offSetLaser[4]{0.002, 0.006, 0.002, 0.005}; // Поправочные значения для датчиков расстояния на модуле в метрах
-#endif
-#ifdef PRINTBIM25
-float offSetLaser[4]{0.011, 0.005, 0.005, 0.006}; // Поправочные значения для датчиков расстояния на модуле
-#endif
+// #ifdef PRINTBIM23
+// c // Поправочные значения для датчиков расстояния на модуле в метрах
+// #endif
+// #ifdef PRINTBIM25
+// float offSetLaser[4]{0.011, 0.005, 0.005, 0.006}; // Поправочные значения для датчиков расстояния на модуле
+// #endif
 
 int data_driver_all = 0;
 int data_driver_bed = 0;
@@ -94,30 +94,34 @@ Struct_Driver2Data Driver2Data; // Тело робота. тут все пере
 Struct_Modul2Data Modul2Data;
 Struct_Print2Data Print2Data; // Экземпляр структуры принимаемых данных
 
-
-const uint16_t size_structura_Data2Driver = sizeof(Data2Driver); // Размер структуры с данными которые получаем
-const uint16_t size_structura_Driver2Data = sizeof(Driver2Data); // Размер структуры с данными которые получаем
+const uint16_t size_structura_Data2Driver = sizeof(Data2Driver);                                                                                      // Размер структуры с данными которые получаем
+const uint16_t size_structura_Driver2Data = sizeof(Driver2Data);                                                                                      // Размер структуры с данными которые получаем
 const uint16_t max_size_stuct1 = (size_structura_Data2Driver < size_structura_Driver2Data) ? size_structura_Driver2Data : size_structura_Data2Driver; // Какая из структур больше 80
 
-const uint16_t size_structura_Data2Modul = sizeof(Data2Modul); // Размер структуры с данными которые получаем
-const uint16_t size_structura_Modul2Data = sizeof(Modul2Data); // Размер структуры с данными которые получаем
+const uint16_t size_structura_Data2Modul = sizeof(Data2Modul);                                                                                    // Размер структуры с данными которые получаем
+const uint16_t size_structura_Modul2Data = sizeof(Modul2Data);                                                                                    // Размер структуры с данными которые получаем
 const uint16_t max_size_stuct2 = (size_structura_Data2Modul < size_structura_Modul2Data) ? size_structura_Modul2Data : size_structura_Data2Modul; // Какая из структур больше 236
 
-const uint16_t size_structura_Data2Print = sizeof(Data2Print); // Размер структуры с данными которые получаем
-const uint16_t size_structura_Print2Data = sizeof(Print2Data); // Размер структуры с данными которые получаем
+const uint16_t size_structura_Data2Print = sizeof(Data2Print);                                                                                    // Размер структуры с данными которые получаем
+const uint16_t size_structura_Print2Data = sizeof(Print2Data);                                                                                    // Размер структуры с данными которые получаем
 const uint16_t max_size_stuct3 = (size_structura_Data2Print < size_structura_Print2Data) ? size_structura_Print2Data : size_structura_Data2Print; // Какая из структур больше 24
 
 // ПЕРЕДЕЛАТЬ НА БУФЕРЫ РАЗНОГО РАЗМЕРА - СДЕЛАЛ !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-//#define SIZE_BUFF 192            // Размер буфера, стараться делать кратно 32
-#define SIZE_BUFF_DRIVER 96            // Размер буфера, стараться делать кратно 32
+// #define SIZE_BUFF 192            // Размер буфера, стараться делать кратно 32
+#define SIZE_BUFF_DRIVER 96                   // Размер буфера, стараться делать кратно 32
 unsigned char bufferDriver[SIZE_BUFF_DRIVER]; // Буфер в 1 байт в который пишем передаваемый байт и в котором оказывется принятый байт
 
-#define SIZE_BUFF_PRINT 32            // Размер буфера, стараться делать кратно 32
+#define SIZE_BUFF_PRINT 32                  // Размер буфера, стараться делать кратно 32
 unsigned char bufferPrint[SIZE_BUFF_PRINT]; // Буфер в 1 байт в который пишем передаваемый байт и в котором оказывется принятый байт
 
-#define SIZE_BUFF_MODUL 236            // Размер буфера, стараться делать кратно 32 для ESP, для STM непонятно пока
+#define SIZE_BUFF_MODUL 236                 // Размер буфера, стараться делать кратно 32 для ESP, для STM непонятно пока
 unsigned char bufferModul[SIZE_BUFF_MODUL]; // Буфер в 1 байт в который пишем передаваемый байт и в котором оказывется принятый байт
-//---------------------------------------------------------------------------------------
+                                            //---------------------------------------------------------------------------------------
+
+float offSetLaser[4]{0, 0, 0, 0};
+float offSetLaserL = 0;
+float offSetLaserR = 0;
+float offSetUzi = 0;
 
 STest Modul2Test;
 STest Test2Modul;

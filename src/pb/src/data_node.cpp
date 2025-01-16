@@ -23,12 +23,25 @@ int main(int argc, char **argv)
     CTopic topic; // Экземпляр класса для всех публикуемых топиков
     ros::Rate r(RATE);
 
-    ros::Subscriber sub_ControlModul = nh.subscribe("pbPos/ControlModul", 16, callback_ControlModul, ros::TransportHints().tcpNoDelay(true));       // Это мы подписываемся на то что публигует Main для Modul
+    ros::Subscriber sub_ControlModul = nh.subscribe("pbPos/ControlModul", 16, callback_ControlModul, ros::TransportHints().tcpNoDelay(true));        // Это мы подписываемся на то что публигует Main для Modul
     ros::Subscriber sub_ControlPrint = nh.subscribe("pbMain/ControlPrint", 16, callback_ControlPrint, ros::TransportHints().tcpNoDelay(true));       // Это мы подписываемся на то что публигует Main для Print
     ros::Subscriber sub_ControlDriver = nh.subscribe("pbControl/ControlDriver", 16, callback_ControlDriver, ros::TransportHints().tcpNoDelay(true)); // Это мы подписываемся на то что публигует Main для Data
     ros::Subscriber subscriber_Joy = nh.subscribe("joy", 16, callback_Joy);                                                                          // Это мы подписываемся на то что публикует нода джойстика
 
     // sub_low_state = _nh.subscribe("/low_state", 1, &IOInterface::_lowStateCallback, this, ros::TransportHints().tcpNoDelay(true)); // От Максима пример
+//*****************
+    ros::NodeHandle nh_private("~");
+
+    // Имя можно с палкой или без, смотря как в лаунч файле параметры обявлены. связано с видимостью глобальной или локальной. относительным поиском переменной как сказал Максим
+    nh_private.getParam("laser0", offSetLaser[0]);
+    nh_private.getParam("laser1", offSetLaser[1]);
+    nh_private.getParam("laser2", offSetLaser[2]);
+    nh_private.getParam("laser3", offSetLaser[3]);
+
+    nh_private.getParam("laserL", offSetLaserL);
+    nh_private.getParam("uzi", offSetUzi);
+    nh_private.getParam("laserR", offSetLaserR);
+//*****************
 
     int rez = wiringPiSetup(); // Инициализация библиотеки
     // //rez = wiringPiSetupGpio(); // При такой инициализациипины имеют другие номера, как изначально в распбери ПИ.
@@ -74,7 +87,6 @@ int main(int argc, char **argv)
 
     uint64_t timeWork = millis(); // Время работы ноды
     ROS_INFO("End Setup ver -5555-\n");
-    
 
     while (ros::ok())
     {
@@ -142,10 +154,10 @@ int main(int argc, char **argv)
         Data2Modul.controlMotor.mode = 1; // Ручной вариант проверка
         Data2Modul.controlLaser.mode = 1; // Ручной вариант проверка
 
-        Data2Modul.controlMotor.angle[0] = 67.6; //
-        Data2Modul.controlMotor.angle[1] = 34.6;     //
-        Data2Modul.controlMotor.angle[2] = 143.6;      //
-        Data2Modul.controlMotor.angle[3] = 105.7;     //
+        Data2Modul.controlMotor.angle[0] = 67.6;  //
+        Data2Modul.controlMotor.angle[1] = 34.6;  //
+        Data2Modul.controlMotor.angle[2] = 143.6; //
+        Data2Modul.controlMotor.angle[3] = 105.7; //
 
         // Data2Modul.controlMotor.angle[1] = 42.5;     //
 

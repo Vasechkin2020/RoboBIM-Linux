@@ -1,0 +1,15 @@
+<launch>
+
+  <node pkg="pb" type="data_node" name="data_node" output ="screen">
+
+    <param name="laser0" type="double" value="2.0" />
+    <param name="laser1" type="double" value="2.0" />
+    <param name="laser2" type="double" value="2.0" />
+    <param name="laser3" type="double" value="2.0" />
+
+    <param name="laserL" type="double" value="90.0" />
+    <param name="uzi" type="double" value="0.0" />
+    <param name="laserR" type="double" value="90.0" />
+
+  </node>
+</launch> 
