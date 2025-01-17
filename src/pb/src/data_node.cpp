@@ -76,8 +76,8 @@ int main(int argc, char **argv)
     Data2Modul.controlMotor.mode = 9;                      // Ручной вариант проверка
     Data2Modul.controlLaser.mode = 0;                      // Ручной вариант проверка
     Data2Modul.cheksum = measureCheksum(Data2Modul);       // Считаем контрольную сумму отправляемой структуры// тут нужно посчитать контрольную сумму структуры
-    sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
-    ros::Duration(10).sleep();                             // Подождем пока все обьявится и инициализируется внутри ROS
+    //sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
+    // ros::Duration(10).sleep();                             // Подождем пока все обьявится и инициализируется внутри ROS
 
     // Data2Modul.id++;                                       //= 0x1F1F1F1F;
     // Data2Modul.controlMotor.mode = 1;                      // Ручной вариант проверка
@@ -135,8 +135,8 @@ int main(int argc, char **argv)
             g_dreamSpeed.speedL = joy._ControlDriver.control.speedL; // Можно упростить и сделать без переменной g_dreamSpeed
             g_dreamSpeed.speedR = joy._ControlDriver.control.speedR;
 
-            Data2Print.controlPrint.status = joy._controlPrint.status; //
-            Data2Print.controlPrint.mode = joy._controlPrint.mode;
+            // Data2Print.controlPrint.status = joy._controlPrint.status; // Было раньше печать по джойстику
+            // Data2Print.controlPrint.mode = joy._controlPrint.mode;
 
             // pub_JoyData.publish(joy._joy2Head); // Публикация данных разобранных из джойстика
             // topic.publicationControlDriver(joy._ControlDriver); // Публикация данных по управлению Driver (для отладки)
@@ -196,13 +196,13 @@ int main(int argc, char **argv)
             topic.processing_Modul2Data(); // Обрабатываем данные
         }
         //----------------------------
-        // Data2Print.id++;                                                  //= 0x1F1F1F1F;
-        // Data2Print.cheksum = measureCheksum(Data2Print);                  // Считаем контрольную сумму отправляемой структуры// тут нужно посчитать контрольную сумму структуры
-        // rezPrint = sendData2Print(SPI_CHANNAL_0, Print2Data, Data2Print); ////  Отправляем данные на нижний уровень
-        // if (rezPrint)                                                     // Если пришли хорошие данные то обрабатываем их и публикуем данные в ROS
-        // {
-        //     topic.processing_Print2Data(); // Обработанные данные записываем их в структуру для публикации в топике и публикуем
-        // }
+        Data2Print.id++;                                                  //= 0x1F1F1F1F;
+        Data2Print.cheksum = measureCheksum(Data2Print);                  // Считаем контрольную сумму отправляемой структуры// тут нужно посчитать контрольную сумму структуры
+        rezPrint = sendData2Print(SPI_CHANNAL_0, Print2Data, Data2Print); ////  Отправляем данные на нижний уровень
+        if (rezPrint)                                                     // Если пришли хорошие данные то обрабатываем их и публикуем данные в ROS
+        {
+            topic.processing_Print2Data(); // Обработанные данные записываем их в структуру для публикации в топике и публикуем
+        }
         //----------------------------
         Data2Driver.id++;                                                   //= 0x1F1F1F1F; Считаем каждый раз сколько отправляем, даже если не было изменений в данных ни от джойстика ни от топика от Head
         Data2Driver.cheksum = measureCheksum(Data2Driver);                  // Пересчитываем  контрольную сумму отправляемой структуры
@@ -223,7 +223,7 @@ int main(int argc, char **argv)
     Data2Modul.controlMotor.mode = 0;                      // Ручной вариант проверка
     Data2Modul.controlLaser.mode = 0;                      // Ручной вариант проверка
     Data2Modul.cheksum = measureCheksum(Data2Modul);       // Считаем контрольную сумму отправляемой структуры// тут нужно посчитать контрольную сумму структуры
-    sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
+    //sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
     printf("Data Node STOP \n");
     return 0;
 }

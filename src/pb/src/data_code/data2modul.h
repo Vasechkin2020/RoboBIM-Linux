@@ -124,7 +124,7 @@ bool sendData2Modul(int channel_, Struct_Modul2Data &structura_receive_, Struct_
 	if (cheksum_receive != structura_receive_temp.cheksum || structura_receive_temp.cheksum == 0) // Если наша чек сумма совпадает с последним байтом где чексума переданных данных
 	{
 		data_modul_bed++;
-		printf("Data Err \n");
+		printf("Data Err in chek= %#x local chek = %#x\n", structura_receive_temp.cheksum, cheksum_receive);
 		return false;
 	}
 	else // Все хорошо возвращаем Ок
