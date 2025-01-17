@@ -33,12 +33,11 @@ bool sendData2Print(int channel_, Struct_Print2Data &structura_receive_, Struct_
 	Struct_Print2Data structura_receive_temp;									   // Временная структура, проверить правильные ли пришли данные
 	structura_receive_temp = *copy_buf_master_receive;							   // Копируем из этой перемнной данные в мою структуру
 	uint32_t cheksum_receive = measureCheksum(structura_receive_temp);			   // Считаем контрольную сумму пришедшей структуры
-	
+
 	// for (int i = 0; i < sizeof(bufferPrint); i++)
 	// {
 	// 	printf(" %#x", bufferPrint[i]);
 	// }
-
 
 	if (cheksum_receive != structura_receive_temp.cheksum || structura_receive_temp.cheksum == 0) // Если наша чек сумма совпадает с последним байтом где чексума переданных данных
 	{
@@ -58,14 +57,17 @@ void collect_Data2Print(int data_)
 	if (data_ == 1)
 	{
 		// printf("collect_Data2Print in... \n");
-		Data2Print.controlPrint.status = msg_ControlPrint.controlPrint.status; //
-		Data2Print.controlPrint.mode = msg_ControlPrint.controlPrint.mode;	   //
-		Data2Print.controlPrint.intensity = 2;								   //
-		// Data2Print.controlPrint.speed = (Data2Driver.control.speedL + 0.1);// + Data2Driver.control.speedR) * 0.5; // Так как у левого колеса картридж находится расположен и не можеьт быть н
-		Data2Print.controlPrint.speed = 0.8; //
+		Data2Print.controlPrint.status = msg_ControlPrint.controlPrint.status;		 //
+		Data2Print.controlPrint.mode = msg_ControlPrint.controlPrint.mode;			 //
+		Data2Print.controlPrint.intensity = msg_ControlPrint.controlPrint.intensity; //
+		Data2Print.controlPrint.speed = msg_ControlPrint.controlPrint.speed;		 //
 	}
 	else
 	{
+		Data2Print.controlPrint.status = 0;	   //
+		Data2Print.controlPrint.mode = 0;	   //
+		Data2Print.controlPrint.intensity = 0; //
+		Data2Print.controlPrint.speed = 0;
 	}
 }
 

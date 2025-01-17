@@ -186,11 +186,11 @@ target_link_libraries(pos_node ${catkin_LIBRARIES} -lwiringPi -lpthread)
 add_executable(control_node src/control_node.cpp)
 target_link_libraries(control_node ${catkin_LIBRARIES} -lwiringPi -lpthread)
 
+add_executable(write_node src/write_node.cpp)
+target_link_libraries(write_node ${catkin_LIBRARIES} -lwiringPi -lpthread)
+
 add_executable(pillar_node src/pillar_node.cpp)
 target_link_libraries(pillar_node ${catkin_LIBRARIES})
 
 add_executable(startPose_node src/startPose_node.cpp)
 target_link_libraries(startPose_node ${catkin_LIBRARIES})
-
-#add_executable(route_node src/route_node.cpp)
-#target_link_libraries(route_node ${catkin_LIBRARIES})

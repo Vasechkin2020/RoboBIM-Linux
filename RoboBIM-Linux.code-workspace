@@ -25,7 +25,10 @@
 			"*.tcc": "cpp",
 			"complex": "cpp",
 			"thread": "cpp",
-			"list": "cpp"
+			"list": "cpp",
+			"array": "cpp",
+			"string": "cpp",
+			"string_view": "cpp"
 		},
 		"ros.distro": "melodic"
 	}
