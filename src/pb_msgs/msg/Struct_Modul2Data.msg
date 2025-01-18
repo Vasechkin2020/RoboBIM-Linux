@@ -1,6 +1,5 @@
 std_msgs/Header header
 uint32  id             # id сообщения пришедшее от Modul
-SFirmwareModul firmware # Прошивка
 uint32 pinMotorEn      # Стутус пина управления драйвером моторов, включен драйвер или нет
 SMotorSend[4] motor     # Структура мотора
 SLaserSend[4] laser     # Структура дальномеров

@@ -24,6 +24,7 @@
 
 #include <pb_msgs/Struct_Driver2Data.h>
 #include <pb_msgs/Struct_Modul2Data.h>
+#include <pb_msgs/Struct_Print2Data.h>
 
 #include <pb_msgs/Struct_Info_SPI.h>
 #include <pb_msgs/SSetSpeed.h>
@@ -111,7 +112,7 @@ const uint16_t max_size_stuct3 = (size_structura_Data2Print < size_structura_Pri
 #define SIZE_BUFF_DRIVER 96                   // Размер буфера, стараться делать кратно 32
 unsigned char bufferDriver[SIZE_BUFF_DRIVER]; // Буфер в 1 байт в который пишем передаваемый байт и в котором оказывется принятый байт
 
-#define SIZE_BUFF_PRINT 24                  // Размер буфера, стараться делать кратно 32
+#define SIZE_BUFF_PRINT 32                  // Размер буфера, стараться делать кратно 32
 unsigned char bufferPrint[SIZE_BUFF_PRINT]; // Буфер в 1 байт в который пишем передаваемый байт и в котором оказывется принятый байт
 
 #define SIZE_BUFF_MODUL 236                 // Размер буфера, стараться делать кратно 32 для ESP, для STM непонятно пока

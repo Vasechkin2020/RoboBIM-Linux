@@ -174,12 +174,21 @@ struct Struct_Data2Print
         uint8_t test;  // Вариант использования отладки для вывода в printf
     };
 
+    // Структура состояния мотора GIM4305 4310
+    struct SGim43
+    {
+        float position;
+        float velocity;
+        float torque;
+    };
+
     // Структура в которой все главные переменные передаюся на высокий уровень от Print к Data
     struct Struct_Print2Data
     {
-        uint32_t id;               // id команды
+        uint32_t id;                    // id команды
         struct SFirmwarePrint firmware; // Версия прошики и использованного оборудования
-        struct SSpi spi;           // Структура по состоянию обмена по шине SPI
+        struct SGim43 gim43;
+        struct SSpi spi;                // Структура по состоянию обмена по шине SPI
 
         uint32_t cheksum; // Контрольная сумма данных в структуре
     };

@@ -198,7 +198,7 @@ int main(int argc, char **argv)
         //----------------------------
         Data2Print.id++;                                                  //= 0x1F1F1F1F;
         Data2Print.cheksum = measureCheksum(Data2Print);                  // Считаем контрольную сумму отправляемой структуры// тут нужно посчитать контрольную сумму структуры
-        rezPrint = sendData2Print(SPI_CHANNAL_0, Print2Data, Data2Print); ////  Отправляем данные на нижний уровень
+        rezPrint = sendData2Print(SPI_CHANNAL_0, Print2Data, Data2Print); //  Отправляем данные на нижний уровень
         if (rezPrint)                                                     // Если пришли хорошие данные то обрабатываем их и публикуем данные в ROS
         {
             topic.processing_Print2Data(); // Обработанные данные записываем их в структуру для публикации в топике и публикуем

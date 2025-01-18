@@ -28,6 +28,9 @@ private:
 	pb_msgs::Struct_Modul2Data Modul2Data_msg;														  // Это структуры которые мы заполняем и потом публикуем
 	ros::Publisher publish_Modul2Data = _nh.advertise<pb_msgs::Struct_Modul2Data>("pbData/Modul", 3); // Это мы создаем публикатор и определяем название топика в рос
 
+	pb_msgs::Struct_Print2Data Print2Data_msg;														  // Это структуры которые мы заполняем и потом публикуем
+	ros::Publisher publish_Print2Data = _nh.advertise<pb_msgs::Struct_Print2Data>("pbData/Print", 3); // Это мы создаем публикатор и определяем название топика в рос
+
 	pb_msgs::Struct_Info_SPI spi_msg;													   // Это структуры которые мы заполняем и потом публикуем
 	ros::Publisher publish_Spi = _nh.advertise<pb_msgs::Struct_Info_SPI>("pbData/Spi", 3); // Это мы создаем публикатор и определяем название топика в рос
 
@@ -153,7 +156,11 @@ void CTopic::processing_Modul2Data()
 // Обработка полученных данных и копирование их для публикации в топике
 void CTopic::processing_Print2Data()
 {
-	// Нечего публиковать SPI публикую отдельно
+	Print2Data_msg.id = Print2Data.id;
+	Print2Data_msg.gim43.position = Print2Data.gim43.position;
+	Print2Data_msg.gim43.velocity = Print2Data.gim43.velocity;
+	Print2Data_msg.gim43.torque = Print2Data.gim43.torque;
+	publish_Print2Data.publish(Print2Data_msg); // Публикация полученных данных
 }
 
 #endif

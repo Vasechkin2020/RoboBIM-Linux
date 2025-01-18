@@ -68,8 +68,10 @@ add_message_files(
   #-------------------------------------------------------
   SJoy.msg
   
-  SFirmwareModul.msg
   SXyz.msg
+  
+  SGim43.msg
+  Struct_Print2Data.msg
   
   #Struct_Car.msg
   Struct_Odom.msg
