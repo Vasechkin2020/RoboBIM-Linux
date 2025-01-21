@@ -24,6 +24,9 @@ int main(int argc, char **argv)
     while (ros::ok())
     {
         ros::spinOnce(); // Опрашиваем ядро ROS и по этой команде наши срабатывают колбеки. Нужно только для подписки на топики
+
+        
+
         topic.publicationWrite2Data();
 
         if (timeMil < millis())

@@ -57,10 +57,13 @@ void collect_Data2Print(int data_)
 	if (data_ == 1)
 	{
 		// printf("collect_Data2Print in... \n");
-		Data2Print.controlPrint.status = msg_ControlPrint.controlPrint.status;		 //
 		Data2Print.controlPrint.mode = msg_ControlPrint.controlPrint.mode;			 //
+		Data2Print.controlPrint.status = msg_ControlPrint.controlPrint.status;		 //
 		Data2Print.controlPrint.intensity = msg_ControlPrint.controlPrint.intensity; //
 		Data2Print.controlPrint.speed = msg_ControlPrint.controlPrint.speed;		 //
+		Data2Print.controlPrint.position = msg_ControlPrint.controlPrint.position;	 //
+		Data2Print.controlPrint.velocity = msg_ControlPrint.controlPrint.velocity;	 //
+		Data2Print.controlPrint.torque = msg_ControlPrint.controlPrint.torque;		 //
 	}
 	else
 	{
@@ -68,6 +71,9 @@ void collect_Data2Print(int data_)
 		Data2Print.controlPrint.mode = 0;	   //
 		Data2Print.controlPrint.intensity = 0; //
 		Data2Print.controlPrint.speed = 0;
+		Data2Print.controlPrint.position = 0;
+		Data2Print.controlPrint.velocity = 0;
+		Data2Print.controlPrint.torque = 0;
 	}
 }
 

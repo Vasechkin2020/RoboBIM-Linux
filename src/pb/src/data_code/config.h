@@ -41,7 +41,7 @@ sensor_msgs::Joy msg_joy;                      // Переменная в кот
 #define PRINTBIM23
 // #define PRINTBIM25
 
-#define RATE 10 // Частота обмена с нижним уровнев в Герц
+#define RATE 3 // Частота обмена с нижним уровнев в Герц
 //---------------------------------------------------------------------------------------
 // Посмотреть пины командой <gpio readall> Пины имеют соответсвие между BMC и wiringpi
 #define PIN_LED_BLUE 4 // Мигает в цикле что работает
@@ -53,8 +53,18 @@ sensor_msgs::Joy msg_joy;                      // Переменная в кот
 //---------------------------------------------------------------------------------------
 #define SPI_CHANNAL_0 0   // Какой из двух каналов инициализируем
 #define SPI_CHANNAL_1 1   // Какой из двух каналов инициализируем
-#define SPI_SPEED 500000 // Скорость работы шины SPI
+#define SPI_SPEED 1000000 // Скорость работы шины SPI
 //---------------------------------------------------------------------------------------
+#define PIN_MODUL_MOSI_2G 7  // Пин на котором сидит чипселекс от SPI к Modul
+#define PIN_MODUL_MISO_3G 1  // Пин на котором сидит чипселекс от SPI к Modul
+#define PIN_MODUL_CLK_4G 0  // Пин на котором сидит чипселекс от SPI к Modul
+
+#define PIN_PRINT_MOSI_1G 6  // Пин на котором сидит чипселекс от SPI к Modul
+#define PIN_PRINT_MISO_4G 30  // Пин на котором сидит чипселекс от SPI к Modul
+#define PIN_PRINT_CLK_3G 31  // Пин на котором сидит чипселекс от SPI к Modul
+
+
+
 
 #define ACCELERATION 0.5 // Метры в секунду в квадрате м/с
 
@@ -112,7 +122,7 @@ const uint16_t max_size_stuct3 = (size_structura_Data2Print < size_structura_Pri
 #define SIZE_BUFF_DRIVER 96                   // Размер буфера, стараться делать кратно 32
 unsigned char bufferDriver[SIZE_BUFF_DRIVER]; // Буфер в 1 байт в который пишем передаваемый байт и в котором оказывется принятый байт
 
-#define SIZE_BUFF_PRINT 32                  // Размер буфера, стараться делать кратно 32
+#define SIZE_BUFF_PRINT 36                  // Размер буфера, стараться делать кратно 32
 unsigned char bufferPrint[SIZE_BUFF_PRINT]; // Буфер в 1 байт в который пишем передаваемый байт и в котором оказывется принятый байт
 
 #define SIZE_BUFF_MODUL 236                 // Размер буфера, стараться делать кратно 32 для ESP, для STM непонятно пока

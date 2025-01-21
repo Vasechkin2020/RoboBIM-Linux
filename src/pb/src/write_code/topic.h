@@ -34,10 +34,13 @@ void CTopic::publicationWrite2Data()
 {
     pb_msgs::Struct_Data2Print data;
     data.id++;
-    data.controlPrint.status = 0;
     data.controlPrint.mode = 0;
+    data.controlPrint.status = 0;
     data.controlPrint.intensity = 0;
     data.controlPrint.speed = 0.33;
+    data.controlPrint.position = 0;
+    data.controlPrint.velocity = 0;
+    data.controlPrint.torque = 0;
     pub_ControlDriver.publish(data);
 }
 

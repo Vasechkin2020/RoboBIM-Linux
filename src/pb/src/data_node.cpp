@@ -29,7 +29,7 @@ int main(int argc, char **argv)
     ros::Subscriber subscriber_Joy = nh.subscribe("joy", 16, callback_Joy);                                                                          // Это мы подписываемся на то что публикует нода джойстика
 
     // sub_low_state = _nh.subscribe("/low_state", 1, &IOInterface::_lowStateCallback, this, ros::TransportHints().tcpNoDelay(true)); // От Максима пример
-//*****************
+    //*****************
     ros::NodeHandle nh_private("~");
 
     // Имя можно с палкой или без, смотря как в лаунч файле параметры обявлены. связано с видимостью глобальной или локальной. относительным поиском переменной как сказал Максим
@@ -41,18 +41,8 @@ int main(int argc, char **argv)
     nh_private.getParam("laserL", offSetLaserL);
     nh_private.getParam("uzi", offSetUzi);
     nh_private.getParam("laserR", offSetLaserR);
-//*****************
-
-    int rez = wiringPiSetup(); // Инициализация библиотеки
-    // //rez = wiringPiSetupGpio(); // При такой инициализациипины имеют другие номера, как изначально в распбери ПИ.
-    pinMode(PIN_SPI_MODUL, OUTPUT);  //
-    pinMode(PIN_SPI_DRIVER, OUTPUT); //
-    pinMode(PIN_SPI_PRINT, OUTPUT);  //
-
-    digitalWrite(PIN_SPI_MODUL, 1);
-    digitalWrite(PIN_SPI_DRIVER, 1);
-    digitalWrite(PIN_SPI_PRINT, 1);
-
+    //*****************
+    init_Gpio();                        // Настройка пинов по номерам wiringpi
     set_PIN_Led();                      // Устанавливаем и обьявляем пины. для вывода анализатора светодиодов и всего прочего
     init_SPI(SPI_CHANNAL_0, SPI_SPEED); // Инициализация нужного канала SPI
     // init_SPI(SPI_CHANNAL_1, SPI_SPEED); // Инициализация нужного канала SPI
@@ -63,7 +53,7 @@ int main(int argc, char **argv)
     last_time = ros::Time::now();
     // double dt = (current_time - last_time).toSec();
 
-    printf("Start test laser... Waiting 10 sec... \n");
+    printf("Start test laser... Waiting 1000 sec... \n");
     ros::Duration(1).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
 
     // Data2Modul.id++;                                       //= 0x1F1F1F1F;
@@ -72,11 +62,11 @@ int main(int argc, char **argv)
     // sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
     // ros::Duration(1).sleep();                      // Подождем пока все обьявится и инициализируется внутри ROS
 
-    Data2Modul.id++;                                       //= 0x1F1F1F1F;
-    Data2Modul.controlMotor.mode = 9;                      // Ручной вариант проверка
-    Data2Modul.controlLaser.mode = 0;                      // Ручной вариант проверка
-    Data2Modul.cheksum = measureCheksum(Data2Modul);       // Считаем контрольную сумму отправляемой структуры// тут нужно посчитать контрольную сумму структуры
-    //sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
+    Data2Modul.id++;                                 //= 0x1F1F1F1F;
+    Data2Modul.controlMotor.mode = 9;                // Ручной вариант проверка
+    Data2Modul.controlLaser.mode = 0;                // Ручной вариант проверка
+    Data2Modul.cheksum = measureCheksum(Data2Modul); // Считаем контрольную сумму отправляемой структуры// тут нужно посчитать контрольную сумму структуры
+    // sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
     // ros::Duration(10).sleep();                             // Подождем пока все обьявится и инициализируется внутри ROS
 
     // Data2Modul.id++;                                       //= 0x1F1F1F1F;
@@ -178,7 +168,7 @@ int main(int argc, char **argv)
                                                          // rezModul = sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
 
         // rezModul = sendData2Modul(SPI_CHANNAL_0, Modul2Test, Test2Modul); // Обмен данными с нижним уровнем
-        //rezModul = sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
+        // rezModul = sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
 
         // uint8_t test[4]{0x01, 0x04, 0xFF, 0xAA};
         // uint8_t test[2]{0x01, 0x02};
@@ -219,11 +209,11 @@ int main(int argc, char **argv)
         r.sleep();             // Интеллектуальная задержка на указанную частоту
     }
     //! isnan(rez_data); // true если nan
-    Data2Modul.id++;                                       //= 0x1F1F1F1F;
-    Data2Modul.controlMotor.mode = 0;                      // Ручной вариант проверка
-    Data2Modul.controlLaser.mode = 0;                      // Ручной вариант проверка
-    Data2Modul.cheksum = measureCheksum(Data2Modul);       // Считаем контрольную сумму отправляемой структуры// тут нужно посчитать контрольную сумму структуры
-    //sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
+    Data2Modul.id++;                                 //= 0x1F1F1F1F;
+    Data2Modul.controlMotor.mode = 0;                // Ручной вариант проверка
+    Data2Modul.controlLaser.mode = 0;                // Ручной вариант проверка
+    Data2Modul.cheksum = measureCheksum(Data2Modul); // Считаем контрольную сумму отправляемой структуры// тут нужно посчитать контрольную сумму структуры
+    // sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
     printf("Data Node STOP \n");
     return 0;
 }

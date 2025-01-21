@@ -6,6 +6,7 @@ uint16_t getMax_size_Struct(uint16_t stru1_, uint16_t stru2_);	 // Функци�
 void set_PIN_Led();												 // Настройка светодиодов
 void Led_Blink(int led_, unsigned long time_);					 // Функция мигания светодиодом в осномном цикле что программа не зависла и работает
 void init_SPI(int channel_, int speed_);						 // Инициализация канала шины SPI
+void init_Gpio();// Настройка пинов
 
 void callback_ControlDriver(const pb_msgs::Struct_Data2Driver &msg); // Обратный вызов при опросе топика Driver
 void callback_ControlModul(const pb_msgs::Struct_Data2Modul &msg);	 // Обратный вызов при опросе топика Modul
@@ -42,6 +43,35 @@ void Led_Blink(int led_, unsigned long time_)
 		printf("+ \n");
 	}
 }
+
+// Настройка пинов
+void init_Gpio()
+{
+    int rez = wiringPiSetup(); // Инициализация библиотеки
+    // //rez = wiringPiSetupGpio(); // При такой инициализациипины имеют другие номера, как изначально в распбери ПИ.
+    pinMode(PIN_SPI_MODUL, OUTPUT);  //
+    pinMode(PIN_SPI_DRIVER, OUTPUT); //
+    pinMode(PIN_SPI_PRINT, OUTPUT);  //
+
+    digitalWrite(PIN_SPI_MODUL, 1);
+    digitalWrite(PIN_SPI_DRIVER, 1);
+    digitalWrite(PIN_SPI_PRINT, 1);
+
+    // pinMode(PIN_MODUL_MOSI_2G, OUTPUT);  //
+    // digitalWrite(PIN_MODUL_MOSI_2G, 1);
+    // pinMode(PIN_MODUL_MISO_3G, OUTPUT);  //
+    // digitalWrite(PIN_MODUL_MISO_3G, 1);
+    // pinMode(PIN_MODUL_CLK_4G, OUTPUT);  //
+    // digitalWrite(PIN_MODUL_CLK_4G, 1);
+
+    // pinMode(PIN_PRINT_MOSI_1G, OUTPUT);  //
+    // digitalWrite(PIN_PRINT_MOSI_1G, 1);
+    // pinMode(PIN_PRINT_MISO_4G, OUTPUT);  //
+    // digitalWrite(PIN_PRINT_MISO_4G, 1);
+    // pinMode(PIN_PRINT_CLK_3G, OUTPUT);  //
+    // digitalWrite(PIN_PRINT_CLK_3G, 1);
+}
+
 // Инициализация канала шины SPI
 void init_SPI(int channel_, int speed_)
 {

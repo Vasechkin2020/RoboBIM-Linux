@@ -59,6 +59,7 @@ CTopic::~CTopic()
 void CTopic::processingSPI()
 {
 	spi_msg.header.stamp = ros::Time::now();
+	spi_msg.header.frame_id = "123";
 
 	spi_msg.ModulData.all = Modul2Data.spi.all; // Собираем для публикации данные о результатах обмена полученных из Modul о том как он принял по SPI данные отправленные Data
 	spi_msg.ModulData.bed = Modul2Data.spi.bed;
