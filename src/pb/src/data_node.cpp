@@ -15,7 +15,7 @@ int main(int argc, char **argv)
 {
 
     ROS_INFO("%s -------------------------------------------------------", NN);
-    ROS_WARN("%s Start Data_Node printBIM(c) 2024 printBIM.com ver. 1.4 ", NN);
+    ROS_WARN("%s *** Data_Node *** ver. 1.4 *** printBIM.ru *** 2025 ***", NN);
     ROS_INFO("%s -------------------------------------------------------", NN);
 
     ros::init(argc, argv, "data_node");

@@ -22,5 +22,37 @@
 // }
 
 
+// Заполнение маасива команд
+void initCommandArray()
+{
+	commandArray[0].mode = 1;
+	commandArray[0].status = 0;
+	commandArray[0].position = 0.05;
+	commandArray[0].velocity = 0.05;
+	commandArray[0].torque = 0.05;
+    commandArray[0].duration = 20000;
+
+	commandArray[1].mode = 1;
+	commandArray[1].status = 1;
+	commandArray[1].position = 0.05;
+	commandArray[1].velocity = 0.05;
+	commandArray[1].torque = 0.05;
+    commandArray[0].duration = 20000;
+    
+    commandArray[2].mode = 1;
+	commandArray[2].status = 0;
+	commandArray[2].position = 0.05;
+	commandArray[2].velocity = 0.05;
+	commandArray[2].torque = 0.05;
+    commandArray[0].duration = 20000;
+
+	commandArray[3].mode = 1;
+	commandArray[3].status = 0;
+	commandArray[3].position = 0.05;
+	commandArray[3].velocity = 0.05;
+	commandArray[3].torque = 0.05;
+    commandArray[0].duration = 20000;
+}
+
 
 #endif

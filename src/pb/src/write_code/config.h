@@ -8,6 +8,7 @@
 #include <wiringPi.h>
 
 #include <pb_msgs/Struct_Data2Print.h>
+#include <pb_msgs/Struct_Print2Data.h>
 
 #include <pb_msgs/SSetSpeed.h>
 #include <list>
@@ -22,7 +23,19 @@
 bool flag_msgPrint = false; // Флаг что пришло сообщение в топик и можно его парсить
 // bool flag_msgSpeed = false;  // Флаг что пришло сообщение в топик и можно его парсить
 
-pb_msgs::Struct_Data2Print Data2Print;      // Структура с командами которую публикуем и которую потом Driver исполняет
+pb_msgs::Struct_Data2Print Write2Data;      // Структура с командами которую публикуем и которую потом Data отправляет на Print  для выполнения
+
+struct SCommand
+{
+  uint32_t mode = 0;      // Текущий режим работы какеи сопла печатют
+  uint32_t status = 0;    // Текущий режим работы 0 - не печатем, 1 печатаем
+  float position;         // Позиция задаваемая по CAN
+  float velocity;         // Скорость задаваемая по CAN
+  float torque;           // Момент задаваемая по CAN
+  uint32_t duration = 0; // Длительность действия команды
+};
+
+SCommand commandArray[16]; // Массив команд
 
 //********************************** Вывод на печать отладочной информации
 

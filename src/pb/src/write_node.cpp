@@ -1,3 +1,5 @@
+
+#include "genStruct.h" // Тут все общие структуры. Истользуются и Data и Main и Head
 #include "write_code/config.h"
 #include "write_code/topic.h" // Файл для функций для формирования топиков в нужном виде и формате
 #include "write_code/code.h"
@@ -16,7 +18,14 @@ int main(int argc, char **argv)
     // ros::Subscriber subscriber_Driver = nh.subscribe<pb_msgs::Struct_Driver2Data>("pbData/Driver", 1000, callback_Driver);
     // ros::Subscriber subscriber_Speed = nh.subscribe<pb_msgs::SSetSpeed>("pbData/Speed", 1000, callback_Speed);
 
+	ros::Publisher subscriber_Print = nh.advertise<pb_msgs::Struct_Data2Print>("pbData/Print", 3); // Это мы создаем публикатор и определяем название топика в рос
+
+    initCommandArray(); // Заполнение массива команд
+    u_int64_t time = millis();
+    u_int64_t timeStart = millis();
     u_int64_t timeMil = millis();
+    bool flagCommand = true; // Флаг можно исполнять каманду
+    int i = 0;
 
     ros::Rate r(RATE);        // Частота в Герцах - задержка
     ros::Duration(1).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
@@ -25,7 +34,33 @@ int main(int argc, char **argv)
     {
         ros::spinOnce(); // Опрашиваем ядро ROS и по этой команде наши срабатывают колбеки. Нужно только для подписки на топики
 
-        
+        if (timeStart + 1000 < millis()) // Задаержка перед началом работы
+        {
+            if (flagCommand)
+            {
+                flagCommand = false;
+                Write2Data.controlPrint.mode = commandArray[i].mode;
+                Write2Data.controlPrint.status = commandArray[i].status;
+                Write2Data.controlPrint.position = commandArray[i].position;
+                Write2Data.controlPrint.velocity = commandArray[i].velocity;
+                Write2Data.controlPrint.torque = commandArray[i].torque;
+
+                time = commandArray[i].duration + millis();
+                printf("commandArray i= %i \n", i);
+            }
+
+            if (time < millis())
+            {
+                flagCommand = true;
+                i++;
+                if (commandArray[i].mode == 3)
+                {
+                    printf("New loop ");
+                    i = 0;
+                }
+                printf("i = %i \n", i);
+            }
+        }
 
         topic.publicationWrite2Data();
 
@@ -34,7 +69,7 @@ int main(int argc, char **argv)
             printf("%u --- \n", millis());
             timeMil = millis() + 1000;
         }
-        r.sleep();                        // Интеллектуальная задержка на указанную частоту
+        r.sleep(); // Интеллектуальная задержка на указанную частоту
     }
     printf("Write_node STOP \n");
     return 0;
