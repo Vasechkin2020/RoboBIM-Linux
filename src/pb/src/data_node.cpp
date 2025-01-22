@@ -12,10 +12,10 @@ CJoy joy(0.5, 0.5); // Обьявляем экземпляр класса в н�
 #include "data_code/code.h"
 
 int main(int argc, char **argv)
-{
+{  
 
     ROS_INFO("%s -------------------------------------------------------", NN);
-    ROS_WARN("%s *** Data_Node *** ver. 1.4 *** printBIM.ru *** 2025 ***", NN);
+    ROS_WARN("%s *** Data_Node *** ver. 1.5 *** printBIM.ru *** 2025 ***", NN);     
     ROS_INFO("%s -------------------------------------------------------", NN);
 
     ros::init(argc, argv, "data_node");

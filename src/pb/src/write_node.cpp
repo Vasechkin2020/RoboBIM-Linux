@@ -29,8 +29,8 @@ int main(int argc, char **argv)
 
     ros::Rate r(RATE);        // Частота в Герцах - задержка
     ros::Duration(1).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
-
-    while (ros::ok())
+   
+    while (ros::ok())   
     {
         ros::spinOnce(); // Опрашиваем ядро ROS и по этой команде наши срабатывают колбеки. Нужно только для подписки на топики
 
@@ -46,7 +46,7 @@ int main(int argc, char **argv)
                 Write2Data.controlPrint.torque = commandArray[i].torque;
 
                 time = commandArray[i].duration + millis();
-                printf("commandArray i= %i \n", i);
+                printf("commandArray i= %i \n", i);    
             }
 
             if (time < millis())
