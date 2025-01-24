@@ -14,9 +14,9 @@ CJoy joy(0.5, 0.5); // Обьявляем экземпляр класса в н�
 int main(int argc, char **argv)
 {  
 
-    ROS_INFO("%s -------------------------------------------------------", NN);
-    ROS_WARN("%s *** Data_Node *** ver. 1.5 *** printBIM.ru *** 2025 ***", NN);     
-    ROS_INFO("%s -------------------------------------------------------", NN);
+    ROS_INFO("%s --------------------------------------------------------", NN);
+    ROS_WARN("%s *** Data_Node *** ver. 1.33 *** printBIM.ru *** 2025 ***", NN);     
+    ROS_INFO("%s --------------------------------------------------------", NN);
 
     ros::init(argc, argv, "data_node");
     ros::NodeHandle nh;
@@ -66,8 +66,8 @@ int main(int argc, char **argv)
     Data2Modul.controlMotor.mode = 9;                // Ручной вариант проверка
     Data2Modul.controlLaser.mode = 0;                // Ручной вариант проверка
     Data2Modul.cheksum = measureCheksum(Data2Modul); // Считаем контрольную сумму отправляемой структуры// тут нужно посчитать контрольную сумму структуры
-    // sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
-    // ros::Duration(10).sleep();                             // Подождем пока все обьявится и инициализируется внутри ROS
+    sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
+    ros::Duration(10).sleep();                             // Подождем пока все обьявится и инициализируется внутри ROS
 
     // Data2Modul.id++;                                       //= 0x1F1F1F1F;
     // Data2Modul.controlMotor.mode = 1;                      // Ручной вариант проверка
@@ -144,17 +144,17 @@ int main(int argc, char **argv)
         Data2Modul.controlMotor.mode = 1; // Ручной вариант проверка
         Data2Modul.controlLaser.mode = 1; // Ручной вариант проверка
 
-        Data2Modul.controlMotor.angle[0] = 67.6;  //
-        Data2Modul.controlMotor.angle[1] = 34.6;  //
-        Data2Modul.controlMotor.angle[2] = 143.6; //
-        Data2Modul.controlMotor.angle[3] = 105.7; //
+        // Data2Modul.controlMotor.angle[0] = 67.6;  //
+        // Data2Modul.controlMotor.angle[1] = 34.6;  //
+        // Data2Modul.controlMotor.angle[2] = 143.6; //
+        // Data2Modul.controlMotor.angle[3] = 105.7; //
 
         // Data2Modul.controlMotor.angle[1] = 42.5;     //
 
-        // Data2Modul.controlMotor.angle[0] = 45;  //
-        // Data2Modul.controlMotor.angle[1] = 135; //
-        // Data2Modul.controlMotor.angle[2] = 45;  //
-        // Data2Modul.controlMotor.angle[3] = 135; //
+        Data2Modul.controlMotor.angle[0] = 45;  //
+        Data2Modul.controlMotor.angle[1] = 135; //
+        Data2Modul.controlMotor.angle[2] = 45;  //
+        Data2Modul.controlMotor.angle[3] = 135; //
 
         // Data2Modul.controlMotor.angle[0] = 135; //
         // Data2Modul.controlMotor.angle[1] = 45; //
@@ -168,7 +168,7 @@ int main(int argc, char **argv)
                                                          // rezModul = sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
 
         // rezModul = sendData2Modul(SPI_CHANNAL_0, Modul2Test, Test2Modul); // Обмен данными с нижним уровнем
-        // rezModul = sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
+        rezModul = sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
 
         // uint8_t test[4]{0x01, 0x04, 0xFF, 0xAA};
         // uint8_t test[2]{0x01, 0x02};
@@ -186,13 +186,13 @@ int main(int argc, char **argv)
             topic.processing_Modul2Data(); // Обрабатываем данные
         }
         //----------------------------
-        Data2Print.id++;                                                  //= 0x1F1F1F1F;
-        Data2Print.cheksum = measureCheksum(Data2Print);                  // Считаем контрольную сумму отправляемой структуры// тут нужно посчитать контрольную сумму структуры
-        rezPrint = sendData2Print(SPI_CHANNAL_0, Print2Data, Data2Print); //  Отправляем данные на нижний уровень
-        if (rezPrint)                                                     // Если пришли хорошие данные то обрабатываем их и публикуем данные в ROS
-        {
-            topic.processing_Print2Data(); // Обработанные данные записываем их в структуру для публикации в топике и публикуем
-        }
+        // Data2Print.id++;                                                  //= 0x1F1F1F1F;
+        // Data2Print.cheksum = measureCheksum(Data2Print);                  // Считаем контрольную сумму отправляемой структуры// тут нужно посчитать контрольную сумму структуры
+        // rezPrint = sendData2Print(SPI_CHANNAL_0, Print2Data, Data2Print); //  Отправляем данные на нижний уровень
+        // if (rezPrint)                                                     // Если пришли хорошие данные то обрабатываем их и публикуем данные в ROS
+        // {
+        //     topic.processing_Print2Data(); // Обработанные данные записываем их в структуру для публикации в топике и публикуем
+        // }
         //----------------------------
         Data2Driver.id++;                                                   //= 0x1F1F1F1F; Считаем каждый раз сколько отправляем, даже если не было изменений в данных ни от джойстика ни от топика от Head
         Data2Driver.cheksum = measureCheksum(Data2Driver);                  // Пересчитываем  контрольную сумму отправляемой структуры
@@ -213,7 +213,7 @@ int main(int argc, char **argv)
     Data2Modul.controlMotor.mode = 0;                // Ручной вариант проверка
     Data2Modul.controlLaser.mode = 0;                // Ручной вариант проверка
     Data2Modul.cheksum = measureCheksum(Data2Modul); // Считаем контрольную сумму отправляемой структуры// тут нужно посчитать контрольную сумму структуры
-    // sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
+    sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
     printf("Data Node STOP \n");
     return 0;
 }
