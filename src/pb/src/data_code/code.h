@@ -2,17 +2,19 @@
 #define CODE_H
 
 //**************************** ОБЬЯВЛЕНИЕ ПРОЦЕДУР **********************************
-uint16_t getMax_size_Struct(uint16_t stru1_, uint16_t stru2_);	 // Функция возращает максимальный размер из 2 структур
-void set_PIN_Led();												 // Настройка светодиодов
-void Led_Blink(int led_, unsigned long time_);					 // Функция мигания светодиодом в осномном цикле что программа не зависла и работает
-void init_SPI(int channel_, int speed_);						 // Инициализация канала шины SPI
-void init_Gpio();// Настройка пинов
+uint16_t getMax_size_Struct(uint16_t stru1_, uint16_t stru2_); // Функция возращает максимальный размер из 2 структур
+void set_PIN_Led();											   // Настройка светодиодов
+void Led_Blink(int led_, unsigned long time_);				   // Функция мигания светодиодом в осномном цикле что программа не зависла и работает
+void init_SPI(int channel_, int speed_);					   // Инициализация канала шины SPI
+void init_Gpio();											   // Настройка пинов
+void setModeModul();										   // Установка режима работы - колибровки модуля на основании переменной из лаунч файла
+void readParam(); // Считывание переменных параметров из лаунч файла при запуске. Там офсеты и режимы работы
 
 void callback_ControlDriver(const pb_msgs::Struct_Data2Driver &msg); // Обратный вызов при опросе топика Driver
 void callback_ControlModul(const pb_msgs::Struct_Data2Modul &msg);	 // Обратный вызов при опросе топика Modul
 void callback_ControlPrint(const pb_msgs::Struct_Data2Print &msg);	 // Обратный вызов при опросе топика Print
-void callback_Joy(sensor_msgs::Joy msg);						 // Функция обраьтного вызова по подпичке на топик джойстика nh.subscribe("joy", 16, callback_Joy);
-void controlAcc(SControl dreamSpeed_); // Функция контроля ускорения
+void callback_Joy(sensor_msgs::Joy msg);							 // Функция обраьтного вызова по подпичке на топик джойстика nh.subscribe("joy", 16, callback_Joy);
+void controlAcc(SControl dreamSpeed_);								 // Функция контроля ускорения
 
 SControl speedToRps(SControl speed_); // Конвертация скорости из метров в секунду в обороты в секунду для передачи на нижний уровень
 
@@ -47,29 +49,29 @@ void Led_Blink(int led_, unsigned long time_)
 // Настройка пинов
 void init_Gpio()
 {
-    int rez = wiringPiSetup(); // Инициализация библиотеки
-    // //rez = wiringPiSetupGpio(); // При такой инициализациипины имеют другие номера, как изначально в распбери ПИ.
-    pinMode(PIN_SPI_MODUL, OUTPUT);  //
-    pinMode(PIN_SPI_DRIVER, OUTPUT); //
-    pinMode(PIN_SPI_PRINT, OUTPUT);  //
+	int rez = wiringPiSetup(); // Инициализация библиотеки
+	// //rez = wiringPiSetupGpio(); // При такой инициализациипины имеют другие номера, как изначально в распбери ПИ.
+	pinMode(PIN_SPI_MODUL, OUTPUT);	 //
+	pinMode(PIN_SPI_DRIVER, OUTPUT); //
+	pinMode(PIN_SPI_PRINT, OUTPUT);	 //
 
-    digitalWrite(PIN_SPI_MODUL, 1);
-    digitalWrite(PIN_SPI_DRIVER, 1);
-    digitalWrite(PIN_SPI_PRINT, 1);
+	digitalWrite(PIN_SPI_MODUL, 1);
+	digitalWrite(PIN_SPI_DRIVER, 1);
+	digitalWrite(PIN_SPI_PRINT, 1);
 
-    // pinMode(PIN_MODUL_MOSI_2G, OUTPUT);  //
-    // digitalWrite(PIN_MODUL_MOSI_2G, 1);
-    // pinMode(PIN_MODUL_MISO_3G, OUTPUT);  //
-    // digitalWrite(PIN_MODUL_MISO_3G, 1);
-    // pinMode(PIN_MODUL_CLK_4G, OUTPUT);  //
-    // digitalWrite(PIN_MODUL_CLK_4G, 1);
+	// pinMode(PIN_MODUL_MOSI_2G, OUTPUT);  //
+	// digitalWrite(PIN_MODUL_MOSI_2G, 1);
+	// pinMode(PIN_MODUL_MISO_3G, OUTPUT);  //
+	// digitalWrite(PIN_MODUL_MISO_3G, 1);
+	// pinMode(PIN_MODUL_CLK_4G, OUTPUT);  //
+	// digitalWrite(PIN_MODUL_CLK_4G, 1);
 
-    // pinMode(PIN_PRINT_MOSI_1G, OUTPUT);  //
-    // digitalWrite(PIN_PRINT_MOSI_1G, 1);
-    // pinMode(PIN_PRINT_MISO_4G, OUTPUT);  //
-    // digitalWrite(PIN_PRINT_MISO_4G, 1);
-    // pinMode(PIN_PRINT_CLK_3G, OUTPUT);  //
-    // digitalWrite(PIN_PRINT_CLK_3G, 1);
+	// pinMode(PIN_PRINT_MOSI_1G, OUTPUT);  //
+	// digitalWrite(PIN_PRINT_MOSI_1G, 1);
+	// pinMode(PIN_PRINT_MISO_4G, OUTPUT);  //
+	// digitalWrite(PIN_PRINT_MISO_4G, 1);
+	// pinMode(PIN_PRINT_CLK_3G, OUTPUT);  //
+	// digitalWrite(PIN_PRINT_CLK_3G, 1);
 }
 
 // Инициализация канала шины SPI
@@ -110,7 +112,7 @@ void callback_ControlModul(const pb_msgs::Struct_Data2Modul &msg)
 	timeSpiModul = millis();
 	msg_ControlModul = msg; // Копируем структуру в глобальную переменную для дальнейшей работы с ней.
 							// ROS_INFO("message_callback_Command.");
-} 
+}
 // Обратный вызов при опросе топика
 void callback_ControlPrint(const pb_msgs::Struct_Data2Print &msg)
 {
@@ -120,14 +122,14 @@ void callback_ControlPrint(const pb_msgs::Struct_Data2Print &msg)
 							// ROS_INFO("message_callback_Command.");
 }
 // Функция контроля ускорения
-void controlAcc(SControl dreamSpeed_) 
+void controlAcc(SControl dreamSpeed_)
 {
 	static unsigned long time = micros();		 // Время предыдущего расчета// Функция из WiringPi.// Замеряем интервалы по времени между запросами данных
 	unsigned long time_now = micros();			 // Время в которое делаем расчет
 	double dt = ((time_now - time) / 1000000.0); // Интервал расчета переводим сразу в секунды Находим интревал между текущим и предыдущим расчетом в секундах
 	time = time_now;
 	float accel = ACCELERATION * dt; // Ускорение
-	//printf("dreamSpeed_ % .3f % .3f accel= % .5f dt= % .5f", dreamSpeed_.speedL, dreamSpeed_.speedR, accel, dt);
+	// printf("dreamSpeed_ % .3f % .3f accel= % .5f dt= % .5f", dreamSpeed_.speedL, dreamSpeed_.speedR, accel, dt);
 	if (dreamSpeed_.speedL != g_factSpeed.speedL) // Если скорость с которой хотим крутиться не равна тому что была ранее установлена, то меняем с учетом ускорения
 	{
 		// printf("dreamSpeed_ % f : % f : acc= % f | ", dreamSpeed_.speedL, dreamSpeed_.speedR, accel);
@@ -159,14 +161,14 @@ void controlAcc(SControl dreamSpeed_)
 				g_factSpeed.speedR = dreamSpeed_.speedR;
 		}
 	}
-	//printf("g_factSpeed % f : % f : acc= % f \n ", g_factSpeed.speedL, g_factSpeed.speedR);
-	//printf(" |g_factSpeed % .3f % .3f \n", g_factSpeed.speedL, g_factSpeed.speedR);
+	// printf("g_factSpeed % f : % f : acc= % f \n ", g_factSpeed.speedL, g_factSpeed.speedR);
+	// printf(" |g_factSpeed % .3f % .3f \n", g_factSpeed.speedL, g_factSpeed.speedR);
 }
 // Конвертация скорости из метров в секунду в обороты в секунду для передачи на нижний уровень
 SControl speedToRps(SControl speed_)
 {
-	speed_.speedL = speed_.speedL / PERIMETR * KOEF_ODOM; //Делим скорость вметрах на периметр колеса и умножаем на дополнительный коеффициент который вручную подобрал что-бы одометрия соответствовала реальности
-	speed_.speedR = speed_.speedR / PERIMETR * KOEF_ODOM; //Делим скорость вметрах на периметр колеса и умножаем на дополнительный коеффициент который вручную подобрал что-бы одометрия соответствовала реальности
+	speed_.speedL = speed_.speedL / PERIMETR * KOEF_ODOM; // Делим скорость вметрах на периметр колеса и умножаем на дополнительный коеффициент который вручную подобрал что-бы одометрия соответствовала реальности
+	speed_.speedR = speed_.speedR / PERIMETR * KOEF_ODOM; // Делим скорость вметрах на периметр колеса и умножаем на дополнительный коеффициент который вручную подобрал что-бы одометрия соответствовала реальности
 	return speed_;
 }
 
@@ -185,5 +187,83 @@ void controlLed()
 		Data2Driver.led.led[i] = color;
 	}
 }
+// Установка режима работы - колибровки модуля на основании переменной из лаунч файла
+void setModeModul()
+{
+	switch (modeModul)
+	{
+	case 0:
+		// printf("modeModul = 0 \n");
+		break;
+	case 1:
+		// printf("modeModul = 1 \n");
+		Data2Modul.controlMotor.mode = 1;		// Ручной вариант проверка
+		Data2Modul.controlLaser.mode = 1;		// Ручной вариант проверка
+		Data2Modul.controlMotor.angle[0] = 45;	//
+		Data2Modul.controlMotor.angle[1] = 135; //
+		Data2Modul.controlMotor.angle[2] = 45;	//
+		Data2Modul.controlMotor.angle[3] = 135; //
+		break;
+	case 2:
+		// printf("modeModul = 2 \n");
+		Data2Modul.controlMotor.mode = 1;		// Ручной вариант проверка
+		Data2Modul.controlLaser.mode = 1;		// Ручной вариант проверка
+		Data2Modul.controlMotor.angle[0] = 135; //
+		Data2Modul.controlMotor.angle[1] = 45;	//
+		Data2Modul.controlMotor.angle[2] = 135; //
+		Data2Modul.controlMotor.angle[3] = 45;	//
+		break;
+	case 3:
+		// printf("modeModul = 3 \n");
+		Data2Modul.controlMotor.mode = 1;		  // Ручной вариант проверка
+		Data2Modul.controlLaser.mode = 1;		  // Ручной вариант проверка
+		Data2Modul.controlMotor.angle[0] = 67.6;  //
+		Data2Modul.controlMotor.angle[1] = 34.6;  //
+		Data2Modul.controlMotor.angle[2] = 143.6; //
+		Data2Modul.controlMotor.angle[3] = 105.7; //
+		break;
+	}
+	// Data2Modul.controlMotor.mode = 1; // Ручной вариант проверка
+	// Data2Modul.controlLaser.mode = 1; // Ручной вариант проверка
 
+	// Data2Modul.controlMotor.angle[0] = 67.6;  //
+	// Data2Modul.controlMotor.angle[1] = 34.6;  //
+	// Data2Modul.controlMotor.angle[2] = 143.6; //
+	// Data2Modul.controlMotor.angle[3] = 105.7; //
+
+	// Data2Modul.controlMotor.angle[1] = 42.5;     //
+
+	// Data2Modul.controlMotor.angle[0] = 45;  //
+	// Data2Modul.controlMotor.angle[1] = 135; //
+	// Data2Modul.controlMotor.angle[2] = 45;  //
+	// Data2Modul.controlMotor.angle[3] = 135; //
+
+	// Data2Modul.controlMotor.angle[0] = 135; //
+	// Data2Modul.controlMotor.angle[1] = 45; //
+	// Data2Modul.controlMotor.angle[2] = 135; //
+	// Data2Modul.controlMotor.angle[3] = 45; //
+}
+
+void readParam() // Считывание переменных параметров из лаунч файла при запуске. Там офсеты и режимы работы
+{
+	ros::NodeHandle nh_private("~");
+    // Имя можно с палкой или без, смотря как в лаунч файле параметры обявлены. связано с видимостью глобальной или локальной. относительным поиском переменной как сказал Максим
+    nh_private.getParam("laser0", offSetLaser[0]);
+    nh_private.getParam("laser1", offSetLaser[1]);
+    nh_private.getParam("laser2", offSetLaser[2]);
+    nh_private.getParam("laser3", offSetLaser[3]);
+
+    nh_private.getParam("laserL", offSetLaserL);
+    nh_private.getParam("uzi", offSetUzi);
+    nh_private.getParam("laserR", offSetLaserR);
+
+    nh_private.getParam("modeModul", modeModul);
+
+    printf("--- Start node with parametrs: \n");
+    printf("offSetLaser0 = %.3f offSetLaser1 = %.3f offSetLaser2 = %.3f offSetLaser3 = %.3f \n",offSetLaser[0],offSetLaser[1],offSetLaser[2],offSetLaser[3]);
+    printf("offSetLaserL = %.3f offSetLaserR = %.3f \n",offSetLaserL,offSetLaserR);
+    printf("offSetUZI = %.3f \n",offSetUzi);
+    printf("modeModul = %i \n",modeModul);
+    printf("--- \n");
+}
 #endif

@@ -41,7 +41,7 @@ sensor_msgs::Joy msg_joy;                      // Переменная в кот
 #define PRINTBIM23
 // #define PRINTBIM25
 
-#define RATE 3 // Частота обмена с нижним уровнев в Герц
+#define RATE 100 // Частота обмена с нижним уровнев в Герц
 //---------------------------------------------------------------------------------------
 // Посмотреть пины командой <gpio readall> Пины имеют соответсвие между BMC и wiringpi
 #define PIN_LED_BLUE 4 // Мигает в цикле что работает
@@ -133,6 +133,8 @@ float offSetLaser[4]{0, 0, 0, 0};
 float offSetLaserL = 0;
 float offSetLaserR = 0;
 float offSetUzi = 0;
+
+int modeModul = 0;
 
 STest Modul2Test;
 STest Test2Modul;

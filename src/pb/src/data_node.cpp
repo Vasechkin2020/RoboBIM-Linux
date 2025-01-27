@@ -15,7 +15,7 @@ int main(int argc, char **argv)
 {  
 
     ROS_INFO("%s --------------------------------------------------------", NN);
-    ROS_WARN("%s *** Data_Node *** ver. 1.33 *** printBIM.ru *** 2025 ***", NN);     
+    ROS_WARN("%s *** Data_Node *** ver. 1.44 *** printBIM.ru *** 2025 ***", NN);     
     ROS_INFO("%s --------------------------------------------------------", NN);
 
     ros::init(argc, argv, "data_node");
@@ -30,17 +30,7 @@ int main(int argc, char **argv)
 
     // sub_low_state = _nh.subscribe("/low_state", 1, &IOInterface::_lowStateCallback, this, ros::TransportHints().tcpNoDelay(true)); // От Максима пример
     //*****************
-    ros::NodeHandle nh_private("~");
-
-    // Имя можно с палкой или без, смотря как в лаунч файле параметры обявлены. связано с видимостью глобальной или локальной. относительным поиском переменной как сказал Максим
-    nh_private.getParam("laser0", offSetLaser[0]);
-    nh_private.getParam("laser1", offSetLaser[1]);
-    nh_private.getParam("laser2", offSetLaser[2]);
-    nh_private.getParam("laser3", offSetLaser[3]);
-
-    nh_private.getParam("laserL", offSetLaserL);
-    nh_private.getParam("uzi", offSetUzi);
-    nh_private.getParam("laserR", offSetLaserR);
+    readParam(); // Считывание переменных параметров из лаунч файла при запуске. Там офсеты и режимы работы
     //*****************
     init_Gpio();                        // Настройка пинов по номерам wiringpi
     set_PIN_Led();                      // Устанавливаем и обьявляем пины. для вывода анализатора светодиодов и всего прочего
@@ -140,26 +130,7 @@ int main(int argc, char **argv)
         Data2Driver.control = speedToRps(g_factSpeed); // Конвертация скорости из метров в секунду в обороты в секунду для передачи на нижний уровень
         // printf("Data2Driver.controlL = %f Data2Driver.controlR= %f \n \n",Data2Driver.control.speedL,Data2Driver.control.speedR);
         controlLed(); // Функция управления несколькими светодиодами которые отведены для прямого управления нодой data
-
-        Data2Modul.controlMotor.mode = 1; // Ручной вариант проверка
-        Data2Modul.controlLaser.mode = 1; // Ручной вариант проверка
-
-        // Data2Modul.controlMotor.angle[0] = 67.6;  //
-        // Data2Modul.controlMotor.angle[1] = 34.6;  //
-        // Data2Modul.controlMotor.angle[2] = 143.6; //
-        // Data2Modul.controlMotor.angle[3] = 105.7; //
-
-        // Data2Modul.controlMotor.angle[1] = 42.5;     //
-
-        Data2Modul.controlMotor.angle[0] = 45;  //
-        Data2Modul.controlMotor.angle[1] = 135; //
-        Data2Modul.controlMotor.angle[2] = 45;  //
-        Data2Modul.controlMotor.angle[3] = 135; //
-
-        // Data2Modul.controlMotor.angle[0] = 135; //
-        // Data2Modul.controlMotor.angle[1] = 45; //
-        // Data2Modul.controlMotor.angle[2] = 135; //
-        // Data2Modul.controlMotor.angle[3] = 45; //
+        setModeModul(); // Установка режима работы - колибровки модуля на основании переменной из лаунч файла
 
         // --------------------------- ОТПРАВКА ДАННЫХ на нижний уровень и разборка и публикация данных полученных с нижнего уровня---------------------------------------------------------------------
         Data2Modul.id++;                                 //= 0x1F1F1F1F;
