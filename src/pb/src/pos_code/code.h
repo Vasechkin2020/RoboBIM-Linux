@@ -57,21 +57,6 @@ void callback_Lidar(sensor_msgs::LaserScan::ConstPtr msg)
 	msg_lidar = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
 	flag_msgLidar = true;
 }
-void callback_Pillar(pb_msgs::topicPillar msg)
-{
-	msg_pillar = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
-	flag_msgPillar = true;
-}
-void callback_StartPose2D(geometry_msgs::Pose2D msg)
-{
-	msg_startPose2d = msg; // Пишем в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
-	flag_msgStartPose = true;
-}
-void callback_Driver(pb_msgs::Struct_Driver2Data msg)
-{
-	msg_Driver2Data = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
-	flag_msgDriver = true;
-}
 void callback_Modul(pb_msgs::Struct_Modul2Data msg)
 {
 	msg_Modul2Data = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
@@ -82,6 +67,21 @@ void callback_Speed(pb_msgs::SSetSpeed msg)
 	msg_Speed = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
 	flag_msgSpeed = true;
 }
+// void callback_Pillar(pb_msgs::topicPillar msg)
+// {
+// 	msg_pillar = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
+// 	flag_msgPillar = true;
+// }
+// void callback_StartPose2D(geometry_msgs::Pose2D msg)
+// {
+// 	msg_startPose2d = msg; // Пишем в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
+// 	flag_msgStartPose = true;
+// }
+// void callback_Driver(pb_msgs::Struct_Driver2Data msg)
+// {
+// 	msg_Driver2Data = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
+// 	flag_msgDriver = true;
+// }
 
 // Находим минимальную дистанцию из 3 датчиков
 float minDistance(float laserL_, float laserR_, float uzi1_)
