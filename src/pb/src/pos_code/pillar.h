@@ -545,7 +545,7 @@ void CPillar::comparisonPillar()
             }
         }
     }
-    printf("countComparisonPillar %i", countComparisonPillar);
+    printf("countComparisonPillar %i ", countComparisonPillar);
 }
 
 // Функция которую вызываем из колбека по расчету места столбов. Поиск лидарных столбов.
@@ -667,7 +667,7 @@ void CPillar::parsingLidar(const sensor_msgs::LaserScan::ConstPtr &scan, SPose &
             distance_pred = lidarData[i].distance; // запоминаем для следующего сравнения
         }
     }
-    printf("Found countPillarLidar= %i", countPillarLidar);
+    printf("Found countPillarLidar= %i ", countPillarLidar);
 }
 
 void CPillar::poiskPillar(int a_, int b_, SLidar *lidarData, SPose &poseLidarMode_)

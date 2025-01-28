@@ -14,8 +14,8 @@
     <param name="x1" type="double" value="0.0" />
     <param name="y1" type="double" value="0.5" />
 
-    <param name="x2" type="double" value="4.0" />
-    <param name="y2" type="double" value="0.5" />
+    <param name="x2" type="double" value="0.5" />
+    <param name="y2" type="double" value="4.0" />
 
     <param name="x3" type="double" value="5.0" />
     <param name="y3" type="double" value="4.0" />

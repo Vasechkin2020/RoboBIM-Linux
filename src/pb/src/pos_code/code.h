@@ -101,6 +101,8 @@ float minDistance(float laserL_, float laserR_, float uzi1_)
 void startPosition(geometry_msgs::Pose2D &startPose2d_)
 {
 	ROS_INFO("------------------------- startPosition -------------------------------------");
+	ROS_INFO("startPosition startPose x= %.3f y= %.3f theta= %.3f ", startPose2d_.x, startPose2d_.y, startPose2d_.theta);
+
 	g_poseLidar.mode0.x = startPose2d_.x; // Пока считаем что передаем положение центра лидара и поэтому ему присваиваем значение, потом надо будет добавлять смещение до центра поворота между колесами
 	g_poseLidar.mode0.y = startPose2d_.y;
 	g_poseLidar.mode0.th = startPose2d_.theta;
@@ -120,10 +122,9 @@ void startPosition(geometry_msgs::Pose2D &startPose2d_)
 	odomMode12 = odomMode0;
 	odomMode13 = odomMode0;
 
-	printf("START RAD2DEG(odomMode0.pose.th) = % .3f \n", RAD2DEG(odomMode0.pose.th));
+	// printf("START RAD2DEG(odomMode0.pose.th) = % .3f \n", RAD2DEG(odomMode0.pose.th));
 
-	ROS_INFO("startPosition lidarPose x= %.3f y= %.3f th= %.3f ", g_poseLidar.mode1.x, g_poseLidar.mode1.y, g_poseLidar.mode1.th);
-	ROS_INFO("-------------------------            ------------------------------------- \n");
+	ROS_INFO("-------------------------              ------------------------------------- \n");
 }
 
 // Переводит значение из одного диапазона в другой, взял из Ардуино
