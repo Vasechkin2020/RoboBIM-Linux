@@ -1,0 +1,25 @@
+<launch>
+
+  <node pkg="pb" type="pos_node" name="pos_node" output ="screen">
+
+    <!-- Указываем стартовую позицию робота. В какое место поставили и куда направили-->
+    <param name="x" type="double" value="2.0" />
+    <param name="y" type="double" value="0.0" />
+    <param name="theta" type="double" value="90.0" />
+
+    <!-- Указываем места расположения столбов на локальной карте -->
+    <param name="x0" type="double" value="3.2" />
+    <param name="y0" type="double" value="2.8" />
+
+    <param name="x1" type="double" value="3.5" />
+    <param name="y1" type="double" value="0.2" />
+
+    <param name="x2" type="double" value="0.4" />
+    <param name="y2" type="double" value="0.2" />
+
+    <param name="x3" type="double" value="0.4" />
+    <param name="y3" type="double" value="2.8" />
+
+  </node>
+  
+</launch> 

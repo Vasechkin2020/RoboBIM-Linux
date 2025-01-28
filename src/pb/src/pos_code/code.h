@@ -11,6 +11,7 @@ void callback_StartPose2D(pb_msgs::point msg);			   //
 void callback_Driver(pb_msgs::Struct_Driver2Data msg); //
 void callback_Modul(pb_msgs::Struct_Modul2Data msg);
 
+void readParam(); // Считывание переменных параметров из лаунч файла при запуске. Там офсеты и режимы работы
 void calcMode0(); // Расчет одометрии и применения ее для всех режимов
 
 void calcMode123(); // Комплеиентация Mode123
@@ -115,7 +116,7 @@ void startPosition(geometry_msgs::Pose2D &startPose2d_)
 	odomMode0.pose.x = startPose2d_.x;
 	odomMode0.pose.y = startPose2d_.y;
 	odomMode0.pose.th = DEG2RAD(startPose2d_.theta); // В одометрии угол в радианах
-	odomMode11 = odomMode0; // Присваиваем начальное значение в во все одометрии
+	odomMode11 = odomMode0;							 // Присваиваем начальное значение в во все одометрии
 	odomMode12 = odomMode0;
 	odomMode13 = odomMode0;
 
@@ -342,7 +343,7 @@ STwistDt calcTwistFromWheel(pb_msgs::SSetSpeed control_)
 			{
 				radius = 0; // Едем прямо или назад и все по нулям
 				theta = 0;	// Если едем прямо то угол поворота отклонения от оси равен 0
-							// ROS_INFO("2 EDEM PRIAMO radius = %.4f theta gradus = %.4f ", radius, RAD2DEG(theta));
+						   // ROS_INFO("2 EDEM PRIAMO radius = %.4f theta gradus = %.4f ", radius, RAD2DEG(theta));
 			}
 			else // Едем по радиусу и надо все считать
 			{
@@ -557,8 +558,8 @@ void angleMPU()
 	else // Всегда кроме первого
 	{
 		g_angleMPU += (msg_Modul2Data.mpu.angleEuler.yaw - predAngleZ); // Меняем угол поворота увеличивая на разницу. Разобраться с 360 и переходом через 0
-		predAngleZ = msg_Modul2Data.mpu.angleEuler.yaw;				 // Запоминаяем угол поворота Для следующего обсчета
-																		 // dataNode.parsingDriver(msg_Driver2Data);
+		predAngleZ = msg_Modul2Data.mpu.angleEuler.yaw;					// Запоминаяем угол поворота Для следующего обсчета
+																		// dataNode.parsingDriver(msg_Driver2Data);
 	}
 	printf("g_angleMPU = % .3f \n", g_angleMPU);
 }
@@ -585,21 +586,21 @@ void calcMode0()
 	// topic.publishOdomUnited();              // Публикация одометрии по моторам с корректировкой с верхнего уровня
 	//-------------------------
 }
-// Расчет одометрии и применения ее для всех режимов 
+// Расчет одометрии и применения ее для всех режимов
 void calcMode11()
 {
 	// printf("1 RAD2DEG(odomMode0.pose.th) = % .3f \n", RAD2DEG(odomMode0.pose.th));
 	calcNewOdom(odomMode11, g_linAngVel.wheel); // На основе линейных скоростей считаем новую позицию и угол по колесам
 	ROS_WARN("odomMode11 pose.x= %.3f y= %.3f theta= %.2f ", odomMode11.pose.x, odomMode11.pose.y, odomMode11.pose.th);
 }
-// Расчет одометрии и применения ее для всех режимов 
+// Расчет одометрии и применения ее для всех режимов
 void calcMode12()
 {
 	// printf("1 RAD2DEG(odomMode0.pose.th) = % .3f \n", RAD2DEG(odomMode0.pose.th));
 	calcNewOdom(odomMode12, g_linAngVel.wheel); // На основе линейных скоростей считаем новую позицию и угол по колесам
 	ROS_WARN("odomMode12 pose.x= %.3f y= %.3f theta= %.2f ", odomMode12.pose.x, odomMode12.pose.y, odomMode12.pose.th);
 }
-// Расчет одометрии и применения ее для всех режимов 
+// Расчет одометрии и применения ее для всех режимов
 void calcMode13()
 {
 	// printf("1 RAD2DEG(odomMode0.pose.th) = % .3f \n", RAD2DEG(odomMode0.pose.th));
@@ -961,7 +962,7 @@ void startColibrovka(CTopic &topic)
 					*/
 }
 // Задаем коэфициенты для Калмана
-void initKalman() 
+void initKalman()
 {
 
 	kalman11.setParametrX(1, 1);
@@ -972,5 +973,50 @@ void initKalman()
 
 	kalman13.setParametrX(1, 1);
 	kalman13.setParametrY(1, 1);
+}
+
+// Считывание переменных параметров из лаунч файла при запуске. Там офсеты и режимы работы
+void readParam()
+{
+	ros::NodeHandle nh_private("~");
+	// Имя можно с палкой или без, смотря как в лаунч файле параметры обявлены. связано с видимостью глобальной или локальной. относительным поиском переменной как сказал Максим
+
+	//<!-- Указываем стартовую позицию робота. В какое место поставили и куда направили-->
+	if (!nh_private.getParam("x", msg_startPose2d.x))
+		msg_startPose2d.x = 0.11;
+	if (!nh_private.getParam("y", msg_startPose2d.y))
+		msg_startPose2d.y = 0.11;
+	if (!nh_private.getParam("theta", msg_startPose2d.theta))
+		msg_startPose2d.theta = 0.11;
+
+	//<!-- Указываем места расположения столбов на локальной карте -->
+	if (!nh_private.getParam("x0", msg_pillar.pillar[0].x))
+		msg_pillar.pillar[0].x = 0.11;
+	if (!nh_private.getParam("y0", msg_pillar.pillar[0].y))
+		msg_pillar.pillar[0].y = 0.11;
+
+	if (!nh_private.getParam("x1", msg_pillar.pillar[1].x))
+		msg_pillar.pillar[1].x = 1.11;
+	if (!nh_private.getParam("y1", msg_pillar.pillar[1].y))
+		msg_pillar.pillar[1].y = 1.11;
+
+	if (!nh_private.getParam("x2", msg_pillar.pillar[2].x))
+		msg_pillar.pillar[2].x = 2.11;
+	if (!nh_private.getParam("y2", msg_pillar.pillar[2].y))
+		msg_pillar.pillar[2].y = 2.11;
+
+	if (!nh_private.getParam("x3", msg_pillar.pillar[3].x))
+		msg_pillar.pillar[3].x = 3.11;
+	if (!nh_private.getParam("y3", msg_pillar.pillar[3].y))
+		msg_pillar.pillar[3].y = 3.11;
+
+	printf("--- Start node with parametrs: \n");
+	printf("startPose x = %.3f y = %.3f theta = %.3f \n", msg_startPose2d.x, msg_startPose2d.y, msg_startPose2d.theta);
+	printf("start PillarPose: \n");
+	printf("x0= %.3f y0 = %.3f \n", msg_pillar.pillar[0].x, msg_pillar.pillar[0].y);
+	printf("x1= %.3f y1 = %.3f \n", msg_pillar.pillar[1].x, msg_pillar.pillar[1].y);
+	printf("x2= %.3f y2 = %.3f \n", msg_pillar.pillar[2].x, msg_pillar.pillar[2].y);
+	printf("x3= %.3f y3 = %.3f \n", msg_pillar.pillar[3].x, msg_pillar.pillar[3].y);
+	printf("--- \n");
 }
 #endif

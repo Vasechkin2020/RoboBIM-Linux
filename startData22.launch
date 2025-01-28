@@ -1,5 +1,5 @@
 <launch>
-
+  <!--include file="$(find rplidar_ros)/launch/rplidar_s2.launch" /-->
   <node pkg="pb" type="data_node" name="data_node" output ="screen">
 
     <param name="laser0" type="double" value="0.003" />
@@ -11,7 +11,7 @@
     <param name="uzi" type="double" value="2.0" />
     <param name="laserR" type="double" value="90.0" />
     
-    <!--<param name="modeModul" type="int" value="3" />-->
+    <!--param name="modeModul" type="int" value="3" /-->
     <param name="modeModul" type="int" value="$(arg modeModul)" />
 
   </node>
