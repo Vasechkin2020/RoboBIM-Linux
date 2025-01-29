@@ -1,0 +1,5 @@
+<launch>
+  <node pkg="pb" type="pos_node" name="pos_node" output ="screen"/>
+  <include file="$(find pb)startPose.launch" />
+  <include file="$(find pb)start_pillar.launch" />
+</launch>
