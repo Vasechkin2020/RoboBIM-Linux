@@ -148,7 +148,7 @@ void CPillar::getLocationMode3(SPose &poseReturn_, SPose pose_) // На вход
 
         poseLidar.th = 90 - getTheta(poseLidar, 3); // Получаем угол куда смотрит нос лидара в системе "odom"
         // ROS_INFO("---");                          //
-        ROS_WARN("MODE3 pose.x= %.3f y= %.3f theta= %.3f ", poseLidar.x, poseLidar.y, poseLidar.th);
+        ROS_WARN_THROTTLE(THROTTLE_PERIOD_3,"MODE3 pose.x= %.3f y= %.3f theta= %.3f ", poseLidar.x, poseLidar.y, poseLidar.th);
         // ROS_INFO("==="); //
         // return poseLidar;
         poseReturn_ = poseLidar; // Если насчитали новую позицию то возвращаем новую, иначе не меняем
@@ -198,7 +198,7 @@ void CPillar::getLocationMode1(SPose &poseReturn_, SPose pose_) // На вход
         poseLidar.y = poseLidar.y / count_poseLidarMode1;
 
         poseLidar.th = 90 - getTheta(poseLidar, 1); // Получаем угол куда смотрит нос лидара в системе "odom" + 90 так как сситема координат повернута относительно /odom/
-        ROS_WARN("MODE1 pose.x= %.3f y= %.3f theta= %.3f ", poseLidar.x, poseLidar.y, poseLidar.th);
+        ROS_WARN_THROTTLE(THROTTLE_PERIOD_3,"MODE1 pose.x= %.3f y= %.3f theta= %.3f ", poseLidar.x, poseLidar.y, poseLidar.th);
         // return poseLidar;
         poseReturn_ = poseLidar;
     }
@@ -336,7 +336,7 @@ void CPillar::getLocationMode2(SPose &poseReturn_, SPose pose_) // На вход
         poseLidar.x = poseLidar.x / count_poseLidarMode2;
         poseLidar.y = poseLidar.y / count_poseLidarMode2;
         poseLidar.th = 90 - getTheta(poseLidar, 2); // Получаем угол куда смотрит нос лидара в системе "odom"
-        ROS_WARN("MODE2 pose.x= %.3f y= %.3f theta= %.3f ", poseLidar.x, poseLidar.y, poseLidar.th);
+        ROS_WARN_THROTTLE(THROTTLE_PERIOD_3,"MODE2 pose.x= %.3f y= %.3f theta= %.3f ", poseLidar.x, poseLidar.y, poseLidar.th);
         poseReturn_ = poseLidar;
 
         // // Находим куда смотрит лидар на основе полученного положения и результтов с лидара фактических
@@ -545,7 +545,7 @@ void CPillar::comparisonPillar()
             }
         }
     }
-    printf("countComparisonPillar %i ", countComparisonPillar);
+    printf("countComparisonPillar %i \n", countComparisonPillar);
 }
 
 // Функция которую вызываем из колбека по расчету места столбов. Поиск лидарных столбов.

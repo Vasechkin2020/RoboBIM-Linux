@@ -2,6 +2,7 @@
 #define CONFIG_H
 
 #include <ros/ros.h>
+#include <log4cxx/mdc.h>
 #include <tf/transform_broadcaster.h>
 #include <std_msgs/String.h>
 
@@ -41,7 +42,7 @@
 
 // #include <data/pointA.h>
 
-#define RATE 1                                  // Частота шага
+#define RATE 2                                  // Частота шага
 #define RATE_LASER 3                            // Частота измерения лазерного датчика при калибровке для расчета
 #define STEP_LASER_MOTOR (360.0 / 400.0 / 16.0) // Шаг поаорота мотора с лазерным датчиком 360 ГРАДУСОВ /400 шагов мотор /16 шагов драйвер
 
@@ -66,6 +67,8 @@
 #define DEG2RAD(x) ((x) * M_PI / 180.) // Первод из градусов в радианы
 
 float offsetAngle = 0.7; // Ошибка для азимута. Прибавляем к углу что получилди с лидара
+static const double THROTTLE_PERIOD_1 = 1.0; // секунды 
+static const double THROTTLE_PERIOD_3 = 0.33; // секунды 
 
 //--------------------------------- ПОДПИСКА НА ТОПИКИ -------------------------------------------------
 sensor_msgs::LaserScan::ConstPtr msg_lidar; // Перемеенная в которую сохраняем данные лидара из сообщения
@@ -393,7 +396,8 @@ SPoint pointFromTetha(float angle_, float distance_) // Возвращает о�
 #define CYAN "\x1b[36;40m"
 #define NORM "\x1b[0m"
 
-#define NN "\x1b[32;40m pos_node"
+// #define NN "\x1b[32;40m pos_node"
+#define NN "\x1b[32;40m"
 
 void my_printInfo()
 {

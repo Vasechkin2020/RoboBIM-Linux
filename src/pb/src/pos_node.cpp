@@ -28,18 +28,19 @@ CKalman kalman11;
 CKalman kalman12;
 CKalman kalman13;
 
+std::string log_name = "pos_node";
+
 int main(int argc, char **argv)
 {
-    // ROS_INFO("%s -------------------------------------------------------------", NN);
-    // ROS_WARN("%s        Main Module PrintBIM ROS 1.0 Raspberry Pi 4B  ver 1.55 ", NN);
-    // ROS_ERROR("%s ------------------ROS_ERROR----------------------------------", NN);
-
-    ROS_INFO("%s --------------------------------------------------------", NN);
-    ROS_WARN("%s *** Pos_Node *** ver. 1.44 *** printBIM.ru *** 2025 ***", NN);
-    ROS_INFO("%s --------------------------------------------------------", NN);
+    ROS_INFO_NAMED(log_name,"%s --------------------------------------------------------", NN);
+    ROS_WARN_NAMED(log_name,"%s *** Pos_Node *** ver. 1.44 *** printBIM.ru *** 2025 ***", NN);
+    ROS_INFO_NAMED(log_name,"%s --------------------------------------------------------", NN);
 
     ros::init(argc, argv, "pos_node");
     // topic.init(argc, argv);
+    // Установка дополнительных данных в контекст
+    log4cxx::MDC::put("node", "| pos_node |"); 
+
     ros::NodeHandle nh;
     CTopic topic; // Экземпляр класса для всех публикуемых топиков
 
