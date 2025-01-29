@@ -1,0 +1,18 @@
+<launch>
+  <include file="$(find rplidar_ros)/launch/rplidar_a3.launch" />
+  <node pkg="pb" type="data_node" name="data_node" output ="screen">
+
+    <param name="laser0" type="double" value="0.003" />
+    <param name="laser1" type="double" value="0.005" />
+    <param name="laser2" type="double" value="0.003" />
+    <param name="laser3" type="double" value="0.002" />
+
+    <param name="laserL" type="double" value="0.01" />
+    <param name="uzi" type="double" value="0.03" />
+    <param name="laserR" type="double" value="0.02" />
+    
+    <!--param name="modeModul" type="int" value="3" /-->
+    <param name="modeModul" type="int" value="$(arg modeModul)" />
+
+  </node>
+</launch> 
