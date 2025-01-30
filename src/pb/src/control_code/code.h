@@ -5,13 +5,15 @@
 //**************************** ОБЬЯВЛЕНИЕ ПРОЦЕДУР **********************************
 void callback_Driver(pb_msgs::Struct_Driver2Data msg); //
 
-void initCommandArray(); // Заполнение маасива команд
+void readParam(); // Считывание переменных параметров из лаунч файла при запуске. Там офсеты и режимы работы
+
+void initCommandArray(int verCommand_); // Заполнение маасива команд
 
 // pb_msgs::SControlDriver speedCorrect(pb_msgs::SDriver2Data Driver2Data_msg_, pb_msgs::SControlDriver Data2Driver_); // Корректировка скорости движения в зависимости от датчиков растояния перед
 // void collectCommand(); // //Функция формирования команды для нижнего уровня на основе всех полученных данных, датчиков и анализа ситуации
 
 // **********************************************************************************
-float filtrComplem(float koef_, float oldData_, float newData_);	// функция фильтрации, берем старое значение с некоторым весом
+float filtrComplem(float koef_, float oldData_, float newData_); // функция фильтрации, берем старое значение с некоторым весом
 
 // функция фильтрации, берем старое значение с некоторым весом
 float filtrComplem(float koef_, float oldData_, float newData_)
@@ -45,40 +47,78 @@ float minDistance(float laserL_, float laserR_, float uzi1_)
 	return min;
 }
 // Заполнение маасива команд
-void initCommandArray()
+void initCommandArray(int verCommand_)
 {
-	commandArray[0].mode = 1;
-	commandArray[0].duration = 20000;
-	commandArray[0].velL = 0.05;
-	commandArray[0].velR = 0.05;
-	
-	commandArray[1].mode = 1;
-	commandArray[1].duration = 22000;
-	commandArray[1].velL = 0.1;
-	commandArray[1].velR = 0.1;
-	
-	commandArray[2].mode = 1;
-	commandArray[2].duration = 3000;
-	commandArray[2].velL = 0;
-	commandArray[2].velR = 0;
-	
-	commandArray[3].mode = 1;
-	commandArray[3].duration = 20000;
-	commandArray[3].velL = -0.05;
-	commandArray[3].velR = -0.05;
+	if (verCommand_ == 1)
+	{
+		commandArray[0].mode = 1;
+		commandArray[0].duration = 20000;
+		commandArray[0].velL = 0.05;
+		commandArray[0].velR = 0.05;
 
-	commandArray[4].mode = 1;
-	commandArray[4].duration = 22000;
-	commandArray[4].velL = -0.1;
-	commandArray[4].velR = -0.1;
+		commandArray[1].mode = 1;
+		commandArray[1].duration = 22000;
+		commandArray[1].velL = 0.1;
+		commandArray[1].velR = 0.1;
 
-	commandArray[5].mode = 1;
-	commandArray[5].duration = 50000;
-	commandArray[5].velL = 0;
-	commandArray[5].velR = 0;
-	
-	commandArray[6].mode = 9;
+		commandArray[2].mode = 1;
+		commandArray[2].duration = 3000;
+		commandArray[2].velL = 0;
+		commandArray[2].velR = 0;
 
+		commandArray[3].mode = 1;
+		commandArray[3].duration = 20000;
+		commandArray[3].velL = -0.05;
+		commandArray[3].velR = -0.05;
+
+		commandArray[4].mode = 1;
+		commandArray[4].duration = 22000;
+		commandArray[4].velL = -0.1;
+		commandArray[4].velR = -0.1;
+
+		commandArray[5].mode = 1;
+		commandArray[5].duration = 50000;
+		commandArray[5].velL = 0;
+		commandArray[5].velR = 0;
+
+		commandArray[6].mode = 9;
+	}
+	if (verCommand_ == 2)
+	{
+		commandArray[0].mode = 1;
+		commandArray[0].duration = 20000;
+		commandArray[0].velL = 0.05;
+		commandArray[0].velR = 0.05;
+
+		commandArray[1].mode = 1;
+		commandArray[1].duration = 5000;
+		commandArray[1].velL = 0.0;
+		commandArray[1].velR = 0.0;
+
+		commandArray[2].mode = 1;
+		commandArray[2].duration = 20000;
+		commandArray[2].velL = -0.05;
+		commandArray[2].velR = -0.05;
+
+		commandArray[3].mode = 1;
+		commandArray[3].duration = 5000;
+		commandArray[3].velL = 0.0;
+		commandArray[3].velR = 0.0;
+
+		commandArray[4].mode = 9;
+	}
+}
+
+void readParam() // Считывание переменных параметров из лаунч файла при запуске. Там офсеты и режимы работы
+{
+	ros::NodeHandle nh_private("~");
+    // Имя можно с палкой или без, смотря как в лаунч файле параметры обявлены. связано с видимостью глобальной или локальной. относительным поиском переменной как сказал Максим
+	if (!nh_private.getParam("verComand", verComand))
+		verComand = 999;
+
+    ROS_INFO("--- Start node with parametrs:");
+    ROS_INFO("verComand = %i",verComand);
+    ROS_INFO("---");
 }
 
 // Корректировка скорости движения в зависимости от датчиков растояния перед

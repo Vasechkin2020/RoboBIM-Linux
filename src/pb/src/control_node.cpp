@@ -19,9 +19,11 @@ int main(int argc, char **argv)
     // ros::Subscriber subscriber_Speed = nh.subscribe<pb_msgs::SSetSpeed>("pbData/Speed", 1000, callback_Speed);
 
     ros::Rate r(RATE);        // Частота в Герцах - задержка
-    ros::Duration(2).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
+    ros::Duration(1).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
+    
+    readParam(); // Считывание переменных параметров из лаунч файла при запуске. Там офсеты и режимы работы
+    initCommandArray(verComand); // Заполнение маасива команд
 
-    initCommandArray(); // Заполнение маасива команд
     u_int64_t time = millis();
     u_int64_t timeStart = millis();
     u_int64_t timeMil = millis();
@@ -35,7 +37,7 @@ int main(int argc, char **argv)
     ROS_WARN("End Setup. Start loop.\n");
     while (ros::ok())
     {
-        ROS_INFO(""); // С новой строки в логе новый цикл
+        // ROS_INFO(""); // С новой строки в логе новый цикл
         ros::spinOnce(); // Опрашиваем ядро ROS и по этой команде наши срабатывают колбеки. Нужно только для подписки на топики
 
         if (timeMil < millis())
@@ -44,7 +46,7 @@ int main(int argc, char **argv)
             timeMil = millis() + 1000;
         }
 
-        if (timeStart + 10000 < millis()) // Задаержка перед началом работы
+        if (timeStart + 3000 < millis()) // Задаержка перед началом работы
         {
             if (flagCommand)
             {
@@ -52,7 +54,7 @@ int main(int argc, char **argv)
                 controlSpeed.control.speedL = commandArray[i].velL;
                 controlSpeed.control.speedR = commandArray[i].velR;
                 time = commandArray[i].duration + millis();
-                printf("commandArray i= %i \n", i);
+                ROS_INFO("commandArray i= %i", i);
             }
 
             if (time < millis())
@@ -61,7 +63,7 @@ int main(int argc, char **argv)
                 i++;
                 if (commandArray[i].mode == 9)
                 {
-                    printf("New loop ");
+                    ROS_INFO("New loop");
                     i = 0;
                 }
                 printf("i = %i \n", i);
