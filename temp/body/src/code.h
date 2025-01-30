@@ -138,17 +138,17 @@ void printData()
 void init_SPI(int channel_, int speed_)
 {
 	uint8_t errSpi = 0; //Ошибка при инициализации шины SPI
-	printf("Init SPI start... ");
+	ROS_INFO("Init SPI start... ");
 
 	if ((errSpi = wiringPiSPISetup(channel_, speed_)) < 0) //Инициализация канало 0 это чип селект 0
 	{
-		printf("Can't open the SPI bus 0: %s\n", strerror(errno));
-		printf("errSpi: %s\n", errSpi);
+		ROS_ERROR("Can't open the SPI bus 0: %s\n", strerror(errno));
+		ROS_ERROR("errSpi: %s\n", errSpi);
 		exit(EXIT_FAILURE);
 	}
 	else
 	{
-		printf(" SPI ok! \n");
+		ROS_INFO(" SPI ok!");
 	}
 }
 //Функция которая проверяет линию обратной связи с ведомым и ждет пока там будет 1 или истечет время

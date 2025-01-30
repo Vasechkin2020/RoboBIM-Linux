@@ -14,11 +14,12 @@ CJoy joy(0.5, 0.5); // Обьявляем экземпляр класса в н�
 int main(int argc, char **argv)
 {
 
-    ROS_INFO("%s --------------------------------------------------------", NN);
+    ROS_WARN("%s --------------------------------------------------------", NN);
     ROS_WARN("%s *** Data_Node *** ver. 1.44 *** printBIM.ru *** 2025 ***", NN);
-    ROS_INFO("%s --------------------------------------------------------", NN);
+    ROS_WARN("%s --------------------------------------------------------", NN);
 
     ros::init(argc, argv, "data_node");
+    log4cxx::MDC::put("node", "|data_node|");
     ros::NodeHandle nh;
     CTopic topic; // Экземпляр класса для всех публикуемых топиков
     ros::Rate r(RATE);
@@ -66,20 +67,19 @@ int main(int argc, char **argv)
     // ros::Duration(1).sleep();                              // Подождем пока все обьявится и инициализируется внутри ROS
 
     uint64_t timeWork = millis(); // Время работы ноды
-    ROS_INFO("End Setup ver -5555-\n");
+    ROS_WARN("End Setup. Start loop.\n");
 
     while (ros::ok())
     {
+        // ROS_INFO(""); // С новой строки в логе новый цикл
         led_status = 1 - led_status; // Мигаем с частотой работы цикла
         digitalWrite(PIN_LED_BLUE, led_status);
 
         ros::spinOnce(); // Обновление в данных в ядре ROS, по этой команде происходит вызов функции обратного вызова
-        if ((millis() - timeWork) > 1000)
-        {
-            printf("Data_node %u msec \n", millis());
-            timeWork = millis();
-        }
-
+        ROS_INFO_THROTTLE(THROTTLE_PERIOD_1, "%u msec. SPI Modul %u/%u %u/%u | Driver %u/%u %u/%u | Print %u/%u %u/%u |", millis(),
+                          Modul2Data.spi.all, Modul2Data.spi.bed, data_modul_all, data_modul_bed,
+                          Driver2Data.spi.all, Driver2Data.spi.bed, data_driver_all, data_driver_bed,
+                          Print2Data.spi.all, Print2Data.spi.bed, data_print_all, data_print_bed);
         //-----------------------------------------------------------------------------------------------------------------------------------
         if (flag_msgControlModul) // Если пришло сообщение в топике и сработал колбек
         {
@@ -185,6 +185,6 @@ int main(int argc, char **argv)
     Data2Modul.controlLaser.mode = 0;                      // Ручной вариант проверка
     Data2Modul.cheksum = measureCheksum(Data2Modul);       // Считаем контрольную сумму отправляемой структуры// тут нужно посчитать контрольную сумму структуры
     sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
-    printf("Data Node STOP \n");
+    printf("data_node STOP \n");
     return 0;
 }

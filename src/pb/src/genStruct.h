@@ -2,6 +2,11 @@
 #define GENSTRUCT_H
 #include </opt/ros/melodic/include/ros/ros.h>
 #include </opt/ros/melodic/include/ros/time.h>
+#include <log4cxx/mdc.h>
+
+
+static const double THROTTLE_PERIOD_1 = 1.0; // секунды 
+static const double THROTTLE_PERIOD_3 = 0.33; // секунды 
 
 //============================================================================================================================================================
 // Структура передаваемых данных из Data к Modul

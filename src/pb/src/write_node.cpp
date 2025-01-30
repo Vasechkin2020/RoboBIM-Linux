@@ -6,11 +6,12 @@
 
 int main(int argc, char **argv)
 {
-    ROS_INFO("%s ---------------------------------------------------------", NN);
+    ROS_WARN("%s ---------------------------------------------------------", NN);
     ROS_WARN("%s  Write Node PrintBIM ROS 1.0 Raspberry Pi 4B  ver 1.0001 ", NN);
-    ROS_ERROR("%s ----------------ROS_ERROR-------------------------------", NN);
+    ROS_WARN("%s ----------------ROS_ERROR-------------------------------", NN);
 
     ros::init(argc, argv, "write_node");
+    log4cxx::MDC::put("node", "|write_node|"); 
     ros::NodeHandle nh;
     CTopic topic; // Экземпляр класса для всех публикуемых топиков
 
@@ -30,8 +31,10 @@ int main(int argc, char **argv)
     ros::Rate r(RATE);        // Частота в Герцах - задержка
     ros::Duration(1).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
    
+    ROS_WARN("End Setup. Start loop.\n");
     while (ros::ok())   
     {
+        ROS_INFO(""); // С новой строки в логе новый цикл
         ros::spinOnce(); // Опрашиваем ядро ROS и по этой команде наши срабатывают колбеки. Нужно только для подписки на топики
 
         if (timeStart + 1000 < millis()) // Задаержка перед началом работы

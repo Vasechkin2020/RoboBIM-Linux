@@ -128,6 +128,7 @@ void CLaser::pillar_1(SMatrixPillar (&matrixLaserPillar_)[4][5], SMatrixPillar (
 // Расчет углов в локальной системе лазеров на столбы для передачи на нижний уровень для исполнения
 void CLaser::calcAnglePillarForLaser(CPillar::SPillar *pillar_, SPose &poseLidar_) // Берем координаты(положение) столбов и позицию лидара в глобальной системе
 {
+    ROS_INFO("calcAnglePillarForLaser");
     SPoint pointPillarInLidar[4]; // Координаты столбов в центральной системе координат "lidar"
     SPoint pointPillarInLaser[4]; // Координаты столбов в индивидуально лазерно системе координат "laser 0-3"
     SPose poseLidar = poseLidar_; // Выбираем результаты какого обсчета будем использовать
@@ -189,7 +190,7 @@ void CLaser::calcAnglePillarForLaser(CPillar::SPillar *pillar_, SPose &poseLidar
 
     pillar_1(matrixLaserPillar, tableLaser, count); // Сопоставление столбов если их может однозначно обслуживать только один лазер
     //-----------------------------------------------------------------------
-    //ROS_INFO("!!!! Pillar warn... % i", count);
+    ROS_INFO("!!!! Pillar warn... % i", count);
 
     for (int i = 0; i < 4; i++)
     {
@@ -275,6 +276,7 @@ void CLaser::calcAnglePillarForLaser(CPillar::SPillar *pillar_, SPose &poseLidar
         //printf(" angle= %.3f numPillar = %i |", g_angleLaser[i], g_numPillar[i]);
     }
     // printf("\n");
+    ROS_INFO("end calcAnglePillarForLaser.");
 }
 
 void CLaser::calcPointPillarFromLaser(CPillar::SPillar *pillar_) // Расчет положения столбов в лидарной системе на основании данных с датчиков

@@ -157,7 +157,7 @@ void CPillar::getLocationMode3(SPose &poseReturn_, SPose pose_) // На вход
 // Метод возврщает положение центра лидара усредненного по всем столбам по методу "растояние до столбов по лидару"
 void CPillar::getLocationMode1(SPose &poseReturn_, SPose pose_) // На вход подается последняя полученная/посчитанная позиция лидара
 {
-    printf("Start getLocationMode1... \n ");
+    ROS_INFO("getLocationMode1");
     // ROS_INFO("pose IN x= %.3f y= %.3f theta= %.3f ", pose_.x, pose_.y, pose_.theta);
     // ROS_INFO("---"); //
     float a1, a2;
@@ -203,7 +203,10 @@ void CPillar::getLocationMode1(SPose &poseReturn_, SPose pose_) // На вход
         poseReturn_ = poseLidar;
     }
     else
+    {
         ROS_ERROR("MODE1 count_poseLidarMode1= %i \n", count_poseLidarMode1);
+    }
+    ROS_INFO("end getLocationMode1.");
 }
 
 // Метод возвращает угол между ось. Y вверх и напрвлением лидара вперед Сравнивается с Azimit который посчитали ранее
@@ -266,7 +269,7 @@ float CPillar::getTheta(SPose poseLidar_, int mode_)
 // Метод возврщает положение центра лидара усредненного по всем столбам по методу "углы между столбами по лидару"
 void CPillar::getLocationMode2(SPose &poseReturn_, SPose pose_) // На вход подается последняя полученная/посчитанная позиция лидара
 {
-    printf("=== getLocationMode2 ");
+    ROS_INFO("getLocationMode2");
     // ROS_INFO("pose IN x= %.3f y= %.3f theta= %.3f ", pose_.x, pose_.y, pose_.theta);
     SPoint p1, p2, p3;
     float a1, a2;
@@ -301,7 +304,7 @@ void CPillar::getLocationMode2(SPose &poseReturn_, SPose pose_) // На вход
             }
         }
     }
-    printf(" count_circleAnglePillar = %i ", count_circleAnglePillar);
+    ROS_INFO("count_circleAnglePillar = %i", count_circleAnglePillar);
     for (int i = 0; i < count_circleAnglePillar - 1; i++) //        Перебираем окружности, и для каждого пересечение окружностей со следующим
     {
         for (int j = i + 1; j < count_circleAnglePillar; j++)
@@ -317,7 +320,7 @@ void CPillar::getLocationMode2(SPose &poseReturn_, SPose pose_) // На вход
             }
         }
     }
-    printf(" count_poseLidarMode2 = %i \n", count_poseLidarMode2);
+    ROS_INFO("count_poseLidarMode2 = %i", count_poseLidarMode2);
     if (count_poseLidarMode2 > 100)
     {
         ROS_ERROR("count_poseLidarMode2 ERROR !!!!");
@@ -397,6 +400,7 @@ void CPillar::getLocationMode2(SPose &poseReturn_, SPose pose_) // На вход
     // ret.x = poseLidar.x;
     // ret.y = poseLidar.y;
     // ret.theta = poseLidar.theta;
+    ROS_INFO("end getLocationMode2");
 }
 // Функция возвращает 2 окружности(координаты и радиус)
 // Основанно на идее что вписанный угол в окружность равен половине угла из центра на эту же хорду. Далее по формулам отсюда  Нахождение центра окружности по 2м точкам и углу https://dxdy.ru/topic4265.html
@@ -508,7 +512,7 @@ void CPillar::parsingPillar(pb_msgs::topicPillar &pillar_)
 // Функция сопоставления истинных столбов с лидарными
 void CPillar::comparisonPillar()
 {
-    printf("Start comparisonPillar \n");
+    ROS_INFO("comparisonPillar");
     float delta_x = 0;
     float delta_y = 0;
     float hypotenuse = 0;
@@ -545,7 +549,8 @@ void CPillar::comparisonPillar()
             }
         }
     }
-    printf("countComparisonPillar %i \n", countComparisonPillar);
+    ROS_INFO("countComparisonPillar %i", countComparisonPillar);
+    ROS_INFO("end comparisonPillar.");
 }
 
 // Функция которую вызываем из колбека по расчету места столбов. Поиск лидарных столбов.
@@ -553,7 +558,7 @@ void CPillar::comparisonPillar()
 // Ноль градусов у нее там где хвостик и поэтому +180 чтобы получить 360 оборот правильный вправо
 void CPillar::parsingLidar(const sensor_msgs::LaserScan::ConstPtr &scan, SPose &poseLidarMode_)
 {
-    printf("Start parsingLidar... ");
+    ROS_INFO("parsingLidar");
     float distance_pred = 0;    // Предыдущее значение дистанции
     int a = 0;                  // Начало группы точек
     int b = 0;                  // Конец группы точек
@@ -565,7 +570,7 @@ void CPillar::parsingLidar(const sensor_msgs::LaserScan::ConstPtr &scan, SPose &
     int count = scan->scan_time / scan->time_increment;
 
     // ROS_INFO("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! ");
-    printf("=== Lidar data received %s [%d]:", scan->header.frame_id.c_str(), count);
+    ROS_INFO("=== Lidar data received %s [%d]:", scan->header.frame_id.c_str(), count);
     // ROS_INFO("angle_range, %f, %f", RAD2DEG(scan->angle_min), RAD2DEG(scan->angle_max));
 
     int j = 0;
@@ -604,7 +609,7 @@ void CPillar::parsingLidar(const sensor_msgs::LaserScan::ConstPtr &scan, SPose &
         //     ROS_INFO("i = %i degree= %.4f distance= %.4f", i, lidarData[i].degree, lidarData[i].distance);
         // }
     }
-    printf(" transformed = %i \n", k);
+    ROS_INFO("transformed data = %i", k);
     for (int i = 0; i < j; i++) // Пробегаем по всему новому массиву и ищем группы точек
     {
         if (i != 0) // Для первого элемента просто его запоминаем в
@@ -667,7 +672,8 @@ void CPillar::parsingLidar(const sensor_msgs::LaserScan::ConstPtr &scan, SPose &
             distance_pred = lidarData[i].distance; // запоминаем для следующего сравнения
         }
     }
-    printf("Found countPillarLidar= %i ", countPillarLidar);
+    ROS_INFO("Found countPillarLidar= %i ", countPillarLidar);
+    ROS_INFO("end parsingLidar.");
 }
 
 void CPillar::poiskPillar(int a_, int b_, SLidar *lidarData, SPose &poseLidarMode_)

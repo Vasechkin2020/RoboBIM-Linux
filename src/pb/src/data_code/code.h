@@ -78,7 +78,7 @@ void init_Gpio()
 void init_SPI(int channel_, int speed_)
 {
 	uint8_t errSpi = 0; // Ошибка при инициализации шины SPI
-	ROS_INFO("%s Init SPI start... ", NN);
+	ROS_INFO("Init SPI start... ");
 
 	if ((errSpi = wiringPiSPISetup(channel_, speed_)) < 0) // Инициализация канало 0 это чип селект 0
 	{
@@ -88,7 +88,7 @@ void init_SPI(int channel_, int speed_)
 	}
 	else
 	{
-		ROS_INFO("%s SPI ok! \n", NN);
+		ROS_INFO("SPI ok!");
 	}
 }
 // Функция обраьтного вызова по подписке на топик джойстика nh.subscribe("joy", 16, callback_Joy);
@@ -259,11 +259,11 @@ void readParam() // Считывание переменных параметро
 
     nh_private.getParam("modeModul", modeModul);
 
-    printf("--- Start node with parametrs: \n");
-    printf("offSetLaser0 = %.3f offSetLaser1 = %.3f offSetLaser2 = %.3f offSetLaser3 = %.3f \n",offSetLaser[0],offSetLaser[1],offSetLaser[2],offSetLaser[3]);
-    printf("offSetLaserL = %.3f offSetLaserR = %.3f \n",offSetLaserL,offSetLaserR);
-    printf("offSetUZI = %.3f \n",offSetUzi);
-    printf("modeModul = %i \n",modeModul);
-    printf("--- \n");
+    ROS_INFO("--- Start node with parametrs:");
+    ROS_INFO("offSetLaser0 = %.3f offSetLaser1 = %.3f offSetLaser2 = %.3f offSetLaser3 = %.3f",offSetLaser[0],offSetLaser[1],offSetLaser[2],offSetLaser[3]);
+    ROS_INFO("offSetLaserL = %.3f offSetLaserR = %.3f",offSetLaserL,offSetLaserR);
+    ROS_INFO("offSetUZI = %.3f",offSetUzi);
+    ROS_INFO("modeModul = %i",modeModul);
+    ROS_INFO("---");
 }
 #endif
