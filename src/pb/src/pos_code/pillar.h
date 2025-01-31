@@ -98,9 +98,10 @@ CPillar::~CPillar()
 // Метод возврщает положение центра лидара усредненного по всем столбам по методу "растояние до столбов по лидару"
 void CPillar::getLocationMode3(SPose &poseReturn_, SPose pose_) // На вход подается последняя полученная/посчитанная позиция лидара
 {
-    printf("=== getLocationMode3 ");
-    printf("pose IN x= %.3f y= %.3f th= %.3f \n", pose_.x, pose_.y, pose_.th);
-    // ROS_INFO("---"); //
+    ROS_INFO("+++ getLocationMode3 ");
+    ROS_INFO("pose IN x= %.3f y= %.3f th= %.3f", pose_.x, pose_.y, pose_.th);
+    ROS_INFO("distance_laser %.3f %.3f %.3f %.3f", pillar[0].distance_laser, pillar[1].distance_laser, pillar[2].distance_laser, pillar[3].distance_laser);
+
     float a1, a2;
     SCircle c1, c2;
     SPoint point;
@@ -134,7 +135,7 @@ void CPillar::getLocationMode3(SPose &poseReturn_, SPose pose_) // На вход
             //}
         }
     }
-    printf("!!! count_poseLidarMode3 CROSSING = %i \n", count_poseLidarMode3);
+    ROS_INFO("!!! count_poseLidarMode3 CROSSING = %i \n", count_poseLidarMode3);
     if (count_poseLidarMode3 != 0)
     {
         // Усредняем все найденные координаты
@@ -153,6 +154,7 @@ void CPillar::getLocationMode3(SPose &poseReturn_, SPose pose_) // На вход
         // return poseLidar;
         poseReturn_ = poseLidar; // Если насчитали новую позицию то возвращаем новую, иначе не меняем
     }
+    ROS_INFO("--- getLocationMode3 ");
 }
 // Метод возврщает положение центра лидара усредненного по всем столбам по методу "растояние до столбов по лидару"
 void CPillar::getLocationMode1(SPose &poseReturn_, SPose pose_) // На вход подается последняя полученная/посчитанная позиция лидара

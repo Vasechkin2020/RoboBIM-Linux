@@ -203,6 +203,10 @@ void setModeModul()
 		Data2Modul.controlMotor.angle[1] = 135; //
 		Data2Modul.controlMotor.angle[2] = 45;	//
 		Data2Modul.controlMotor.angle[3] = 135; //
+		Data2Modul.controlMotor.numPillar[0] = 0;
+		Data2Modul.controlMotor.numPillar[1] = 1;
+		Data2Modul.controlMotor.numPillar[2] = 2;
+		Data2Modul.controlMotor.numPillar[3] = 3;
 		break;
 	case 2:
 		// printf("modeModul = 2 \n");
@@ -212,6 +216,10 @@ void setModeModul()
 		Data2Modul.controlMotor.angle[1] = 45;	//
 		Data2Modul.controlMotor.angle[2] = 135; //
 		Data2Modul.controlMotor.angle[3] = 45;	//
+		Data2Modul.controlMotor.numPillar[0] = 0;
+		Data2Modul.controlMotor.numPillar[1] = 1;
+		Data2Modul.controlMotor.numPillar[2] = 2;
+		Data2Modul.controlMotor.numPillar[3] = 3;
 		break;
 	case 3:
 		// printf("modeModul = 3 \n");
@@ -221,6 +229,10 @@ void setModeModul()
 		Data2Modul.controlMotor.angle[1] = 34.6;  //
 		Data2Modul.controlMotor.angle[2] = 143.6; //
 		Data2Modul.controlMotor.angle[3] = 105.7; //
+		Data2Modul.controlMotor.numPillar[0] = 0;
+		Data2Modul.controlMotor.numPillar[1] = 1;
+		Data2Modul.controlMotor.numPillar[2] = 2;
+		Data2Modul.controlMotor.numPillar[3] = 3;
 		break;
 	case 4:
 		// printf("modeModul = 4 \n");
@@ -230,6 +242,10 @@ void setModeModul()
 		Data2Modul.controlMotor.angle[1] = 78.1;  //
 		Data2Modul.controlMotor.angle[2] = 122.3; //
 		Data2Modul.controlMotor.angle[3] = 108.81; //
+		Data2Modul.controlMotor.numPillar[0] = 0;
+		Data2Modul.controlMotor.numPillar[1] = 1;
+		Data2Modul.controlMotor.numPillar[2] = 2;
+		Data2Modul.controlMotor.numPillar[3] = 3;
 		break;
 	}
 

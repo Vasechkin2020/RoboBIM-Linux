@@ -302,10 +302,11 @@ void CLaser::calcPointPillarFromLaser(CPillar::SPillar *pillar_) // Расчет
     SPoint p_lidar;
     SPoint P00;
     float len;
-    printf(" MODE 3 calcPointPillarFromLaser ");
+    ROS_INFO("+++ calcPointPillarFromLaser");
     for (int i = 0; i < 4; i++)
     {
-        //printf("distance SRC = %f \n", msg_Modul2Data.laser[i].distance);
+        // ROS_INFO("distance SRC = %f", msg_Modul2Data.laser[i].distance);
+        // ROS_INFO("numPillar = %i", msg_Modul2Data.laser[i].numPillar);
         msg_Modul2Data.laser[i].distance += (OFFSET_LAZER); // Добавляем смещение по креплению. Зависит от напечатанного крепления
         //printf("distance + OFFSET = %f \n", msg_Modul2Data.laser[i].distance);
         msg_Modul2Data.laser[i].distance += (PILLAR_RADIUS); // Добавляем смещение по креплению. Зависит от напечатанного крепления
@@ -315,17 +316,17 @@ void CLaser::calcPointPillarFromLaser(CPillar::SPillar *pillar_) // Расчет
         // printf("Local x= %f y= %f ", p_laser.x, p_laser.y);
         // printf("Local Angle Theta = %f \n", _poseLaser[msg_Modul2Data.laser[i].numPillar].th);
         p_lidar = pointLocal2GlobalRos(p_laser, _poseLaser[msg_Modul2Data.laser[i].numPillar]); // Превести координаты в /Base/ систему учитывая каким лазером светили
-        // printf("Global x= %f y= %f ",p_lidar.x,p_lidar.y);
+        // ROS_INFO("Global x= %f y= %f ",p_lidar.x,p_lidar.y);
         len = vectorLen(p_lidar, P00); // Находим растояние до столба в лидарной систме
-        // printf(" Global len = %f \n", len);
+        // ROS_INFO(" Global len = %f", len);
         pillar_[msg_Modul2Data.laser[i].numPillar].distance_laser = len; // Записываем для дальнейшей обработки
     }
-        printf("/ distance_laser |");
+        // ROS_INFO("/ distance_laser |");
     for (int i = 0; i < 4; i++)
     {
-        printf(" dist = %f i= %i |", pillar_[i].distance_laser, i);
+        ROS_INFO(" distance_laser = %f numPillar= %i", pillar_[i].distance_laser, msg_Modul2Data.laser[i].numPillar);  
     }
-        printf("\n");
+        // printf("\n");
 
     // SPoint p1_laser = pointFromTetha(msg_Modul2Data.laser[1].angle, msg_Modul2Data.laser[1].distance);
     // SPoint p2_laser = pointFromTetha(msg_Modul2Data.laser[2].angle, msg_Modul2Data.laser[2].distance);
@@ -354,5 +355,6 @@ void CLaser::calcPointPillarFromLaser(CPillar::SPillar *pillar_) // Расчет
     // pillar_[1].distance_laser = 1.279;
     // pillar_[2].distance_laser = 1.599;
     // pillar_[3].distance_laser = 2.980;
+    ROS_INFO("--- calcPointPillarFromLaser");
 }
 #endif
