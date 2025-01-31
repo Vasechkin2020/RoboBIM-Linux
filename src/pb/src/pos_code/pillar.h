@@ -157,7 +157,7 @@ void CPillar::getLocationMode3(SPose &poseReturn_, SPose pose_) // На вход
 // Метод возврщает положение центра лидара усредненного по всем столбам по методу "растояние до столбов по лидару"
 void CPillar::getLocationMode1(SPose &poseReturn_, SPose pose_) // На вход подается последняя полученная/посчитанная позиция лидара
 {
-    ROS_INFO("getLocationMode1");
+    ROS_INFO("+++ getLocationMode1");
     // ROS_INFO("pose IN x= %.3f y= %.3f theta= %.3f ", pose_.x, pose_.y, pose_.theta);
     // ROS_INFO("---"); //
     float a1, a2;
@@ -206,7 +206,7 @@ void CPillar::getLocationMode1(SPose &poseReturn_, SPose pose_) // На вход
     {
         ROS_ERROR("MODE1 count_poseLidarMode1= %i \n", count_poseLidarMode1);
     }
-    ROS_INFO("end getLocationMode1.");
+    ROS_INFO("--- getLocationMode1");
 }
 
 // Метод возвращает угол между ось. Y вверх и напрвлением лидара вперед Сравнивается с Azimit который посчитали ранее

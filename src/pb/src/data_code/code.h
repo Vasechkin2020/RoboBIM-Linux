@@ -222,7 +222,17 @@ void setModeModul()
 		Data2Modul.controlMotor.angle[2] = 143.6; //
 		Data2Modul.controlMotor.angle[3] = 105.7; //
 		break;
+	case 4:
+		// printf("modeModul = 4 \n");
+		Data2Modul.controlMotor.mode = 1;		  // Ручной вариант проверка
+		Data2Modul.controlLaser.mode = 2;		  // Ручной вариант проверка
+		Data2Modul.controlMotor.angle[0] = 74.13;  //
+		Data2Modul.controlMotor.angle[1] = 78.1;  //
+		Data2Modul.controlMotor.angle[2] = 122.3; //
+		Data2Modul.controlMotor.angle[3] = 108.81; //
+		break;
 	}
+
 	// Data2Modul.controlMotor.mode = 1; // Ручной вариант проверка
 	// Data2Modul.controlLaser.mode = 1; // Ручной вариант проверка
 

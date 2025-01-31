@@ -86,9 +86,9 @@ void initCommandArray(int verCommand_)
 	if (verCommand_ == 2)
 	{
 		commandArray[0].mode = 1;
-		commandArray[0].duration = 20000;
-		commandArray[0].velL = 0.05;
-		commandArray[0].velR = 0.05;
+		commandArray[0].duration = 30000;
+		commandArray[0].velL = 0.1;
+		commandArray[0].velR = 0.1;
 
 		commandArray[1].mode = 1;
 		commandArray[1].duration = 5000;
@@ -96,9 +96,9 @@ void initCommandArray(int verCommand_)
 		commandArray[1].velR = 0.0;
 
 		commandArray[2].mode = 1;
-		commandArray[2].duration = 20000;
-		commandArray[2].velL = -0.05;
-		commandArray[2].velR = -0.05;
+		commandArray[2].duration = 30000;
+		commandArray[2].velL = -0.1;
+		commandArray[2].velR = -0.1;
 
 		commandArray[3].mode = 1;
 		commandArray[3].duration = 5000;
