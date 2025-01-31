@@ -100,8 +100,8 @@ float minDistance(float laserL_, float laserR_, float uzi1_)
 // Разбираем топик со стартовой позицией робота
 void startPosition(geometry_msgs::Pose2D &startPose2d_)
 {
-	ROS_INFO("------------------------- startPosition -------------------------------------");
-	ROS_INFO("startPosition startPose x= %.3f y= %.3f theta= %.3f ", startPose2d_.x, startPose2d_.y, startPose2d_.theta);
+	ROS_INFO("+++ startPosition");
+	ROS_INFO("startPose x= %.3f y= %.3f theta= %.3f ", startPose2d_.x, startPose2d_.y, startPose2d_.theta);
 
 	g_poseLidar.mode0.x = startPose2d_.x; // Пока считаем что передаем положение центра лидара и поэтому ему присваиваем значение, потом надо будет добавлять смещение до центра поворота между колесами
 	g_poseLidar.mode0.y = startPose2d_.y;
@@ -124,7 +124,7 @@ void startPosition(geometry_msgs::Pose2D &startPose2d_)
 
 	// printf("START RAD2DEG(odomMode0.pose.th) = % .3f \n", RAD2DEG(odomMode0.pose.th));
 
-	ROS_INFO("-------------------------              ------------------------------------- \n");
+	ROS_INFO("--- startPosition");
 }
 
 // Переводит значение из одного диапазона в другой, взял из Ардуино
@@ -984,6 +984,7 @@ void initKalman()
 // Считывание переменных параметров из лаунч файла при запуске. Там офсеты и режимы работы
 void readParam()
 {
+	ROS_INFO("+++ readParam");
 	ros::NodeHandle nh_private("~");
 	// Имя можно с палкой или без, смотря как в лаунч файле параметры обявлены. связано с видимостью глобальной или локальной. относительным поиском переменной как сказал Максим
 
@@ -1016,13 +1017,12 @@ void readParam()
 	if (!nh_private.getParam("y3", msg_pillar.pillar[3].y))
 		msg_pillar.pillar[3].y = 3.11;
 
-	ROS_INFO("--- Start node with parametrs:");
 	ROS_INFO("startPose x = %.3f y = %.3f theta = %.3f", msg_startPose2d.x, msg_startPose2d.y, msg_startPose2d.theta);
 	ROS_INFO("start PillarPose");
 	ROS_INFO("x0= %.3f y0 = %.3f", msg_pillar.pillar[0].x, msg_pillar.pillar[0].y);
 	ROS_INFO("x1= %.3f y1 = %.3f", msg_pillar.pillar[1].x, msg_pillar.pillar[1].y);
 	ROS_INFO("x2= %.3f y2 = %.3f", msg_pillar.pillar[2].x, msg_pillar.pillar[2].y);
 	ROS_INFO("x3= %.3f y3 = %.3f", msg_pillar.pillar[3].x, msg_pillar.pillar[3].y);
-	ROS_INFO("---");
+	ROS_INFO("--- readParam");
 }
 #endif

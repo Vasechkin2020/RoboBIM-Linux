@@ -498,7 +498,7 @@ int CPillar::getCrossing(SCircle c1_, SCircle c2_, SPose pose_, SPoint &pointX_,
 void CPillar::parsingPillar(pb_msgs::topicPillar &pillar_)
 {
     countPillar = 0; // Обнуляем счетчик столбов
-    ROS_INFO("------------------------- parsingPillar -------------------------------------");
+    ROS_INFO("+++ parsingPillar");
     for (int i = 0; i < pillar_.pillar.static_size; i++)
     {
         pillar[i].x_true = pillar_.pillar[i].x;
@@ -506,13 +506,13 @@ void CPillar::parsingPillar(pb_msgs::topicPillar &pillar_)
         countPillar++;
         ROS_INFO("pillarTrue[ %i ].x= %.3f pillarTrue[ %i ].y= %.3f ", i, pillar[i].x_true, i, pillar[i].y_true);
     }
-    ROS_INFO("-------------------------               ------------------------------------- \n");
+    ROS_INFO("--- parsingPillar");
 }
 
 // Функция сопоставления истинных столбов с лидарными
 void CPillar::comparisonPillar()
 {
-    ROS_INFO("comparisonPillar");
+    ROS_INFO("+++ comparisonPillar");
     float delta_x = 0;
     float delta_y = 0;
     float hypotenuse = 0;

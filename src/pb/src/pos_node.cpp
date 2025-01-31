@@ -32,14 +32,13 @@ std::string log_name = "pos_node";
 
 int main(int argc, char **argv)
 {
-    ROS_WARN("%s --------------------------------------------------------", NN);
-    ROS_WARN("%s ***  Pos_Node *** ver. 1.44 *** printBIM.ru *** 2025 ***", NN);
-    ROS_WARN("%s --------------------------------------------------------", NN);
-
-    ros::init(argc, argv, "pos_node");
-    // topic.init(argc, argv);
     // Установка дополнительных данных в контекст
     log4cxx::MDC::put("node", "|pos_node|");
+    // ROS_WARN("%s --------------------------------------------------------", NN);
+    ROS_FATAL("***  pos_node *** ver. 1.44 *** printBIM.ru *** 2025 ***");
+    // ROS_WARN("%s --------------------------------------------------------", NN);
+    ros::init(argc, argv, "pos_node");
+    // topic.init(argc, argv);
 
     ros::NodeHandle nh;
     CTopic topic; // Экземпляр класса для всех публикуемых топиков
@@ -67,10 +66,9 @@ int main(int argc, char **argv)
     ros::Rate r(RATE);        // Частота в Герцах - задержка
     ros::Duration(2).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
 
-    ROS_WARN("End Setup. Start loop.\n");
+    ROS_WARN("End Setup. Start loop.");
     while (ros::ok())
     {
-        ROS_INFO(""); // С новой строки в логе новый цикл
         // testFunction();
         ros::spinOnce(); // Опрашиваем ядро ROS и по этой команде наши срабатывают колбеки. Нужно только для подписки на топики
 
@@ -183,20 +181,14 @@ int main(int argc, char **argv)
         topic.publicationPoseLidarAll();         // Публикуем все варианты расчета позиций mode 0.1.2.3.4
 
         static u_int64_t timeMil = millis();
-        if (timeMil < millis())
+        if (timeMil <= millis())
         {
-            printf("%u \n", millis());
-            printf(" mode0.x= %.3f y= %.3f th= %.2f /", g_poseLidar.mode0.x, g_poseLidar.mode0.y, g_poseLidar.mode0.th);
-            printf(" mode1.x= %.3f y= %.3f th= %.2f /", g_poseLidar.mode1.x, g_poseLidar.mode1.y, g_poseLidar.mode1.th);
-            printf(" mode2.x= %.3f y= %.3f th= %.2f /", g_poseLidar.mode2.x, g_poseLidar.mode2.y, g_poseLidar.mode2.th);
-            printf(" mode3.x= %.3f y= %.3f th= %.2f /", g_poseLidar.mode3.x, g_poseLidar.mode3.y, g_poseLidar.mode3.th);
-            printf("\n");
-            for (int i = 0; i < 4; i++)
-            {
-                printf(" angle= %.3f numPillar = %i |", g_angleLaser[i], g_numPillar[i]);
-            }
-            printf("\n");
-
+            ROS_WARN("mode0.x= %.3f y= %.3f th= %.2f | mode1.x= %.3f y= %.3f th= %.2f", g_poseLidar.mode0.x, g_poseLidar.mode0.y, g_poseLidar.mode0.th,
+                     g_poseLidar.mode1.x, g_poseLidar.mode1.y, g_poseLidar.mode1.th);
+            ROS_WARN("mode2.x= %.3f y= %.3f th= %.2f | mode3.x= %.3f y= %.3f th= %.2f", g_poseLidar.mode2.x, g_poseLidar.mode2.y, g_poseLidar.mode2.th,
+                     g_poseLidar.mode3.x, g_poseLidar.mode3.y, g_poseLidar.mode3.th);
+            ROS_WARN("angle= %.3f numPillar = %i | angle= %.3f numPillar = %i | angle= %.3f numPillar = %i | angle= %.3f numPillar = %i",
+                     g_angleLaser[0], g_numPillar[0], g_angleLaser[1], g_numPillar[1], g_angleLaser[2], g_numPillar[2], g_angleLaser[3], g_numPillar[3]);
             timeMil = millis() + 1000;
         }
         r.sleep(); // Интеллектуальная задержка на указанную частоту
