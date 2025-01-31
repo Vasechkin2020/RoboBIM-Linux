@@ -14,9 +14,9 @@ CJoy joy(0.5, 0.5); // Обьявляем экземпляр класса в н�
 int main(int argc, char **argv)
 {
 
-    ROS_WARN("%s --------------------------------------------------------", NN);
-    ROS_WARN("%s *** Data_Node *** ver. 1.44 *** printBIM.ru *** 2025 ***", NN);
-    ROS_WARN("%s --------------------------------------------------------", NN);
+    // ROS_WARN("%s --------------------------------------------------------", NN);
+    ROS_FATAL("%s *** Data_Node *** ver. 1.44 *** printBIM.ru *** 2025 ***", NN);
+    // ROS_WARN("%s --------------------------------------------------------", NN);
 
     ros::init(argc, argv, "data_node");
     log4cxx::MDC::put("node", "|data_node|");
@@ -44,7 +44,7 @@ int main(int argc, char **argv)
     last_time = ros::Time::now();
     // double dt = (current_time - last_time).toSec();
 
-    printf("Start test laser... Waiting 7 sec... \n");
+    ROS_INFO("+++ test laser... Waiting 7 sec...");
     ros::Duration(1).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
 
     // Data2Modul.id++;                                       //= 0x1F1F1F1F;
@@ -65,9 +65,10 @@ int main(int argc, char **argv)
     // Data2Modul.cheksum = measureCheksum(Data2Modul);       // Считаем контрольную сумму отправляемой структуры// тут нужно посчитать контрольную сумму структуры
     // sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
     // ros::Duration(1).sleep();                              // Подождем пока все обьявится и инициализируется внутри ROS
+    ROS_INFO("--- test laser");
 
     uint64_t timeWork = millis(); // Время работы ноды
-    ROS_WARN("End Setup. Start loop.\n");
+    ROS_WARN("End Setup. Start loop.");
 
     while (ros::ok())
     {
