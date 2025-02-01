@@ -190,11 +190,11 @@ void CLaser::calcAnglePillarForLaser(CPillar::SPillar *pillar_, SPose &poseLidar
 
     pillar_1(matrixLaserPillar, tableLaser, count); // Сопоставление столбов если их может однозначно обслуживать только один лазер
     //-----------------------------------------------------------------------
-    ROS_INFO("!!!! Pillar warn... % i", count);
+    // ROS_INFO("!!!! Pillar warn... % i", count);
 
     for (int i = 0; i < 4; i++)
     {
-        //printf("numPillar11= %i angle_pillar % .3f \n", tableLaser[i].n, tableLaser[i].angle);
+        //ROS_INFO("numPillar11= %i angle_pillar % .3f \n", tableLaser[i].n, tableLaser[i].angle);
     }
 
     for (int k = 0; k < 4; k++) // Делаем 4 поиска лазеров с 2 столбом. Это максимум возможных вариантов
@@ -202,7 +202,7 @@ void CLaser::calcAnglePillarForLaser(CPillar::SPillar *pillar_, SPose &poseLidar
         //ROS_WARN("!!!! Pillar warn... % i", count);
         for (int i = 0; i < 4; i++) // Перебираем лазеры, это строки матрицы
         {
-            //printf(" %i matrixLaserPillar2[i][4]= %i \n", i, matrixLaserPillar[i][4].n); // Матрица Лазеров-Столбов. В ней строки - номера лазеров, столюцы - номера столбов которые лазер может обслуживать Столбец 5 для записи количества столбов
+            //ROS_INFO(" %i matrixLaserPillar2[i][4]= %i \n", i, matrixLaserPillar[i][4].n); // Матрица Лазеров-Столбов. В ней строки - номера лазеров, столюцы - номера столбов которые лазер может обслуживать Столбец 5 для записи количества столбов
             if (matrixLaserPillar[i][4].n == 2)                                          // Если остались лазеры у которых еще 2 столба в возможном обслуживании, то выбор делаем по минимальному углу от осевого
             {
                 float minAngle = 180; // Начальный самый большой
@@ -213,23 +213,23 @@ void CLaser::calcAnglePillarForLaser(CPillar::SPillar *pillar_, SPose &poseLidar
                     if (matrixLaserPillar[i][j].n >= 0) // Находим номера столбов
                     {
                         float a = abs(matrixLaserPillar[i][j].angle - 90); // Считаем угол от осевого, а он 90 градусов
-                        //printf("a= % .3f minAngle = % .3f === ", a, minAngle);
+                        //ROS_INFO("a= % .3f minAngle = % .3f === ", a, minAngle);
                         if (a < minAngle)
                         {
                             //printf("i= %i j= %i a= % .3f ", i, j, a);
                             minAngle = a;
                             angleNum = matrixLaserPillar[i][j].angle;
                             minNum = matrixLaserPillar[i][j].n; // Запоминаем номер столба
-                            //printf(" minNum %i minAngle % .3f \n", minNum, minAngle);
+                            //ROS_INFO(" minNum %i minAngle % .3f \n", minNum, minAngle);
                         }
                     }
                 }
-                //printf(" ITOG minNum %i minAngle % .3f \n", minNum, minAngle);
+                //ROS_INFO(" ITOG minNum %i minAngle % .3f \n", minNum, minAngle);
                 tableLaser[i].n = minNum;
                 tableLaser[i].angle = angleNum;
                 count++;                       // Есть распредленный столб
                 matrixLaserPillar[i][4].n = 0; // Обнуляем счетчик столбов которые он может обслужить у данного лазера, так как он распределен
-                //printf("numPillar33= %i angle_pillar % .3f \n", tableLaser[i].n, tableLaser[i].angle);
+                //ROS_INFO("numPillar33= %i angle_pillar % .3f \n", tableLaser[i].n, tableLaser[i].angle);
 
                 // Нужно назначить и убрать из матрицы у других лазеров этот столб
                 deleteNum(matrixLaserPillar, tableLaser[i].n); // Убираем из двухмерного массива уже сопоставленный столб из других вариантов
@@ -238,6 +238,7 @@ void CLaser::calcAnglePillarForLaser(CPillar::SPillar *pillar_, SPose &poseLidar
         }
         pillar_1(matrixLaserPillar, tableLaser, count); // Сопоставление столбов если их может однозначно обслуживать только один лазер
     }
+    ROS_INFO("    Raspredelenie Pillar - %i", count);
    
     // printf("!!!! Pillar warn REZULTAT... % i", count);
     // printf(" === \n");
@@ -273,10 +274,10 @@ void CLaser::calcAnglePillarForLaser(CPillar::SPillar *pillar_, SPose &poseLidar
         anglePillarInLaser[i] = tableLaser[i].angle; // Для визуализации в RVIZ
         g_angleLaser[i] = tableLaser[i].angle;       // Для топика ?
         g_numPillar[i] = tableLaser[i].n;
-        //printf(" angle= %.3f numPillar = %i |", g_angleLaser[i], g_numPillar[i]);
+        ROS_INFO("    numPillar = %i -> angle= %.3f", g_numPillar[i], g_angleLaser[i]);
     }
     // printf("\n");
-    ROS_INFO("--- calcAnglePillarForLaser.");
+    ROS_INFO("--- calcAnglePillarForLaser");
 }
 
 void CLaser::calcPointPillarFromLaser(CPillar::SPillar *pillar_) // Расчет положения столбов в лидарной системе на основании данных с датчиков
@@ -324,7 +325,7 @@ void CLaser::calcPointPillarFromLaser(CPillar::SPillar *pillar_) // Расчет
         // ROS_INFO("/ distance_laser |");
     for (int i = 0; i < 4; i++)
     {
-        ROS_INFO(" distance_laser = %f numPillar= %i", pillar_[i].distance_laser, msg_Modul2Data.laser[i].numPillar);  
+        ROS_INFO("    numPillar = %i -> distance_laser = %f", msg_Modul2Data.laser[i].numPillar, pillar_[i].distance_laser);  
     }
         // printf("\n");
 

@@ -34,9 +34,11 @@ int main(int argc, char **argv)
 {
     // Установка дополнительных данных в контекст
     log4cxx::MDC::put("node", "|pos_node|");
-    // ROS_WARN("%s --------------------------------------------------------", NN);
+
+    ROS_FATAL("\n\n");
     ROS_FATAL("***  pos_node *** ver. 1.55 *** printBIM.ru *** 2025 ***");
-    // ROS_WARN("%s --------------------------------------------------------", NN);
+    ROS_FATAL("--------------------------------------------------------\n");
+
     ros::init(argc, argv, "pos_node");
     // topic.init(argc, argv);
 
@@ -71,75 +73,7 @@ int main(int argc, char **argv)
     {
         // testFunction();
         ros::spinOnce(); // Опрашиваем ядро ROS и по этой команде наши срабатывают колбеки. Нужно только для подписки на топики
-
-        // Считаем Каждый раз цикла с частотой RATE
-            ROS_INFO("-------------------------------------------------------------------------");
-        if (flag_msgSpeed) // Флаг что пришло сообщение от ноды Data по Speed. Расчитываем линейную и угловую скорость и потом на нее основе расчитываем MODE0 MODE11 MODE12 MODE13 как первую часть Калмана по модели.
-        {
-            flag_msgSpeed = false;
-            g_linAngVel.wheel = calcTwistFromWheel(msg_Speed); // Обработка пришедших данных. По ним считаем линейные скорости по осям и угловую по углу. Запоминаем dt
-
-            calcMode0(); // Расчет одометрии Mode0
-            // calcMode11();  // На основе линейных скоростей считаем новую позицию и угол для одометрии 100 Герц считаем и потом 10 Герц правим
-            // calcMode12();  // На основе линейных скоростей считаем новую позицию и угол для одометрии 100 Герц считаем и потом 10 Герц правим
-            // calcMode13();  // На основе линейных скоростей считаем новую позицию и угол для одометрии 100 Герц считаем и потом 10 Герц правим
-            // calcMode123(); // Комплементация Odom10// Комплементация положения и угла
-
-            topic.visualPublishOdomMode_0(); // Публикация одометрии по моторам которая получается от начальной точки
-
-            // topic.visualPublishOdomMode_11(); // Публикация одометрии по моторам которая получается от начальной точки
-            // topic.visualPublishOdomMode_12(); // Публикация одометрии по моторам которая получается от начальной точки
-            // topic.visualPublishOdomMode_13(); // Публикация одометрии по моторам которая получается от начальной точки
-
-            // Этот расчет перенести в Speed? что бы 100 раз управляли моторами лазеров в не когда от них данные пришлт ??????
-            // Скорсоть цикла увеличить до 200 - 1000 герц
-            laser.calcAnglePillarForLaser(pillar.pillar, g_poseLidar.mode0); // Расчет углов в локальной системе лазеров на столбы для передачи на нижний уровень для исполнения
-            static pb_msgs::Struct_Data2Modul dataControlModul2;
-            dataControlModul2.controlMotor.mode = 1;
-            dataControlModul2.controlLaser.mode = 2; // Тут указываем режи. С какой частотой будут работать датчик. Если 1 то с маленькой, если 2 то быстрее
-            // Поворачиваем на этот угол
-            dataControlModul2.controlMotor.angle[0] = g_angleLaser[0];
-            dataControlModul2.controlMotor.numPillar[0] = g_numPillar[0];
-            dataControlModul2.controlMotor.angle[1] = g_angleLaser[1];
-            dataControlModul2.controlMotor.numPillar[1] = g_numPillar[1];
-            dataControlModul2.controlMotor.angle[2] = g_angleLaser[2];
-            dataControlModul2.controlMotor.numPillar[2] = g_numPillar[2];
-            dataControlModul2.controlMotor.angle[3] = g_angleLaser[3];
-            dataControlModul2.controlMotor.numPillar[3] = g_numPillar[3];
-
-            topic.publicationControlModul(dataControlModul2); // Формируем и Публикуем команды для управления Modul
-        }
-
-        // Выполняется 10 Hz как ЛИДАР ПРИШЛЕТ ***************************************************************************************************************************************************
-        if (flag_msgLidar) // Если пришло сообщение в топик от лидара и мы уже разобрали данные по координатам машинки, а значит можем грубо посчитать где стоят столбы.  И знаем где истинные столбы
-        {
-            flag_msgLidar = false;
-            pillar.parsingLidar(msg_lidar, g_poseLidar.mode0); // Разбираем пришедшие данные и ищем там столбы.
-            pillar.comparisonPillar();                         // Сопоставляем столбы
-            // topic.publicationPillarAll(pillar);                // Публикуем всю обобщенную информацию по столб
-
-            pillar.getLocationMode1(g_poseLidar.mode1, g_poseLidar.mode0); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
-            // pillar.getLocationMode2(g_poseLidar.mode2, g_poseLidar.mode1); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
-
-            // odomMode11.pose.x = kalman11.calcX(g_poseLidar.mode1.x, odomMode11.pose.x); // Фильр Калмана для координаты Х. На вход подаем измеренное значение по MODE1  и вычисленное значение по модели ускорение на время плюс старое знаение
-            // odomMode11.pose.y = kalman11.calcY(g_poseLidar.mode1.y, odomMode11.pose.y); // Фильр Калмана для координаты Y. На вход подаем измеренное значение по MODE1  и вычисленное значение по модели ускорение на время плюс старое знаение
-
-            // odomMode12.pose.x = kalman12.calcX(g_poseLidar.mode2.x, odomMode12.pose.x); // Фильр Калмана для координаты Х. На вход подаем измеренное значение по MODE1  и вычисленное значение по модели ускорение на время плюс старое знаение
-            // odomMode12.pose.y = kalman12.calcY(g_poseLidar.mode2.y, odomMode12.pose.y); // Фильр Калмана для координаты Y. На вход подаем измеренное значение по MODE1  и вычисленное значение по модели ускорение на время плюс старое знаение
-
-            // odomMode13.pose.x = kalman13.calcX(g_poseLidar.mode3.x, odomMode13.pose.x); // Фильр Калмана для координаты Х. На вход подаем измеренное значение по MODE1  и вычисленное значение по модели ускорение на время плюс старое знаение
-            // odomMode13.pose.y = kalman13.calcY(g_poseLidar.mode3.y, odomMode13.pose.y); // Фильр Калмана для координаты Х. На вход подаем измеренное значение по MODE1  и вычисленное значение по модели ускорение на время плюс старое знаение
-
-            // topic.visualPoseLidarMode_1_2();                                // Отобращение стрелкой где начало и куда смотрит в Mode0 1 2
-            topic.visualPublishOdomMode_1(); // Отобращение стрелкой где начало и куда смотрит в Mode0 1 2
-            // topic.visualPublishOdomMode_2(); // Отобращение стрелкой где начало и куда смотрит в Mode0 1 2
-
-            if (isnan(g_poseLidar.mode2.x) || isnan(g_poseLidar.mode2.y) || isnan(g_poseLidar.mode2.th))
-            {
-                ROS_ERROR("STOP MODE 1-2");
-                exit(0);
-            }
-        }   
+        ROS_INFO("-------------------------------------------------------------------------");
 
         if (!modeColibrovka) // Тут исполняется основной режим, не колибровка // ДОБАВИТЬ ФИЛЬТР КАЛМАНА для покааний С МОДЕЛЬЮ, так как знаем что окружность известного диаметра и расстояние до столюа
         {
@@ -147,12 +81,16 @@ int main(int argc, char **argv)
             if (flag_msgModul) // Флаг что пришло сообщение от ноды Data по Modul. Тут пишем какую-то обработку данных если нужно. Это будет MODE_3
             {
                 flag_msgModul = false;
+                ROS_INFO("--------------------------------------- flag_msgModul ***");
                 // Тут вывести разницу в положении угла куда должны быть направлены лазеры и из какого угла данные
                 //  !!!!!!!!!!!!!!! тут надо считать наверное когда данные с лазеров меняются, а то 100 раз приходят от модуль, а данные реже обновляются тут надо смотреть что данные пришли от измерения куда надо, а не куда попало любые данные тспользуем только правильные датчики, а те что не те или не дали сигнал в расчетах не учитывать
                 //   printf("++++++++++ data from msg_Modul2Data in ++++++++ \n");
                 //   for (int i = 0; i < 4; i++)
                 //       printf("distance = % .3f angle = % .3f numPillar = %i \n", msg_Modul2Data.laser[i].distance, msg_Modul2Data.laser[i].angle, msg_Modul2Data.laser[i].numPillar);
                 //   printf("+++ \n");
+
+                // odomMode13.pose.x = kalman13.calcX(g_poseLidar.mode3.x, odomMode13.pose.x); // Фильр Калмана для координаты Х. На вход подаем измеренное значение по MODE1  и вычисленное значение по модели ускорение на время плюс старое знаение
+                // odomMode13.pose.y = kalman13.calcY(g_poseLidar.mode3.y, odomMode13.pose.y); // Фильр Калмана для координаты Х. На вход подаем измеренное значение по MODE1  и вычисленное значение по модели ускорение на время плюс старое знаение
 
                 laser.calcPointPillarFromLaser(pillar.pillar);                 // Расчитываем Расстояние до столбов в /Odom/ системе
                 pillar.getLocationMode3(g_poseLidar.mode3, g_poseLidar.mode0); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
@@ -171,6 +109,80 @@ int main(int argc, char **argv)
             startColibrovka(topic); // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! Сделать определние начального угла Theta при запуске путем сканирования лазерами туда-сюда и нахождения минимальной точки и вычисления угла на основе локальных углов
         }
 
+        // 100 Hz ************************************************************ ОБРАБОТКА ДАННЫХ ИЗ ТОПИКОВ ЧТО ПОДПИСАНЫ  СРАБАТЫВАЕТ КАК ОТПРАВЛЯЕТ DATA_NODE  ********************************************
+        if (flag_msgSpeed) // Флаг что пришло сообщение от ноды Data по Speed. Расчитываем линейную и угловую скорость и потом на нее основе расчитываем MODE0 MODE11 MODE12 MODE13 как первую часть Калмана по модели.
+        {
+            flag_msgSpeed = false;
+            ROS_INFO("--------------------------------------- flag_msgSpeed ***");
+            g_linAngVel.wheel = calcTwistFromWheel(msg_Speed); // Обработка пришедших данных. По ним считаем линейные скорости по осям и угловую по углу. Запоминаем dt
+
+            calcMode0();                     // Расчет одометрии Mode0
+            topic.visualPublishOdomMode_0(); // Публикация одометрии по моторам которая получается от начальной точки
+
+            // calcMode11();  // На основе линейных скоростей считаем новую позицию и угол для одометрии 100 Герц считаем и потом 10 Герц правим
+            // topic.visualPublishOdomMode_11(); // Публикация одометрии по моторам которая получается от начальной точки
+
+            // calcMode12();  // На основе линейных скоростей считаем новую позицию и угол для одометрии 100 Герц считаем и потом 10 Герц правим
+            // topic.visualPublishOdomMode_12(); // Публикация одометрии по моторам которая получается от начальной точки
+
+            // calcMode13();  // На основе линейных скоростей считаем новую позицию и угол для одометрии 100 Герц считаем и потом 10 Герц правим
+            // topic.visualPublishOdomMode_13(); // Публикация одометрии по моторам которая получается от начальной точки
+
+            // calcMode123(); // Комплементация Odom10// Комплементация положения и угла
+            // topic.visualPublishOdomMode_123(); // Публикация одометрии по моторам которая получается от начальной точки
+
+            static pb_msgs::Struct_Data2Modul dataControlModul2;
+            dataControlModul2.controlMotor.mode = 1;
+            dataControlModul2.controlLaser.mode = 2; // Тут указываем режи. С какой частотой будут работать датчик. Если 1 то с маленькой, если 2 то быстрее
+            // Поворачиваем на этот угол
+            dataControlModul2.controlMotor.angle[0] = g_angleLaser[0];
+            dataControlModul2.controlMotor.numPillar[0] = g_numPillar[0];
+            dataControlModul2.controlMotor.angle[1] = g_angleLaser[1];
+            dataControlModul2.controlMotor.numPillar[1] = g_numPillar[1];
+            dataControlModul2.controlMotor.angle[2] = g_angleLaser[2];
+            dataControlModul2.controlMotor.numPillar[2] = g_numPillar[2];
+            dataControlModul2.controlMotor.angle[3] = g_angleLaser[3];
+            dataControlModul2.controlMotor.numPillar[3] = g_numPillar[3];
+
+            // Этот расчет перенести в Speed? что бы 100 раз управляли моторами лазеров в не когда от них данные пришлт ?????? Скорсоть цикла увеличить до 200 - 1000 герц
+            laser.calcAnglePillarForLaser(pillar.pillar, g_poseLidar.mode0); // Расчет углов в локальной системе лазеров на столбы для передачи на нижний уровень для исполнения
+
+            topic.publicationControlModul(dataControlModul2); // Формируем и Публикуем команды для управления Modul
+        }
+
+        // Выполняется 10 Hz как ЛИДАР ПРИШЛЕТ ***************************************************************************************************************************************************
+        if (flag_msgLidar) // Если пришло сообщение в топик от лидара и мы уже разобрали данные по координатам машинки, а значит можем грубо посчитать где стоят столбы.  И знаем где истинные столбы
+        {
+            ROS_INFO("--------------------------------------- flag_msgLidar ***");
+            flag_msgLidar = false;
+            pillar.parsingLidar(msg_lidar, g_poseLidar.mode0); // Разбираем пришедшие данные и ищем там столбы.
+            pillar.comparisonPillar();                         // Сопоставляем столбы
+            // topic.publicationPillarAll(pillar);                // Публикуем всю обобщенную информацию по столб
+
+            pillar.getLocationMode1(g_poseLidar.mode1, g_poseLidar.mode0); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
+            pillar.getLocationMode2(g_poseLidar.mode2, g_poseLidar.mode1); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
+
+            // odomMode11.pose.x = kalman11.calcX(g_poseLidar.mode1.x, odomMode11.pose.x); // Фильр Калмана для координаты Х. На вход подаем измеренное значение по MODE1  и вычисленное значение по модели ускорение на время плюс старое знаение
+            // odomMode11.pose.y = kalman11.calcY(g_poseLidar.mode1.y, odomMode11.pose.y); // Фильр Калмана для координаты Y. На вход подаем измеренное значение по MODE1  и вычисленное значение по модели ускорение на время плюс старое знаение
+
+            // odomMode12.pose.x = kalman12.calcX(g_poseLidar.mode2.x, odomMode12.pose.x); // Фильр Калмана для координаты Х. На вход подаем измеренное значение по MODE1  и вычисленное значение по модели ускорение на время плюс старое знаение
+            // odomMode12.pose.y = kalman12.calcY(g_poseLidar.mode2.y, odomMode12.pose.y); // Фильр Калмана для координаты Y. На вход подаем измеренное значение по MODE1  и вычисленное значение по модели ускорение на время плюс старое знаение
+
+            // topic.visualPoseLidarMode_1_2();                                // Отобращение стрелкой где начало и куда смотрит в Mode0 1 2
+            topic.visualPublishOdomMode_1(); // Отобращение стрелкой где начало и куда смотрит в Mode0 1 2
+            topic.visualPublishOdomMode_2(); // Отобращение стрелкой где начало и куда смотрит в Mode0 1 2
+
+            if (isnan(g_poseLidar.mode2.x) || isnan(g_poseLidar.mode2.y) || isnan(g_poseLidar.mode2.th))
+            {
+                ROS_ERROR("STOP MODE 1-2");
+                exit(0);
+            }
+        }
+        else // Если не пришло новых данных в этом цикле то значит просто корректируем предыдущий расчет на величину угловых и линейных скорстей полученых с одометрии и INU
+        {
+
+        }
+
         // Публикуем тут так как если один раз опубликовать то они исчезают через некоторое время.
         topic.transformBase(g_poseLidar.mode1);  // Публикуем трансформации систем координат, задаем по какому расчету трансформировать
         topic.transformLidar(g_poseLidar.mode1); // Публикуем трансформации систем координат , задаем по какому расчету трансформировать
@@ -183,10 +195,11 @@ int main(int argc, char **argv)
         static u_int64_t timeMil = millis();
         if (timeMil <= millis())
         {
-            ROS_WARN("mode0.x= %.3f y= %.3f th= %.2f | mode1.x= %.3f y= %.3f th= %.2f", g_poseLidar.mode0.x, g_poseLidar.mode0.y, g_poseLidar.mode0.th,
-                     g_poseLidar.mode1.x, g_poseLidar.mode1.y, g_poseLidar.mode1.th);
-            ROS_WARN("mode2.x= %.3f y= %.3f th= %.2f | mode3.x= %.3f y= %.3f th= %.2f", g_poseLidar.mode2.x, g_poseLidar.mode2.y, g_poseLidar.mode2.th,
-                     g_poseLidar.mode3.x, g_poseLidar.mode3.y, g_poseLidar.mode3.th);
+            ROS_WARN("mode0.x= %.3f y= %.3f th= %.2f", g_poseLidar.mode0.x, g_poseLidar.mode0.y, g_poseLidar.mode0.th);
+            ROS_WARN("mode1.x= %.3f y= %.3f th= %.2f", g_poseLidar.mode1.x, g_poseLidar.mode1.y, g_poseLidar.mode1.th);
+            ROS_WARN("mode2.x= %.3f y= %.3f th= %.2f", g_poseLidar.mode2.x, g_poseLidar.mode2.y, g_poseLidar.mode2.th);
+            ROS_WARN("mode3.x= %.3f y= %.3f th= %.2f", g_poseLidar.mode3.x, g_poseLidar.mode3.y, g_poseLidar.mode3.th);
+
             ROS_WARN("angle= %.3f numPillar = %i | angle= %.3f numPillar = %i | angle= %.3f numPillar = %i | angle= %.3f numPillar = %i",
                      g_angleLaser[0], g_numPillar[0], g_angleLaser[1], g_numPillar[1], g_angleLaser[2], g_numPillar[2], g_angleLaser[3], g_numPillar[3]);
             timeMil = millis() + 1000;

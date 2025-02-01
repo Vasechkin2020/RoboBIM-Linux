@@ -99,8 +99,8 @@ CPillar::~CPillar()
 void CPillar::getLocationMode3(SPose &poseReturn_, SPose pose_) // На вход подается последняя полученная/посчитанная позиция лидара
 {
     ROS_INFO("+++ getLocationMode3 ");
-    ROS_INFO("pose IN x= %.3f y= %.3f th= %.3f", pose_.x, pose_.y, pose_.th);
-    ROS_INFO("distance_laser %.3f %.3f %.3f %.3f", pillar[0].distance_laser, pillar[1].distance_laser, pillar[2].distance_laser, pillar[3].distance_laser);
+    ROS_INFO("    pose IN x= %.3f y= %.3f th= %.3f", pose_.x, pose_.y, pose_.th);
+    ROS_INFO("    distance_laser %.3f %.3f %.3f %.3f", pillar[0].distance_laser, pillar[1].distance_laser, pillar[2].distance_laser, pillar[3].distance_laser);
 
     float a1, a2;
     SCircle c1, c2;
@@ -135,7 +135,7 @@ void CPillar::getLocationMode3(SPose &poseReturn_, SPose pose_) // На вход
             //}
         }
     }
-    ROS_INFO("CROSSING for MODE_3 = %i", count_poseLidarMode3);
+    ROS_INFO("    CROSSING for MODE_3 = %i", count_poseLidarMode3);
     if (count_poseLidarMode3 != 0)
     {
         // Усредняем все найденные координаты
@@ -149,7 +149,7 @@ void CPillar::getLocationMode3(SPose &poseReturn_, SPose pose_) // На вход
 
         poseLidar.th = 90 - getTheta(poseLidar, 3); // Получаем угол куда смотрит нос лидара в системе "odom"
         // ROS_INFO("---");                          //
-        ROS_WARN_THROTTLE(THROTTLE_PERIOD_3,"MODE3 pose.x= %.3f y= %.3f theta= %.3f ", poseLidar.x, poseLidar.y, poseLidar.th);
+        ROS_WARN_THROTTLE(THROTTLE_PERIOD_3,"    MODE3 pose.x= %.3f y= %.3f theta= %.3f ", poseLidar.x, poseLidar.y, poseLidar.th);
         // ROS_INFO("==="); //
         // return poseLidar;
         poseReturn_ = poseLidar; // Если насчитали новую позицию то возвращаем новую, иначе не меняем
@@ -200,7 +200,7 @@ void CPillar::getLocationMode1(SPose &poseReturn_, SPose pose_) // На вход
         poseLidar.y = poseLidar.y / count_poseLidarMode1;
 
         poseLidar.th = 90 - getTheta(poseLidar, 1); // Получаем угол куда смотрит нос лидара в системе "odom" + 90 так как сситема координат повернута относительно /odom/
-        ROS_WARN_THROTTLE(THROTTLE_PERIOD_3,"MODE1 pose.x= %.3f y= %.3f theta= %.3f ", poseLidar.x, poseLidar.y, poseLidar.th);
+        ROS_WARN_THROTTLE(THROTTLE_PERIOD_3,"    MODE1 pose.x= %.3f y= %.3f theta= %.3f ", poseLidar.x, poseLidar.y, poseLidar.th);
         // return poseLidar;
         poseReturn_ = poseLidar;
     }
@@ -255,7 +255,7 @@ float CPillar::getTheta(SPose poseLidar_, int mode_)
         }
         else
         {
-            ROS_ERROR("no Theta for Pillar %i. status pillar if FALSE. For MODE_%i", i, mode_); //
+            ROS_ERROR("    Status pillar if FALSE. no calc theta for Pillar %i for MODE_%i", i, mode_); //
         }
         // ROS_INFO("---"); //
     }
@@ -271,7 +271,7 @@ float CPillar::getTheta(SPose poseLidar_, int mode_)
 // Метод возврщает положение центра лидара усредненного по всем столбам по методу "углы между столбами по лидару"
 void CPillar::getLocationMode2(SPose &poseReturn_, SPose pose_) // На вход подается последняя полученная/посчитанная позиция лидара
 {
-    ROS_INFO("getLocationMode2");
+    ROS_INFO("+++ getLocationMode2");
     // ROS_INFO("pose IN x= %.3f y= %.3f theta= %.3f ", pose_.x, pose_.y, pose_.theta);
     SPoint p1, p2, p3;
     float a1, a2;
@@ -306,7 +306,7 @@ void CPillar::getLocationMode2(SPose &poseReturn_, SPose pose_) // На вход
             }
         }
     }
-    ROS_INFO("count_circleAnglePillar = %i", count_circleAnglePillar);
+    ROS_INFO("    count_circleAnglePillar = %i", count_circleAnglePillar);
     for (int i = 0; i < count_circleAnglePillar - 1; i++) //        Перебираем окружности, и для каждого пересечение окружностей со следующим
     {
         for (int j = i + 1; j < count_circleAnglePillar; j++)
@@ -322,7 +322,7 @@ void CPillar::getLocationMode2(SPose &poseReturn_, SPose pose_) // На вход
             }
         }
     }
-    ROS_INFO("count_poseLidarMode2 = %i", count_poseLidarMode2);
+    ROS_INFO("    count_poseLidarMode2 = %i", count_poseLidarMode2);
     if (count_poseLidarMode2 > 100)
     {
         ROS_ERROR("count_poseLidarMode2 ERROR !!!!");
@@ -341,7 +341,7 @@ void CPillar::getLocationMode2(SPose &poseReturn_, SPose pose_) // На вход
         poseLidar.x = poseLidar.x / count_poseLidarMode2;
         poseLidar.y = poseLidar.y / count_poseLidarMode2;
         poseLidar.th = 90 - getTheta(poseLidar, 2); // Получаем угол куда смотрит нос лидара в системе "odom"
-        ROS_WARN_THROTTLE(THROTTLE_PERIOD_3,"MODE2 pose.x= %.3f y= %.3f theta= %.3f ", poseLidar.x, poseLidar.y, poseLidar.th);
+        ROS_WARN_THROTTLE(THROTTLE_PERIOD_3,"    MODE2 pose.x= %.3f y= %.3f theta= %.3f ", poseLidar.x, poseLidar.y, poseLidar.th);
         poseReturn_ = poseLidar;
 
         // // Находим куда смотрит лидар на основе полученного положения и результтов с лидара фактических
@@ -402,7 +402,7 @@ void CPillar::getLocationMode2(SPose &poseReturn_, SPose pose_) // На вход
     // ret.x = poseLidar.x;
     // ret.y = poseLidar.y;
     // ret.theta = poseLidar.theta;
-    ROS_INFO("end getLocationMode2");
+    ROS_INFO("--- getLocationMode2");
 }
 // Функция возвращает 2 окружности(координаты и радиус)
 // Основанно на идее что вписанный угол в окружность равен половине угла из центра на эту же хорду. Далее по формулам отсюда  Нахождение центра окружности по 2м точкам и углу https://dxdy.ru/topic4265.html
@@ -551,7 +551,7 @@ void CPillar::comparisonPillar()
             }
         }
     }
-    ROS_INFO("Comparison Pillar %i", countComparisonPillar);
+    ROS_INFO("    Comparison Pillar %i", countComparisonPillar);
     ROS_INFO("--- comparisonPillar");
 }
 
@@ -572,7 +572,7 @@ void CPillar::parsingLidar(const sensor_msgs::LaserScan::ConstPtr &scan, SPose &
     int count = scan->scan_time / scan->time_increment;
 
     // ROS_INFO("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! ");
-    ROS_INFO("Lidar data received %s [%d]:", scan->header.frame_id.c_str(), count);
+    ROS_INFO("    Lidar data received %s [%d]:", scan->header.frame_id.c_str(), count);
     // ROS_INFO("angle_range, %f, %f", RAD2DEG(scan->angle_min), RAD2DEG(scan->angle_max));
 
     int j = 0;
@@ -674,7 +674,7 @@ void CPillar::parsingLidar(const sensor_msgs::LaserScan::ConstPtr &scan, SPose &
             distance_pred = lidarData[i].distance; // запоминаем для следующего сравнения
         }
     }
-    ROS_INFO("Found Pillar from Lidar= %i ", countPillarLidar);
+    ROS_INFO("    Found Pillar from Lidar= %i ", countPillarLidar);
     ROS_INFO("--- parsingLidar");
 }
 

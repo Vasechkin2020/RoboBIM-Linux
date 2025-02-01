@@ -294,7 +294,7 @@ STwistDt calcTwistFromWheel(pb_msgs::SSetSpeed control_)
 	time = time_now;
 	if (dt < 0.005) // При первом запуске просто выходим из функции
 	{
-		ROS_INFO("First start. alcTwistFromWheel dt< 0.005 !!!! \n");
+		ROS_INFO("First start. alcTwistFromWheel dt< 0.005");
 		return ret;
 	}
 	// double speedL = PERIMETR * Driver2Data.motor.rpsEncodL; // По формуле периметр колеса на обороты это и есть пройденный путь за секунду Это и есть скорость за секунду
@@ -307,7 +307,7 @@ STwistDt calcTwistFromWheel(pb_msgs::SSetSpeed control_)
 	double sumSpeed = speedL + speedR;
 	double deltaSpeed = speedL - speedR;
 	double speed = (speedR + speedL) / 2.0; // Находим скорость всего обьекта.
-	ROS_INFO("speed car= %.6f", speed);
+	ROS_INFO("	speed car= %.6f", speed);
 	//*******************************************************************************************************************************************************
 	double w = deltaSpeed / DISTANCE_WHEELS; // Находим уголовую скорость движения по радиусу. Плюс по часовой минус против часовой
 											 // ROS_INFO("speedL= %.4f speedR= %.4f speed= %.4f w = %.4f ///  ", speedL, speedR, speed, RAD2DEG(w));
@@ -362,7 +362,7 @@ STwistDt calcTwistFromWheel(pb_msgs::SSetSpeed control_)
 	twist.vy = speed * sin(theta * dt); // Проекция моей скорости на ось Y получаем линейную скорость по оси за секунуду
 	twist.vth = theta;					// Угловая скорость в радианах.
 
-	ROS_INFO(" Wheel % .3f % .3f", twist.vx, twist.vy);
+	ROS_INFO("	Wheel % .3f % .3f", twist.vx, twist.vy);
 	// printf("vy= % .4f", twist.vy);
 	// printf("speed= %.4f twist.vth = %.4f / sin(twist.vth )= %.4f cos(twist.vth ) = %.4f / ", speed, RAD2DEG(twist.vth), sin(twist.vth ), cos(twist.vth ));
 	// printf("speed= %.4f twist.vth = %.8f / ", speed, RAD2DEG(twist.vth));
@@ -372,7 +372,7 @@ STwistDt calcTwistFromWheel(pb_msgs::SSetSpeed control_)
 	ret.dt = dt;
 
 	// }
-	ROS_INFO("--- calcTwistFromWheel.");
+	ROS_INFO("--- calcTwistFromWheel");
 	return ret;
 }
 /*
@@ -575,7 +575,7 @@ void calcMode0()
 	g_poseLidar.mode0.y = odomMode0.pose.y;
 	g_poseLidar.mode0.th = RAD2DEG(odomMode0.pose.th);
 
-	ROS_WARN_THROTTLE(THROTTLE_PERIOD_3,"MODE0 pose.x= %.3f y= %.3f theta= %.3f ", g_poseLidar.mode0.x, g_poseLidar.mode0.y, g_poseLidar.mode0.th);
+	ROS_WARN_THROTTLE(THROTTLE_PERIOD_3,"    MODE0 pose.x= %.3f y= %.3f theta= %.3f ", g_poseLidar.mode0.x, g_poseLidar.mode0.y, g_poseLidar.mode0.th);
 	//---------------
 	// printf("2 RAD2DEG(odomMode0.pose.th) = % .3f \n", RAD2DEG(odomMode0.pose.th));
 
@@ -595,7 +595,7 @@ void calcMode11()
 {
 	// printf("1 RAD2DEG(odomMode0.pose.th) = % .3f \n", RAD2DEG(odomMode0.pose.th));
 	calcNewOdom(odomMode11, g_linAngVel.wheel); // На основе линейных скоростей считаем новую позицию и угол по колесам
-	ROS_WARN("odomMode11 pose.x= %.3f y= %.3f theta= %.2f ", odomMode11.pose.x, odomMode11.pose.y, odomMode11.pose.th);
+	ROS_WARN("    odomMode11 pose.x= %.3f y= %.3f theta= %.2f ", odomMode11.pose.x, odomMode11.pose.y, odomMode11.pose.th);
 }
 // Расчет одометрии и применения ее для всех режимов
 void calcMode12()
@@ -615,7 +615,7 @@ void calcMode13()
 // Комплементация Mode123 это усреднение данных по Mode0 Mode2 Mode3
 void calcMode123()
 {
-	ROS_INFO("calcMode123");
+	ROS_INFO("+++ calcMode123");
 	SPose pose;
 	pose.x = (g_poseLidar.mode1.x + g_poseLidar.mode2.x + g_poseLidar.mode3.x) / 3.0;
 	pose.y = (g_poseLidar.mode1.y + g_poseLidar.mode2.y + g_poseLidar.mode3.y) / 3.0;
@@ -628,9 +628,9 @@ void calcMode123()
 	else
 	{
 		g_poseLidar.mode123 = pose;
-		ROS_WARN_THROTTLE(THROTTLE_PERIOD_3,"MODE123 pose.x= % .3f y= % .3f theta= %.3f", g_poseLidar.mode123.x, g_poseLidar.mode123.y, g_poseLidar.mode123.th);
+		ROS_WARN_THROTTLE(THROTTLE_PERIOD_3,"    MODE123 pose.x= % .3f y= % .3f theta= %.3f", g_poseLidar.mode123.x, g_poseLidar.mode123.y, g_poseLidar.mode123.th);
 	}
-	ROS_INFO("end calcMode123.");
+	ROS_INFO("--- calcMode123.");
 }
 /*   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!! ПРИМЕР ОТ ВАДИМА КАК НУЖНО СЧИТАТЬ одометрию!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	#define  R2G(val) (val*57.29577951308233)
