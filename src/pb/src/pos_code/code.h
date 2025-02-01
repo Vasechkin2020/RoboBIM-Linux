@@ -290,7 +290,7 @@ STwistDt calcTwistFromWheel(pb_msgs::SSetSpeed control_)
 	static unsigned long time = micros();		 // Время предыдущего расчета// Функция из WiringPi.
 	unsigned long time_now = micros();			 // Время в которое делаем расчет
 	double dt = ((time_now - time) / 1000000.0); // Интервал расчета переводим сразу в секунды Находим интревал между текущим и предыдущим расчетом в секундах
-	ROS_INFO("calcTwistFromWheel dt= %f", dt);
+	ROS_INFO("+++ calcTwistFromWheel dt= %f", dt);
 	time = time_now;
 	if (dt < 0.005) // При первом запуске просто выходим из функции
 	{
@@ -372,7 +372,7 @@ STwistDt calcTwistFromWheel(pb_msgs::SSetSpeed control_)
 	ret.dt = dt;
 
 	// }
-	ROS_INFO("end calcTwistFromWheel.");
+	ROS_INFO("--- calcTwistFromWheel.");
 	return ret;
 }
 /*
@@ -568,7 +568,7 @@ void angleMPU()
 // Расчет одометрии и применения ее для всех режимов
 void calcMode0()
 {
-	ROS_INFO ("calcMode0");
+	ROS_INFO ("+++ calcMode0");
 	// printf("1 RAD2DEG(odomMode0.pose.th) = % .3f \n", RAD2DEG(odomMode0.pose.th));
 	calcNewOdom(odomMode0, g_linAngVel.wheel); // На основе линейных скоростей считаем новую позицию и угол по колесам
 	g_poseLidar.mode0.x = odomMode0.pose.x;
@@ -588,7 +588,7 @@ void calcMode0()
 	// calcNewOdom(odomUnited, unitedTwistDt); // // На основе линейных скоростей считаем новую позицию и угол
 	// topic.publishOdomUnited();              // Публикация одометрии по моторам с корректировкой с верхнего уровня
 	//-------------------------
-	ROS_INFO ("end calcMode0.");
+	ROS_INFO ("--- calcMode0");
 }
 // Расчет одометрии и применения ее для всех режимов
 void calcMode11()

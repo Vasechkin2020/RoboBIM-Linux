@@ -135,7 +135,7 @@ void CPillar::getLocationMode3(SPose &poseReturn_, SPose pose_) // На вход
             //}
         }
     }
-    ROS_INFO("!!! count_poseLidarMode3 CROSSING = %i \n", count_poseLidarMode3);
+    ROS_INFO("CROSSING for MODE_3 = %i", count_poseLidarMode3);
     if (count_poseLidarMode3 != 0)
     {
         // Усредняем все найденные координаты
@@ -206,7 +206,7 @@ void CPillar::getLocationMode1(SPose &poseReturn_, SPose pose_) // На вход
     }
     else
     {
-        ROS_ERROR("MODE1 count_poseLidarMode1= %i \n", count_poseLidarMode1);
+        ROS_ERROR("MODE1 count_poseLidarMode1= %i", count_poseLidarMode1);
     }
     ROS_INFO("--- getLocationMode1");
 }
@@ -255,7 +255,7 @@ float CPillar::getTheta(SPose poseLidar_, int mode_)
         }
         else
         {
-            ROS_WARN(" !!! getTheta Pillar %i status FALSE mode %i", i, mode_); //
+            ROS_ERROR("no Theta for Pillar %i. status pillar if FALSE. For MODE_%i", i, mode_); //
         }
         // ROS_INFO("---"); //
     }
@@ -551,8 +551,8 @@ void CPillar::comparisonPillar()
             }
         }
     }
-    ROS_INFO("countComparisonPillar %i", countComparisonPillar);
-    ROS_INFO("end comparisonPillar.");
+    ROS_INFO("Comparison Pillar %i", countComparisonPillar);
+    ROS_INFO("--- comparisonPillar");
 }
 
 // Функция которую вызываем из колбека по расчету места столбов. Поиск лидарных столбов.
@@ -560,7 +560,7 @@ void CPillar::comparisonPillar()
 // Ноль градусов у нее там где хвостик и поэтому +180 чтобы получить 360 оборот правильный вправо
 void CPillar::parsingLidar(const sensor_msgs::LaserScan::ConstPtr &scan, SPose &poseLidarMode_)
 {
-    ROS_INFO("parsingLidar");
+    ROS_INFO("+++ parsingLidar");
     float distance_pred = 0;    // Предыдущее значение дистанции
     int a = 0;                  // Начало группы точек
     int b = 0;                  // Конец группы точек
@@ -572,7 +572,7 @@ void CPillar::parsingLidar(const sensor_msgs::LaserScan::ConstPtr &scan, SPose &
     int count = scan->scan_time / scan->time_increment;
 
     // ROS_INFO("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! ");
-    ROS_INFO("=== Lidar data received %s [%d]:", scan->header.frame_id.c_str(), count);
+    ROS_INFO("Lidar data received %s [%d]:", scan->header.frame_id.c_str(), count);
     // ROS_INFO("angle_range, %f, %f", RAD2DEG(scan->angle_min), RAD2DEG(scan->angle_max));
 
     int j = 0;
@@ -611,7 +611,7 @@ void CPillar::parsingLidar(const sensor_msgs::LaserScan::ConstPtr &scan, SPose &
         //     ROS_INFO("i = %i degree= %.4f distance= %.4f", i, lidarData[i].degree, lidarData[i].distance);
         // }
     }
-    ROS_INFO("transformed data = %i", k);
+    //ROS_INFO("transformed data = %i", k);
     for (int i = 0; i < j; i++) // Пробегаем по всему новому массиву и ищем группы точек
     {
         if (i != 0) // Для первого элемента просто его запоминаем в
@@ -674,8 +674,8 @@ void CPillar::parsingLidar(const sensor_msgs::LaserScan::ConstPtr &scan, SPose &
             distance_pred = lidarData[i].distance; // запоминаем для следующего сравнения
         }
     }
-    ROS_INFO("Found countPillarLidar= %i ", countPillarLidar);
-    ROS_INFO("end parsingLidar.");
+    ROS_INFO("Found Pillar from Lidar= %i ", countPillarLidar);
+    ROS_INFO("--- parsingLidar");
 }
 
 void CPillar::poiskPillar(int a_, int b_, SLidar *lidarData, SPose &poseLidarMode_)

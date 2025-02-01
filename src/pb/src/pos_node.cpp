@@ -73,6 +73,7 @@ int main(int argc, char **argv)
         ros::spinOnce(); // Опрашиваем ядро ROS и по этой команде наши срабатывают колбеки. Нужно только для подписки на топики
 
         // Считаем Каждый раз цикла с частотой RATE
+            ROS_INFO("-------------------------------------------------------------------------");
         if (flag_msgSpeed) // Флаг что пришло сообщение от ноды Data по Speed. Расчитываем линейную и угловую скорость и потом на нее основе расчитываем MODE0 MODE11 MODE12 MODE13 как первую часть Калмана по модели.
         {
             flag_msgSpeed = false;
@@ -95,7 +96,7 @@ int main(int argc, char **argv)
             laser.calcAnglePillarForLaser(pillar.pillar, g_poseLidar.mode0); // Расчет углов в локальной системе лазеров на столбы для передачи на нижний уровень для исполнения
             static pb_msgs::Struct_Data2Modul dataControlModul2;
             dataControlModul2.controlMotor.mode = 1;
-            dataControlModul2.controlLaser.mode = 2;
+            dataControlModul2.controlLaser.mode = 2; // Тут указываем режи. С какой частотой будут работать датчик. Если 1 то с маленькой, если 2 то быстрее
             // Поворачиваем на этот угол
             dataControlModul2.controlMotor.angle[0] = g_angleLaser[0];
             dataControlModul2.controlMotor.numPillar[0] = g_numPillar[0];
@@ -113,7 +114,6 @@ int main(int argc, char **argv)
         if (flag_msgLidar) // Если пришло сообщение в топик от лидара и мы уже разобрали данные по координатам машинки, а значит можем грубо посчитать где стоят столбы.  И знаем где истинные столбы
         {
             flag_msgLidar = false;
-            printf("\n");
             pillar.parsingLidar(msg_lidar, g_poseLidar.mode0); // Разбираем пришедшие данные и ищем там столбы.
             pillar.comparisonPillar();                         // Сопоставляем столбы
             // topic.publicationPillarAll(pillar);                // Публикуем всю обобщенную информацию по столб
