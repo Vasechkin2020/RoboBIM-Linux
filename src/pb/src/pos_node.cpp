@@ -96,6 +96,24 @@ int main(int argc, char **argv)
                 pillar.getLocationMode3(g_poseLidar.mode3, g_poseLidar.mode0); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
                 topic.visualPublishOdomMode_3();                               // Отобращение стрелкой где начало и куда смотрит в Mode3
 
+                // Этот расчет перенести в Speed? что бы 100 раз управляли моторами лазеров в не когда от них данные пришлт ?????? Скорсоть цикла увеличить до 200 - 1000 герц
+                laser.calcAnglePillarForLaser(pillar.pillar, g_poseLidar.mode0); // Расчет углов в локальной системе лазеров на столбы для передачи на нижний уровень для исполнения
+
+                static pb_msgs::Struct_Data2Modul dataControlModul2;
+                dataControlModul2.controlMotor.mode = 1;
+                dataControlModul2.controlLaser.mode = 2; // Тут указываем режи. С какой частотой будут работать датчик. Если 1 то с маленькой, если 2 то быстрее
+                // Поворачиваем на этот угол
+                dataControlModul2.controlMotor.angle[0] = g_angleLaser[0];
+                dataControlModul2.controlMotor.numPillar[0] = g_numPillar[0];
+                dataControlModul2.controlMotor.angle[1] = g_angleLaser[1];
+                dataControlModul2.controlMotor.numPillar[1] = g_numPillar[1];
+                dataControlModul2.controlMotor.angle[2] = g_angleLaser[2];
+                dataControlModul2.controlMotor.numPillar[2] = g_numPillar[2];
+                dataControlModul2.controlMotor.angle[3] = g_angleLaser[3];
+                dataControlModul2.controlMotor.numPillar[3] = g_numPillar[3];
+
+                topic.publicationControlModul(dataControlModul2); // Формируем и Публикуем команды для управления Modul
+
                 // topic.publicationAngleLaser(laser); // Формируем перемнную с собщением для публикации
                 if (isnan(g_poseLidar.mode3.x) || isnan(g_poseLidar.mode3.y) || isnan(g_poseLidar.mode3.th))
                 {
@@ -130,24 +148,6 @@ int main(int argc, char **argv)
 
             // calcMode123(); // Комплементация Odom10// Комплементация положения и угла
             // topic.visualPublishOdomMode_123(); // Публикация одометрии по моторам которая получается от начальной точки
-
-            static pb_msgs::Struct_Data2Modul dataControlModul2;
-            dataControlModul2.controlMotor.mode = 1;
-            dataControlModul2.controlLaser.mode = 2; // Тут указываем режи. С какой частотой будут работать датчик. Если 1 то с маленькой, если 2 то быстрее
-            // Поворачиваем на этот угол
-            dataControlModul2.controlMotor.angle[0] = g_angleLaser[0];
-            dataControlModul2.controlMotor.numPillar[0] = g_numPillar[0];
-            dataControlModul2.controlMotor.angle[1] = g_angleLaser[1];
-            dataControlModul2.controlMotor.numPillar[1] = g_numPillar[1];
-            dataControlModul2.controlMotor.angle[2] = g_angleLaser[2];
-            dataControlModul2.controlMotor.numPillar[2] = g_numPillar[2];
-            dataControlModul2.controlMotor.angle[3] = g_angleLaser[3];
-            dataControlModul2.controlMotor.numPillar[3] = g_numPillar[3];
-
-            // Этот расчет перенести в Speed? что бы 100 раз управляли моторами лазеров в не когда от них данные пришлт ?????? Скорсоть цикла увеличить до 200 - 1000 герц
-            laser.calcAnglePillarForLaser(pillar.pillar, g_poseLidar.mode0); // Расчет углов в локальной системе лазеров на столбы для передачи на нижний уровень для исполнения
-
-            topic.publicationControlModul(dataControlModul2); // Формируем и Публикуем команды для управления Modul
         }
 
         // Выполняется 10 Hz как ЛИДАР ПРИШЛЕТ ***************************************************************************************************************************************************
@@ -180,7 +180,6 @@ int main(int argc, char **argv)
         }
         else // Если не пришло новых данных в этом цикле то значит просто корректируем предыдущий расчет на величину угловых и линейных скорстей полученых с одометрии и INU
         {
-
         }
 
         // Публикуем тут так как если один раз опубликовать то они исчезают через некоторое время.
