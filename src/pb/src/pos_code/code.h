@@ -16,6 +16,8 @@ void calcMode0(); // Расчет одометрии и применения е�
 
 void calcMode123(); // Комплеиентация Mode123
 
+double calculateAngleDifference(double prev_angle, double current_angle); // Функция для вычисления разницы между углами
+
 long map(long x, long in_min, long in_max, long out_min, long out_max); // Переводит значение из одного диапазона в другой, взял из Ардуино
 
 void startPosition(geometry_msgs::Pose2D &startPose2d_); // Разбираем топик со стартовой позицией робота
@@ -344,7 +346,7 @@ STwistDt calcTwistFromWheel(pb_msgs::SSetSpeed control_)
 			{
 				radius = 0; // Едем прямо или назад и все по нулям
 				theta = 0;	// Если едем прямо то угол поворота отклонения от оси равен 0
-						   // ROS_INFO("2 EDEM PRIAMO radius = %.4f theta gradus = %.4f ", radius, RAD2DEG(theta));
+							// ROS_INFO("2 EDEM PRIAMO radius = %.4f theta gradus = %.4f ", radius, RAD2DEG(theta));
 			}
 			else // Едем по радиусу и надо все считать
 			{
@@ -568,14 +570,14 @@ void angleMPU()
 // Расчет одометрии и применения ее для всех режимов
 void calcMode0()
 {
-	ROS_INFO ("+++ calcMode0");
+	ROS_INFO("+++ calcMode0");
 	// printf("1 RAD2DEG(odomMode0.pose.th) = % .3f \n", RAD2DEG(odomMode0.pose.th));
 	calcNewOdom(odomMode0, g_linAngVel.wheel); // На основе линейных скоростей считаем новую позицию и угол по колесам
 	g_poseLidar.mode0.x = odomMode0.pose.x;
 	g_poseLidar.mode0.y = odomMode0.pose.y;
 	g_poseLidar.mode0.th = RAD2DEG(odomMode0.pose.th);
 
-	ROS_WARN_THROTTLE(THROTTLE_PERIOD_3,"    MODE0 pose.x= %.3f y= %.3f theta= %.3f ", g_poseLidar.mode0.x, g_poseLidar.mode0.y, g_poseLidar.mode0.th);
+	ROS_WARN_THROTTLE(THROTTLE_PERIOD_3, "    MODE0 pose.x= %.3f y= %.3f theta= %.3f ", g_poseLidar.mode0.x, g_poseLidar.mode0.y, g_poseLidar.mode0.th);
 	//---------------
 	// printf("2 RAD2DEG(odomMode0.pose.th) = % .3f \n", RAD2DEG(odomMode0.pose.th));
 
@@ -588,7 +590,7 @@ void calcMode0()
 	// calcNewOdom(odomUnited, unitedTwistDt); // // На основе линейных скоростей считаем новую позицию и угол
 	// topic.publishOdomUnited();              // Публикация одометрии по моторам с корректировкой с верхнего уровня
 	//-------------------------
-	ROS_INFO ("--- calcMode0");
+	ROS_INFO("--- calcMode0");
 }
 // Расчет одометрии и применения ее для всех режимов
 void calcMode11()
@@ -628,7 +630,7 @@ void calcMode123()
 	else
 	{
 		g_poseLidar.mode123 = pose;
-		ROS_WARN_THROTTLE(THROTTLE_PERIOD_3,"    MODE123 pose.x= % .3f y= % .3f theta= %.3f", g_poseLidar.mode123.x, g_poseLidar.mode123.y, g_poseLidar.mode123.th);
+		ROS_WARN_THROTTLE(THROTTLE_PERIOD_3, "    MODE123 pose.x= % .3f y= % .3f theta= %.3f", g_poseLidar.mode123.x, g_poseLidar.mode123.y, g_poseLidar.mode123.th);
 	}
 	ROS_INFO("--- calcMode123.");
 }
@@ -995,7 +997,9 @@ void readParam()
 		msg_startPose2d.y = 0.11;
 	if (!nh_private.getParam("theta", msg_startPose2d.theta))
 		msg_startPose2d.theta = 0.11;
-
+	
+	gTheta = msg_startPose2d.theta; // Начальное значение угла куда направлен робот
+	
 	//<!-- Указываем места расположения столбов на локальной карте -->
 	if (!nh_private.getParam("x0", msg_pillar.pillar[0].x))
 		msg_pillar.pillar[0].x = 0.11;
@@ -1024,5 +1028,53 @@ void readParam()
 	ROS_INFO("x2= %.3f y2 = %.3f", msg_pillar.pillar[2].x, msg_pillar.pillar[2].y);
 	ROS_INFO("x3= %.3f y3 = %.3f", msg_pillar.pillar[3].x, msg_pillar.pillar[3].y);
 	ROS_INFO("--- readParam");
+}
+
+// Функция для вычисления разницы между углами
+double calculateAngleDifference(double prev_angle, double current_angle)
+{
+	ROS_INFO("+++ calculateAngleDifference");
+	// Вычисляем первоначальную разницу
+	double diff = fmod((current_angle - prev_angle), 360.0);
+
+	// Корректируем разницу, чтобы она находилась в диапазоне [-180, 180]
+	if (diff > 180.0)
+	{
+		diff -= 360.0;
+	}
+	else if (diff <= -180.0)
+	{
+		diff += 360.0;
+	}
+	ROS_INFO("    diff = %.2f",diff);
+	ROS_INFO("--- calculateAngleDifference");
+	return diff;
+}
+
+// Расчет частоты изменения данных с лазеров
+bool rateLaserData()
+{
+	ROS_INFO("+++ raterateLaserData");
+	bool ret = false;
+                static uint32_t rateLaserData = 0;        // Частота с какой меняются данные по лазерам
+                static uint32_t timeRateLaserData = 0; // время для расчета
+                static float prevSum = 0;              // Предыдущее значение дистанции с лазера 0
+                // Считаем сумму всех значений и смотри если она поменялась, значит какие-то данные изменились                
+                if (prevSum != (msg_Modul2Data.laser[0].distance + msg_Modul2Data.laser[1].distance + msg_Modul2Data.laser[2].distance + msg_Modul2Data.laser[3].distance))
+                {
+					ret = true;
+                    rateLaserData++;
+                    prevSum = (msg_Modul2Data.laser[0].distance + msg_Modul2Data.laser[1].distance + msg_Modul2Data.laser[2].distance + msg_Modul2Data.laser[3].distance); // Запоминаем на следущее сравнение
+                    ROS_INFO("    prevSum = %f", prevSum);
+                }
+
+                if (timeRateLaserData + 1000 <= millis()) // Показываю в логе и обнуляю
+                {
+                    ROS_INFO("    rateLaserData = %lu", rateLaserData);
+                    rateLaserData = 0;
+                    timeRateLaserData = millis();
+                }
+	ROS_INFO("--- raterateLaserData");
+	return ret;
 }
 #endif

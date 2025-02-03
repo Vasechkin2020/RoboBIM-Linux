@@ -42,7 +42,7 @@
 
 // #include <data/pointA.h>
 
-#define RATE 1                                  // Частота шага 
+#define RATE 2                                  // Частота шага 
 #define RATE_LASER 3                            // Частота измерения лазерного датчика при калибровке для расчета
 #define STEP_LASER_MOTOR (360.0 / 400.0 / 16.0) // Шаг поаорота мотора с лазерным датчиком 360 ГРАДУСОВ /400 шагов мотор /16 шагов драйвер
 
@@ -96,6 +96,9 @@ float linearOffsetX[128];
 float linearOffsetY[128];
 
 bool modeColibrovka = false;
+
+
+float gTheta = 0; // Угол куда смотрит робот theta
 // struct SEuler
 // {
 //   float roll = 0;  // Крен в право  влево
