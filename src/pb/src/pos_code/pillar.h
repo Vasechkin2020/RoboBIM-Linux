@@ -506,7 +506,7 @@ void CPillar::parsingPillar(pb_msgs::topicPillar &pillar_)
         pillar[i].x_true = pillar_.pillar[i].x;
         pillar[i].y_true = pillar_.pillar[i].y;
         countPillar++;
-        ROS_INFO("pillarTrue[ %i ].x= %.3f pillarTrue[ %i ].y= %.3f ", i, pillar[i].x_true, i, pillar[i].y_true);
+        ROS_INFO("    pillarTrue[ %i ].x= %.3f pillarTrue[ %i ].y= %.3f ", i, pillar[i].x_true, i, pillar[i].y_true);
     }
     ROS_INFO("--- parsingPillar");
 }

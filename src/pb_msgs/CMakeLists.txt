@@ -51,7 +51,7 @@ find_package(catkin REQUIRED COMPONENTS
 ## Generate messages in the 'msg' folder
 add_message_files(
   FILES
-  point.msg    # x,y
+  SPoint.msg    # x,y
   pointA.msg    # x,y
   pillar.msg    # 
   #--------------Структуры для сообщений на данные с MODUL -----------------------------------------
@@ -87,6 +87,7 @@ add_message_files(
   
   #-------------------------------------------------------
   Struct_PoseLidar.msg
+  Struct_PoseRotation.msg
   
   SAngleLL.msg
   SAngleLaserLidar.msg

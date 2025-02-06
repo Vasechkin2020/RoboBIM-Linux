@@ -32,6 +32,7 @@
 #include <pb_msgs/SAngleLaserLidar.h>
 #include <pb_msgs/SAngleLL.h>
 #include <pb_msgs/Struct_PoseLidar.h>
+#include <pb_msgs/Struct_PoseRotation.h>
 
 #include <pb_msgs/SEncoder.h>
 #include <pb_msgs/SMpu.h>
@@ -167,7 +168,7 @@ struct SPoseLidar // Варианты расчетов координат лид
 {
     SPose mode10;  // // Комплементация ИТОГОВАЯ ПОЗИЦИЯ ИСПОЛЬЗУЕМАЯ для расчета как входящая позиция
     SPose mode1;  // Для лидара по растоянию
-    SPose mode2;  // Для оидара по углу
+    SPose mode2;  // Для лидара по углу
     SPose mode3;  // Для лазерных датчиков
 
     // SPose mode4;  // Для IMU

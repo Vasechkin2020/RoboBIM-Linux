@@ -75,7 +75,7 @@ int main(int argc, char **argv)
     ros::Rate r(RATE);        // Частота в Герцах - задержка
     ros::Duration(2).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
 
-    ROS_WARN("End Setup. Start loop.");
+    ROS_WARN("++++ End Setup. Start loop.");
     while (ros::ok())
     {
         // testFunction();
@@ -212,9 +212,10 @@ int main(int argc, char **argv)
         topic.transformBase(g_poseLidar.mode1);  // Публикуем трансформации систем координат, задаем по какому расчету трансформировать
         topic.transformLidar(g_poseLidar.mode1); // Публикуем трансформации систем координат , задаем по какому расчету трансформировать
         topic.transformLaser(laser);             // Публикуем трансформации систем координат, задаем по какому расчету трансформировать
-        topic.visulStartPose();                  // Отобращение стрелкой где начало стартовой позиции и куда направлен нос платформы
+        topic.visualStartPose();                  // Отобращение стрелкой где начало стартовой позиции и куда направлен нос платформы
         topic.visualPillarPoint(pillar);         // Отображение места размещения столбов
         topic.visualPoseAngleLaser(laser);       // Отобращение стрелкой где начало и куда смотрят лазеры
+
         topic.publicationPoseLidarAll();         // Публикуем все варианты расчета позиций mode 0.1.2.3.4
 
         static u_int64_t timeMil = millis();

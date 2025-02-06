@@ -1,1 +1,1 @@
-point[4] pillar
+SPoint[4] pillar
