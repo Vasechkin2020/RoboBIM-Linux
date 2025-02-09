@@ -59,6 +59,7 @@ add_message_files(
   SPose.msg    # x,y, theta
   SPoseTrue.msg    # x,y, theta, flag
   STwist.msg    # x,y, theta
+  STwistDt.msg    # x,y, theta
   SOdom.msg
   SEuler.msg    # roll pitch yaw
   SEncoder.msg
@@ -69,6 +70,8 @@ add_message_files(
   SJoy.msg
   
   SXyz.msg
+
+  SLinAngVel.msg
   
   SGim43.msg
   Struct_Print2Data.msg

@@ -277,7 +277,7 @@ void CLaser::calcAnglePillarForLaser(CPillar::SPillar *pillar_, SPose &poseLidar
         ROS_INFO("    numPillar = %i -> angle= %.3f", g_numPillar[i], g_angleLaser[i]);
     }
     // printf("\n");
-    ROS_INFO("--- calcAnglePillarForLaser");
+    // ROS_INFO("--- calcAnglePillarForLaser");
 }
 
 void CLaser::calcPointPillarFromLaser(CPillar::SPillar *pillar_) // Расчет положения столбов в лидарной системе на основании данных с датчиков

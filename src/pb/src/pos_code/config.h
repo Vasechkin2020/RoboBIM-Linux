@@ -1,6 +1,8 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+#include <string>  // Подключение библиотеки для работы со строками
+
 #include <ros/ros.h>
 #include <log4cxx/mdc.h>
 #include <tf/transform_broadcaster.h>
@@ -33,6 +35,7 @@
 #include <pb_msgs/SAngleLL.h>
 #include <pb_msgs/Struct_PoseLidar.h>
 #include <pb_msgs/Struct_PoseRotation.h>
+#include <pb_msgs/SLinAngVel.h>
 
 #include <pb_msgs/SEncoder.h>
 #include <pb_msgs/SMpu.h>
@@ -97,7 +100,8 @@ float linearOffsetX[128];
 float linearOffsetY[128];
 
 bool modeColibrovka = false;
-
+SPose transformLidar2Rotation; // данные для трансформации из одной системы координат в другую из Lidar в Rotation
+std::string log_name = "pos_node";
 
 // float gTheta = 0; // Угол куда смотрит робот theta
 
@@ -145,7 +149,7 @@ struct STwistDt
 // STwistDt wheelTwistDt;  // Скорости полученные по ecoder и интревал который прошел с предыдущего измерения
 // STwistDt unitedTwistDt; // Обьединенные комплементратный способом Скорости и интервал
 
-struct SLinearAngularVelocity 
+struct SLinAngVel 
 {
     STwistDt mpu;    // Скорости полученные по mpu и интревал который прошел с предыдущего измерения
     STwistDt wheel;  // Скорости полученные по ecoder и интревал который прошел с предыдущего измерения
@@ -153,7 +157,7 @@ struct SLinearAngularVelocity
 };
 
 // Структура для одометрии
-struct SOdometry
+struct SPointRotation
 {
     SPoint mode0;  // Расчет чисто по одометрии колес без комплементации с чем-либо
     SPoint mode10; // Комплементация ИТОГОВАЯ ПОЗИЦИЯ ИСПОЛЬЗУЕМАЯ ДАЛЕЕ КАК ОСНОВНАЯ

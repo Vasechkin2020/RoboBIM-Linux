@@ -25,7 +25,12 @@ void startPosition(geometry_msgs::Pose2D &startPose2d_); // Разбираем �
 
 void testFunction(); // Тест математических ипрочих функций
 
-void angleMPU(); // Расчет угла положения на сонове данных сдатчика MPU
+void angleMPU();	   // Расчет угла положения на сонове данных сдатчика MPU
+void calcAngleThata(); // Расчет угла theta
+void calcLInAngVel();  // Расчет линейных и угловой скоростей
+
+SPose convertRotation2Lidar(SPoint point_, std::string stroka_); // Конвертация координат из Rotattion в Lidar систему
+SPoint convertLidar2Rotation(SPose pose_, std::string stroka_);	 // Конвертация координат из Lidar в Rotattion систему
 
 float minDistance(float laserL_, float laserR_, float uzi1_); // Находим минимальную дистанцию из 3 датчиков
 
@@ -38,7 +43,7 @@ void initKalman(); // Задаем коэфициенты для Калмана
 // void collectCommand(); // //Функция формирования команды для нижнего уровня на основе всех полученных данных, датчиков и анализа ситуации
 
 // **********************************************************************************
-SPoint calcNewOdom(SPoint odom_, STwistDt data_);					   // На вход подаются старая одометрия и новые угловая угловая скорость. Возвращается новая позиция по данным угловым скоростям // Обработка пришедших данных.Обсчитываем одометрию по энкодеру
+SPoint calcNewOdom(SPoint odom_, STwistDt data_, std::string mode_);   // На вход подаются старая одометрия и новые угловая угловая скорость. Возвращается новая позиция по данным угловым скоростям // Обработка пришедших данных.Обсчитываем одометрию по энкодеру
 STwistDt calcTwistFromWheel(pb_msgs::SSetSpeed control_);			   // Обработка пришедших данных.Обсчитываем одометрию по энкодеру
 STwistDt calcTwistFromMpu(pb_msgs::Struct_Modul2Data msg_Modul2Data_); // Обработка пришедших данных.Обсчитываем угловые скорости по энкодеру
 STwistDt calcTwistUnited(STwistDt wheelTwist_, STwistDt mpuTwist_);	   // Функция комплементации угловых скоростей полученных с колес и с датчика MPU и угла поворота
@@ -100,51 +105,74 @@ float minDistance(float laserL_, float laserR_, float uzi1_)
 	}
 	return min;
 }
+// Расчет линейных и угловой скоростей
+void calcLInAngVel()
+{
+	ROS_INFO("+++ calcLInAngVel");
+	g_linAngVel.wheel = calcTwistFromWheel(msg_Speed); // Обработка пришедших данных. По ним считаем линейные скорости по осям и угловую по углу. Запоминаем dt
+	// g_linAngVel.mpu = calcTwistFromMpu(msg_Modul2Data);                         // Обработка пришедших данных для расчета линейных и угловых скоростей
+	// // тут написать функцию комплементации данных угловых скоростей с разными условиями когда и в каком соотношении скомплементировать скорсти с двух источников
+	// unitedTwistDt = calcTwistUnited(g_linAngVel.wheel, mpuTwistDt);
+	g_linAngVel.united = g_linAngVel.wheel; // Пока нет расчет по IMU и комплментации используем только по колесам
+											// topic.publishOdomUnited();              // Публикация одометрии по моторам с корректировкой с верхнего уровня
+}
+// Расчет угла theta
+void calcAngleThata()
+{
+	ROS_INFO("+++ calcAngleThata");
+	// Расчет угла куда смотрим но пришедшим данным
+	static float prev_theta = msg_Modul2Data.mpu.angleEuler.yaw;											  // При первом запуске этой функции инициализируем тем значением что придет от Modul
+	g_poseRotation.theta -= DEG2RAD(calculateAngleDifference(prev_theta, msg_Modul2Data.mpu.angleEuler.yaw)); // Считаем угол куда смотрим
+	prev_theta = msg_Modul2Data.mpu.angleEuler.yaw;
+	ROS_INFO("    g_poseRotation.theta = %.2f msg_Modul2Data.mpu.angleEuler.yaw = %.2f ", RAD2DEG(g_poseRotation.theta), msg_Modul2Data.mpu.angleEuler.yaw);
+	// ROS_INFO("--- calcAngleThata");
+}
+
+// Конвертация координат из Rotattion в Lidar систему
+SPose convertRotation2Lidar(SPoint point_, std::string stroka_)
+{
+	ROS_INFO("+++ convertRotation2Lidar %s", stroka_.c_str());
+	SPose ret;
+	ret.x = point_.x + (transformLidar2Rotation.x * cos(g_poseRotation.theta));
+	ret.y = point_.y + (transformLidar2Rotation.x * sin(g_poseRotation.theta));
+	ret.th = RAD2DEG(g_poseRotation.theta); // в g_poseLidar угол в градусах
+	return ret;
+}
+// Конвертация координат из Lidar в Rotattion систему
+SPoint convertLidar2Rotation(SPose pose_, std::string stroka_)
+{
+	ROS_INFO("+++ convertLidar2Rotation %s", stroka_.c_str());
+	SPoint ret;
+	// g_poseRotation.theta = DEG2RAD(45);							  // Присваиваем глобальному углу начальное значение
+	ret.x = pose_.x - (transformLidar2Rotation.x * cos(g_poseRotation.theta));
+	ret.y = pose_.y - (transformLidar2Rotation.x * sin(g_poseRotation.theta));
+	ROS_INFO("    g_poseRotation.mode0 x= %.3f y= %.3f Global theta = %.3f (gradus)", ret.x, ret.y, RAD2DEG(g_poseRotation.theta));
+	return ret;
+}
+
 // Разбираем топик со стартовой позицией робота
 void startPosition(geometry_msgs::Pose2D &startPose2d_)
 {
 	ROS_INFO("+++ startPosition");
 
-	transformLidar2Rotation.x = 0.95; // Данные для трасформации из Lidar в Rotation
+	transformLidar2Rotation.x = 0.095; // Данные для трасформации из Lidar в Rotation 95 мм
 	transformLidar2Rotation.y = 0;
 	transformLidar2Rotation.th = 0;
+
+	g_poseRotation.theta = DEG2RAD(startPose2d_.theta); // Присваиваем глобальному углу начальное значение
 
 	g_poseLidar.mode10.x = startPose2d_.x; // Устанавливаем координаты для mode10 что-бы по нему начало все считаться
 	g_poseLidar.mode10.y = startPose2d_.y;
 	g_poseLidar.mode10.th = startPose2d_.theta;
 	ROS_INFO("    startPose2d x= %.3f y= %.3f theta= %.3f ", startPose2d_.x, startPose2d_.y, startPose2d_.theta);
 
-	SPoint startPoint; // Временная переменная
-	startPoint.x = startPose2d_.x;
-	startPoint.y = startPose2d_.y;
+	g_poseRotation.mode10 = convertLidar2Rotation(g_poseLidar.mode10, "mode10");
 
-	g_poseRotation.mode0 = povorotSmechenie(startPoint, transformLidar2Rotation); // На вход координаты нстартовые, это координаты лидара. Переводим их в координаты Rotation Наш центр вращения
-	g_poseRotation.theta = DEG2RAD(startPose2d_.theta);									  // Присваиваем глобальному углу начальное значение
-	ROS_INFO("    g_poseRotation.mode0 x= %.3f y= %.3f Global theta = %.3f gradus", g_poseRotation.mode0.x, g_poseRotation.mode0.y, RAD2DEG(g_poseRotation.theta));
-
-	g_poseRotation.mode10 = g_poseRotation.mode0;
-	g_poseRotation.mode11 = g_poseRotation.mode0;
-	g_poseRotation.mode12 = g_poseRotation.mode0;
-	g_poseRotation.mode13 = g_poseRotation.mode0;
-	g_poseRotation.mode14 = g_poseRotation.mode0;
-
-	// g_angleMPU = startPose2d_.theta;
-
-	// g_poseLidar.mode1 = g_poseLidar.mode0;
-	// g_poseLidar.mode2 = g_poseLidar.mode0;
-	// g_poseLidar.mode3 = g_poseLidar.mode0;
-	// g_poseLidar.mode4 = g_poseLidar.mode0;
-	// g_poseLidar.mode123 = g_poseLidar.mode0;
-
-	// odomMode0.pose.x = startPose2d_.x;
-	// odomMode0.pose.y = startPose2d_.y;
-	// odomMode0.pose.th = DEG2RAD(startPose2d_.theta); // В одометрии угол в радианах
-	// odomMode11 = odomMode0;							 // Присваиваем начальное значение в во все одометрии
-	// odomMode12 = odomMode0;
-	// odomMode13 = odomMode0;
-
-	// printf("START RAD2DEG(odomMode0.pose.th) = % .3f \n", RAD2DEG(odomMode0.pose.th));
-
+	g_poseRotation.mode0 = g_poseRotation.mode10;
+	g_poseRotation.mode11 = g_poseRotation.mode10;
+	g_poseRotation.mode12 = g_poseRotation.mode10;
+	g_poseRotation.mode13 = g_poseRotation.mode10;
+	g_poseRotation.mode14 = g_poseRotation.mode10;
 	ROS_INFO("--- startPosition");
 }
 
@@ -258,16 +286,16 @@ void testFunction()
 }
 
 // Обработка пришедших данных.Обсчитываем одометрию по энкодеру
-SPoint calcNewOdom(SPoint odom_, STwistDt data_) // На вход подаются старая одометрия и новые угловая угловая скорость. Возвращается новая позиция по данным угловым скоростям
+SPoint calcNewOdom(SPoint odom_, STwistDt data_, std::string stroka_) // На вход подаются старая одометрия и новые угловая угловая скорость. Возвращается новая позиция по данным угловым скоростям
 {
-	ROS_INFO("+++ calcNewOdom");
+	ROS_INFO("+++ calcNewOdom %s", stroka_.c_str());
 	// ROS_INFO("IN calcNewOdom pose.x= % .3f y= % .3f th= % .3f ", odom_.pose.x, odom_.pose.y, RAD2DEG(odom_.pose.th));
 	if (data_.dt < 0.005) // Если пришли данные с нулевой дельтой то сразу выходим и ничего не считаем
 	{
 		printf("    calcNewOdom dt< 0.005 !!!! \n");
 		return odom_; // Возвращаем что и было
 	}
-	
+
 	SPoint pointLoc;
 	pointLoc.x = data_.twist.vx * data_.dt; // Находим проекции скорсти на оси за интревал времени это коокрдинаты нашей точки в локальной системе координат
 	pointLoc.y = data_.twist.vy * data_.dt;
@@ -287,26 +315,26 @@ SPoint calcNewOdom(SPoint odom_, STwistDt data_) // На вход подаютс
 	pose.y = odom_.y;
 	pose.th = g_poseRotation.theta;
 	SPoint pointGlob = pointLocal2GlobalRosRAD(pointLoc, pose);
-	ROS_INFO("    New cordinates x= % .3f y= % .3f", pointGlob.x, pointGlob.y);
+	ROS_INFO("    New cordinates %s x= % .3f y= % .3f", stroka_.c_str(), pointGlob.x, pointGlob.y);
 
 	odom_ = pointGlob; // Вычисляем координаты
 	// odom_.pose.y = pointGlob.y; // Вычисляем координаты
 
 	// printf("twist.x= %.4f y= %.4f th= %.4f gradus ", bno055.twist.vx, bno055.twist.vy, bno055.twist.vth);
-/*
-	//odom_.twist = data_.twist; // Ничего не меняем в угловой скорости
-	// Меняем координаты и угол на основе вычислений
-	odom_.pose.th += data_.twist.vth * data_.dt; // Прибавляем к текущему углу и получаем новый угол куда смотрит наш робот
-	if (odom_.pose.th > (2 * M_PI))
-		(odom_.pose.th -= (2 * M_PI));
-	if (odom_.pose.th < 0)
-		(odom_.pose.th += (2 * M_PI));
-*/
+	/*
+		//odom_.twist = data_.twist; // Ничего не меняем в угловой скорости
+		// Меняем координаты и угол на основе вычислений
+		odom_.pose.th += data_.twist.vth * data_.dt; // Прибавляем к текущему углу и получаем новый угол куда смотрит наш робот
+		if (odom_.pose.th > (2 * M_PI))
+			(odom_.pose.th -= (2 * M_PI));
+		if (odom_.pose.th < 0)
+			(odom_.pose.th += (2 * M_PI));
+	*/
 	// ROS_WARN("OUT calcNewOdom pose.x= % .3f y= % .3f th= % .3f ", odom_.pose.x, odom_.pose.y, RAD2DEG(odom_.pose.th));
 
 	// ТУТ СДЕЛАТЬ ЗАМЕНУ высчитанного УГЛА tetha просто на угол получаемый с датчика bno055
 
-	ROS_INFO("--- calcNewOdom");
+	// ROS_INFO("--- calcNewOdom");
 	return odom_;
 }
 
@@ -341,7 +369,7 @@ STwistDt calcTwistFromWheel(pb_msgs::SSetSpeed control_)
 	double sumSpeed = speedL + speedR;
 	double deltaSpeed = speedL - speedR;
 	double speed = (speedR + speedL) / 2.0; // Находим скорость всего обьекта.
-	ROS_INFO("	speed robot (speedR + speedL) / 2.0 = %.6f", speed);
+	ROS_INFO("    speedL = %.4f speedR = %.4f speed robot (speedR + speedL) / 2.0 = %.4f", speedL,speedR, speed);
 	//*******************************************************************************************************************************************************
 	double w = deltaSpeed / DISTANCE_WHEELS; // Находим уголовую скорость движения по радиусу. Плюс по часовой минус против часовой
 											 // ROS_INFO("speedL= %.4f speedR= %.4f speed= %.4f w = %.4f ///  ", speedL, speedR, speed, RAD2DEG(w));
@@ -352,7 +380,7 @@ STwistDt calcTwistFromWheel(pb_msgs::SSetSpeed control_)
 		radius = 0;
 		speed = 0;
 		theta = 0;
-		// ROS_INFO("0 STOIM NA MESTE radius = %.4f theta gradus = %.4f ", radius, RAD2DEG(theta));
+		// ROS_INFO("    0 STOIM NA MESTE radius = %.4f theta gradus = %.4f ", radius, RAD2DEG(theta));
 	}
 	else
 	{
@@ -369,7 +397,7 @@ STwistDt calcTwistFromWheel(pb_msgs::SSetSpeed control_)
 			}
 			speed = 0;				 // Обнуляем скорость чтобы дальше позиция не сдвигалась, мы же на месте.
 			theta = lenArc / radius; // Отношение улинны дуги окружночти к радиусу дает угол в радианах. Нахождение центрального угла по дуге и радиусу.
-									 // ROS_INFO("1 KRUTIMSA NA MESTE radius = %.4f theta gradus = %.4f lenArc = %.4f speedL = %.4f speedR = %.4f ", radius, RAD2DEG(theta), lenArc, speedL, speedR);
+									 // ROS_INFO("    1 KRUTIMSA NA MESTE radius = %.4f theta gradus = %.4f lenArc = %.4f speedL = %.4f speedR = %.4f ", radius, RAD2DEG(theta), lenArc, speedL, speedR);
 		}
 		else // Тут нормальный расчет что мы движемся или по прямой или по радиусу
 		{
@@ -378,13 +406,13 @@ STwistDt calcTwistFromWheel(pb_msgs::SSetSpeed control_)
 			{
 				radius = 0; // Едем прямо или назад и все по нулям
 				theta = 0;	// Если едем прямо то угол поворота отклонения от оси равен 0
-							// ROS_INFO("2 EDEM PRIAMO radius = %.4f theta gradus = %.4f ", radius, RAD2DEG(theta));
+							// ROS_INFO("    2 EDEM PRIAMO radius = %.4f theta gradus = %.4f ", radius, RAD2DEG(theta));
 			}
 			else // Едем по радиусу и надо все считать
 			{
 				radius = (0.5 * DISTANCE_WHEELS) * (sumSpeed / deltaSpeed); // Находим радиус движения
 				theta = lenArc / radius;									// Отношение улинны дуги окружночти к радиусу дает угол в радианах. Нахождение центрального угла по дуге и радиусу.
-																			// ROS_INFO("3 EDEM RADIUS radius = %.4f theta gradus = %.4f ", radius, RAD2DEG(theta));
+																			// ROS_INFO("    3 EDEM RADIUS radius = %.4f theta gradus = %.4f ", radius, RAD2DEG(theta));
 			}
 		}
 	}
@@ -396,7 +424,7 @@ STwistDt calcTwistFromWheel(pb_msgs::SSetSpeed control_)
 	twist.vy = speed * sin(theta * dt); // Проекция моей скорости на ось Y получаем линейную скорость по оси за секунуду
 	twist.vth = theta;					// Угловая скорость в радианах.
 
-	ROS_INFO("	Twist Wheel vx= % .3f vy= % .3f", twist.vx, twist.vy);
+	ROS_INFO("    Twist Wheel vx= % .3f vy= % .3f vth= % .3f", twist.vx, twist.vy, twist.vth);
 	// printf("vy= % .4f", twist.vy);
 	// printf("speed= %.4f twist.vth = %.4f / sin(twist.vth )= %.4f cos(twist.vth ) = %.4f / ", speed, RAD2DEG(twist.vth), sin(twist.vth ), cos(twist.vth ));
 	// printf("speed= %.4f twist.vth = %.8f / ", speed, RAD2DEG(twist.vth));
@@ -406,7 +434,7 @@ STwistDt calcTwistFromWheel(pb_msgs::SSetSpeed control_)
 	ret.dt = dt;
 
 	// }
-	ROS_INFO("--- calcTwistFromWheel");
+	// ROS_INFO("--- calcTwistFromWheel");
 	return ret;
 }
 /*
@@ -478,7 +506,7 @@ STwistDt calcTwistFromMpu(pb_msgs::Struct_Modul2Data msg_Modul2Data_)
 	static float complX = 0; // Значение после комплементарного фильтра
 	static float complY = 0; // Значение после комплементарного фильтра
 
-	ROS_INFO("    Mpu % .3f % .3f | % .3f ",mpu_.linear.x, mpu_.linear.y, dt);
+	ROS_INFO("    Mpu % .3f % .3f | % .3f ", mpu_.linear.x, mpu_.linear.y, dt);
 
 	if (Data2Driver.control.speedL == 0 && Data2Driver.control.speedR == 0) // Если стоим на месте, то считаем офсет. Как только тронемся, его и будем применять до следующей остановки
 	{
@@ -613,25 +641,13 @@ void calcMode0()
 {
 	ROS_INFO("+++ calcMode0");
 	// printf("1 RAD2DEG(odomMode0.pose.th) = % .3f \n", RAD2DEG(odomMode0.pose.th));
-	g_poseRotation.mode0 = calcNewOdom(g_poseRotation.mode0, g_linAngVel.wheel); // На основе линейных скоростей считаем новую позицию и угол по колесам
+	g_poseRotation.mode0 = calcNewOdom(g_poseRotation.mode0, g_linAngVel.wheel, "mode0"); // На основе линейных скоростей считаем новую позицию и угол по колесам
 
 	// g_poseLidar.mode0.x = odomMode0.pose.x;
 	// g_poseLidar.mode0.y = odomMode0.pose.y;
 	// g_poseLidar.mode0.th = RAD2DEG(odomMode0.pose.th);
 
 	// ROS_WARN_THROTTLE(THROTTLE_PERIOD_3, "    MODE0 pose.x= %.3f y= %.3f theta= %.3f ", g_poseLidar.mode0.x, g_poseLidar.mode0.y, g_poseLidar.mode0.th);
-	//---------------
-	//  printf("2 RAD2DEG(odomMode0.pose.th) = % .3f \n", RAD2DEG(odomMode0.pose.th));
-
-	// mpuTwistDt = calcTwistFromMpu(Driver2Data.bno055, 0.2); // Расчет и оформление в структуру ускорений по осям (линейных скоростей) и  разделить получение угловых скоростей и расчет сновой точки на основе этих скоростей
-	// calcNewOdom(odomMpu, mpuTwistDt);                       // Обработка пришедших данных.Обсчитываем одометрию по датчику MPU BNO055
-	// topic.publishOdomMpu();
-
-	// // тут написать функцию комплементации данных угловых скоростей с разными условиями когда и в каком соотношении скомплементировать скорсти с двух источников
-	// unitedTwistDt = calcTwistUnited(g_linAngVel.wheel, mpuTwistDt);
-	// calcNewOdom(odomUnited, unitedTwistDt); // // На основе линейных скоростей считаем новую позицию и угол
-	// topic.publishOdomUnited();              // Публикация одометрии по моторам с корректировкой с верхнего уровня
-	//-------------------------
 	ROS_INFO("--- calcMode0");
 }
 // Расчет одометрии и применения ее для всех режимов
@@ -812,7 +828,7 @@ void calcMode123()
 // odom_enc.th += delta_th; // Прибавляем к текущему углу и получаем новый угол куда смотрит наш робот
 
 // printf("x= %.2f y= %.2f th= %.3f  time= %u \n", g_odom_enc.x, g_odom_enc.y, g_odom_enc.th, millis());
-
+/*
 void startColibrovka(CTopic &topic)
 {
 	static pb_msgs::Struct_Data2Modul dataControlModul;
@@ -1010,7 +1026,9 @@ void startColibrovka(CTopic &topic)
 					// меняем флаг что-бы сюда больше не попадать
 					//modeColibrovka = false;
 					*/
+/*
 }
+*/
 // Задаем коэфициенты для Калмана
 void initKalman()
 {
@@ -1087,22 +1105,20 @@ double calculateAngleDifference(double prev_angle, double current_angle)
 		diff += 360.0;
 	}
 	ROS_INFO("    diff = %.2f", diff);
-	ROS_INFO("--- calculateAngleDifference");
+	// ROS_INFO("--- calculateAngleDifference");
 	return diff;
 }
 
 // Расчет частоты изменения данных с лазеров
-bool rateLaserData()
+void rateLaserData()
 {
 	ROS_INFO("+++ raterateLaserData");
-	bool ret = false;
 	static uint32_t rateLaserData = 0;	   // Частота с какой меняются данные по лазерам
 	static uint32_t timeRateLaserData = 0; // время для расчета
 	static float prevSum = 0;			   // Предыдущее значение дистанции с лазера 0
 	// Считаем сумму всех значений и смотри если она поменялась, значит какие-то данные изменились
 	if (prevSum != (msg_Modul2Data.laser[0].distance + msg_Modul2Data.laser[1].distance + msg_Modul2Data.laser[2].distance + msg_Modul2Data.laser[3].distance))
 	{
-		ret = true;
 		rateLaserData++;
 		prevSum = (msg_Modul2Data.laser[0].distance + msg_Modul2Data.laser[1].distance + msg_Modul2Data.laser[2].distance + msg_Modul2Data.laser[3].distance); // Запоминаем на следущее сравнение
 		ROS_INFO("    prevSum = %f", prevSum);
@@ -1114,7 +1130,6 @@ bool rateLaserData()
 		rateLaserData = 0;
 		timeRateLaserData = millis();
 	}
-	ROS_INFO("--- raterateLaserData");
-	return ret;
+	// ROS_INFO("--- raterateLaserData");
 }
 #endif
