@@ -610,7 +610,7 @@ void CTopic::transformRotation() // Публикуем системы транс
     tf.header.stamp = ros_time;
     tf.header.frame_id = "base";
     tf.child_frame_id = "rotation";
-    tf.transform.translation.x = -transformLidar2Rotation.x; // минус 0.95 Задаем в начале в переменной// Данные для трасформации из Lidar в Rotation
+    tf.transform.translation.x = transformLidar2Rotation.x; // минус 0.95 Задаем в начале в переменной// Данные для трасформации из Lidar в Rotation
     tf.transform.translation.y = transformLidar2Rotation.y;
     tf.transform.translation.z = -0.1; // показываем по уровню пола
     tf.transform.rotation = tf::createQuaternionMsgFromYaw(DEG2RAD(0)); // Из градусов в радианы добавляем минус, так как в РОС вращение плюс против часовой, а у меня по часовой

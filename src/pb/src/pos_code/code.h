@@ -133,8 +133,8 @@ SPose convertRotation2Lidar(SPoint point_, std::string stroka_)
 {
 	ROS_INFO("+++ convertRotation2Lidar %s", stroka_.c_str());
 	SPose ret;
-	ret.x = point_.x + (transformLidar2Rotation.x * cos(g_poseRotation.theta));
-	ret.y = point_.y + (transformLidar2Rotation.x * sin(g_poseRotation.theta));
+	ret.x = point_.x - (transformLidar2Rotation.x * cos(g_poseRotation.theta));
+	ret.y = point_.y - (transformLidar2Rotation.x * sin(g_poseRotation.theta));
 	ret.th = RAD2DEG(g_poseRotation.theta); // в g_poseLidar угол в градусах
 	return ret;
 }
@@ -144,13 +144,13 @@ SPoint convertLidar2Rotation(SPose pose_, std::string stroka_)
 	ROS_INFO("+++ convertLidar2Rotation %s", stroka_.c_str());
 	SPoint ret;
 	// g_poseRotation.theta = DEG2RAD(45);							  // Присваиваем глобальному углу начальное значение
-	ret.x = pose_.x - (transformLidar2Rotation.x * cos(g_poseRotation.theta));
-	ret.y = pose_.y - (transformLidar2Rotation.x * sin(g_poseRotation.theta));
+	ret.x = pose_.x + (transformLidar2Rotation.x * cos(g_poseRotation.theta));
+	ret.y = pose_.y + (transformLidar2Rotation.x * sin(g_poseRotation.theta));
 	ROS_INFO("    g_poseRotation.mode0 x= %.3f y= %.3f Global theta = %.3f (gradus)", ret.x, ret.y, RAD2DEG(g_poseRotation.theta));
 	return ret;
 }
 
-// Разбираем топик со стартовой позицией робота
+// Разбираем топик со стартовой позицией робота   
 void startPosition(geometry_msgs::Pose2D &startPose2d_)
 {
 	ROS_INFO("+++ startPosition");
@@ -315,7 +315,7 @@ SPoint calcNewOdom(SPoint odom_, STwistDt data_, std::string stroka_) // На в
 	pose.y = odom_.y;
 	pose.th = g_poseRotation.theta;
 	SPoint pointGlob = pointLocal2GlobalRosRAD(pointLoc, pose);
-	ROS_INFO("    New cordinates %s x= % .3f y= % .3f", stroka_.c_str(), pointGlob.x, pointGlob.y);
+	ROS_INFO("    New cordinates Rotation %s x= % .3f y= % .3f", stroka_.c_str(), pointGlob.x, pointGlob.y);
 
 	odom_ = pointGlob; // Вычисляем координаты
 	// odom_.pose.y = pointGlob.y; // Вычисляем координаты
@@ -352,7 +352,7 @@ STwistDt calcTwistFromWheel(pb_msgs::SSetSpeed control_)
 	unsigned long time_now = micros();			 // Время в которое делаем расчет
 	double dt = ((time_now - time) / 1000000.0); // Интервал расчета переводим сразу в секунды Находим интревал между текущим и предыдущим расчетом в секундах
 	ROS_INFO("+++ calcTwistFromWheel");
-	ROS_INFO("    dt= %f", dt);
+	ROS_INFO("    dt= %.3f msec", dt);
 	time = time_now;
 	if (dt < 0.005) // При первом запуске просто выходим из функции
 	{
@@ -492,7 +492,7 @@ STwistDt calcTwistFromMpu(pb_msgs::Struct_Modul2Data msg_Modul2Data_)
 	static unsigned long time = micros();		 // Время предыдущего расчета// Функция из WiringPi.// Замеряем интервалы по времени между запросами данных
 	unsigned long time_now = micros();			 // Время в которое делаем расчет
 	double dt = ((time_now - time) / 1000000.0); // Интервал расчета переводим сразу в секунды Находим интревал между текущим и предыдущим расчетом в секундах
-	ROS_INFO("    dt= %f", dt);
+	ROS_INFO("    dt= %.3f msec", dt);
 	time = time_now;
 	static double predAngleZ = 0;
 	if (dt < 0.005) // При первом запуске просто выходим из функции

@@ -125,7 +125,7 @@ void initCommandArray(int verCommand_)
 		commandArray[2].velR = 0.03;
 
 		commandArray[3].mode = 1;
-		commandArray[3].duration = 1000;
+		commandArray[3].duration = 5000;
 		commandArray[3].velL = 0.0;
 		commandArray[3].velR = 0.0;
 
@@ -135,7 +135,7 @@ void initCommandArray(int verCommand_)
 		commandArray[4].velR = 0.03;
 
 		commandArray[5].mode = 1;
-		commandArray[5].duration = 1000;
+		commandArray[5].duration = 5000;
 		commandArray[5].velL = 0.0;
 		commandArray[5].velR = 0.0;
 		
@@ -151,6 +151,31 @@ void initCommandArray(int verCommand_)
 		
 
 		commandArray[8].mode = 9;
+	}
+		if (verCommand_ == 4)
+	{
+		commandArray[0].mode = 1;
+		commandArray[0].duration = 15000;
+		commandArray[0].velL = 0.0;
+		commandArray[0].velR = -0.1;
+
+		commandArray[1].mode = 1;
+		commandArray[1].duration = 5000;
+		commandArray[1].velL = 0.0;
+		commandArray[1].velR = 0.0;
+
+		commandArray[2].mode = 1;
+		commandArray[2].duration = 15000;
+		commandArray[2].velL = -0.0;
+		commandArray[2].velR = 0.1;
+
+		commandArray[3].mode = 1;
+		commandArray[3].duration = 5000;
+		commandArray[3].velL = 0.0;
+		commandArray[3].velR = 0.0;
+
+
+		commandArray[4].mode = 9;
 	}
 }
 
