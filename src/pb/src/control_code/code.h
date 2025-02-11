@@ -155,27 +155,108 @@ void initCommandArray(int verCommand_)
 		if (verCommand_ == 4)
 	{
 		commandArray[0].mode = 1;
-		commandArray[0].duration = 15000;
-		commandArray[0].velL = 0.0;
-		commandArray[0].velR = -0.1;
+		commandArray[0].duration = 2000;
+		commandArray[0].velL = 0.03;
+		commandArray[0].velR = -0.03;
 
 		commandArray[1].mode = 1;
-		commandArray[1].duration = 5000;
+		commandArray[1].duration = 2000;
 		commandArray[1].velL = 0.0;
 		commandArray[1].velR = 0.0;
 
 		commandArray[2].mode = 1;
-		commandArray[2].duration = 15000;
-		commandArray[2].velL = -0.0;
-		commandArray[2].velR = 0.1;
+		commandArray[2].duration = 2000;
+		commandArray[2].velL = 0.03;
+		commandArray[2].velR = -0.03;
 
 		commandArray[3].mode = 1;
-		commandArray[3].duration = 5000;
+		commandArray[3].duration = 2000;
 		commandArray[3].velL = 0.0;
 		commandArray[3].velR = 0.0;
 
+		commandArray[4].mode = 1;
+		commandArray[4].duration = 2000;
+		commandArray[4].velL = 0.03;
+		commandArray[4].velR = -0.03;
 
-		commandArray[4].mode = 9;
+		commandArray[5].mode = 1;
+		commandArray[5].duration = 2000;
+		commandArray[5].velL = 0.0;
+		commandArray[5].velR = 0.0;
+
+		commandArray[6].mode = 1;
+		commandArray[6].duration = 2000;
+		commandArray[6].velL = 0.03;
+		commandArray[6].velR = -0.03;
+
+		commandArray[7].mode = 1;
+		commandArray[7].duration = 2000;
+		commandArray[7].velL = 0.0;
+		commandArray[7].velR = 0.0;
+
+		commandArray[8].mode = 1;
+		commandArray[8].duration = 2000;
+		commandArray[8].velL = 0.03;
+		commandArray[8].velR = -0.03;
+
+		commandArray[9].mode = 1;
+		commandArray[9].duration = 2000;
+		commandArray[9].velL = 0.0;
+		commandArray[9].velR = 0.0;
+
+//****************************************
+		commandArray[10].mode = 1;
+		commandArray[10].duration = 2000;
+		commandArray[10].velL = -0.03;
+		commandArray[10].velR = 0.03;
+
+		commandArray[11].mode = 1;
+		commandArray[11].duration = 2000;
+		commandArray[11].velL = 0.0;
+		commandArray[11].velR = 0.0;
+
+		commandArray[12].mode = 1;
+		commandArray[12].duration = 2000;
+		commandArray[12].velL = -0.03;
+		commandArray[12].velR = 0.03;
+
+		commandArray[13].mode = 1;
+		commandArray[13].duration = 2000;
+		commandArray[13].velL = 0.0;
+		commandArray[13].velR = 0.0;
+
+		commandArray[14].mode = 1;
+		commandArray[14].duration = 2000;
+		commandArray[14].velL = -0.03;
+		commandArray[14].velR = 0.03;
+
+		commandArray[15].mode = 1;
+		commandArray[15].duration = 2000;
+		commandArray[15].velL = 0.0;
+		commandArray[15].velR = 0.0;
+
+		commandArray[16].mode = 1;
+		commandArray[16].duration = 2000;
+		commandArray[16].velL = -0.03;
+		commandArray[16].velR = 0.03;
+
+		commandArray[17].mode = 1;
+		commandArray[17].duration = 2000;
+		commandArray[17].velL = 0.0;
+		commandArray[17].velR = 0.0;
+
+		commandArray[18].mode = 1;
+		commandArray[18].duration = 2000;
+		commandArray[18].velL = -0.03;
+		commandArray[18].velR = 0.03;
+
+		commandArray[19].mode = 1;
+		commandArray[19].duration = 2000;
+		commandArray[19].velL = 0.0;
+		commandArray[19].velR = 0.0;
+
+		//-----------------------
+		commandArray[20].mode = 9;
 	}
 }
 

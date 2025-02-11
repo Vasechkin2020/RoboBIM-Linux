@@ -27,9 +27,9 @@ public:
     void publicationPoseRotattion(); // Вывод в топик данных с координатами и углом точки вращения Rotation
     void publicationLinAngVel();     // Вывод в топик данных с данными угловой и линейной скоростью
 
-    void publicationControlModul(); // Публикация данных для управления Modul
-    void publicationAngleLaser(CLaser &laser_);                     // Формируем перемнную с собщением для публикации по углам лазера
-    void publicationPillarAll(CPillar pillar_);                     // Формируем перемнную с собщением для публикации
+    void publicationControlModul();             // Публикация данных для управления Modul
+    void publicationAngleLaser(CLaser &laser_); // Формируем перемнную с собщением для публикации по углам лазера
+    void publicationPillarAll(CPillar pillar_); // Формируем перемнную с собщением для публикации
 
     // Перенес из data_node **************
     // void transform(); // Публикуем трансформации для системы координат
@@ -68,7 +68,8 @@ private:
 
     ros::Publisher pub_PillarAll = _nh.advertise<pb_msgs::PillarOut>("pbPos/PillarAll", 16); // Это мы публикуем итоговую обобщенную информацию по столбам где все данные указаны НАФИГА?
 
-    ros::Publisher pub_markerPillar = _nh.advertise<visualization_msgs::Marker>("markerPillar0", 0); // Публикуем столбы как маркер тип цилиндр
+    ros::Publisher pub_markerPillar = _nh.advertise<visualization_msgs::Marker>("markerPillar0", 0);    // Публикуем столбы как маркер тип цилиндр
+    ros::Publisher pub_markerPosition = _nh.advertise<visualization_msgs::Marker>("markerPosition", 0); // Публикуем столики как точки позиций
 
     ros::Publisher pub_StartPose = _nh.advertise<geometry_msgs::PoseStamped>("pbRviz/StartPose", 16); // Для публикации стартовой позиции
 
@@ -150,6 +151,32 @@ void CTopic::visualStartPose()
     // ROS_INFO("startPose_msg Quaternion x =%.3f y =%.3f z =%.3f w =%.3f theta = %.3f", quat.x, quat.y, quat.z, quat.w, theta);
 
     pub_StartPose.publish(startPose_msg); // Публикация полученных данных
+
+    visualization_msgs::Marker marker;
+    marker.header.frame_id = "odom";
+    marker.header.stamp = ros::Time::now(); // Время ROS;
+    marker.ns = "position";
+    marker.id = 0;
+    marker.type = visualization_msgs::Marker::CYLINDER;
+    marker.action = visualization_msgs::Marker::ADD;
+    marker.pose.position.x = msg_startPose2d.x;
+    marker.pose.position.y = msg_startPose2d.y;
+    marker.pose.position.z = 0.1;
+    marker.pose.orientation = tf::createQuaternionMsgFromYaw(0);
+    marker.scale.x = 0.05;
+    marker.scale.y = 0.05;
+    marker.scale.z = 0.2;
+    marker.color.a = 0.5; // Don't forget to set the alpha!
+    marker.color.r = 1.0;
+    marker.color.g = 1.0;
+    marker.color.b = 0.0;
+
+    pub_markerPosition.publish(marker);
+
+    marker.id = 1;
+    marker.pose.position.x = 3.0;
+    marker.pose.position.y = 3.0;
+    pub_markerPosition.publish(marker);
 }
 void CTopic::visualPillarPoint(CPillar pillar_) // Готовим одиночные точки столбов для RVIZ  в системе координат "odom"
 {
@@ -612,9 +639,9 @@ void CTopic::transformRotation() // Публикуем системы транс
     tf.child_frame_id = "rotation";
     tf.transform.translation.x = transformLidar2Rotation.x; // минус 0.95 Задаем в начале в переменной// Данные для трасформации из Lidar в Rotation
     tf.transform.translation.y = transformLidar2Rotation.y;
-    tf.transform.translation.z = -0.1; // показываем по уровню пола
+    tf.transform.translation.z = -0.1;                                  // показываем по уровню пола
     tf.transform.rotation = tf::createQuaternionMsgFromYaw(DEG2RAD(0)); // Из градусов в радианы добавляем минус, так как в РОС вращение плюс против часовой, а у меня по часовой
-    tfBroadcaster.sendTransform(tf);                                       // Публикация системы преобразования из odom в map Тут динамически, а статически выглядит так   <node pkg="tf" type="static_transform_publisher" name="static_map_odom_tf" args="0 0 0 0 0 0 map odom 100" /> <!--http://wiki.ros.org/tf-->
+    tfBroadcaster.sendTransform(tf);                                    // Публикация системы преобразования из odom в map Тут динамически, а статически выглядит так   <node pkg="tf" type="static_transform_publisher" name="static_map_odom_tf" args="0 0 0 0 0 0 map odom 100" /> <!--http://wiki.ros.org/tf-->
 }
 
 void CTopic::transformLaser(CLaser &laser_) // Публикуем системы трансормаций из одних систем координат в другие
