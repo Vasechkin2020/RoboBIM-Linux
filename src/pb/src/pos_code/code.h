@@ -25,12 +25,13 @@ void startPosition(geometry_msgs::Pose2D &startPose2d_); // Разбираем �
 
 void testFunction(); // Тест математических ипрочих функций
 
-void angleMPU();	   // Расчет угла положения на сонове данных сдатчика MPU
-void calcAngleThata(); // Расчет угла theta
-void calcLInAngVel();  // Расчет линейных и угловой скоростей
+void angleMPU();	  // Расчет угла положения на сонове данных сдатчика MPU
+void calcEuler();	  // Расчет угла Эллера
+void calcLinAngVel(); // Расчет линейных и угловой скоростей
+void calcAngleAccelGyr(); //Расчет угла на основании данных гироскопа и аксельрометра
 
-SPose convertRotation2Lidar(SPoint point_, std::string stroka_); // Конвертация координат из Rotattion в Lidar систему
-SPoint convertLidar2Rotation(SPose pose_, std::string stroka_);	 // Конвертация координат из Lidar в Rotattion систему
+SPose convertRotation2Lidar(SPose pose_, std::string stroka_); // Конвертация координат из Rotattion в Lidar систему
+SPose convertLidar2Rotation(SPose pose_, std::string stroka_); // Конвертация координат из Lidar в Rotattion систему
 
 float minDistance(float laserL_, float laserR_, float uzi1_); // Находим минимальную дистанцию из 3 датчиков
 
@@ -49,10 +50,9 @@ STwistDt calcTwistFromMpu(pb_msgs::Struct_Modul2Data msg_Modul2Data_); // Обр
 STwistDt calcTwistUnited(STwistDt wheelTwist_, STwistDt mpuTwist_);	   // Функция комплементации угловых скоростей полученных с колес и с датчика MPU и угла поворота
 float autoOffsetX(float data_);										   // Функция считаем скользящее среднее из 128 элементов как офсет значений при стоянии на месте
 float autoOffsetY(float data_);										   // Функция считаем скользящее среднее из 128 элементов как офсет значений при стоянии на месте
+float autoOffsetZ(float data_);										   // Функция считаем скользящее среднее из 128 элементов как офсет значений при стоянии на месте
 float filtrComplem(float koef_, float oldData_, float newData_);	   // функция фильтрации, берем старое значение с некоторым весом
 // void calculateOdometryFromMpu(SMpu mpu_);					   // Обработка пришедших данных.Обсчитываем одометрию по энкодеру
-
-void initArray();
 
 // функция фильтрации, берем старое значение с некоторым весом
 float filtrComplem(float koef_, float oldData_, float newData_)
@@ -105,52 +105,60 @@ float minDistance(float laserL_, float laserR_, float uzi1_)
 	}
 	return min;
 }
-// Расчет линейных и угловой скоростей
-void calcLInAngVel()
+
+//Расчет угла на основании данных гироскопа и аксельрометра
+void calcAngleAccelGyr()
 {
-	ROS_INFO("+++ calcLInAngVel");
-	g_linAngVel.wheel = calcTwistFromWheel(msg_Speed); // Обработка пришедших данных. По ним считаем линейные скорости по осям и угловую по углу. Запоминаем dt
-	// g_linAngVel.mpu = calcTwistFromMpu(msg_Modul2Data);                         // Обработка пришедших данных для расчета линейных и угловых скоростей
-	// // тут написать функцию комплементации данных угловых скоростей с разными условиями когда и в каком соотношении скомплементировать скорсти с двух источников
-	// unitedTwistDt = calcTwistUnited(g_linAngVel.wheel, mpuTwistDt);
-	g_linAngVel.united = g_linAngVel.wheel; // Пока нет расчет по IMU и комплментации используем только по колесам
-											// topic.publishOdomUnited();              // Публикация одометрии по моторам с корректировкой с верхнего уровня
+
+}
+// Расчет линейных и угловой скоростей
+void calcLinAngVel()
+{
+	ROS_INFO("+++ calcLinAngVel");
+	g_linAngVel.wheel = calcTwistFromWheel(msg_Speed);						  // Обработка пришедших данных. По ним считаем линейные скорости по осям и угловую по углу. Запоминаем dt
+	g_linAngVel.mpu = calcTwistFromMpu(msg_Modul2Data);						  // Обработка пришедших данных для расчета линейных и угловых скоростей
+	g_linAngVel.united = calcTwistUnited(g_linAngVel.wheel, g_linAngVel.mpu); // тут написать функцию комплементации данных угловых скоростей с разными условиями когда и в каком соотношении скомплементировать скорсти с двух источников
+
+	// g_linAngVel.united = g_linAngVel.wheel; // Пока нет расчет по IMU и комплментации используем только по колесам
 }
 // Расчет угла theta
-void calcAngleThata()
+void calcEuler()
 {
-	ROS_INFO("+++ calcAngleThata");
+	ROS_INFO("+++ calcEuler");
+	g_angleEuler.roll = msg_Modul2Data.mpu.angleEuler.roll;
+	g_angleEuler.pitch = msg_Modul2Data.mpu.angleEuler.pitch;
 	// Расчет угла куда смотрим но пришедшим данным
-	static float prev_theta = msg_Modul2Data.mpu.angleEuler.yaw;											  // При первом запуске этой функции инициализируем тем значением что придет от Modul
-	g_poseRotation.theta -= DEG2RAD(calculateAngleDifference(prev_theta, msg_Modul2Data.mpu.angleEuler.yaw)); // Считаем угол куда смотрим
-	prev_theta = msg_Modul2Data.mpu.angleEuler.yaw;
-	ROS_INFO("    g_poseRotation.theta = %.2f msg_Modul2Data.mpu.angleEuler.yaw = %.2f ", RAD2DEG(g_poseRotation.theta), msg_Modul2Data.mpu.angleEuler.yaw);
+	static float prev_yaw = msg_Modul2Data.mpu.angleEuler.yaw;								   // При первом запуске этой функции инициализируем тем значением что придет от Modul
+	g_angleEuler.yaw -= calculateAngleDifference(prev_yaw, msg_Modul2Data.mpu.angleEuler.yaw); // Считаем угол куда смотрим
+	prev_yaw = msg_Modul2Data.mpu.angleEuler.yaw;
+	ROS_INFO("    msg_Modul2Data.mpu.angleEuler.yaw = %.2f g_angleEuler.yaw = %.2f (gradus) ", msg_Modul2Data.mpu.angleEuler.yaw, g_angleEuler.yaw);
 	// ROS_INFO("--- calcAngleThata");
 }
 
 // Конвертация координат из Rotattion в Lidar систему
-SPose convertRotation2Lidar(SPoint point_, std::string stroka_)
+SPose convertRotation2Lidar(SPose pose_, std::string stroka_)
 {
 	ROS_INFO("+++ convertRotation2Lidar %s", stroka_.c_str());
 	SPose ret;
-	ret.x = point_.x - (transformLidar2Rotation.x * cos(g_poseRotation.theta));
-	ret.y = point_.y - (transformLidar2Rotation.x * sin(g_poseRotation.theta));
-	ret.th = RAD2DEG(g_poseRotation.theta); // в g_poseLidar угол в градусах
+	ret.x = pose_.x - (transformLidar2Rotation.x * cos(pose_.th));
+	ret.y = pose_.y - (transformLidar2Rotation.x * sin(pose_.th));
+	ret.th = RAD2DEG(pose_.th); // в g_poseLidar угол в градусах
 	return ret;
 }
 // Конвертация координат из Lidar в Rotattion систему
-SPoint convertLidar2Rotation(SPose pose_, std::string stroka_)
+SPose convertLidar2Rotation(SPose pose_, std::string stroka_)
 {
 	ROS_INFO("+++ convertLidar2Rotation %s", stroka_.c_str());
-	SPoint ret;
+	SPose ret;
 	// g_poseRotation.theta = DEG2RAD(45);							  // Присваиваем глобальному углу начальное значение
-	ret.x = pose_.x + (transformLidar2Rotation.x * cos(g_poseRotation.theta));
-	ret.y = pose_.y + (transformLidar2Rotation.x * sin(g_poseRotation.theta));
-	ROS_INFO("    g_poseRotation.mode0 x= %.3f y= %.3f Global theta = %.3f (gradus)", ret.x, ret.y, RAD2DEG(g_poseRotation.theta));
+	ret.x = pose_.x + (transformLidar2Rotation.x * cos(pose_.th));
+	ret.y = pose_.y + (transformLidar2Rotation.x * sin(pose_.th));
+	ret.th = DEG2RAD(pose_.th);
+	ROS_INFO("    g_poseRotation %s x= %.3f y= %.3f th = %.3f (gradus)", stroka_.c_str(), ret.x, ret.y, RAD2DEG(ret.th));
 	return ret;
 }
 
-// Разбираем топик со стартовой позицией робота   
+// Разбираем топик со стартовой позицией робота
 void startPosition(geometry_msgs::Pose2D &startPose2d_)
 {
 	ROS_INFO("+++ startPosition");
@@ -159,6 +167,7 @@ void startPosition(geometry_msgs::Pose2D &startPose2d_)
 	transformLidar2Rotation.y = 0;
 	transformLidar2Rotation.th = 0;
 
+	g_angleEuler.yaw = startPose2d_.theta;				// Присваиваем yaw углу начальное значение
 	g_poseRotation.theta = DEG2RAD(startPose2d_.theta); // Присваиваем глобальному углу начальное значение
 
 	g_poseLidar.mode10.x = startPose2d_.x; // Устанавливаем координаты для mode10 что-бы по нему начало все считаться
@@ -286,7 +295,7 @@ void testFunction()
 }
 
 // Обработка пришедших данных.Обсчитываем одометрию по энкодеру
-SPoint calcNewOdom(SPoint odom_, STwistDt data_, std::string stroka_) // На вход подаются старая одометрия и новые угловая угловая скорость. Возвращается новая позиция по данным угловым скоростям
+SPose calcNewOdom(SPose odom_, STwistDt data_, std::string stroka_) // На вход подаются старая одометрия и новые угловая угловая скорость. Возвращается новая позиция по данным угловым скоростям
 {
 	ROS_INFO("+++ calcNewOdom %s", stroka_.c_str());
 	// ROS_INFO("IN calcNewOdom pose.x= % .3f y= % .3f th= % .3f ", odom_.pose.x, odom_.pose.y, RAD2DEG(odom_.pose.th));
@@ -303,8 +312,8 @@ SPoint calcNewOdom(SPoint odom_, STwistDt data_, std::string stroka_) // На в
 
 	// printf("DO pose.x= %.3f pose.y= %.3f pose.th= %.3f / ", odom_.pose.x, odom_.pose.y, RAD2DEG(odom_.pose.th));
 	// Находим смещние по осям матрица координаты точки из локальной системы координат в глобальной
-	double delta_x = pointLoc.x * cos(g_poseRotation.theta) + pointLoc.y * sin(g_poseRotation.theta);
-	double delta_y = -pointLoc.x * sin(g_poseRotation.theta) + pointLoc.y * cos(g_poseRotation.theta);
+	double delta_x = pointLoc.x * cos(odom_.th) + pointLoc.y * sin(odom_.th);
+	double delta_y = -pointLoc.x * sin(odom_.th) + pointLoc.y * cos(odom_.th);
 	// printf("Global system delta.x= % .3f y= % .3f | \n", delta_x, delta_y);
 	//  Меняем координаты и угол на основе вычислений
 	//  odom_.pose.x += delta_x; // Вычисляем координаты
@@ -317,22 +326,18 @@ SPoint calcNewOdom(SPoint odom_, STwistDt data_, std::string stroka_) // На в
 	SPoint pointGlob = pointLocal2GlobalRosRAD(pointLoc, pose);
 	ROS_INFO("    New cordinates Rotation %s x= % .3f y= % .3f", stroka_.c_str(), pointGlob.x, pointGlob.y);
 
-	odom_ = pointGlob; // Вычисляем координаты
-	// odom_.pose.y = pointGlob.y; // Вычисляем координаты
+	odom_.x = pointGlob.x; // Вычисляем координаты
+	odom_.y = pointGlob.y; // Вычисляем координаты
 
 	// printf("twist.x= %.4f y= %.4f th= %.4f gradus ", bno055.twist.vx, bno055.twist.vy, bno055.twist.vth);
-	/*
-		//odom_.twist = data_.twist; // Ничего не меняем в угловой скорости
-		// Меняем координаты и угол на основе вычислений
-		odom_.pose.th += data_.twist.vth * data_.dt; // Прибавляем к текущему углу и получаем новый угол куда смотрит наш робот
-		if (odom_.pose.th > (2 * M_PI))
-			(odom_.pose.th -= (2 * M_PI));
-		if (odom_.pose.th < 0)
-			(odom_.pose.th += (2 * M_PI));
-	*/
+	// odom_.twist = data_.twist; // Ничего не меняем в угловой скорости
+	// Меняем координаты и угол на основе вычислений
+	odom_.th += data_.twist.vth * data_.dt; // Прибавляем к текущему углу и получаем новый угол куда смотрит наш робот
+	if (odom_.th > (2 * M_PI))
+		(odom_.th -= (2 * M_PI));
+	if (odom_.th < 0)
+		(odom_.th += (2 * M_PI));
 	// ROS_WARN("OUT calcNewOdom pose.x= % .3f y= % .3f th= % .3f ", odom_.pose.x, odom_.pose.y, RAD2DEG(odom_.pose.th));
-
-	// ТУТ СДЕЛАТЬ ЗАМЕНУ высчитанного УГЛА tetha просто на угол получаемый с датчика bno055
 
 	// ROS_INFO("--- calcNewOdom");
 	return odom_;
@@ -369,7 +374,7 @@ STwistDt calcTwistFromWheel(pb_msgs::SSetSpeed control_)
 	double sumSpeed = speedL + speedR;
 	double deltaSpeed = speedL - speedR;
 	double speed = (speedR + speedL) / 2.0; // Находим скорость всего обьекта.
-	ROS_INFO("    speedL = %.4f speedR = %.4f speed robot (speedR + speedL) / 2.0 = %.4f", speedL,speedR, speed);
+	ROS_INFO("    speedL = %.4f speedR = %.4f speed robot (speedR + speedL) / 2.0 = %.4f", speedL, speedR, speed);
 	//*******************************************************************************************************************************************************
 	double w = deltaSpeed / DISTANCE_WHEELS; // Находим уголовую скорость движения по радиусу. Плюс по часовой минус против часовой
 											 // ROS_INFO("speedL= %.4f speedR= %.4f speed= %.4f w = %.4f ///  ", speedL, speedR, speed, RAD2DEG(w));
@@ -485,6 +490,7 @@ STwistDt calcTwistFromMpu(pb_msgs::Struct_Modul2Data msg_Modul2Data_)
 	SMpu mpu_;
 	mpu_.linear.x = msg_Modul2Data_.mpu.linear.x; // Копируем в локальную перемнную нужные параметры
 	mpu_.linear.y = msg_Modul2Data_.mpu.linear.y;
+	mpu_.linear.z = msg_Modul2Data_.mpu.linear.z;
 	mpu_.angleEuler.z = msg_Modul2Data_.mpu.angleEuler.yaw;
 
 	float koef_ = 0.2;
@@ -503,28 +509,33 @@ STwistDt calcTwistFromMpu(pb_msgs::Struct_Modul2Data msg_Modul2Data_)
 	}
 	static float offsetX = 0;
 	static float offsetY = 0;
+	static float offsetZ = 0;
 	static float complX = 0; // Значение после комплементарного фильтра
 	static float complY = 0; // Значение после комплементарного фильтра
+	static float complZ = 0; // Значение после комплементарного фильтра
 
-	ROS_INFO("    Mpu % .3f % .3f | % .3f ", mpu_.linear.x, mpu_.linear.y, dt);
+	ROS_INFO("    Mpu x = % .3f y = % .3f z = % .3f | dt = % .3f ", mpu_.linear.x, mpu_.linear.y, mpu_.linear.z, dt);
 
 	if (Data2Driver.control.speedL == 0 && Data2Driver.control.speedR == 0) // Если стоим на месте, то считаем офсет. Как только тронемся, его и будем применять до следующей остановки
 	{
 		offsetX = autoOffsetX(mpu_.linear.x);
 		offsetY = autoOffsetY(mpu_.linear.y);
+		offsetZ = autoOffsetZ(mpu_.linear.z);
 	}
 	// printf(" |offset % .4f % .4f | ", offsetX, offsetY);
-	ROS_INFO("    Offset x= % .4f y= % .4f ", offsetX, offsetY);
+	ROS_INFO("    Offset x= % .4f y= % .4f z= % .4f ", offsetX, offsetY, offsetZ);
 
 	mpu_.linear.x = mpu_.linear.x - offsetX;
 	mpu_.linear.y = mpu_.linear.y - offsetY;
+	mpu_.linear.z = mpu_.linear.z - offsetZ;
 
-	ROS_INFO("    Average  % .3f % .3f ", mpu_.linear.x, mpu_.linear.y);
+	ROS_INFO("    Average  x = % .3f y = % .3f z = % .3f ", mpu_.linear.x, mpu_.linear.y, mpu_.linear.z);
 	// printf(" |Average % .3f | ", mpu_.linear.y);
 
 	complX = filtrComplem(koef_, complX, mpu_.linear.x);
 	complY = filtrComplem(koef_, complY, mpu_.linear.y);
-	ROS_INFO("    Compl x= % .3f y= % .3f ", complX, complY);
+	complZ = filtrComplem(koef_, complZ, mpu_.linear.z);
+	ROS_INFO("    Compl x= % .3f y= % .3f  z= % .3f", complX, complY, complZ);
 
 	/* Примечание. Сигнал линейного ускорения обычно не может быть интегрирован для восстановления скорости или дважды интегрирован для восстановления положения.
 	Ошибка обычно становится больше сигнала менее чем за 1 секунду, если для компенсации этой ошибки интегрирования не используются другие источники датчиков.*/
@@ -542,7 +553,7 @@ STwistDt calcTwistFromMpu(pb_msgs::Struct_Modul2Data msg_Modul2Data_)
 
 	if (Data2Driver.control.speedL == 0 && Data2Driver.control.speedR == 0) // Если обе скорости равны нулю то обнуляем расчеты по mpu. Так как стоим на мете и никаких линейных скоростей быть не может. Стои на месте.
 	{
-		ret.twist.vx = ret.twist.vy = 0;
+		ret.twist.vx = ret.twist.vy = ret.twist.vth = 0;
 	}
 
 	// printf(" ||| LinearSpeed vx= % .3f vy=  % .3f vth= % .6f | ", ret.twist.vx, ret.twist.vy, ret.twist.vth);
@@ -557,29 +568,23 @@ STwistDt calcTwistUnited(STwistDt wheelTwist_, STwistDt mpuTwist_)
 	STwistDt ret;
 	if (wheelTwist_.dt < 0.005) // При первом запуске просто выходим из функции
 	{
-		printf("calcTwistUnited dt< 0.005 !!!! \n");
+		printf("+++ calcTwistUnited dt< 0.005 !!!! \n");
 		return ret;
 	}
-	float koef = 0.5;	// Коефициант по умолчанию.Пополам.
-	float koefTh = 0.5; // Коефициант по умолчанию.Пополам.
+	float koef = 0.0;	// Коефициант по умолчанию.Пополам.
+	float koefTh = 0.0; // Коефициант по умолчанию.Пополам.
 
 	ret.dt = wheelTwist_.dt * 0.5 + mpuTwist_.dt * 0.5;
 
 	ret.twist.vx = wheelTwist_.twist.vx * (1 - koef) + mpuTwist_.twist.vx * koef;
 	ret.twist.vy = wheelTwist_.twist.vy * (1 - koef) + mpuTwist_.twist.vy * koef;
 	ret.twist.vth = wheelTwist_.twist.vth * (1 - koefTh) + mpuTwist_.twist.vth * koefTh;
-	printf("% 6lu |United Wheel | % .3f % .3f | % .3f % .3f || % .3f % .3f || \n", millis(), wheelTwist_.twist.vx, wheelTwist_.twist.vy, mpuTwist_.twist.vx, mpuTwist_.twist.vy, ret.twist.vx, ret.twist.vy, ret.twist.vth);
+	ROS_INFO("    United Wheel | %.3f %.3f %.3f | %.3f %.3f %.3f || %.3f %.3f %.3f  ",
+			 wheelTwist_.twist.vx, wheelTwist_.twist.vy, wheelTwist_.twist.vth,
+			 mpuTwist_.twist.vx, mpuTwist_.twist.vy, mpuTwist_.twist.vth,
+			 ret.twist.vx, ret.twist.vy, ret.twist.vth);
 
 	return ret;
-}
-
-void initArray()
-{
-	for (int i = 0; i < 128; i++)
-	{
-		linearOffsetX[i] = 0;
-		linearOffsetY[i] = 0;
-	}
 }
 
 float autoOffsetX(float data_) // УМНЫЙ РАСЧЕТ УБИРАЮЩИЙ ПЛАВАНИЕ УСКОРЕНИЯ С ДАТЧИКА BNO055
@@ -610,6 +615,23 @@ float autoOffsetY(float data_)
 		sum = sum - linearOffsetY[i]; // Убираем из среднего прежнее значение
 	linearOffsetY[i] = data_;		  // Меняем значение в массиве
 	sum = sum + linearOffsetY[i];	  // Добавляем в среднее новое значение
+	i++;
+	if (i >= 128)
+		i = 0;
+	// printf(" sumX= % .3f ", sum);
+	return sum / k;
+}
+float autoOffsetZ(float data_)
+{
+	static uint16_t i = 0;
+	static uint16_t k = 0;
+	static float sum = 0;
+	if (k < 128)
+		k++;
+	else
+		sum = sum - linearOffsetZ[i]; // Убираем из среднего прежнее значение
+	linearOffsetZ[i] = data_;		  // Меняем значение в массиве
+	sum = sum + linearOffsetZ[i];	  // Добавляем в среднее новое значение
 	i++;
 	if (i >= 128)
 		i = 0;

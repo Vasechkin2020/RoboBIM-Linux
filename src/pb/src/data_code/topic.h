@@ -134,6 +134,14 @@ void CTopic::processing_Modul2Data()
 	Modul2Data_msg.mpu.linear.x = Modul2Data.bno055.linear.x;
 	Modul2Data_msg.mpu.linear.y = Modul2Data.bno055.linear.y;
 	Modul2Data_msg.mpu.linear.z = Modul2Data.bno055.linear.z;
+	
+	Modul2Data_msg.mpu.accel.x = Modul2Data.bno055.accel.x;
+	Modul2Data_msg.mpu.accel.y = Modul2Data.bno055.accel.y;
+	Modul2Data_msg.mpu.accel.z = Modul2Data.bno055.accel.z;
+	
+	Modul2Data_msg.mpu.gyro.x = Modul2Data.bno055.gyro.x;
+	Modul2Data_msg.mpu.gyro.y = Modul2Data.bno055.gyro.y;
+	Modul2Data_msg.mpu.gyro.z = Modul2Data.bno055.gyro.z;
 
 	for (int i = 0; i < 4; i++)
 	{

@@ -255,8 +255,18 @@ void initCommandArray(int verCommand_)
 		commandArray[19].velL = 0.0;
 		commandArray[19].velR = 0.0;
 
+		commandArray[20].mode = 1;
+		commandArray[20].duration = 2000;
+		commandArray[20].velL = -0.03;
+		commandArray[20].velR = 0.03;
+
+		commandArray[21].mode = 1;
+		commandArray[21].duration = 2000;
+		commandArray[21].velL = 0.0;
+		commandArray[21].velR = 0.0;
+
 		//-----------------------
-		commandArray[20].mode = 9;
+		commandArray[22].mode = 9;
 	}
 }
 

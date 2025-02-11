@@ -5,7 +5,7 @@
     <!-- Указываем стартовую позицию робота. В какое место поставили и куда направили-->
     <param name="x" type="double" value="1.0" />
     <param name="y" type="double" value="2.0" />
-    <param name="theta" type="double" value="0.0" />
+    <param name="theta" type="double" value="-0.0" />
 
     <!-- Указываем места расположения столбов на локальной карте -->
     <param name="x0" type="double" value="4.0" />

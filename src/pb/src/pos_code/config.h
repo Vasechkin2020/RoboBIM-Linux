@@ -1,7 +1,7 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#include <string>  // Подключение библиотеки для работы со строками
+#include <string> // Подключение библиотеки для работы со строками
 
 #include <ros/ros.h>
 #include <log4cxx/mdc.h>
@@ -46,7 +46,7 @@
 
 // #include <data/pointA.h>
 
-#define RATE 50                                  // Частота шага 
+#define RATE 10                                 // Частота шага
 #define RATE_LASER 3                            // Частота измерения лазерного датчика при калибровке для расчета
 #define STEP_LASER_MOTOR (360.0 / 400.0 / 16.0) // Шаг поаорота мотора с лазерным датчиком 360 ГРАДУСОВ /400 шагов мотор /16 шагов драйвер
 
@@ -96,8 +96,9 @@ bool flag_dataLidar = false;  // Флаг что разобрали данные
 pb_msgs::Struct_Data2Driver Data2Driver;      // Структура с командами которую публикуем и которую потом Driver исполняет
 pb_msgs::Struct_Data2Driver Data2Driver_prev; // Структура с командами которую публикуем и которую потом Driver исполняет предыдущее состоние
 
-float linearOffsetX[128];
-float linearOffsetY[128];
+float linearOffsetX[128] = {0};
+float linearOffsetY[128] = {0};
+float linearOffsetZ[128] = {0};
 
 bool modeColibrovka = false;
 SPose transformLidar2Rotation; // данные для трансформации из одной системы координат в другую из Lidar в Rotation
@@ -149,7 +150,7 @@ struct STwistDt
 // STwistDt wheelTwistDt;  // Скорости полученные по ecoder и интревал который прошел с предыдущего измерения
 // STwistDt unitedTwistDt; // Обьединенные комплементратный способом Скорости и интервал
 
-struct SLinAngVel 
+struct SLinAngVel
 {
     STwistDt mpu;    // Скорости полученные по mpu и интревал который прошел с предыдущего измерения
     STwistDt wheel;  // Скорости полученные по ecoder и интревал который прошел с предыдущего измерения
@@ -157,20 +158,21 @@ struct SLinAngVel
 };
 
 // Структура для одометрии
-struct SPointRotation
+struct SPoseRotation
 {
-    SPoint mode0;  // Расчет чисто по одометрии колес без комплементации с чем-либо
-    SPoint mode10; // Комплементация ИТОГОВАЯ ПОЗИЦИЯ ИСПОЛЬЗУЕМАЯ ДАЛЕЕ КАК ОСНОВНАЯ
-    SPoint mode11; // Комплементация по Калману с mode1 Lidar Distance
-    SPoint mode12; // Комплементация по Калману с mode2 Lidar Angle
-    SPoint mode13; // Комплементация по Калману с mode3 Laser
-    SPoint mode14; // Комплементация по Калману с mode4 IMU
+    SPose mode0;     // Расчет чисто по одометрии колес без комплементации с чем-либо
+    SPose mode10;    // Комплементация ИТОГОВАЯ ПОЗИЦИЯ ИСПОЛЬЗУЕМАЯ ДАЛЕЕ КАК ОСНОВНАЯ
+    SPose mode11;    // Комплементация по Калману с mode1 Lidar Distance
+    SPose mode12;    // Комплементация по Калману с mode2 Lidar Angle
+    SPose mode13;    // Комплементация по Калману с mode3 Laser
+    SPose mode14;    // Комплементация по Калману с mode4 IMU
     float theta = 0; // Единый угол направления. Получается комплементаций угла с датчика BNO055 и поправками с других датчиков от уплывания с очень маленьким коефициентом. Так как с BNO055 очень точно все!!!
+    float angleAccelGyro = 0; // Угол посчитанный по аксельрометру и гироскопу отдельным алгоритмом
 };
 
 struct SPoseLidar // Варианты расчетов координат лидара
 {
-    SPose mode10;  // // Комплементация ИТОГОВАЯ ПОЗИЦИЯ ИСПОЛЬЗУЕМАЯ для расчета как входящая позиция
+    SPose mode10; // // Комплементация ИТОГОВАЯ ПОЗИЦИЯ ИСПОЛЬЗУЕМАЯ для расчета как входящая позиция
     SPose mode1;  // Для лидара по растоянию
     SPose mode2;  // Для лидара по углу
     SPose mode3;  // Для лазерных датчиков
@@ -197,7 +199,6 @@ struct SCircle2 // Две окружности
     SCircle c1;
     SCircle c2;
 };
-
 
 //************************************** ОБЬЯВЛЯЕМ ФУНКЦИИ **********************************
 void normalizeVector(double &x, double &y, double &z);                  // Нормализация вектора
