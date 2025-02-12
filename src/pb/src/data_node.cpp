@@ -143,7 +143,7 @@ int main(int argc, char **argv)
         rezModul = sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
 
         // uint8_t test[4]{0x01, 0x04, 0xFF, 0xAA};
-        // uint8_t test[2]{0x01, 0x02};
+        // uint8_t test[2]{0x01, 0x02};   
         // digitalWrite(PIN_SPI_MODUL, 0);
         // delayMicroseconds(1);
         // printf("out- %#x %#x %#x %#x\n", test[0], test[1], test[2], test[3]);

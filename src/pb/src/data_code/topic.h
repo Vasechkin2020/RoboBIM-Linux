@@ -142,6 +142,10 @@ void CTopic::processing_Modul2Data()
 	Modul2Data_msg.mpu.gyro.x = Modul2Data.bno055.gyro.x;
 	Modul2Data_msg.mpu.gyro.y = Modul2Data.bno055.gyro.y;
 	Modul2Data_msg.mpu.gyro.z = Modul2Data.bno055.gyro.z;
+	
+	Modul2Data_msg.mpu.mag.x = Modul2Data.bno055.mag.x;
+	Modul2Data_msg.mpu.mag.y = Modul2Data.bno055.mag.y;
+	Modul2Data_msg.mpu.mag.z = Modul2Data.bno055.mag.z;
 
 	for (int i = 0; i < 4; i++)
 	{

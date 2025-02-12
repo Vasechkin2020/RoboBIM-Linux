@@ -84,6 +84,7 @@ struct SMpu // Структура с данными со всех датчико
   struct SXyz linear;
   struct SXyz accel;
   struct SXyz gyro;
+  struct SXyz mag;
 };
 
 // Структура в которой все главные переменные передаюся на высокий уровень от Modul к Data

@@ -29,7 +29,7 @@
 
 pb_msgs::Struct_Data2Driver controlSpeed;
 
-#define RATE 10 // Частота шага
+#define RATE 50 // Частота шага
 
 #define DISTANCE_WHEELS 0.38 // Растояние между колесами робота. подобрал экспериментально Влияет на правильность круга
 

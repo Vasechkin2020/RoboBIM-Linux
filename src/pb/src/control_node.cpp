@@ -46,7 +46,7 @@ int main(int argc, char **argv)
             timeMil = millis() + 1000;
         }
 
-        if (timeStart + 3000 < millis()) // Задаержка перед началом работы
+        if (timeStart + 1000 < millis()) // Задаержка перед началом работы
         {
             if (flagCommand)
             {
