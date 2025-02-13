@@ -295,7 +295,7 @@ void CTopic::publicationPoseRotattion() // Вывод в топик данных
 {
     pb_msgs::Struct_PoseRotation msg; // Обобщенные данные в моем формате о всех вариантах расчета позиции
 
-    msg.theta = g_poseRotation.theta;
+    // msg.theta = g_poseRotation.theta;
 
     msg.mode0.x = g_poseRotation.mode0.x;
     msg.mode0.y = g_poseRotation.mode0.y;

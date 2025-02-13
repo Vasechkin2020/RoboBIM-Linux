@@ -168,7 +168,7 @@ void startPosition(geometry_msgs::Pose2D &startPose2d_)
 	transformLidar2Rotation.th = 0;
 
 	g_angleEuler.yaw = startPose2d_.theta;				// Присваиваем yaw углу начальное значение
-	g_poseRotation.theta = DEG2RAD(startPose2d_.theta); // Присваиваем глобальному углу начальное значение
+	// g_poseRotation.theta = DEG2RAD(startPose2d_.theta); // Присваиваем глобальному углу начальное значение
 
 	g_poseLidar.mode10.x = startPose2d_.x; // Устанавливаем координаты для mode10 что-бы по нему начало все считаться
 	g_poseLidar.mode10.y = startPose2d_.y;
@@ -176,12 +176,8 @@ void startPosition(geometry_msgs::Pose2D &startPose2d_)
 	ROS_INFO("    startPose2d x= %.3f y= %.3f theta= %.3f ", startPose2d_.x, startPose2d_.y, startPose2d_.theta);
 
 	g_poseRotation.mode10 = convertLidar2Rotation(g_poseLidar.mode10, "mode10");
-
 	g_poseRotation.mode0 = g_poseRotation.mode10;
-	g_poseRotation.mode11 = g_poseRotation.mode10;
-	g_poseRotation.mode12 = g_poseRotation.mode10;
-	g_poseRotation.mode13 = g_poseRotation.mode10;
-	g_poseRotation.mode14 = g_poseRotation.mode10;
+
 	ROS_INFO("--- startPosition");
 }
 
@@ -322,7 +318,7 @@ SPose calcNewOdom(SPose odom_, STwistDt data_, std::string stroka_) // На вх
 	SPose pose;
 	pose.x = odom_.x;
 	pose.y = odom_.y;
-	pose.th = g_poseRotation.theta;
+	pose.th = odom_.th;
 	SPoint pointGlob = pointLocal2GlobalRosRAD(pointLoc, pose);
 	ROS_INFO("    New cordinates Rotation %s x= % .3f y= % .3f", stroka_.c_str(), pointGlob.x, pointGlob.y);
 

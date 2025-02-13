@@ -77,19 +77,16 @@ int main(int argc, char **argv)
             ROS_INFO("--------------------------------------- flag_msgSpeed ***");
             flag_msgSpeed = false;
             calcEuler();         // Расчет угла yaw с датчика IMU
-            calcAngleAccelGyr(); // Расчет угла на основании данных гироскопа и аксельрометра
+            // calcAngleAccelGyr(); // Не стал пока делать. Расчет самостоятельно угла на основании данных гироскопа и аксельрометра
             calcLinAngVel();     // РАсчет линейных и угловой скоростей на основаниие данных скоростей колес и скоростей с IMU 055 и их комплементация в united
 
             g_poseRotation.mode0 = calcNewOdom(g_poseRotation.mode0, g_linAngVel.wheel, "mode0");     // На основе линейных скоростей считаем новую позицию и угол по колесам
-            g_poseRotation.mode10 = calcNewOdom(g_poseRotation.mode10, g_linAngVel.united, "mode10"); // На основе линейных скоростей считаем новую позицию и угол по колесам
-            // g_poseRotation.mode11 = calcNewOdom(g_poseRotation.mode11, g_linAngVel.united, "mode11"); // На основе линейных скоростей считаем новую позицию и угол по колесам
-            // g_poseRotation.mode12 = calcNewOdom(g_poseRotation.mode12, g_linAngVel.united, "mode12"); // На основе линейных скоростей считаем новую позицию и угол по колесам
-            // g_poseRotation.mode13 = calcNewOdom(g_poseRotation.mode13, g_linAngVel.united, "mode13"); // На основе линейных скоростей считаем новую позицию и угол по колесам
-            // g_poseRotation.mode14 = calcNewOdom(g_poseRotation.mode14, g_linAngVel.mpu, "mode14");    // На основе линейных скоростей считаем новую позицию и угол по колесам по датчику MPU BNO055
 
+            g_poseRotation.mode10 = calcNewOdom(g_poseRotation.mode10, g_linAngVel.united, "mode10"); // На основе линейных скоростей считаем новую позицию и угол по колесам
+            g_poseRotation.mode10.th = DEG2RAD(g_angleEuler.yaw); // Напрямую присваиваем угол. Заменяем тот угол что насчитали внутри 
             g_poseLidar.mode10 = convertRotation2Lidar(g_poseRotation.mode10, "mode10"); // Эти данные mode10 используем как основную точку для расчета mode1.2.3
 
-            ROS_INFO("    g_poseRotation mode10 x = %.3f y = %.3f theta = %.3f (radian)", g_poseRotation.mode10.x, g_poseRotation.mode10.y, g_poseRotation.theta);
+            ROS_INFO("    g_poseRotation mode10 x = %.3f y = %.3f theta = %.3f (radian)", g_poseRotation.mode10.x, g_poseRotation.mode10.y, g_poseRotation.mode10.th);
             ROS_INFO("    g_poseLidar    mode10 x = %.3f y = %.3f theta = %.3f (gradus)", g_poseLidar.mode10.x, g_poseLidar.mode10.y, g_poseLidar.mode10.th);
 
             // calcMode0(); // Расчет одометрии Mode0

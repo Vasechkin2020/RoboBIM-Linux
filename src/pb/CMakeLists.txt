@@ -186,6 +186,9 @@ target_link_libraries(pos_node ${catkin_LIBRARIES} -lwiringPi -lpthread)
 add_executable(control_node src/control_node.cpp)
 target_link_libraries(control_node ${catkin_LIBRARIES} -lwiringPi -lpthread)
 
+add_executable(calibr_node src/calibr_node.cpp)
+target_link_libraries(calibr_node ${catkin_LIBRARIES} -lwiringPi -lpthread)
+
 add_executable(write_node src/write_node.cpp)
 target_link_libraries(write_node ${catkin_LIBRARIES} -lwiringPi -lpthread)
 
