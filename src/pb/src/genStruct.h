@@ -123,7 +123,7 @@ struct Struct_Driver2Data
 {
   uint32_t id = 0; // id команды
   SMotor motor;
-  SMpu bno055; // Данные с датчика BNO055
+  // SMpu bno055; // Данные с датчика BNO055
   SSensor laserL;
   SSensor laserR;
   SSensor uzi;
