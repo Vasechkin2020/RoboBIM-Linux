@@ -86,7 +86,7 @@ void CTopic::processingSPI()
 // Копирование данных скорости в структуру и публикация в топик
 void CTopic::processing_SetSpeed(SControl &control_)
 {
-	ROS_INFO("+++ processing_SetSpeed");
+	// ROS_INFO("+++ processing_SetSpeed");
 	// Копируем полученные по SPI данные в сообщение которое потом опубликуем
 	setSpeed_msg.header.stamp = ros::Time::now();
 	setSpeed_msg.id = Data2Driver.id;
