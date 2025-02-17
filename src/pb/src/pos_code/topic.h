@@ -336,6 +336,11 @@ void CTopic::publicationLinAngVel() // Вывод в топик данных с 
     msg.united.twist.vth = g_linAngVel.united.twist.vth;
     msg.united.dt = g_linAngVel.united.dt;
 
+    msg.filtr_mpu.twist.vx = g_linAngVel.filtr_mpu.twist.vx;
+    msg.filtr_mpu.twist.vy = g_linAngVel.filtr_mpu.twist.vy;
+    msg.filtr_mpu.twist.vth = g_linAngVel.filtr_mpu.twist.vth;
+    msg.filtr_mpu.dt = g_linAngVel.filtr_mpu.dt;
+
     pub_linAngVel.publish(msg); // Публикуем информацию по позиции лидара
 }
 // Отобращение стрелкой где начало и куда смотрят лазеры

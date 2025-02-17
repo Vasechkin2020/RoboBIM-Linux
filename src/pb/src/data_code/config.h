@@ -68,7 +68,7 @@ sensor_msgs::Joy msg_joy;                      // Переменная в кот
 
 #define ACCELERATION 0.5 // Метры в секунду в квадрате м/с
 
-#define DIAMETR 0.151 // Влияет на правильность длинны через расчет скорости
+#define DIAMETR 0.150 // Влияет на правильность длинны через расчет скорости
 #define RADIUS (DIAMETR / 2)
 #define PERIMETR (DIAMETR * M_PI)
 #define KOEF_ODOM 1.0000; // Коефициент для одометрии. подбираем экспериментально, что-бы было точно движение и расчет
