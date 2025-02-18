@@ -130,7 +130,7 @@ void calcEuler()
 	static float prev_yaw = msg_Modul2Data.mpu.angleEuler.yaw;								   // При первом запуске этой функции инициализируем тем значением что придет от Modul
 	g_angleEuler.yaw -= calculateAngleDifference(prev_yaw, msg_Modul2Data.mpu.angleEuler.yaw); // Считаем угол куда смотрим
 	prev_yaw = msg_Modul2Data.mpu.angleEuler.yaw;
-	ROS_INFO("    msg_Modul2Data.mpu.angleEuler.yaw = %.2f g_angleEuler.yaw = %.2f (gradus) ", msg_Modul2Data.mpu.angleEuler.yaw, g_angleEuler.yaw);
+	ROS_INFO("    msg_Modul2Data.mpu.angleEuler.yaw = %.3f g_angleEuler.yaw = %.3f (gradus) %.3f rad", msg_Modul2Data.mpu.angleEuler.yaw, g_angleEuler.yaw, DEG2RAD(g_angleEuler.yaw));
 	// ROS_INFO("--- calcAngleThata");
 }
 
@@ -175,6 +175,8 @@ void startPosition(geometry_msgs::Pose2D &startPose2d_)
 	ROS_INFO("    startPose2d x= %.3f y= %.3f theta= %.3f ", startPose2d_.x, startPose2d_.y, startPose2d_.theta);
 
 	g_poseRotation.mode10 = convertLidar2Rotation(g_poseLidar.mode10, "mode10");
+	ROS_INFO("    start g_poseRotation.mode10 x= %.3f y= %.3f theta= %.3f ", g_poseRotation.mode10.x, g_poseRotation.mode10.y, g_poseRotation.mode10.th);
+
 	g_poseRotation.mode0 = g_poseRotation.mode10;
 
 	ROS_INFO("--- startPosition");
@@ -301,8 +303,8 @@ SPose calcNewOdom(SPose odom_, STwistDt data_, std::string stroka_, float koef_)
 	}
 
 	SPoint pointLoc;
-	pointLoc.x = data_.twist.vx * data_.dt; // Находим проекции скорсти на оси за интревал времени это коокрдинаты нашей точки в локальной системе координат
-	pointLoc.y = data_.twist.vy * data_.dt;
+	pointLoc.x = data_.twist.vx * data_.dt * koef_; // Находим проекции скорости на оси за интервал времени это координаты нашей точки в локальной системе координат
+	pointLoc.y = data_.twist.vy * data_.dt * koef_;
 	// printf(" Local system pointLoc.x= % .3f y= % .3f dt= % .3f th= % .3f | \n", pointLoc.x, pointLoc.y, data_.dt, RAD2DEG(odom_.pose.th));
 
 	// printf("DO pose.x= %.3f pose.y= %.3f pose.th= %.3f / ", odom_.pose.x, odom_.pose.y, RAD2DEG(odom_.pose.th));
@@ -319,7 +321,7 @@ SPose calcNewOdom(SPose odom_, STwistDt data_, std::string stroka_, float koef_)
 	pose.y = odom_.y;
 	pose.th = odom_.th;
 	SPoint pointGlob = pointLocal2GlobalRosRAD(pointLoc, pose);
-	ROS_INFO("    New cordinates Rotation %s x= % .3f y= % .3f", stroka_.c_str(), pointGlob.x, pointGlob.y);
+	// ROS_INFO("    New cordinates Rotation %s x= % .3f y= % .3f", stroka_.c_str(), pointGlob.x, pointGlob.y);
 
 	odom_.x = pointGlob.x; // Вычисляем координаты
 	odom_.y = pointGlob.y; // Вычисляем координаты
@@ -327,12 +329,14 @@ SPose calcNewOdom(SPose odom_, STwistDt data_, std::string stroka_, float koef_)
 	// printf("twist.x= %.4f y= %.4f th= %.4f gradus ", bno055.twist.vx, bno055.twist.vy, bno055.twist.vth);
 	// odom_.twist = data_.twist; // Ничего не меняем в угловой скорости
 	// Меняем координаты и угол на основе вычислений
-	odom_.th += data_.twist.vth * data_.dt; // Прибавляем к текущему углу и получаем новый угол куда смотрит наш робот
-	if (odom_.th > (2 * M_PI))
-		(odom_.th -= (2 * M_PI));
-	if (odom_.th < 0)
-		(odom_.th += (2 * M_PI));
-	// ROS_WARN("OUT calcNewOdom pose.x= % .3f y= % .3f th= % .3f ", odom_.pose.x, odom_.pose.y, RAD2DEG(odom_.pose.th));
+	// ROS_INFO("    IN odom_.th = %.3f data_.dt= %.3f  * data_.twist.vth= %.3f ", odom_.th, data_.dt, data_.twist.vth);
+
+	odom_.th += data_.twist.vth * data_.dt * koef_; // Прибавляем к текущему углу и получаем новый угол куда смотрит наш робот С коефициентом это ПРЕДСКАЗАНИЕ УГЛА
+	// if (odom_.th > (2 * M_PI))
+	// 	(odom_.th -= (2 * M_PI));
+	// if (odom_.th < 0)
+	// 	(odom_.th += (2 * M_PI));
+	ROS_INFO("    calcNewOdom Rotation %s pose.x= % .3f y= % .3f | th= % .3f gradus th= % .4f rad", stroka_.c_str(), odom_.x, odom_.y, RAD2DEG(odom_.th), odom_.th);
 
 	// ROS_INFO("--- calcNewOdom");
 	return odom_;
@@ -348,12 +352,20 @@ STwistDt calcTwistFromWheel(pb_msgs::SSetSpeed control_)
 	static SPose pose;
 	STwist twist;
 
-	static unsigned long time = micros();		 // Время предыдущего расчета// Функция из WiringPi.
-	unsigned long time_now = micros();			 // Время в которое делаем расчет
-	double dt = ((time_now - time) / 1000000.0); // Интервал расчета переводим сразу в секунды Находим интревал между текущим и предыдущим расчетом в секундах
 	ROS_INFO("+++ calcTwistFromWheel");
-	ROS_INFO("    dt= %.3f msec", dt);
-	time = time_now;
+
+	static ros::Time start_time = ros::Time::now(); // Захватываем начальный момент времени
+	ros::Time end_time = ros::Time::now();			// Захватываем конечный момент времени
+	ros::Duration duration = end_time - start_time; // Находим разницу между началом и концом
+	double dt = duration.toSec();					// Получаем количество секунд и преобразуем в миллисекунды
+	start_time = end_time;
+
+	// static unsigned long time = micros();		 // Время предыдущего расчета// Функция из WiringPi.
+	// unsigned long time_now = micros();			 // Время в которое делаем расчет
+	// double dt = ((time_now - time) / 1000000.0); // Интервал расчета переводим сразу в секунды Находим интревал между текущим и предыдущим расчетом в секундах
+	// time = time_now;
+	// ROS_INFO("    dt = %f sec", dt);
+
 	if (dt < 0.005) // При первом запуске просто выходим из функции
 	{
 		ROS_INFO("    First start. alcTwistFromWheel dt< 0.005");
@@ -369,54 +381,57 @@ STwistDt calcTwistFromWheel(pb_msgs::SSetSpeed control_)
 	double sumSpeed = speedL + speedR;
 	double deltaSpeed = speedL - speedR;
 	double speed = (speedR + speedL) / 2.0; // Находим скорость всего обьекта.
-	ROS_INFO("    speedL = %.4f speedR = %.4f speed robot (speedR + speedL) / 2.0 = %.4f", speedL, speedR, speed);
+	// ROS_INFO("    dt = %.3f sec speedL = %.4f speedR = %.4f speed robot (speedR + speedL) / 2.0 = %.4f", dt, speedL, speedR, speed);
 	//*******************************************************************************************************************************************************
-	double w = deltaSpeed / DISTANCE_WHEELS; // Находим уголовую скорость движения по радиусу. Плюс по часовой минус против часовой
-											 // ROS_INFO("speedL= %.4f speedR= %.4f speed= %.4f w = %.4f ///  ", speedL, speedR, speed, RAD2DEG(w));
-											 // if (dt > (1.0 / RATE * 0.90))			 //
-											 // {
-	if (speedL == 0 && speedR == 0)			 // Стоим на месте. Скорости равны нулю
-	{
-		radius = 0;
-		speed = 0;
-		theta = 0;
-		// ROS_INFO("    0 STOIM NA MESTE radius = %.4f theta gradus = %.4f ", radius, RAD2DEG(theta));
-	}
-	else
-	{
-		if (abs(sumSpeed) < 0.01 && speedL != 0 && speedR != 0) // Если сумма скоростей очень маленькая или ноль значит крутимся на месте или стоим на месте и тогда совсем иной расчет чем если движемся// Крутимся на месте
-		{
-			radius = 0.5 * DISTANCE_WHEELS; // Радиус в таком случае это половина между колесами
-			if (speedL > speedR)			// Значит крутимся по часовой и знак угловой скорсти плюс
-			{
-				lenArc = speedL; // меняем скорость со среднй на скорость одного колеса, наружнего // Находим путь какой проехали. Это длинна дуги.
-			}
-			else
-			{
-				lenArc = -speedR; //  Значит крутимся против часовой и знак минус будет у угловой скорости // Находим путь какой проехали. Это длинна дуги.
-			}
-			speed = 0;				 // Обнуляем скорость чтобы дальше позиция не сдвигалась, мы же на месте.
-			theta = lenArc / radius; // Отношение улинны дуги окружночти к радиусу дает угол в радианах. Нахождение центрального угла по дуге и радиусу.
-									 // ROS_INFO("    1 KRUTIMSA NA MESTE radius = %.4f theta gradus = %.4f lenArc = %.4f speedL = %.4f speedR = %.4f ", radius, RAD2DEG(theta), lenArc, speedL, speedR);
-		}
-		else // Тут нормальный расчет что мы движемся или по прямой или по радиусу
-		{
-			lenArc = speed;				// Находим путь какой проехали за время в течении которого энкодер собирал данные. Это длинна дуги.
-			if (abs(deltaSpeed) < 0.01) // Если раздница скоростей незначительна то считаем что едем прямо вперед или назад
-			{
-				radius = 0; // Едем прямо или назад и все по нулям
-				theta = 0;	// Если едем прямо то угол поворота отклонения от оси равен 0
-						   // ROS_INFO("    2 EDEM PRIAMO radius = %.4f theta gradus = %.4f ", radius, RAD2DEG(theta));
-			}
-			else // Едем по радиусу и надо все считать
-			{
-				radius = (0.5 * DISTANCE_WHEELS) * (sumSpeed / deltaSpeed); // Находим радиус движения
-				theta = lenArc / radius;									// Отношение улинны дуги окружночти к радиусу дает угол в радианах. Нахождение центрального угла по дуге и радиусу.
-																			// ROS_INFO("    3 EDEM RADIUS radius = %.4f theta gradus = %.4f ", radius, RAD2DEG(theta));
-			}
-		}
-	}
+	double w = -deltaSpeed / DISTANCE_WHEELS; // Находим уголовую скорость движения по радиусу. Плюс по часовой минус против часовой
 
+	// ROS_INFO("speedL= %.4f speedR= %.4f speed= %.4f w = %.4f ///  ", speedL, speedR, speed, RAD2DEG(w));
+
+	// if (speedL == 0 && speedR == 0) // Стоим на месте. Скорости равны нулю
+	// {
+	// 	radius = 0;
+	// 	speed = 0;
+	// 	theta = 0;
+	// 	// ROS_INFO("    0 STOIM NA MESTE radius = %.4f theta gradus = %.4f ", radius, RAD2DEG(theta));
+	// }
+	// else
+	// {
+	// 	if (abs(sumSpeed) < 0.01 && speedL != 0 && speedR != 0) // Если сумма скоростей очень маленькая или ноль значит крутимся на месте или стоим на месте и тогда совсем иной расчет чем если движемся// Крутимся на месте
+	// 	{
+	// 		radius = 0.5 * DISTANCE_WHEELS; // Радиус в таком случае это половина между колесами
+	// 		if (speedL > speedR)			// Значит крутимся по часовой и знак угловой скорсти минус
+	// 		{
+	// 			lenArc = -speedL; // меняем скорость со среднй на скорость одного колеса, наружнего // Находим путь какой проехали. Это длинна дуги.
+	// 		}
+	// 		else
+	// 		{
+	// 			lenArc = speedR; //  Значит крутимся против часовой и знак минус будет у угловой скорости // Находим путь какой проехали. Это длинна дуги.
+	// 		}
+	// 		speed = 0; // Обнуляем скорость чтобы дальше позиция не сдвигалась, мы же на месте.
+	// 		// theta = lenArc / radius; // Отношение улинны дуги окружности к радиусу дает угол в радианах. Нахождение центрального угла по дуге и радиусу.
+	// 		theta = w;
+	// 		// ROS_INFO("    1 KRUTIMSA NA MESTE radius = %.4f theta gradus = %.4f lenArc = %.4f speedL = %.4f speedR = %.4f ", radius, RAD2DEG(theta), lenArc, speedL, speedR);
+	// 	}
+	// 	else // Тут нормальный расчет что мы движемся или по прямой или по радиусу
+	// 	{
+	// 		lenArc = speed;				// Находим путь какой проехали за время в течении которого энкодер собирал данные. Это длинна дуги.
+	// 		if (abs(deltaSpeed) < 0.01) // Если раздница скоростей незначительна то считаем что едем прямо вперед или назад
+	// 		{
+	// 			radius = 0; // Едем прямо или назад и все по нулям
+	// 			theta = 0;	// Если едем прямо то угол поворота отклонения от оси равен 0
+	// 					   // ROS_INFO("    2 EDEM PRIAMO radius = %.4f theta gradus = %.4f ", radius, RAD2DEG(theta));
+	// 		}
+	// 		else // Едем по радиусу и надо все считать
+	// 		{
+	// 			radius = (0.5 * DISTANCE_WHEELS) * (sumSpeed / deltaSpeed); // Находим радиус движения
+	// 			// theta = lenArc / radius;									// Отношение улинны дуги окружности к радиусу дает угол в радианах. Нахождение центрального угла по дуге и радиусу.
+	// 			theta = w;
+	// 			// ROS_INFO("    3 EDEM RADIUS radius = %.4f theta gradus = %.4f ", radius, RAD2DEG(theta));
+	// 		}
+	// 	}
+	// }
+
+	theta = w;
 	// printf (" theta = %.3f \n", theta);
 	//  Находим линейные скорости из моего вектора скорости. Я задаю общую скорость движения (длинна вектора), ее надо разложить на проекции по осям x y. Это будут линейные скорости
 	//  speed = 0.26;
@@ -424,7 +439,10 @@ STwistDt calcTwistFromWheel(pb_msgs::SSetSpeed control_)
 	twist.vy = speed * sin(theta * dt); // Проекция моей скорости на ось Y получаем линейную скорость по оси за секунуду
 	twist.vth = theta;					// Угловая скорость в радианах.
 
-	ROS_INFO("    Twist Wheel vx= % .3f vy= % .3f vth= % .3f w= % .3f gradus/sec", twist.vx, twist.vy, RAD2DEG(twist.vth),RAD2DEG(w));
+	ROS_INFO("    Twist Wheel dt = %.3f vx= %.3f vy= %.3f vth= %.3f w= %.3f gradus/sec  %.3f rad/sec", dt, twist.vx, twist.vy, RAD2DEG(twist.vth), RAD2DEG(w), w);
+	// if (w==0)
+	// ROS_INFO("NULL");
+
 	// printf("vy= % .4f", twist.vy);
 	// printf("speed= %.4f twist.vth = %.4f / sin(twist.vth )= %.4f cos(twist.vth ) = %.4f / ", speed, RAD2DEG(twist.vth), sin(twist.vth ), cos(twist.vth ));
 	// printf("speed= %.4f twist.vth = %.8f / ", speed, RAD2DEG(twist.vth));
@@ -490,12 +508,20 @@ STwistDt calcTwistFromMpu(pb_msgs::Struct_Modul2Data msg_Modul2Data_)
 
 	float koef_ = 0.2;
 	static STwistDt ret;
-	static unsigned long time = micros();		 // Время предыдущего расчета// Функция из WiringPi.// Замеряем интервалы по времени между запросами данных
-	unsigned long time_now = micros();			 // Время в которое делаем расчет
-	double dt = ((time_now - time) / 1000000.0); // Интервал расчета переводим сразу в секунды Находим интревал между текущим и предыдущим расчетом в секундах
-	ROS_INFO("    dt= %.3f msec", dt);
-	time = time_now;
 	static double predAngleZ = 0;
+
+	// static unsigned long time = micros();		 // Время предыдущего расчета// Функция из WiringPi.// Замеряем интервалы по времени между запросами данных
+	// unsigned long time_now = micros();			 // Время в которое делаем расчет
+	// double dt = ((time_now - time) / 1000000.0); // Интервал расчета переводим сразу в секунды Находим интревал между текущим и предыдущим расчетом в секундах
+	// time = time_now;
+
+	static ros::Time start_time = ros::Time::now(); // Захватываем начальный момент времени
+	ros::Time end_time = ros::Time::now();			// Захватываем конечный момент времени
+	ros::Duration duration = end_time - start_time; // Находим разницу между началом и концом
+	double dt = duration.toSec();					// Получаем количество секунд и преобразуем в миллисекунды
+	start_time = end_time;
+	// ROS_INFO("    dt = %f sec", dt);
+
 	if (dt < 0.005) // При первом запуске просто выходим из функции
 	{
 		ROS_INFO("    dt< 0.005 !!!! \n");
@@ -537,8 +563,8 @@ STwistDt calcTwistFromMpu(pb_msgs::Struct_Modul2Data msg_Modul2Data_)
 	ret.twist.vx += complX * dt; // Линейное ускорение по оси метры за секунуду умножаем на интервал, получаем ускорение за интервал и суммируем в скорость линейную по оси
 	ret.twist.vy += complY * dt; // Линейное ускорение по оси метры за секунуду
 
-	double delta_th = (mpu_.angleEuler.z - predAngleZ); // считаем величину изменения угла, тут она в градусах
-	ROS_INFO("    predAngleZ = % .3f mpu_.angleEuler.z= % .3f delta_th= % .3f", predAngleZ, mpu_.angleEuler.z, delta_th);
+	double delta_th = -(mpu_.angleEuler.z - predAngleZ); // считаем величину изменения угла, тут она в градусах
+	// ROS_INFO("    predAngleZ = % .3f mpu_.angleEuler.z= % .3f delta_th= % .3f", predAngleZ, mpu_.angleEuler.z, delta_th);
 	predAngleZ = mpu_.angleEuler.z;
 	if (delta_th > 180)
 		(delta_th = delta_th - 360); // Если
@@ -546,31 +572,32 @@ STwistDt calcTwistFromMpu(pb_msgs::Struct_Modul2Data msg_Modul2Data_)
 		(delta_th = delta_th + 360);		// Если
 	ret.twist.vth = DEG2RAD(delta_th) / dt; // превращаем в радианы в секунды Угловая скорость вращения
 	float kk = 0.05;
-	g_linAngVel.filtr_mpu.twist.vth = g_linAngVel.filtr_mpu.twist.vth * (1-kk) + ret.twist.vth * kk; // Фильтр 
+	g_linAngVel.filtr_mpu.twist.vth = g_linAngVel.filtr_mpu.twist.vth * (1 - kk) + ret.twist.vth * kk; // Фильтр
 	ret.dt = dt;
 
 	if (msg_Speed.speedL == 0 && msg_Speed.speedR == 0) // Если обе скорости равны нулю то обнуляем расчеты по mpu. Так как стоим на мете и никаких линейных скоростей быть не может. Стои на месте.
 	{
 		ret.twist.vx = ret.twist.vy = ret.twist.vth = 0;
-		ROS_INFO("    msg_Speed.speedL = %.3f speedR = %.3f",msg_Speed.speedL,msg_Speed.speedR);  
+		// ROS_INFO("    msg_Speed.speedL = %.3f speedR = %.3f", msg_Speed.speedL, msg_Speed.speedR);
 	}
 
 	// printf(" ||| LinearSpeed vx= % .3f vy=  % .3f vth= % .6f | ", ret.twist.vx, ret.twist.vy, ret.twist.vth);
 	// printf(" |Vel= % .3f % .3f % .3f\n", ret.twist.vx, ret.twist.vy, ret.twist.vth);
-	ROS_INFO("    Twist vx = % .3f vy= % .3f vth= % .3f gradus/sec", ret.twist.vx, ret.twist.vy, RAD2DEG(ret.twist.vth));
-	ROS_INFO("--- calcTwistFromMpu");
+	ROS_INFO("    Twist MPU  dt = %.3f vx = %.3f vy= %.3f vth= %.3f gradus/sec %.4f radian/sec", dt, ret.twist.vx, ret.twist.vy, RAD2DEG(ret.twist.vth), ret.twist.vth);
+	// ROS_INFO("--- calcTwistFromMpu");
 	return ret;
 }
 // Функция комплементации угловых скоростей полученных с колес и с датчика MPU и угла поворота
 STwistDt calcTwistUnited(STwistDt wheelTwist_, STwistDt mpuTwist_)
 {
+	ROS_INFO("+++ calcTwistUnited");
 	STwistDt ret;
 	if (wheelTwist_.dt < 0.005) // При первом запуске просто выходим из функции
 	{
-		printf("+++ calcTwistUnited dt< 0.005 !!!! \n");
+		printf("    dt< 0.005 !!!! \n");
 		return ret;
 	}
-	float koef = 0.0;	// Коефициант по умолчанию.Пополам.
+	float koef = 0.0; // Коефициант по умолчанию.Пополам.
 
 	ret.dt = wheelTwist_.dt * 0.5 + mpuTwist_.dt * 0.5;
 
@@ -579,7 +606,7 @@ STwistDt calcTwistUnited(STwistDt wheelTwist_, STwistDt mpuTwist_)
 
 	float koefTh = 0.9; // Коефициант по умолчанию.Пополам.
 	ret.twist.vth = g_linAngVel.filtr_mpu.twist.vth * (1 - koefTh) + g_linAngVel.wheel.twist.vth * koefTh;
-	
+
 	ROS_INFO("    United Wheel | %.3f %.3f %.3f | %.3f %.3f %.3f || %.3f %.3f %.3f  ",
 			 wheelTwist_.twist.vx, wheelTwist_.twist.vy, wheelTwist_.twist.vth,
 			 mpuTwist_.twist.vx, mpuTwist_.twist.vy, mpuTwist_.twist.vth,
@@ -1114,12 +1141,9 @@ void readParam()
 // Функция для вычисления разницы между углами
 double calculateAngleDifference(double prev_angle, double current_angle)
 {
-	ROS_INFO("+++ calculateAngleDifference");
-	// Вычисляем первоначальную разницу
-	double diff = fmod((current_angle - prev_angle), 360.0);
-
-	// Корректируем разницу, чтобы она находилась в диапазоне [-180, 180]
-	if (diff > 180.0)
+	// ROS_INFO("+++ calculateAngleDifference");
+	double diff = fmod((current_angle - prev_angle), 360.0);// Вычисляем первоначальную разницу
+	if (diff > 180.0)// Корректируем разницу, чтобы она находилась в диапазоне [-180, 180]
 	{
 		diff -= 360.0;
 	}
@@ -1127,8 +1151,7 @@ double calculateAngleDifference(double prev_angle, double current_angle)
 	{
 		diff += 360.0;
 	}
-	ROS_INFO("    diff = %.2f", diff);
-	// ROS_INFO("--- calculateAngleDifference");
+	ROS_INFO("    calculateAngleDifference = %.3f gradus   %.3f rad", diff, DEG2RAD(diff));
 	return diff;
 }
 

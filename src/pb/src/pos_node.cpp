@@ -80,25 +80,27 @@ int main(int argc, char **argv)
             // calcAngleAccelGyr(); // Не стал пока делать. Расчет самостоятельно угла на основании данных гироскопа и аксельрометра
             calcLinAngVel();     // РАсчет линейных и угловой скоростей на основаниие данных скоростей колес и скоростей с IMU 055 и их комплементация в united
 
-            // g_poseRotation.mode0 = calcNewOdom(g_poseRotation.mode0, g_linAngVel.wheel, "mode0",1);     // На основе линейных скоростей считаем новую позицию и угол по колесам
+            g_poseRotation.mode0 = calcNewOdom(g_poseRotation.mode0, g_linAngVel.wheel, "mode0 ",1);     // На основе линейных скоростей считаем новую позицию и угол по колесам
             // ROS_INFO("    g_poseRotation mode0 x = %.3f y = %.3f theta = %.3f (radian)", g_poseRotation.mode0.x, g_poseRotation.mode0.y, g_poseRotation.mode0.th);
 
-            // g_poseRotation.mode10 = calcNewOdom(g_poseRotation.mode10, g_linAngVel.united, "mode10",10); // На основе линейных скоростей считаем новую позицию и угол по колесам
-            // g_poseRotation.mode10.th = DEG2RAD(g_angleEuler.yaw); // Напрямую присваиваем угол. Заменяем тот угол что насчитали внутри 
+            g_poseRotation.mode10 = calcNewOdom(g_poseRotation.mode10, g_linAngVel.united, "mode10",1); // На основе линейных скоростей считаем новую позицию и угол по колесам
+            g_poseRotation.mode10.th = DEG2RAD(g_angleEuler.yaw); // Напрямую присваиваем угол. Заменяем тот угол что насчитали внутри 
             // ROS_INFO("    g_poseRotation mode10 x = %.3f y = %.3f theta = %.3f (radian)", g_poseRotation.mode10.x, g_poseRotation.mode10.y, g_poseRotation.mode10.th);
+            g_poseLidar.mode10 = convertRotation2Lidar(g_poseRotation.mode10, "mode10"); // Эти данные mode10 используем как основную точку для расчета mode1.2.3
+            
 
-            // g_poseLidar.mode10 = convertRotation2Lidar(g_poseRotation.mode10, "mode10"); // Эти данные mode10 используем как основную точку для расчета mode1.2.3
-            // ROS_INFO("    g_poseLidar    mode10 x = %.3f y = %.3f theta = %.3f (gradus)", g_poseLidar.mode10.x, g_poseLidar.mode10.y, g_poseLidar.mode10.th);
+            g_poseRotation.mode99 = calcNewOdom(g_poseRotation.mode10, g_linAngVel.united, "mode99",5); // На основе линейных скоростей считаем новую позицию и угол по колесам
+            g_poseLidar.mode99 = convertRotation2Lidar(g_poseRotation.mode0, "mode99"); // Эти данные mode10 используем как основную точку для расчета mode1.2.3
+            // ROS_INFO("    g_poseLidar    mode10 x = %.3f y = %.3f | theta = %.3f gradus %.4f rad ", g_poseLidar.mode10.x, g_poseLidar.mode10.y, g_poseLidar.mode10.th, DEG2RAD(g_poseLidar.mode10.th));
 
             // calcMode0(); // Расчет одометрии Mode0
             // calcMode11();  // На основе линейных скоростей считаем новую позицию и угол для одометрии 100 Герц считаем и потом 10 Герц правим            // calcMode12();  // На основе линейных скоростей считаем новую позицию и угол для одометрии 100 Герц считаем и потом 10 Герц правим
             // calcMode13();  // На основе линейных скоростей считаем новую позицию и угол для одометрии 100 Герц считаем и потом 10 Герц правим
             // calcMode123(); // Комплементация Odom10// Комплементация положения и угла
 
-            // Тут поддумать как можно предсказывать угол поворота. Например учитывая угловую и линейные скорости считать вперед и поворачивать нс учетом будующей позиции
-            // переделать на вывод в переменную а не изменение имеющейся глобальной внутри
-            // laser.calcAnglePillarForLaser(pillar.pillar, g_poseLidar.mode10); // Расчет углов в локальной системе лазеров на столбы для передачи на нижний уровень для исполнения
-            // topic.publicationControlModul();                                  // Формируем и Публикуем команды для управления Modul
+            // Тут поддумать как можно предсказывать угол поворота. Например учитывая угловую и линейные скорости считать вперед и поворачивать нс учетом будующей позиции переделать на вывод в переменную а не изменение имеющейся глобальной внутри
+            laser.calcAnglePillarForLaser(pillar.pillar, g_poseLidar.mode10); // Расчет углов в локальной системе лазеров на столбы для передачи на нижний уровень для исполнения
+            topic.publicationControlModul();                                  // Формируем и Публикуем команды для управления Modul
 
             // topic.visualPublishOdomMode_3();                                  // Отобращение стрелкой где начало и куда смотрит в Mode3
             // topic.publicationAngleLaser(laser);                               // Формируем перемнную с собщением для публикации

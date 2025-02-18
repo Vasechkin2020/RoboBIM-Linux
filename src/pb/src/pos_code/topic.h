@@ -299,21 +299,33 @@ void CTopic::publicationPoseRotattion() // Вывод в топик данных
 
     msg.mode0.x = g_poseRotation.mode0.x;
     msg.mode0.y = g_poseRotation.mode0.y;
+    msg.mode0.th = g_poseRotation.mode0.th;
 
     msg.mode10.x = g_poseRotation.mode10.x;
     msg.mode10.y = g_poseRotation.mode10.y;
+    msg.mode10.th = g_poseRotation.mode10.th;
 
     msg.mode11.x = g_poseRotation.mode11.x;
     msg.mode11.y = g_poseRotation.mode11.y;
+    msg.mode11.th = g_poseRotation.mode11.th;
 
     msg.mode12.x = g_poseRotation.mode12.x;
     msg.mode12.y = g_poseRotation.mode12.y;
+    msg.mode12.th = g_poseRotation.mode12.th;
 
     msg.mode13.x = g_poseRotation.mode13.x;
     msg.mode13.y = g_poseRotation.mode13.y;
+    msg.mode13.th = g_poseRotation.mode13.th;
 
     msg.mode14.x = g_poseRotation.mode14.x;
     msg.mode14.y = g_poseRotation.mode14.y;
+    msg.mode14.th = g_poseRotation.mode14.th;
+
+    msg.mode99.x = g_poseRotation.mode99.x;
+    msg.mode99.y = g_poseRotation.mode99.y;
+    msg.mode99.th = g_poseRotation.mode99.th;
+
+    msg.theta = DEG2RAD(g_angleEuler.yaw);
 
     pub_poseRotation.publish(msg); // Публикуем информацию по позиции лидара
 }
