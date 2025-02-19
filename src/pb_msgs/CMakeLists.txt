@@ -58,8 +58,10 @@ add_message_files(
   
   SPose.msg    # x,y, theta
   SPoseTrue.msg    # x,y, theta, flag
-  STwist.msg    # x,y, theta
-  STwistDt.msg    # x,y, theta
+  STwist.msg    
+  SMwu.msg   
+  SMode.msg   
+  STwistDt.msg    
   SOdom.msg
   SEuler.msg    # roll pitch yaw
   SEncoder.msg

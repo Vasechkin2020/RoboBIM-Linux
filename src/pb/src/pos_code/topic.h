@@ -297,33 +297,56 @@ void CTopic::publicationPoseRotattion() // Вывод в топик данных
 
     // msg.theta = g_poseRotation.theta;
 
-    msg.mode0.x = g_poseRotation.mode0.x;
-    msg.mode0.y = g_poseRotation.mode0.y;
-    msg.mode0.th = g_poseRotation.mode0.th;
+    msg.x.mode0 = g_poseRotation.mode0.x;
+    msg.x.mode10 = g_poseRotation.mode10.x;
+    msg.x.mode11 = g_poseRotation.mode11.x;
+    msg.x.mode12 = g_poseRotation.mode12.x;
+    msg.x.mode13 = g_poseRotation.mode13.x;
+    msg.x.mode99 = g_poseRotation.mode99.x;
 
-    msg.mode10.x = g_poseRotation.mode10.x;
-    msg.mode10.y = g_poseRotation.mode10.y;
-    msg.mode10.th = g_poseRotation.mode10.th;
+    msg.y.mode0 = g_poseRotation.mode0.y;
+    msg.y.mode10 = g_poseRotation.mode10.y;
+    msg.y.mode11 = g_poseRotation.mode11.y;
+    msg.y.mode12 = g_poseRotation.mode12.y;
+    msg.y.mode13 = g_poseRotation.mode13.y;
+    msg.y.mode99 = g_poseRotation.mode99.y;
+    
 
-    msg.mode11.x = g_poseRotation.mode11.x;
-    msg.mode11.y = g_poseRotation.mode11.y;
-    msg.mode11.th = g_poseRotation.mode11.th;
+    msg.th.mode0 = g_poseRotation.mode0.th;
+    msg.th.mode10 = g_poseRotation.mode10.th;
+    msg.th.mode11 = g_poseRotation.mode11.th;
+    msg.th.mode12 = g_poseRotation.mode12.th;
+    msg.th.mode13 = g_poseRotation.mode13.th;
+    msg.th.mode99 = g_poseRotation.mode99.th;
+    
+    
+    // msg.mode0.x = g_poseRotation.mode0.x;
+    // msg.mode0.y = g_poseRotation.mode0.y;
+    // msg.mode0.th = g_poseRotation.mode0.th;
 
-    msg.mode12.x = g_poseRotation.mode12.x;
-    msg.mode12.y = g_poseRotation.mode12.y;
-    msg.mode12.th = g_poseRotation.mode12.th;
+    // msg.mode10.x = g_poseRotation.mode10.x;
+    // msg.mode10.y = g_poseRotation.mode10.y;
+    // msg.mode10.th = g_poseRotation.mode10.th;
 
-    msg.mode13.x = g_poseRotation.mode13.x;
-    msg.mode13.y = g_poseRotation.mode13.y;
-    msg.mode13.th = g_poseRotation.mode13.th;
+    // msg.mode11.x = g_poseRotation.mode11.x;
+    // msg.mode11.y = g_poseRotation.mode11.y;
+    // msg.mode11.th = g_poseRotation.mode11.th;
 
-    msg.mode14.x = g_poseRotation.mode14.x;
-    msg.mode14.y = g_poseRotation.mode14.y;
-    msg.mode14.th = g_poseRotation.mode14.th;
+    // msg.mode12.x = g_poseRotation.mode12.x;
+    // msg.mode12.y = g_poseRotation.mode12.y;
+    // msg.mode12.th = g_poseRotation.mode12.th;
 
-    msg.mode99.x = g_poseRotation.mode99.x;
-    msg.mode99.y = g_poseRotation.mode99.y;
-    msg.mode99.th = g_poseRotation.mode99.th;
+    // msg.mode13.x = g_poseRotation.mode13.x;
+    // msg.mode13.y = g_poseRotation.mode13.y;
+    // msg.mode13.th = g_poseRotation.mode13.th;
+
+    // msg.mode14.x = g_poseRotation.mode14.x;
+    // msg.mode14.y = g_poseRotation.mode14.y;
+    // msg.mode14.th = g_poseRotation.mode14.th;
+
+    // msg.mode99.x = g_poseRotation.mode99.x;
+    // msg.mode99.y = g_poseRotation.mode99.y;
+    // msg.mode99.th = g_poseRotation.mode99.th;
 
     msg.theta = DEG2RAD(g_angleEuler.yaw);
 
@@ -333,25 +356,45 @@ void CTopic::publicationLinAngVel() // Вывод в топик данных с 
 {
     pb_msgs::SLinAngVel msg; // Обобщенные данные в моем формате о всех вариантах расчета позиции
 
-    msg.mpu.twist.vx = g_linAngVel.mpu.twist.vx;
-    msg.mpu.twist.vy = g_linAngVel.mpu.twist.vy;
-    msg.mpu.twist.vth = g_linAngVel.mpu.twist.vth;
-    msg.mpu.dt = g_linAngVel.mpu.dt;
+    msg.vx.mpu = g_linAngVel.mpu.twist.vx;
+    msg.vx.wheel = g_linAngVel.wheel.twist.vx;
+    msg.vx.united = g_linAngVel.united.twist.vx;
+    msg.vx.filtr = g_linAngVel.filtr_mpu.twist.vx;
 
-    msg.wheel.twist.vx = g_linAngVel.wheel.twist.vx;
-    msg.wheel.twist.vy = g_linAngVel.wheel.twist.vy;
-    msg.wheel.twist.vth = g_linAngVel.wheel.twist.vth;
-    msg.wheel.dt = g_linAngVel.wheel.dt;
+    msg.vy.mpu = g_linAngVel.mpu.twist.vy;
+    msg.vy.wheel = g_linAngVel.wheel.twist.vy;
+    msg.vy.united = g_linAngVel.united.twist.vy;
+    msg.vy.filtr = g_linAngVel.filtr_mpu.twist.vy;
 
-    msg.united.twist.vx = g_linAngVel.united.twist.vx;
-    msg.united.twist.vy = g_linAngVel.united.twist.vy;
-    msg.united.twist.vth = g_linAngVel.united.twist.vth;
-    msg.united.dt = g_linAngVel.united.dt;
+    msg.vth.mpu = g_linAngVel.mpu.twist.vth;
+    msg.vth.wheel = g_linAngVel.wheel.twist.vth;
+    msg.vth.united = g_linAngVel.united.twist.vth;
+    msg.vth.filtr = g_linAngVel.filtr_mpu.twist.vth;
 
-    msg.filtr_mpu.twist.vx = g_linAngVel.filtr_mpu.twist.vx;
-    msg.filtr_mpu.twist.vy = g_linAngVel.filtr_mpu.twist.vy;
-    msg.filtr_mpu.twist.vth = g_linAngVel.filtr_mpu.twist.vth;
-    msg.filtr_mpu.dt = g_linAngVel.filtr_mpu.dt;
+    msg.dt.mpu = g_linAngVel.mpu.dt;
+    msg.dt.wheel = g_linAngVel.wheel.dt;
+    msg.dt.united = g_linAngVel.united.dt;
+    msg.dt.filtr = g_linAngVel.filtr_mpu.dt;
+
+    // msg.mpu.twist.vx = g_linAngVel.mpu.twist.vx;
+    // msg.mpu.twist.vy = g_linAngVel.mpu.twist.vy;
+    // msg.mpu.twist.vth = g_linAngVel.mpu.twist.vth;
+    // msg.mpu.dt = g_linAngVel.mpu.dt;
+
+    // msg.wheel.twist.vx = g_linAngVel.wheel.twist.vx;
+    // msg.wheel.twist.vy = g_linAngVel.wheel.twist.vy;
+    // msg.wheel.twist.vth = g_linAngVel.wheel.twist.vth;
+    // msg.wheel.dt = g_linAngVel.wheel.dt;
+
+    // msg.united.twist.vx = g_linAngVel.united.twist.vx;
+    // msg.united.twist.vy = g_linAngVel.united.twist.vy;
+    // msg.united.twist.vth = g_linAngVel.united.twist.vth;
+    // msg.united.dt = g_linAngVel.united.dt;
+
+    // msg.filtr_mpu.twist.vx = g_linAngVel.filtr_mpu.twist.vx;
+    // msg.filtr_mpu.twist.vy = g_linAngVel.filtr_mpu.twist.vy;
+    // msg.filtr_mpu.twist.vth = g_linAngVel.filtr_mpu.twist.vth;
+    // msg.filtr_mpu.dt = g_linAngVel.filtr_mpu.dt;
 
     pub_linAngVel.publish(msg); // Публикуем информацию по позиции лидара
 }
