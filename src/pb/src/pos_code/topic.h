@@ -273,9 +273,9 @@ void CTopic::publicationPoseLidar() // Формируем перемнную с 
 {
     pb_msgs::Struct_PoseLidar poseLidarAll_msg; // Обобщенные данные в моем формате о всех вариантах расчета позиции
 
-    poseLidarAll_msg.mode10.x = g_poseLidar.mode10.x;
-    poseLidarAll_msg.mode10.y = g_poseLidar.mode10.y;
-    poseLidarAll_msg.mode10.th = g_poseLidar.mode10.th;
+    poseLidarAll_msg.mode0.x = g_poseLidar.mode0.x;
+    poseLidarAll_msg.mode0.y = g_poseLidar.mode0.y;
+    poseLidarAll_msg.mode0.th = g_poseLidar.mode0.th;
 
     poseLidarAll_msg.mode1.x = g_poseLidar.mode1.x;
     poseLidarAll_msg.mode1.y = g_poseLidar.mode1.y;
@@ -288,6 +288,10 @@ void CTopic::publicationPoseLidar() // Формируем перемнную с 
     poseLidarAll_msg.mode3.x = g_poseLidar.mode3.x;
     poseLidarAll_msg.mode3.y = g_poseLidar.mode3.y;
     poseLidarAll_msg.mode3.th = g_poseLidar.mode3.th;
+
+    poseLidarAll_msg.mode10.x = g_poseLidar.mode10.x;
+    poseLidarAll_msg.mode10.y = g_poseLidar.mode10.y;
+    poseLidarAll_msg.mode10.th = g_poseLidar.mode10.th;
 
     pub_poseLidar.publish(poseLidarAll_msg); // Публикуем информацию по позиции лидара
 }
@@ -356,20 +360,20 @@ void CTopic::publicationLinAngVel() // Вывод в топик данных с 
 {
     pb_msgs::SLinAngVel msg; // Обобщенные данные в моем формате о всех вариантах расчета позиции
 
-    msg.vx.mpu = g_linAngVel.mpu.twist.vx;
-    msg.vx.wheel = g_linAngVel.wheel.twist.vx;
-    msg.vx.united = g_linAngVel.united.twist.vx;
-    msg.vx.filtr = g_linAngVel.filtr_mpu.twist.vx;
+    msg.vx.mpu = g_linAngVel.mpu.vx;
+    msg.vx.wheel = g_linAngVel.wheel.vx;
+    msg.vx.united = g_linAngVel.united.vx;
+    msg.vx.filtr = g_linAngVel.filtr_mpu.vx;
 
-    msg.vy.mpu = g_linAngVel.mpu.twist.vy;
-    msg.vy.wheel = g_linAngVel.wheel.twist.vy;
-    msg.vy.united = g_linAngVel.united.twist.vy;
-    msg.vy.filtr = g_linAngVel.filtr_mpu.twist.vy;
+    msg.vy.mpu = g_linAngVel.mpu.vy;
+    msg.vy.wheel = g_linAngVel.wheel.vy;
+    msg.vy.united = g_linAngVel.united.vy;
+    msg.vy.filtr = g_linAngVel.filtr_mpu.vy;
 
-    msg.vth.mpu = g_linAngVel.mpu.twist.vth;
-    msg.vth.wheel = g_linAngVel.wheel.twist.vth;
-    msg.vth.united = g_linAngVel.united.twist.vth;
-    msg.vth.filtr = g_linAngVel.filtr_mpu.twist.vth;
+    msg.vth.mpu = g_linAngVel.mpu.vth;
+    msg.vth.wheel = g_linAngVel.wheel.vth;
+    msg.vth.united = g_linAngVel.united.vth;
+    msg.vth.filtr = g_linAngVel.filtr_mpu.vth;
 
     msg.dt.mpu = g_linAngVel.mpu.dt;
     msg.dt.wheel = g_linAngVel.wheel.dt;

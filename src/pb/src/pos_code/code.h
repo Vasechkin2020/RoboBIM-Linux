@@ -142,6 +142,7 @@ SPose convertRotation2Lidar(SPose pose_, std::string stroka_)
 	ret.x = pose_.x - (transformLidar2Rotation.x * cos(pose_.th));
 	ret.y = pose_.y - (transformLidar2Rotation.x * sin(pose_.th));
 	ret.th = RAD2DEG(pose_.th); // в g_poseLidar угол в градусах
+	ROS_INFO("    g_poseLidar %s x = %.3f y = %.3f theta = %.3f (gradus) %.3f rad", stroka_.c_str(),ret.x, ret.y, ret.th, pose_.th);
 	return ret;
 }
 // Конвертация координат из Lidar в Rotattion систему
@@ -153,7 +154,7 @@ SPose convertLidar2Rotation(SPose pose_, std::string stroka_)
 	ret.x = pose_.x + (transformLidar2Rotation.x * cos(pose_.th));
 	ret.y = pose_.y + (transformLidar2Rotation.x * sin(pose_.th));
 	ret.th = DEG2RAD(pose_.th);
-	ROS_INFO("    g_poseRotation %s x= %.3f y= %.3f th = %.3f (gradus)", stroka_.c_str(), ret.x, ret.y, RAD2DEG(ret.th));
+	ROS_INFO("    g_poseRotation %s x= %.3f y= %.3f th = %.3f (gradus) %.3f rad", stroka_.c_str(), ret.x, ret.y, RAD2DEG(ret.th), ret.th);
 	return ret;
 }
 
@@ -173,10 +174,11 @@ void startPosition(geometry_msgs::Pose2D &startPose2d_)
 	g_poseLidar.mode10.y = startPose2d_.y;
 	g_poseLidar.mode10.th = startPose2d_.theta;
 	ROS_INFO("    startPose2d x= %.3f y= %.3f theta= %.3f ", startPose2d_.x, startPose2d_.y, startPose2d_.theta);
+	g_poseLidar.mode0 = g_poseLidar.mode10;
+
 
 	g_poseRotation.mode10 = convertLidar2Rotation(g_poseLidar.mode10, "mode10");
 	ROS_INFO("    start g_poseRotation.mode10 x= %.3f y= %.3f theta= %.3f ", g_poseRotation.mode10.x, g_poseRotation.mode10.y, g_poseRotation.mode10.th);
-
 	g_poseRotation.mode0 = g_poseRotation.mode10;
 
 	ROS_INFO("--- startPosition");
@@ -303,8 +305,8 @@ SPose calcNewOdom(SPose odom_, STwistDt data_, std::string stroka_, float koef_)
 	}
 
 	SPoint pointLoc;
-	pointLoc.x = data_.twist.vx * data_.dt * koef_; // Находим проекции скорости на оси за интервал времени это координаты нашей точки в локальной системе координат
-	pointLoc.y = data_.twist.vy * data_.dt * koef_;
+	pointLoc.x = data_.vx * data_.dt * koef_; // Находим проекции скорости на оси за интервал времени это координаты нашей точки в локальной системе координат
+	pointLoc.y = data_.vy * data_.dt * koef_;
 	// printf(" Local system pointLoc.x= % .3f y= % .3f dt= % .3f th= % .3f | \n", pointLoc.x, pointLoc.y, data_.dt, RAD2DEG(odom_.pose.th));
 
 	// printf("DO pose.x= %.3f pose.y= %.3f pose.th= %.3f / ", odom_.pose.x, odom_.pose.y, RAD2DEG(odom_.pose.th));
@@ -331,7 +333,7 @@ SPose calcNewOdom(SPose odom_, STwistDt data_, std::string stroka_, float koef_)
 	// Меняем координаты и угол на основе вычислений
 	// ROS_INFO("    IN odom_.th = %.3f data_.dt= %.3f  * data_.twist.vth= %.3f ", odom_.th, data_.dt, data_.twist.vth);
 
-	odom_.th += data_.twist.vth * data_.dt * koef_; // Прибавляем к текущему углу и получаем новый угол куда смотрит наш робот С коефициентом это ПРЕДСКАЗАНИЕ УГЛА
+	odom_.th += data_.vth * data_.dt * koef_; // Прибавляем к текущему углу и получаем новый угол куда смотрит наш робот С коефициентом это ПРЕДСКАЗАНИЕ УГЛА
 	// if (odom_.th > (2 * M_PI))
 	// 	(odom_.th -= (2 * M_PI));
 	// if (odom_.th < 0)
@@ -350,7 +352,7 @@ STwistDt calcTwistFromWheel(pb_msgs::SSetSpeed control_)
 	double theta = 0;
 	double lenArc = 0;
 	static SPose pose;
-	STwist twist;
+	STwistDt twist;
 
 	ROS_INFO("+++ calcTwistFromWheel");
 
@@ -438,6 +440,7 @@ STwistDt calcTwistFromWheel(pb_msgs::SSetSpeed control_)
 	twist.vx = speed * cos(theta * dt); // Проекция моей скорости на ось X получаем линейную скорость по оси за секунуду
 	twist.vy = speed * sin(theta * dt); // Проекция моей скорости на ось Y получаем линейную скорость по оси за секунуду
 	twist.vth = theta;					// Угловая скорость в радианах.
+	twist.dt = dt;				
 
 	ROS_INFO("    Twist Wheel dt = %.3f vx= %.3f vy= %.3f vth= %.3f w= %.3f gradus/sec  %.3f rad/sec", dt, twist.vx, twist.vy, RAD2DEG(twist.vth), RAD2DEG(w), w);
 	// if (w==0)
@@ -448,8 +451,7 @@ STwistDt calcTwistFromWheel(pb_msgs::SSetSpeed control_)
 	// printf("speed= %.4f twist.vth = %.8f / ", speed, RAD2DEG(twist.vth));
 	// ROS_INFO("SPEED= %.3f Linear speed twist.vx = %.3f twist.vy = %.3f Angular speed twist.vth = %.3f for sec.", speed, twist.vx, twist.vy, RAD2DEG(twist.vth));
 	// //==============================================================================================================================
-	ret.twist = twist;
-	ret.dt = dt;
+	ret = twist;
 
 	// }
 	// ROS_INFO("--- calcTwistFromWheel");
@@ -560,8 +562,8 @@ STwistDt calcTwistFromMpu(pb_msgs::Struct_Modul2Data msg_Modul2Data_)
 
 	/* Примечание. Сигнал линейного ускорения обычно не может быть интегрирован для восстановления скорости или дважды интегрирован для восстановления положения.
 	Ошибка обычно становится больше сигнала менее чем за 1 секунду, если для компенсации этой ошибки интегрирования не используются другие источники датчиков.*/
-	ret.twist.vx += complX * dt; // Линейное ускорение по оси метры за секунуду умножаем на интервал, получаем ускорение за интервал и суммируем в скорость линейную по оси
-	ret.twist.vy += complY * dt; // Линейное ускорение по оси метры за секунуду
+	ret.vx += complX * dt; // Линейное ускорение по оси метры за секунуду умножаем на интервал, получаем ускорение за интервал и суммируем в скорость линейную по оси
+	ret.vy += complY * dt; // Линейное ускорение по оси метры за секунуду
 
 	double delta_th = -(mpu_.angleEuler.z - predAngleZ); // считаем величину изменения угла, тут она в градусах
 	// ROS_INFO("    predAngleZ = % .3f mpu_.angleEuler.z= % .3f delta_th= % .3f", predAngleZ, mpu_.angleEuler.z, delta_th);
@@ -570,20 +572,20 @@ STwistDt calcTwistFromMpu(pb_msgs::Struct_Modul2Data msg_Modul2Data_)
 		(delta_th = delta_th - 360); // Если
 	if (delta_th < -180)
 		(delta_th = delta_th + 360);		// Если
-	ret.twist.vth = DEG2RAD(delta_th) / dt; // превращаем в радианы в секунды Угловая скорость вращения
+	ret.vth = DEG2RAD(delta_th) / dt; // превращаем в радианы в секунды Угловая скорость вращения
 	float kk = 0.05;
-	g_linAngVel.filtr_mpu.twist.vth = g_linAngVel.filtr_mpu.twist.vth * (1 - kk) + ret.twist.vth * kk; // Фильтр
+	g_linAngVel.filtr_mpu.vth = g_linAngVel.filtr_mpu.vth * (1 - kk) + ret.vth * kk; // Фильтр
 	ret.dt = dt;
 
 	if (msg_Speed.speedL == 0 && msg_Speed.speedR == 0) // Если обе скорости равны нулю то обнуляем расчеты по mpu. Так как стоим на мете и никаких линейных скоростей быть не может. Стои на месте.
 	{
-		ret.twist.vx = ret.twist.vy = ret.twist.vth = 0;
+		ret.vx = ret.vy = ret.vth = 0;
 		// ROS_INFO("    msg_Speed.speedL = %.3f speedR = %.3f", msg_Speed.speedL, msg_Speed.speedR);
 	}
 
 	// printf(" ||| LinearSpeed vx= % .3f vy=  % .3f vth= % .6f | ", ret.twist.vx, ret.twist.vy, ret.twist.vth);
 	// printf(" |Vel= % .3f % .3f % .3f\n", ret.twist.vx, ret.twist.vy, ret.twist.vth);
-	ROS_INFO("    Twist MPU  dt = %.3f vx = %.3f vy= %.3f vth= %.3f gradus/sec %.4f radian/sec", dt, ret.twist.vx, ret.twist.vy, RAD2DEG(ret.twist.vth), ret.twist.vth);
+	ROS_INFO("    Twist MPU  dt = %.3f vx = %.3f vy= %.3f vth= %.3f gradus/sec %.4f radian/sec", dt, ret.vx, ret.vy, RAD2DEG(ret.vth), ret.vth);
 	// ROS_INFO("--- calcTwistFromMpu");
 	return ret;
 }
@@ -601,16 +603,16 @@ STwistDt calcTwistUnited(STwistDt wheelTwist_, STwistDt mpuTwist_)
 
 	ret.dt = wheelTwist_.dt * 0.5 + mpuTwist_.dt * 0.5;
 
-	ret.twist.vx = wheelTwist_.twist.vx * (1 - koef) + mpuTwist_.twist.vx * koef;
-	ret.twist.vy = wheelTwist_.twist.vy * (1 - koef) + mpuTwist_.twist.vy * koef;
+	ret.vx = wheelTwist_.vx * (1 - koef) + mpuTwist_.vx * koef;
+	ret.vy = wheelTwist_.vy * (1 - koef) + mpuTwist_.vy * koef;
 
 	float koefTh = 0.9; // Коефициант по умолчанию.Пополам.
-	ret.twist.vth = g_linAngVel.filtr_mpu.twist.vth * (1 - koefTh) + g_linAngVel.wheel.twist.vth * koefTh;
+	ret.vth = g_linAngVel.filtr_mpu.vth * (1 - koefTh) + g_linAngVel.wheel.vth * koefTh;
 
 	ROS_INFO("    United Wheel | %.3f %.3f %.3f | %.3f %.3f %.3f || %.3f %.3f %.3f  ",
-			 wheelTwist_.twist.vx, wheelTwist_.twist.vy, wheelTwist_.twist.vth,
-			 mpuTwist_.twist.vx, mpuTwist_.twist.vy, mpuTwist_.twist.vth,
-			 ret.twist.vx, ret.twist.vy, ret.twist.vth);
+			 wheelTwist_.vx, wheelTwist_.vy, wheelTwist_.vth,
+			 mpuTwist_.vx, mpuTwist_.vy, mpuTwist_.vth,
+			 ret.vx, ret.vy, ret.vth);
 
 	return ret;
 }
