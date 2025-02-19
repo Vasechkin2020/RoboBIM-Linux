@@ -63,6 +63,7 @@ int main(int argc, char **argv)
 
     ros::Rate r(RATE);        // Частота в Герцах - задержка
     ros::Duration(2).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
+    static bool flagPublish = false;
 
     ROS_WARN("++++ End Setup. Start loop.");
     while (ros::ok())
@@ -76,6 +77,7 @@ int main(int argc, char **argv)
         {
             ROS_INFO("--------------------------------------- flag_msgSpeed ***");
             flag_msgSpeed = false;
+            flagPublish = true;
             calcEuler();         // Расчет угла yaw с датчика IMU
             // calcAngleAccelGyr(); // Не стал пока делать. Расчет самостоятельно угла на основании данных гироскопа и аксельрометра
             calcLinAngVel();     // РАсчет линейных и угловой скоростей на основаниие данных скоростей колес и скоростей с IMU 055 и их комплементация в united
@@ -179,28 +181,37 @@ int main(int argc, char **argv)
         */
         // g_poseRotation.mode10 = g_poseRotation.mode0; // Времено. ПОТОМ ТУТ НАДО ИТОГОВУЮ КОМПЛЕМЕНТАЦИЮ СДЕЛАТЬ
         // Тут строка перевода в g_poseLidaк.mode10 для использовании  в расчетаз в следущей итерации
+        
+        if(flagPublish) //
+        {
+            flagPublish = false;
+            topic.publicationPoseLidar();     // Публикуем все варианты расчета позиций mode 0.1.2.3.4
+            topic.publicationPoseRotattion(); // Публикуем все варианты расчета позиций mode 0.1.2.3.4
+            topic.publicationLinAngVel();     // Вывод в топик данных с данными угловой и линейной скоростью
+            // topic.publishOdomUnited();              // Публикация одометрии по моторам с корректировкой с верхнего уровня
+        }
 
-        // Публикуем тут так как если один раз опубликовать то они исчезают через некоторое время.
-        topic.transformBase(g_poseLidar.mode0); // Публикуем трансформации систем координат, задаем по какому расчету трансформировать
-        topic.transformLidar();                  // Публикуем трансформации систем координат , задаем по какому расчету трансформировать
-        topic.transformLaser(laser);             // Публикуем трансформации систем координат, задаем по какому расчету трансформировать
-        topic.transformRotation();               // Публикуем трансформации систем координат
+        static u_int64_t timeRviz = millis();
+        if (timeRviz <= millis()) //30 Hz
+        {
+            // Публикуем тут так как если один раз опубликовать то они исчезают через некоторое время.
+            topic.transformBase(g_poseLidar.mode0); // Публикуем трансформации систем координат, задаем по какому расчету трансформировать
+            topic.transformLidar();                  // Публикуем трансформации систем координат , задаем по какому расчету трансформировать
+            topic.transformLaser(laser);             // Публикуем трансформации систем координат, задаем по какому расчету трансформировать
+            topic.transformRotation();               // Публикуем трансформации систем координат
 
-        topic.visualStartPose();           // Отобращение стрелкой где начало стартовой позиции и куда направлен нос платформы
-        topic.visualPillarPoint(pillar);   // Отображение места размещения столбов
-        topic.visualPoseAngleLaser(laser); // Отобращение стрелкой где начало и куда смотрят лазеры
+            topic.visualStartPose();           // Отобращение стрелкой где начало стартовой позиции и куда направлен нос платформы
+            topic.visualPillarPoint(pillar);   // Отображение места размещения столбов
+            topic.visualPoseAngleLaser(laser); // Отобращение стрелкой где начало и куда смотрят лазеры
 
-        topic.publicationPoseLidar();     // Публикуем все варианты расчета позиций mode 0.1.2.3.4
-        topic.publicationPoseRotattion(); // Публикуем все варианты расчета позиций mode 0.1.2.3.4
-        topic.publicationLinAngVel();     // Вывод в топик данных с данными угловой и линейной скоростью
+            // topic.visualPublishOdomMode_0(); // Публикация одометрии по моторам которая получается от начальной точки
+            // topic.visualPublishOdomMode_11(); // Публикация одометрии по моторам которая получается от начальной точки
+            // topic.visualPublishOdomMode_12(); // Публикация одометрии по моторам которая получается от начальной точки
+            // topic.visualPublishOdomMode_13(); // Публикация одометрии по моторам которая получается от начальной точки
+            // topic.visualPublishOdomMode_123(); // Публикация одометрии по моторам которая получается от начальной точки
 
-        // topic.publishOdomUnited();              // Публикация одометрии по моторам с корректировкой с верхнего уровня
-
-        // topic.visualPublishOdomMode_0(); // Публикация одометрии по моторам которая получается от начальной точки
-        // topic.visualPublishOdomMode_11(); // Публикация одометрии по моторам которая получается от начальной точки
-        // topic.visualPublishOdomMode_12(); // Публикация одометрии по моторам которая получается от начальной точки
-        // topic.visualPublishOdomMode_13(); // Публикация одометрии по моторам которая получается от начальной точки
-        // topic.visualPublishOdomMode_123(); // Публикация одометрии по моторам которая получается от начальной точки
+            timeRviz = millis() + 33; //30 Hz
+        }
 
         static u_int64_t timeMil = millis();
         if (timeMil <= millis())
