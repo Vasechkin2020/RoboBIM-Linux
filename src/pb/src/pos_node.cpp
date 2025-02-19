@@ -88,7 +88,7 @@ int main(int argc, char **argv)
             
             // MODE 10
             g_poseRotation.mode10 = calcNewOdom(g_poseRotation.mode10, g_linAngVel.united, "mode10",1); // На основе линейных скоростей считаем новую позицию и угол по колесам
-            g_poseRotation.mode10.th = DEG2RAD(g_angleEuler.yaw); // Напрямую присваиваем угол. Заменяем тот угол что насчитали внутри 
+            // g_poseRotation.mode10.th = DEG2RAD(g_angleEuler.yaw); // Напрямую присваиваем угол. Заменяем тот угол что насчитали внутри 
             // ROS_INFO("    g_poseRotation mode10 x = %.3f y = %.3f theta = %.3f (radian)", g_poseRotation.mode10.x, g_poseRotation.mode10.y, g_poseRotation.mode10.th);
             g_poseLidar.mode10 = convertRotation2Lidar(g_poseRotation.mode10, "mode10"); // Эти данные mode10 используем как основную точку для расчета mode1.2.3
             
