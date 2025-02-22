@@ -7,6 +7,7 @@
 #include <log4cxx/mdc.h>
 #include <tf/transform_broadcaster.h>
 #include <std_msgs/String.h>
+#include <cmath>  // Библиотека для математических функций
 
 #include <wiringPi.h>
 
@@ -46,7 +47,7 @@
 
 // #include <data/pointA.h>
 
-#define RATE 50                                 // Частота шага
+#define RATE 3                                 // Частота шага
 #define RATE_LASER 3                            // Частота измерения лазерного датчика при калибровке для расчета
 #define STEP_LASER_MOTOR (360.0 / 400.0 / 16.0) // Шаг поаорота мотора с лазерным датчиком 360 ГРАДУСОВ /400 шагов мотор /16 шагов драйвер
 
