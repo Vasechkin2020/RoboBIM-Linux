@@ -3,7 +3,7 @@
 
 // #include "pillar.h"
 //**************************** ОБЬЯВЛЕНИЕ ПРОЦЕДУР **********************************
-void callback_Driver(pb_msgs::Struct_Driver2Data msg); //
+// void callback_Driver(pb_msgs::Struct_Driver2Data msg); //
 
 void readParam(); // Считывание переменных параметров из лаунч файла при запуске. Там офсеты и режимы работы
 
@@ -20,17 +20,22 @@ float filtrComplem(float koef_, float oldData_, float newData_)
 {
 	return (1 - koef_) * oldData_ + (koef_ * newData_);
 }
-void callback_Driver(pb_msgs::Struct_Driver2Data msg)
-{
-	msg_Driver2Data = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
-	flag_msgDriver = true;
-}
-
-// void callback_Speed(pb_msgs::SSetSpeed msg)
+// void callback_Driver(pb_msgs::Struct_Driver2Data msg)
 // {
-// 	msg_Speed = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
-// 	flag_msgSpeed = true;
+// 	msg_Driver2Data = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
+// 	flag_msgDriver = true;
 // }
+
+void callback_Speed(pb_msgs::SSetSpeed msg)
+{
+	msg_Speed = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
+	flag_msgSpeed = true;
+}
+void callback_Pose(pb_msgs::Struct_PoseRotation msg)
+{
+	msg_Pose = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
+	flag_msgPose = true;
+}
 
 // Находим минимальную дистанцию из 3 датчиков
 float minDistance(float laserL_, float laserR_, float uzi1_)
@@ -268,6 +273,28 @@ void initCommandArray(int verCommand_)
 		//-----------------------
 		commandArray[22].mode = 9;
 	}
+		if (verCommand_ == 5)
+	{
+		commandArray[0].mode = 2;
+		commandArray[0].velL = 0.05;
+		commandArray[0].velR = -0.05;
+
+		commandArray[1].mode = 1;
+		commandArray[1].duration = 5000;
+		commandArray[1].velL = 0.0;
+		commandArray[1].velR = 0.0;
+
+		commandArray[2].mode = 2;
+		commandArray[2].velL = -0.05;
+		commandArray[2].velR = 0.05;
+
+		commandArray[3].mode = 1;
+		commandArray[3].duration = 10000;
+		commandArray[3].velL = 0;
+		commandArray[3].velR = 0;
+
+		commandArray[4].mode = 9;
+	}
 }
 
 void readParam() // Считывание переменных параметров из лаунч файла при запуске. Там офсеты и режимы работы
@@ -280,6 +307,20 @@ void readParam() // Считывание переменных параметро
     ROS_INFO("--- Start node with parametrs:");
     ROS_INFO("verComand = %i",verComand);
     ROS_INFO("---");
+}
+
+
+void timeCycle(ros::Time timeStart_, ros::Time timeNow_) // Выводим справочно время работы цикла
+{
+	    ros::Time timeEnd = ros::Time::now(); // Захватываем конечный момент времени
+        ros::Duration durationEnd = timeEnd - timeNow_; // Находим разницу между началом и концом
+        ros::Duration durationStart = timeEnd - timeStart_; // Находим разницу между началом и концом
+        double dtEnd = durationEnd.toSec()*1000;            // Получаем количество милисекунд
+        double dtStart = durationStart.toSec();            // Получаем количество секунд
+		if (dtEnd>5) // Если цикл занял бользе 5 милисекунд значит что не уложились в 200 Нz
+        	ROS_INFO("    !!! cycle = %8.3f msec", dtEnd); // Время цикла в милисекундах
+		else
+        	ROS_INFO_THROTTLE(1,"    dtStart = %7.0f sec | last cycle = %8.3f msec", dtStart, dtEnd); // Время цикла в милисекундах
 }
 
 // Корректировка скорости движения в зависимости от датчиков растояния перед

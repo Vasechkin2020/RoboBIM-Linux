@@ -41,6 +41,10 @@ int main(int argc, char **argv)
     // topic.init(argc, argv);
 
     ros::NodeHandle nh;
+
+    static ros::Time timeStart = ros::Time::now(); // Захватываем начальный момент времени
+    static ros::Time timeNow = ros::Time::now(); // Захватываем конечный момент времени
+
     CTopic topic; // Экземпляр класса для всех публикуемых топиков
 
     //----------------------------- ПОДПИСКИ НА ТОПИКИ -------НЕ УБИРАЮ В КЛАСС ТАК КАК НУЖНЫ ГЛОБАЛЬНЫЕ КОЛБЕКИ И ПРОЧАЯ ХЕРНЯ --------
@@ -61,13 +65,14 @@ int main(int argc, char **argv)
 
     pillar.parsingPillar(msg_pillar); // Разбираем пришедшие данные Заполняем массив правильных координат.
 
-    ros::Rate r(RATE);        // Частота в Герцах - задержка
+    ros::Rate r(200);        // Частота в Герцах - задержка
     ros::Duration(2).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
     static bool flagPublish = false;
 
     ROS_WARN("++++ End Setup. Start loop.");
     while (ros::ok())
     {  
+        timeNow = ros::Time::now(); // Захватываем текущий момент времени начала цикла
         // testFunction();
         ros::spinOnce(); // Опрашиваем ядро ROS и по этой команде наши срабатывают колбеки. Нужно только для подписки на топики
         ROS_INFO("-------------------------------------------------------------------------");
@@ -213,18 +218,28 @@ int main(int argc, char **argv)
             timeRviz = millis() + 33; //30 Hz
         }
 
-        static u_int64_t timeMil = millis();
-        if (timeMil <= millis())
-        {
-            // ROS_WARN("mode0.x= %.3f y= %.3f th= %.2f", g_poseLidar.mode0.x, g_poseLidar.mode0.y, g_poseLidar.mode0.th);
-            // ROS_WARN("mode1.x= %.3f y= %.3f th= %.2f", g_poseLidar.mode1.x, g_poseLidar.mode1.y, g_poseLidar.mode1.th);
-            // ROS_WARN("mode2.x= %.3f y= %.3f th= %.2f", g_poseLidar.mode2.x, g_poseLidar.mode2.y, g_poseLidar.mode2.th);
-            // ROS_WARN("mode3.x= %.3f y= %.3f th= %.2f", g_poseLidar.mode3.x, g_poseLidar.mode3.y, g_poseLidar.mode3.th);
+        // static u_int64_t timeMil = millis();
+        // if (timeMil <= millis())
+        // {
+        //     // ROS_WARN("mode0.x= %.3f y= %.3f th= %.2f", g_poseLidar.mode0.x, g_poseLidar.mode0.y, g_poseLidar.mode0.th);
+        //     // ROS_WARN("mode1.x= %.3f y= %.3f th= %.2f", g_poseLidar.mode1.x, g_poseLidar.mode1.y, g_poseLidar.mode1.th);
+        //     // ROS_WARN("mode2.x= %.3f y= %.3f th= %.2f", g_poseLidar.mode2.x, g_poseLidar.mode2.y, g_poseLidar.mode2.th);
+        //     // ROS_WARN("mode3.x= %.3f y= %.3f th= %.2f", g_poseLidar.mode3.x, g_poseLidar.mode3.y, g_poseLidar.mode3.th);
 
-            // ROS_WARN("angle= %.3f numPillar = %i | angle= %.3f numPillar = %i | angle= %.3f numPillar = %i | angle= %.3f numPillar = %i",
-            //          g_angleLaser[0], g_numPillar[0], g_angleLaser[1], g_numPillar[1], g_angleLaser[2], g_numPillar[2], g_angleLaser[3], g_numPillar[3]);
-            timeMil = millis() + 1000;
+        //     // ROS_WARN("angle= %.3f numPillar = %i | angle= %.3f numPillar = %i | angle= %.3f numPillar = %i | angle= %.3f numPillar = %i",
+        //     //          g_angleLaser[0], g_numPillar[0], g_angleLaser[1], g_numPillar[1], g_angleLaser[2], g_numPillar[2], g_angleLaser[3], g_numPillar[3]);
+        //     timeMil = millis() + 1000;
+        // }
+
+        static ros::Time timeMil = ros::Time::now(); // Захватываем начальный момент времени
+        ros::Duration durationMil = timeNow - timeMil; // Находим разницу между началом и концом
+        double dtMil = durationMil.toSec();            // Получаем количество секунд
+        if (dtMil >= 1)
+        {
+            // ROS_INFO("%u --- %f ", millis(), dtMil);
+            timeMil = ros::Time::now(); // Захватываем момент времени
         }
+        timeCycle(timeStart,timeNow); // Выводим справочно время работы цикла и время с начала работы программы
         r.sleep(); // Интеллектуальная задержка на указанную частоту
         // ros::spinOnce(); // Опрашиваем ядро ROS и по этой команде наши срабатывают колбеки. Нужно только для подписки на топики
     }

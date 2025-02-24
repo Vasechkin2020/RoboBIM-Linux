@@ -165,7 +165,7 @@ void CLaser::calcAnglePillarForLaser(CPillar::SPillar *pillar_, SPose &poseLidar
         angMotor[i] = RAD2DEG(atan2(_poseLaser[i].y, _poseLaser[i].x)); // Находим его и правим его смотря в какой чатверти круга он находится
         ROS_INFO("    angMotor[%i]  = %.3f x = %.3f y = %.3f len = %.3f \n", i, angMotor[i], _poseLaser[i].x, _poseLaser[i].y, lenMotor[i]);
     }
-    //**************
+    //************** Функция расчета углов на моторы. Используется как проверка основного расчета. По формуле Максима Вадима.
     for (int i = 0; i < 4; i++) // Перебираем моторы
     {
         for (int j = 0; j < 4; j++) // Перебираем столбы

@@ -1180,4 +1180,17 @@ void rateLaserData()
 	}
 	// ROS_INFO("--- raterateLaserData");
 }
+// Выводим справочно время работы цикла
+void timeCycle(ros::Time timeStart_, ros::Time timeNow_) 
+{
+	    ros::Time timeEnd = ros::Time::now(); // Захватываем конечный момент времени
+        ros::Duration durationEnd = timeEnd - timeNow_; // Находим разницу между началом и концом
+        ros::Duration durationStart = timeEnd - timeStart_; // Находим разницу между началом и концом
+        double dtEnd = durationEnd.toSec()*1000;            // Получаем количество милисекунд
+        double dtStart = durationStart.toSec();            // Получаем количество секунд
+		if (dtEnd>5) // Если цикл занял бользе 5 милисекунд значит что не уложились в 200 Нz
+        	ROS_INFO("    !!! cycle = %8.3f msec", dtEnd); // Время цикла в милисекундах
+		else
+        	ROS_INFO_THROTTLE(1,"    dtStart = %7.0f sec | last cycle = %8.3f msec", dtStart, dtEnd); // Время цикла в милисекундах
+}
 #endif

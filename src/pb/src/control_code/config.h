@@ -18,6 +18,7 @@
 #include <pb_msgs/Struct_Data2Driver.h>
 
 #include <pb_msgs/Struct_Driver2Data.h>
+#include <pb_msgs/Struct_PoseRotation.h>
 
 #include <pb_msgs/SEncoder.h>
 #include <pb_msgs/SMpu.h>
@@ -28,8 +29,6 @@
 #include <list>
 
 pb_msgs::Struct_Data2Driver controlSpeed;
-
-#define RATE 50 // Частота шага
 
 #define DISTANCE_WHEELS 0.38 // Растояние между колесами робота. подобрал экспериментально Влияет на правильность круга
 
@@ -49,10 +48,12 @@ pb_msgs::Struct_Data2Driver controlSpeed;
 //--------------------------------- ПОДПИСКА НА ТОПИКИ -------------------------------------------------
 pb_msgs::Struct_Driver2Data msg_Driver2Data; // Сообщение которое считываем из топика
 pb_msgs::SSetSpeed msg_Speed;                // Сообщение которое считываем из топика
+pb_msgs::Struct_PoseRotation msg_Pose;       // Сообщение которое считываем из топика
 //-------------------------------------------------------------------------------------------------------
 
 bool flag_msgDriver = false; // Флаг что пришло сообщение в топик и можно его парсить
 bool flag_msgSpeed = false;  // Флаг что пришло сообщение в топик и можно его парсить
+bool flag_msgPose = false;   // Флаг что пришло сообщение в топик и можно его парсить
 
 int verComand = 0; // Параметр какой массив команд загружать
 
@@ -65,6 +66,7 @@ struct SCommand
     float velL = 0;   // Скорость колеса
     float velR = 0;   // Скорость колеса
     int duration = 0; // Длительность действия команды
+    int angle = 0;    // Угол в который должны повернуться
 };
 
 SCommand commandArray[48]; // Массив команд
