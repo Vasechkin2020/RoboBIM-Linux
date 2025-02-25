@@ -75,12 +75,12 @@ int main(int argc, char **argv)
         timeNow = ros::Time::now(); // Захватываем текущий момент времени начала цикла
         // testFunction();
         ros::spinOnce(); // Опрашиваем ядро ROS и по этой команде наши срабатывают колбеки. Нужно только для подписки на топики
-        ROS_INFO("-------------------------------------------------------------------------");
+        // ROS_INFO_THROTTLE(RATE_OUTPUT,"----");
 
         // 100 Hz ************************************************************ ОБРАБОТКА ДАННЫХ ИЗ ТОПИКОВ ЧТО ПОДПИСАНЫ  СРАБАТЫВАЕТ КАК ОТПРАВЛЯЕТ DATA_NODE  ********************************************
         if (flag_msgSpeed) // Флаг что пришло сообщение от ноды Data по Speed. Расчитываем линейную и угловую скорость и потом на нее основе расчитываем остальное
         {
-            ROS_INFO("--------------------------------------- flag_msgSpeed ***");
+            ROS_INFO_THROTTLE(RATE_OUTPUT,"---- flag_msgSpeed");
             flag_msgSpeed = false;
             flagPublish = true;
             calcEuler();         // Расчет угла yaw с датчика IMU
@@ -89,12 +89,12 @@ int main(int argc, char **argv)
             
             // MODE 0
             g_poseRotation.mode0 = calcNewOdom(g_poseRotation.mode0, g_linAngVel.wheel, "mode 0",1);     // На основе линейных скоростей считаем новую позицию и угол по колесам
-            g_poseLidar.mode0 = convertRotation2Lidar(g_poseRotation.mode0, "mode 0"); // Эти данные mode10 используем как основную точку для расчета mode1.2.3
-            
             // MODE 10
             g_poseRotation.mode10 = calcNewOdom(g_poseRotation.mode10, g_linAngVel.united, "mode10",1); // На основе линейных скоростей считаем новую позицию и угол по колесам
             // g_poseRotation.mode10.th = DEG2RAD(g_angleEuler.yaw); // Напрямую присваиваем угол. Заменяем тот угол что насчитали внутри 
             // ROS_INFO("    g_poseRotation mode10 x = %.3f y = %.3f theta = %.3f (radian)", g_poseRotation.mode10.x, g_poseRotation.mode10.y, g_poseRotation.mode10.th);
+            
+            g_poseLidar.mode0 = convertRotation2Lidar(g_poseRotation.mode0, "mode 0"); // Эти данные mode10 используем как основную точку для расчета mode1.2.3
             g_poseLidar.mode10 = convertRotation2Lidar(g_poseRotation.mode10, "mode10"); // Эти данные mode10 используем как основную точку для расчета mode1.2.3
             
 

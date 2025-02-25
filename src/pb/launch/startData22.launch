@@ -1,5 +1,5 @@
 <launch>
-  <include file="$(find rplidar_ros)/launch/rplidar_s2.launch" />
+  <!--include file="$(find rplidar_ros)/launch/rplidar_s2.launch" /-->
   <node pkg="pb" type="data_node" name="data_node" output ="screen">
 
     <param name="laser0" type="double" value="0.003" />

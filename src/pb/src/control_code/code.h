@@ -276,24 +276,58 @@ void initCommandArray(int verCommand_)
 		if (verCommand_ == 5)
 	{
 		commandArray[0].mode = 2;
-		commandArray[0].velL = 0.05;
-		commandArray[0].velR = -0.05;
+		commandArray[0].angle = -40;
 
 		commandArray[1].mode = 1;
 		commandArray[1].duration = 5000;
-		commandArray[1].velL = 0.0;
-		commandArray[1].velR = 0.0;
 
 		commandArray[2].mode = 2;
-		commandArray[2].velL = -0.05;
-		commandArray[2].velR = 0.05;
+		commandArray[2].angle = 0;
 
 		commandArray[3].mode = 1;
-		commandArray[3].duration = 10000;
-		commandArray[3].velL = 0;
-		commandArray[3].velR = 0;
+		commandArray[3].duration = 5000;
 
-		commandArray[4].mode = 9;
+		commandArray[4].mode = 2;
+		commandArray[4].angle = 40;
+
+		commandArray[5].mode = 1;
+		commandArray[5].duration = 5000;
+		
+		commandArray[6].mode = 2;
+		commandArray[6].angle = 0;
+
+		commandArray[7].mode = 1;
+		commandArray[7].duration = 5000;
+
+		commandArray[8].mode = 9;
+
+		for (int i = 0; i < 8; i++)
+		{
+			ROS_INFO("i=%i angle= %f",i,commandArray[i].angle);
+		}
+		
+	}
+		if (verCommand_ == 6)
+	{
+		commandArray[0].mode = 2;
+		commandArray[0].angle = -40;
+
+		commandArray[1].mode = 1;
+		commandArray[1].duration = 5000;
+
+		commandArray[2].mode = 2;
+		commandArray[2].angle = 40;
+
+		commandArray[3].mode = 1;
+		commandArray[3].duration = 5000;
+
+		commandArray[4].mode = 2;
+		commandArray[4].angle = 0;
+
+		commandArray[5].mode = 1;
+		commandArray[5].duration = 5000;
+		
+		commandArray[6].mode = 9;
 	}
 }
 
