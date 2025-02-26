@@ -90,7 +90,7 @@ int main(int argc, char **argv)
             // MODE 0
             g_poseRotation.mode0 = calcNewOdom(g_poseRotation.mode0, g_linAngVel.wheel, "mode 0",1);     // На основе линейных скоростей считаем новую позицию и угол по колесам
             // MODE 10
-            g_poseRotation.mode10 = calcNewOdom(g_poseRotation.mode10, g_linAngVel.united, "mode10",1); // На основе линейных скоростей считаем новую позицию и угол по колесам
+            g_poseRotation.mode10 = calcNewOdom2(g_poseRotation.mode10, g_linAngVel.united, "mode10"); // На основе линейных скоростей считаем новую позицию и угол по колесам
             // g_poseRotation.mode10.th = DEG2RAD(g_angleEuler.yaw); // Напрямую присваиваем угол. Заменяем тот угол что насчитали внутри 
             // ROS_INFO("    g_poseRotation mode10 x = %.3f y = %.3f theta = %.3f (radian)", g_poseRotation.mode10.x, g_poseRotation.mode10.y, g_poseRotation.mode10.th);
             

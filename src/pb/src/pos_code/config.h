@@ -48,7 +48,7 @@
 // #include <data/pointA.h>
 
 #define RATE_LASER 3                            // Частота измерения лазерного датчика при калибровке для расчета
-#define RATE_OUTPUT  0.25                            // Частота выводв ROS_INFO
+#define RATE_OUTPUT  1.0                            // Частота выводв ROS_INFO
 
 #define STEP_LASER_MOTOR (360.0 / 400.0 / 16.0) // Шаг поаорота мотора с лазерным датчиком 360 ГРАДУСОВ /400 шагов мотор /16 шагов драйвер
 

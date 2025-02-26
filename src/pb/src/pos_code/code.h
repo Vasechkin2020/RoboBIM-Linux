@@ -129,6 +129,10 @@ void calcEuler()
 	// Расчет угла куда смотрим но пришедшим данным
 	static float prev_yaw = msg_Modul2Data.mpu.angleEuler.yaw;								   // При первом запуске этой функции инициализируем тем значением что придет от Modul
 	g_angleEuler.yaw -= calculateAngleDifference(prev_yaw, msg_Modul2Data.mpu.angleEuler.yaw); // Считаем угол куда смотрим
+	// if (g_angleEuler.yaw > 360)
+	// 	g_angleEuler.yaw = g_angleEuler.yaw - 360;
+	// if (g_angleEuler.yaw < 0)
+	// 	g_angleEuler.yaw = g_angleEuler.yaw + 360;
 	prev_yaw = msg_Modul2Data.mpu.angleEuler.yaw;
 	ROS_INFO_THROTTLE(RATE_OUTPUT,"    msg_Modul2Data.mpu.angleEuler.yaw = %.3f g_angleEuler.yaw = %.3f (gradus) %.3f rad", msg_Modul2Data.mpu.angleEuler.yaw, g_angleEuler.yaw, DEG2RAD(g_angleEuler.yaw));
 	// ROS_INFO("--- calcAngleThata");
@@ -341,6 +345,42 @@ SPose calcNewOdom(SPose odom_, STwistDt data_, std::string stroka_, float koef_)
 	ROS_INFO_THROTTLE(RATE_OUTPUT,"    calcNewOdom Rotation %s pose.x= % .3f y= % .3f | th= % .3f gradus th= % .4f rad", stroka_.c_str(), odom_.x, odom_.y, RAD2DEG(odom_.th), odom_.th);
 
 	// ROS_INFO("--- calcNewOdom");
+	return odom_;
+}
+// Обработка пришедших данных.Обсчитываем одометрию по энкодеру
+SPose calcNewOdom2(SPose odom_, STwistDt data_, std::string stroka_) // На вход подаются старая одометрия и новые угловая угловая скорость. Возвращается новая позиция по данным угловым скоростям
+{
+	// ROS_INFO_THROTTLE(RATE_OUTPUT,"+++ calcNewOdom %s", stroka_.c_str());
+	// ROS_INFO("IN calcNewOdom pose.x= % .3f y= % .3f th= % .3f ", odom_.pose.x, odom_.pose.y, RAD2DEG(odom_.pose.th));
+	if (data_.dt < 0.003) // Если пришли данные с нулевой дельтой то сразу выходим и ничего не считаем
+	{
+		ROS_INFO("    calcNewOdom dt< 0.003 !!!!  dt = %f", data_.dt);
+		return odom_; // Возвращаем что и было
+	}
+
+	SPoint pointLoc;
+	pointLoc.x = data_.vx * data_.dt; // Находим проекции скорости на оси за интервал времени это координаты нашей точки в локальной системе координат
+	pointLoc.y = data_.vy * data_.dt;
+
+	// Находим смещние по осям матрица координаты точки из локальной системы координат в глобальной
+	double delta_x = pointLoc.x * cos(odom_.th) + pointLoc.y * sin(odom_.th);
+	double delta_y = -pointLoc.x * sin(odom_.th) + pointLoc.y * cos(odom_.th);
+
+	SPose pose;
+	pose.x = odom_.x;
+	pose.y = odom_.y;
+	pose.th = odom_.th;
+	SPoint pointGlob = pointLocal2GlobalRosRAD(pointLoc, pose);
+	// ROS_INFO("    New cordinates Rotation %s x= % .3f y= % .3f", stroka_.c_str(), pointGlob.x, pointGlob.y);
+
+	odom_.x = pointGlob.x; // Вычисляем координаты
+	odom_.y = pointGlob.y; // Вычисляем координаты
+	// ROS_INFO("    IN odom_.th = %.3f data_.dt= %.3f  * data_.twist.vth= %.3f ", odom_.th, data_.dt, data_.twist.vth);
+
+	float k = 0.15;
+	odom_.th = ( odom_.th + data_.vth * data_.dt) * (1-k) + DEG2RAD(g_angleEuler.yaw) * k; // Комплементарный фильтр. Берем старое значение и увеличиваем на новый , берем с коефициентом большим и стабилизируем по точному значению
+	ROS_INFO_THROTTLE(RATE_OUTPUT,"    calcNewOdom2 Rotation %s pose.x= % .3f y= % .3f | th= % .3f gradus th= % .4f rad", stroka_.c_str(), odom_.x, odom_.y, RAD2DEG(odom_.th), odom_.th);
+
 	return odom_;
 }
 
@@ -600,12 +640,12 @@ STwistDt calcTwistUnited(STwistDt wheelTwist_, STwistDt mpuTwist_)
 		ROS_INFO("    calcTwistUnited dt< 0.003 !!!!  dt = %f", dt);
 		return ret;
 	}
-	float koef = 0.0; // Коефициант по умолчанию.Пополам.
+	float koef = 0.5; // Коефициант по умолчанию.Пополам.
 
 	ret.vx = wheelTwist_.vx * (1 - koef) + mpuTwist_.vx * koef;
 	ret.vy = wheelTwist_.vy * (1 - koef) + mpuTwist_.vy * koef;
 
-	float koefTh = 0.9; // Коефициант по умолчанию.Пополам.
+	float koefTh = 0.5; // Коефициант по умолчанию.Пополам.
 	ret.vth = g_linAngVel.filtr_mpu.vth * (1 - koefTh) + g_linAngVel.wheel.vth * koefTh;
 	
 	ret.dt = dt;

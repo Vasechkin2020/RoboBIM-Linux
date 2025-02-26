@@ -21,7 +21,7 @@ int main(int argc, char **argv)
     ros::Subscriber subscriber_Speed = nh.subscribe<pb_msgs::SSetSpeed>("pbData/Speed", 1000, callback_Speed);
     ros::Subscriber subscriber_Pose = nh.subscribe<pb_msgs::Struct_PoseRotation>("pbPos/PoseRotation", 1000, callback_Pose);
 
-    ros::Rate r(100);         // Частота в Герцах - задержка
+    ros::Rate r(200);         // Частота в Герцах - задержка
     ros::Duration(3).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
 
     readParam();                 // Считывание переменных параметров из лаунч файла при запуске. Там офсеты и режимы работы
@@ -68,20 +68,21 @@ int main(int argc, char **argv)
         }
 
         static float koef = 0.01;      // P коефициент пид регулятора
-        static float minMistake = 0.005; // Минимальная ошибка по углу
-        static float mistake = 0;      // Текущая ошибка по углу
+        static float minMistake = 0.02; // Минимальная ошибка по углу в Градусах
+        static float mistake = 0;      // Текущая ошибка по углу в градусах
 
         if (flagAngle) // Отслеживание угла
         {
-            mistake = commandArray[i].angle - RAD2DEG(msg_Pose.th.mode0); // Смотрим какой угол.// Смотрим куда нам надо Считаем ошибку по углу и включаем колеса в нужную сторону с учетом ошибки по углу и максимально заданой скорости на колесах
-            ROS_INFO_THROTTLE(0.1 ,"    i= %i commandArray[i].angle = %6.2f msg_Pose.th.mode0 = %6.2f mistake = %6.2f", i, commandArray[i].angle , RAD2DEG(msg_Pose.th.mode0), mistake);
+            float angleFact = msg_Pose.th.mode10; // Угол который отслеживаем
+            mistake = commandArray[i].angle - RAD2DEG(angleFact); // Смотрим какой угол.// Смотрим куда нам надо Считаем ошибку по углу и включаем колеса в нужную сторону с учетом ошибки по углу и максимально заданой скорости на колесах
+            ROS_INFO_THROTTLE(0.1 ,"    i= %i commandArray[i].angle = %6.2f angleFact = %6.2f mistake = %6.2f", i, commandArray[i].angle , RAD2DEG(angleFact), mistake);
             if (abs(mistake) <= minMistake)                       // Когда ошибка по углу будет меньше заданной считаем что приехали и включаем время что-бы выйти из данного этапа алгоритма
             {
                 controlSpeed.control.speedL = 0;
                 controlSpeed.control.speedR = 0;
                 flagAngle = false;
                 time = millis();
-                ROS_INFO("    Angle OK %f", mistake);
+                ROS_INFO("    Angle OK. Final mistake = %f gradus", mistake);
             }
             else
             {
@@ -89,6 +90,8 @@ int main(int argc, char **argv)
                 ROS_INFO_THROTTLE(0.1 ,"    speed koef = %f", speed);
                 if (speed > 0.2) // Максимальная скорость
                     speed = 0.2;
+                if (speed < 0.0051) // Минимальная скорость
+                    speed = 0.0051;
                 ROS_INFO_THROTTLE(0.1 ,"    speed real = %f", speed);
                 if (mistake > 0) // Если угол больше чем надо и положительный то вращается в одну сторону
                 {
