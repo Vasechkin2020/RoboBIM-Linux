@@ -3,11 +3,13 @@
 
 // #include "pillar.h"
 //**************************** ОБЬЯВЛЕНИЕ ПРОЦЕДУР **********************************
-// void callback_Driver(pb_msgs::Struct_Driver2Data msg); //
 
 void readParam(); // Считывание переменных параметров из лаунч файла при запуске. Там офсеты и режимы работы
 
 void initCommandArray(int verCommand_); // Заполнение маасива команд
+
+void workAngle(float angle_, u_int64_t &time_);	  // Тут отрабатываем алгоритм отслеживания угла при повороте
+void workVector(float len_, SPoint vectorStart_, u_int64_t &time_); // Тут отрабатываем алгоритм отслеживания длины вектора при движении прямо
 
 // pb_msgs::SControlDriver speedCorrect(pb_msgs::SDriver2Data Driver2Data_msg_, pb_msgs::SControlDriver Data2Driver_); // Корректировка скорости движения в зависимости от датчиков растояния перед
 // void collectCommand(); // //Функция формирования команды для нижнего уровня на основе всех полученных данных, датчиков и анализа ситуации
@@ -20,6 +22,7 @@ float filtrComplem(float koef_, float oldData_, float newData_)
 {
 	return (1 - koef_) * oldData_ + (koef_ * newData_);
 }
+
 // void callback_Driver(pb_msgs::Struct_Driver2Data msg)
 // {
 // 	msg_Driver2Data = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
@@ -123,7 +126,7 @@ void initCommandArray(int verCommand_)
 		commandArray[1].duration = 5000;
 		commandArray[1].velL = 0.0;
 		commandArray[1].velR = 0.0;
- 
+
 		commandArray[2].mode = 1;
 		commandArray[2].duration = 20000;
 		commandArray[2].velL = -0.02;
@@ -143,7 +146,7 @@ void initCommandArray(int verCommand_)
 		commandArray[5].duration = 5000;
 		commandArray[5].velL = 0.0;
 		commandArray[5].velR = 0.0;
-		
+
 		commandArray[6].mode = 1;
 		commandArray[6].duration = 20000;
 		commandArray[6].velL = 0.02;
@@ -153,11 +156,10 @@ void initCommandArray(int verCommand_)
 		commandArray[7].duration = 20000;
 		commandArray[7].velL = 0.0;
 		commandArray[7].velR = 0.0;
-		
 
 		commandArray[8].mode = 9;
 	}
-		if (verCommand_ == 4)
+	if (verCommand_ == 4)
 	{
 		commandArray[0].mode = 1;
 		commandArray[0].duration = 2000;
@@ -209,7 +211,7 @@ void initCommandArray(int verCommand_)
 		commandArray[9].velL = 0.0;
 		commandArray[9].velR = 0.0;
 
-//****************************************
+		//****************************************
 		commandArray[10].mode = 1;
 		commandArray[10].duration = 2000;
 		commandArray[10].velL = -0.02;
@@ -273,7 +275,7 @@ void initCommandArray(int verCommand_)
 		//-----------------------
 		commandArray[22].mode = 9;
 	}
-		if (verCommand_ == 5)
+	if (verCommand_ == 5)
 	{
 		commandArray[0].mode = 2;
 		commandArray[0].angle = -40;
@@ -292,7 +294,7 @@ void initCommandArray(int verCommand_)
 
 		commandArray[5].mode = 1;
 		commandArray[5].duration = 5000;
-		
+
 		commandArray[6].mode = 2;
 		commandArray[6].angle = 0;
 
@@ -303,11 +305,10 @@ void initCommandArray(int verCommand_)
 
 		for (int i = 0; i < 8; i++)
 		{
-			ROS_INFO("i=%i angle= %f",i,commandArray[i].angle);
+			ROS_INFO("i=%i angle= %f", i, commandArray[i].angle);
 		}
-		
 	}
-		if (verCommand_ == 6)
+	if (verCommand_ == 6)
 	{
 		commandArray[0].mode = 2;
 		commandArray[0].angle = -40;
@@ -326,7 +327,7 @@ void initCommandArray(int verCommand_)
 
 		commandArray[5].mode = 1;
 		commandArray[5].duration = 5000;
-		
+
 		commandArray[6].mode = 9;
 	}
 }
@@ -334,29 +335,112 @@ void initCommandArray(int verCommand_)
 void readParam() // Считывание переменных параметров из лаунч файла при запуске. Там офсеты и режимы работы
 {
 	ros::NodeHandle nh_private("~");
-    // Имя можно с палкой или без, смотря как в лаунч файле параметры обявлены. связано с видимостью глобальной или локальной. относительным поиском переменной как сказал Максим
+	// Имя можно с палкой или без, смотря как в лаунч файле параметры обявлены. связано с видимостью глобальной или локальной. относительным поиском переменной как сказал Максим
 	if (!nh_private.getParam("verComand", verComand))
 		verComand = 999;
 
-    ROS_INFO("--- Start node with parametrs:");
-    ROS_INFO("verComand = %i",verComand);
-    ROS_INFO("---");
+	ROS_INFO("--- Start node with parametrs:");
+	ROS_INFO("verComand = %i", verComand);
+	ROS_INFO("---");
 }
 
-
-void timeCycle(ros::Time timeStart_, ros::Time timeNow_) // Выводим справочно время работы цикла
+// Выводим справочно время работы цикла
+void timeCycle(ros::Time timeStart_, ros::Time timeNow_)
 {
-	    ros::Time timeEnd = ros::Time::now(); // Захватываем конечный момент времени
-        ros::Duration durationEnd = timeEnd - timeNow_; // Находим разницу между началом и концом
-        ros::Duration durationStart = timeEnd - timeStart_; // Находим разницу между началом и концом
-        double dtEnd = durationEnd.toSec()*1000;            // Получаем количество милисекунд
-        double dtStart = durationStart.toSec();            // Получаем количество секунд
-		if (dtEnd>5) // Если цикл занял бользе 5 милисекунд значит что не уложились в 200 Нz
-        	ROS_INFO("    !!! cycle = %8.3f msec", dtEnd); // Время цикла в милисекундах
-		else
-        	ROS_INFO_THROTTLE(1,"    dtStart = %7.0f sec | last cycle = %8.3f msec", dtStart, dtEnd); // Время цикла в милисекундах
+	ros::Time timeEnd = ros::Time::now();				// Захватываем конечный момент времени
+	ros::Duration durationEnd = timeEnd - timeNow_;		// Находим разницу между началом и концом
+	ros::Duration durationStart = timeEnd - timeStart_; // Находим разницу между началом и концом
+	double dtEnd = durationEnd.toSec() * 1000;			// Получаем количество милисекунд
+	double dtStart = durationStart.toSec();				// Получаем количество секунд
+	if (dtEnd > 5)										// Если цикл занял бользе 5 милисекунд значит что не уложились в 200 Нz
+		ROS_INFO("    !!! cycle = %8.3f msec", dtEnd);	// Время цикла в милисекундах
+	else
+		ROS_INFO_THROTTLE(1, "    dtStart = %7.0f sec | last cycle = %8.3f msec", dtStart, dtEnd); // Время цикла в милисекундах
 }
 
+// Тут отрабатываем алгоритм отслеживания угла при повороте
+void workAngle(float angle_, u_int64_t &time_)
+{
+
+	static float angleKoef = 0.01;		 // P коефициент пид регулятора
+	static float minAngleMistake = 0.02; // Минимальная ошибка по углу в Градусах
+	static float angleMistake = 0;		 // Текущая ошибка по углу в градусах
+
+	float angleFact = msg_Pose.th.mode10;		// Угол который отслеживаем
+	angleMistake = angle_ - RAD2DEG(angleFact); // Смотрим какой угол.// Смотрим куда нам надо Считаем ошибку по углу и включаем колеса в нужную сторону с учетом ошибки по углу и максимально заданой скорости на колесах
+	ROS_INFO_THROTTLE(0.1, "    angle_ = %6.2f angleFact = %6.2f angleMistake = %6.2f", angle_, RAD2DEG(angleFact), angleMistake);
+	if (abs(angleMistake) <= minAngleMistake) // Когда ошибка по углу будет меньше заданной считаем что приехали и включаем время что-бы выйти из данного этапа алгоритма
+	{
+		controlSpeed.control.speedL = 0;
+		controlSpeed.control.speedR = 0;
+		flagAngle = false;
+		time_ = millis();
+		ROS_INFO("    Angle OK. Final angleMistake = %f gradus", angleMistake);
+	}
+	else
+	{
+		float angleSpeed = abs(angleMistake * angleKoef);
+		ROS_INFO_THROTTLE(0.1, "    angleSpeed koef = %f", angleSpeed);
+		if (angleSpeed > 0.2) // Максимальная скорость
+			angleSpeed = 0.2;
+		if (angleSpeed < 0.0051) // Минимальная скорость
+			angleSpeed = 0.0051;
+		ROS_INFO_THROTTLE(0.1, "    angleSpeed real = %f", angleSpeed);
+		if (angleMistake > 0) // Если угол больше чем надо и положительный то вращается в одну сторону
+		{
+			controlSpeed.control.speedL = -angleSpeed; // Скороть должна увеличивать до заданой или максимальной с учетом алогритма в data_node  а уменьшать будет по коефициету по ошибке по углу.
+			controlSpeed.control.speedR = angleSpeed;
+		}
+		else
+		{
+			controlSpeed.control.speedL = angleSpeed;
+			controlSpeed.control.speedR = -angleSpeed;
+		}
+	}
+}
+
+// Тут отрабатываем алгоритм отслеживания длины вектора при движении прямо
+void workVector(float len_, SPoint vectorStart_, u_int64_t &time_)
+{
+	static float vectorKoef = 0.01;		  // P коефициент пид регулятора
+	static float minVectorMistake = 0.02; // Минимальная ошибка по вектору в метрах
+	static float vectorMistake = 0;		  // Текущая ошибка по длине в местрах
+	static SPoint vectorEnd;
+
+	vectorEnd.x = msg_Pose.x.mode10;
+	vectorEnd.y = msg_Pose.y.mode10;
+	float vectorFact = vectorLen(vectorStart_, vectorEnd); // Находим длину вектора который отслеживаем
+	vectorMistake = len_ - vectorFact;					   // Смотрим какое растояние еще надо проехать  Считаем ошибку по длине и включаем колеса в нужную сторону с учетом ошибки максимально заданой скорости на колесах
+	ROS_INFO_THROTTLE(0.1, "    len_ = %6.2f vectorFact = %6.2f vectorMistake = %6.2f", len_, vectorFact, vectorMistake);
+	if (abs(vectorMistake) <= minVectorMistake) // Когда ошибка по длине будет меньше заданной считаем что приехали и включаем время что-бы выйти из данного этапа алгоритма
+	{
+		controlSpeed.control.speedL = 0;
+		controlSpeed.control.speedR = 0;
+		flagVector = false;
+		time_ = millis();
+		ROS_INFO("    Vector OK. Final vectorMistake = %f metr", vectorMistake);
+	}
+	else
+	{
+		float vectorSpeed = abs(vectorMistake * vectorKoef);
+		ROS_INFO_THROTTLE(0.1, "    vectorSpeed vectorKoef = %f", vectorSpeed);
+		if (vectorSpeed > 0.2) // Максимальная скорость
+			vectorSpeed = 0.2;
+		if (vectorSpeed < 0.0051) // Минимальная скорость
+			vectorSpeed = 0.0051;
+		ROS_INFO_THROTTLE(0.1, "    vectorSpeed real = %f", vectorSpeed);
+		if (vectorMistake > 0) // Если угол больше чем надо и положительный то вращается в одну сторону
+		{
+			controlSpeed.control.speedL = -vectorSpeed; // Скороть должна увеличивать до заданой или максимальной с учетом алогритма в data_node  а уменьшать будет по коефициету по ошибке
+			controlSpeed.control.speedR = -vectorSpeed;
+		}
+		else
+		{
+			controlSpeed.control.speedL = vectorSpeed;
+			controlSpeed.control.speedR = vectorSpeed;
+		}
+	}
+}
 // Корректировка скорости движения в зависимости от датчиков растояния перед
 // pb_msgs::SControlDriver speedCorrect(pb_msgs::SDriver2Data Driver2Data_msg_, pb_msgs::SControlDriver Data2Driver_)
 // {

@@ -57,13 +57,19 @@ bool flag_msgPose = false;   // Флаг что пришло сообщение 
 
 int verComand = 0; // Параметр какой массив команд загружать
 
+bool flagCommand = true; // Флаг можно исполнять каманду
+bool flagAngle = false;  // Флаг отслеживания угла из топика
+bool flagVector = false; // Флаг отслеживания длины вектора точки из топика
+static SPoint vectorStart;
+
 pb_msgs::Struct_Data2Driver Data2Driver;      // Структура с командами которую публикуем и которую потом Driver исполняет
 pb_msgs::Struct_Data2Driver Data2Driver_prev; // Структура с командами которую публикуем и которую потом Driver исполняет предыдущее состоние
 
 struct SCommand
 {
     int mode = 0;     // Вид команды
-    float angle = 0;    // Угол в который должны повернуться
+    float angle = 0;  // Угол в который должны повернуться
+    float len = 0;    // Длина вектора который должны проехать
     float velL = 0;   // Скорость колеса
     float velR = 0;   // Скорость колеса
     int duration = 0; // Длительность действия команды в милисекундах

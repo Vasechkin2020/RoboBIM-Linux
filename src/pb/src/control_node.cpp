@@ -34,8 +34,6 @@ int main(int argc, char **argv)
     u_int64_t time = millis();
     // u_int64_t timeStart = millis();
     // u_int64_t timeMil = millis();
-    bool flagCommand = true; // Флаг можно исполнять каманду
-    bool flagAngle = false;  // Флаг отслеживания угла из топика
     int i = 0;
 
     std::list<int> numbers{1, 2, 3, 4, 5};
@@ -53,59 +51,55 @@ int main(int argc, char **argv)
         {
             flagCommand = false;
             ROS_INFO("    command Array i= %i Mode i= %i", i, commandArray[i].mode);
-            if (commandArray[i].mode == 1) // Если режим ездить по времени
+            switch (commandArray[i].mode)
             {
+            case 1:
                 controlSpeed.control.speedL = commandArray[i].velL;
                 controlSpeed.control.speedR = commandArray[i].velR;
                 time = commandArray[i].duration + millis();
-            }
-            else if (commandArray[i].mode == 2) // Ездить не обращая внимание на время до результата по углу
-            {
+                ROS_INFO("    Time Start");
+                break;
+            case 2:
                 time = millis() + 999999; // Огромное время ставим
                 flagAngle = true;         // Флаг что теперь отслеживаем угол
                 ROS_INFO("    Angle Start");
+                break;
+            case 3:
+                vectorStart.x = msg_Pose.x.mode10; // Запоминаем те координаты которые были в момент начала движения
+                vectorStart.y = msg_Pose.y.mode10;
+                time = millis() + 999999; // Огромное время ставим
+                flagVector = true;        // Флаг что теперь отслеживаем длину вектора
+                ROS_INFO("    Vector Start");
+                break;
             }
+            // if (commandArray[i].mode == 1) // Если режим ездить по времени
+            // {
+            //     controlSpeed.control.speedL = commandArray[i].velL;
+            //     controlSpeed.control.speedR = commandArray[i].velR;
+            //     time = commandArray[i].duration + millis();
+            // }
+            // else if (commandArray[i].mode == 2) // Ездить не обращая внимание на время до результата по углу
+            // {
+            //     time = millis() + 999999; // Огромное время ставим
+            //     flagAngle = true;         // Флаг что теперь отслеживаем угол
+            //     ROS_INFO("    Angle Start");
+            // }
+            // else if (commandArray[i].mode == 3) // Ездить не обращая внимание на время до результата по Координатам
+            // {
+            //     time = millis() + 999999; // Огромное время ставим
+            //     flagVector = true;         // Флаг что теперь отслеживаем длину вектора
+            //     ROS_INFO("    Vector Start");
+            // }
         }
-
-        static float koef = 0.01;      // P коефициент пид регулятора
-        static float minMistake = 0.02; // Минимальная ошибка по углу в Градусах
-        static float mistake = 0;      // Текущая ошибка по углу в градусах
 
         if (flagAngle) // Отслеживание угла
         {
-            float angleFact = msg_Pose.th.mode10; // Угол который отслеживаем
-            mistake = commandArray[i].angle - RAD2DEG(angleFact); // Смотрим какой угол.// Смотрим куда нам надо Считаем ошибку по углу и включаем колеса в нужную сторону с учетом ошибки по углу и максимально заданой скорости на колесах
-            ROS_INFO_THROTTLE(0.1 ,"    i= %i commandArray[i].angle = %6.2f angleFact = %6.2f mistake = %6.2f", i, commandArray[i].angle , RAD2DEG(angleFact), mistake);
-            if (abs(mistake) <= minMistake)                       // Когда ошибка по углу будет меньше заданной считаем что приехали и включаем время что-бы выйти из данного этапа алгоритма
-            {
-                controlSpeed.control.speedL = 0;
-                controlSpeed.control.speedR = 0;
-                flagAngle = false;
-                time = millis();
-                ROS_INFO("    Angle OK. Final mistake = %f gradus", mistake);
-            }
-            else
-            {
-                float speed = abs(mistake * koef);
-                ROS_INFO_THROTTLE(0.1 ,"    speed koef = %f", speed);
-                if (speed > 0.2) // Максимальная скорость
-                    speed = 0.2;
-                if (speed < 0.0051) // Минимальная скорость
-                    speed = 0.0051;
-                ROS_INFO_THROTTLE(0.1 ,"    speed real = %f", speed);
-                if (mistake > 0) // Если угол больше чем надо и положительный то вращается в одну сторону
-                {
-                    controlSpeed.control.speedL = -speed; // Скороть должна увеличивать до заданой или максимальной с учетом алогритма в data_node  а уменьшать будет по коефициету по ошибке по углу.
-                    controlSpeed.control.speedR = speed;
-                }
-                else
-                {
-                    controlSpeed.control.speedL = speed;
-                    controlSpeed.control.speedR = -speed;
-                }
-            }
+            workAngle(commandArray[i].angle, time); // Тут отрабатываем алгоритм отслеживания угла при повороте
+        }
 
-            // Выводим различия в скорости что задали и что крутимся по обратной свзяи от data_node/Speed. Смотри как работает ускорение и замедление по углу.
+        if (flagVector) // Отслеживание длины вектора
+        {
+            workVector(commandArray[i].len, vectorStart, time); // Тут отрабатываем алгоритм отслеживания длины вектора при движении прямо
         }
 
         if (time < millis())
@@ -156,45 +150,3 @@ int main(int argc, char **argv)
     printf("Control node STOP \n");
     return 0;
 }
-
-// ============================================================================
-// if (flagUp == false &&
-//     millis() - time > 5000) // Если прошло с запуска 3 секунды и еще не едем
-// {
-//     controlSpeed.control.speedL = 0.1;
-//     controlSpeed.control.speedR = 0.1;
-//     flagUp = true;     // Взводим флаг что поехали
-//     timeUp = millis(); // Запоминаем время старта
-//     printf("flagUp \n");
-// }
-
-// if ((flagUp == true) &&
-//     (flagStop == false) &&
-//     (millis() - timeUp) > 5000)
-// {
-//     controlSpeed.control.speedL = 0.0;
-//     controlSpeed.control.speedR = 0.0;
-//     flagStop = true;
-//     timeStop = millis(); // Запоминаем время Остановки
-//     printf("flagStop \n");
-// }
-
-// if (flagStop == true &&
-//     flagDown == false &&
-//     (millis() - timeStop) > 5000)
-// {
-//     controlSpeed.control.speedL = -0.1;
-//     controlSpeed.control.speedR = -0.1;
-//     flagDown = true;  // Флаг что поехади назад
-//     flagDown2 = true; // Флаг что поехади назад
-//     timeDown = millis();
-//     printf("flagDown \n");
-// }
-// if ((flagDown2 == true) &&
-//     (millis() - timeDown) > 5000)
-// {
-//     controlSpeed.control.speedL = 0.0;
-//     controlSpeed.control.speedR = 0.0;
-//     flagDown2 = false;
-//     printf("flagStop \n");
-// }

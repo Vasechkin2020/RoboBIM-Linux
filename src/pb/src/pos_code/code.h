@@ -377,7 +377,7 @@ SPose calcNewOdom2(SPose odom_, STwistDt data_, std::string stroka_) // На в�
 	odom_.y = pointGlob.y; // Вычисляем координаты
 	// ROS_INFO("    IN odom_.th = %.3f data_.dt= %.3f  * data_.twist.vth= %.3f ", odom_.th, data_.dt, data_.twist.vth);
 
-	float k = 0.15;
+	float k = 0.1;
 	odom_.th = ( odom_.th + data_.vth * data_.dt) * (1-k) + DEG2RAD(g_angleEuler.yaw) * k; // Комплементарный фильтр. Берем старое значение и увеличиваем на новый , берем с коефициентом большим и стабилизируем по точному значению
 	ROS_INFO_THROTTLE(RATE_OUTPUT,"    calcNewOdom2 Rotation %s pose.x= % .3f y= % .3f | th= % .3f gradus th= % .4f rad", stroka_.c_str(), odom_.x, odom_.y, RAD2DEG(odom_.th), odom_.th);
 
