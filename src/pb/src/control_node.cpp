@@ -50,7 +50,7 @@ int main(int argc, char **argv)
         if (flagCommand)
         {
             flagCommand = false;
-            ROS_INFO("    command Array i= %i Mode i= %i", i, commandArray[i].mode);
+            ROS_INFO("    command Array i= %i Mode = %i", i, commandArray[i].mode);
             switch (commandArray[i].mode)
             {
             case 1:
@@ -65,11 +65,11 @@ int main(int argc, char **argv)
                 ROS_INFO("    Angle Start");
                 break;
             case 3:
-                vectorStart.x = msg_Pose.x.mode10; // Запоминаем те координаты которые были в момент начала движения
-                vectorStart.y = msg_Pose.y.mode10;
+                vectorStart.x = msg_Pose.x.mode0; // Запоминаем те координаты которые были в момент начала движения
+                vectorStart.y = msg_Pose.y.mode0;
                 time = millis() + 999999; // Огромное время ставим
                 flagVector = true;        // Флаг что теперь отслеживаем длину вектора
-                ROS_INFO("    Vector Start");
+                ROS_INFO("    Vector Start. len = %f", commandArray[i].len);
                 break;
             }
             // if (commandArray[i].mode == 1) // Если режим ездить по времени

@@ -93,20 +93,16 @@ void initCommandArray(int verCommand_)
 	}
 	if (verCommand_ == 2)
 	{
-		commandArray[0].mode = 1;
-		commandArray[0].duration = 100000;
-		commandArray[0].velL = 0.1;
-		commandArray[0].velR = 0.1;
+		commandArray[0].mode = 3;
+		commandArray[0].len = 0.7;
 
 		commandArray[1].mode = 1;
 		commandArray[1].duration = 5000;
 		commandArray[1].velL = 0.0;
 		commandArray[1].velR = 0.0;
 
-		commandArray[2].mode = 1;
-		commandArray[2].duration = 100000;
-		commandArray[2].velL = -0.1;
-		commandArray[2].velR = -0.1;
+		commandArray[2].mode = 3;
+		commandArray[2].len = -0.7;
 
 		commandArray[3].mode = 1;
 		commandArray[3].duration = 5000;
@@ -161,119 +157,136 @@ void initCommandArray(int verCommand_)
 	}
 	if (verCommand_ == 4)
 	{
-		commandArray[0].mode = 1;
-		commandArray[0].duration = 2000;
-		commandArray[0].velL = 0.02;
-		commandArray[0].velR = -0.02;
+		commandArray[0].mode = 3; // Прямо 1 метр
+		commandArray[0].len = 0.7;
 
-		commandArray[1].mode = 1;
-		commandArray[1].duration = 2000;
+		commandArray[1].mode = 1; // Задержка на месте
+		commandArray[1].duration = 1000;
 		commandArray[1].velL = 0.0;
 		commandArray[1].velR = 0.0;
 
-		commandArray[2].mode = 1;
-		commandArray[2].duration = 2000;
-		commandArray[2].velL = 0.02;
-		commandArray[2].velR = -0.02;
+		commandArray[2].mode = 3; // Прямо 113 метр
+		commandArray[2].len = 0.113;
 
-		commandArray[3].mode = 1;
-		commandArray[3].duration = 2000;
+		commandArray[3].mode = 1; // Задержка на месте
+		commandArray[3].duration = 1000;
 		commandArray[3].velL = 0.0;
 		commandArray[3].velR = 0.0;
 
-		commandArray[4].mode = 1;
-		commandArray[4].duration = 2000;
-		commandArray[4].velL = 0.02;
-		commandArray[4].velR = -0.02;
+		commandArray[4].mode = 2; // По часовой на 90 градусов
+		commandArray[4].angle = -90;
 
-		commandArray[5].mode = 1;
-		commandArray[5].duration = 2000;
+		commandArray[5].mode = 1; // Задержка на месте
+		commandArray[5].duration = 1000;
 		commandArray[5].velL = 0.0;
 		commandArray[5].velR = 0.0;
 
-		commandArray[6].mode = 1;
-		commandArray[6].duration = 2000;
-		commandArray[6].velL = 0.02;
-		commandArray[6].velR = -0.02;
+		commandArray[6].mode = 3; // Прямо 113 метр
+		commandArray[6].len = -0.113;
 
-		commandArray[7].mode = 1;
-		commandArray[7].duration = 2000;
+		commandArray[7].mode = 1; // Задержка на месте
+		commandArray[7].duration = 1000;
 		commandArray[7].velL = 0.0;
 		commandArray[7].velR = 0.0;
+//------------------------------------------------------------------------
+		commandArray[8].mode = 3; // Прямо 1 метр
+		commandArray[8].len = 0.7;
 
-		commandArray[8].mode = 1;
-		commandArray[8].duration = 2000;
-		commandArray[8].velL = 0.02;
-		commandArray[8].velR = -0.02;
-
-		commandArray[9].mode = 1;
-		commandArray[9].duration = 2000;
+		commandArray[9].mode = 1; // Задержка на месте
+		commandArray[9].duration = 1000;
 		commandArray[9].velL = 0.0;
 		commandArray[9].velR = 0.0;
 
-		//****************************************
-		commandArray[10].mode = 1;
-		commandArray[10].duration = 2000;
-		commandArray[10].velL = -0.02;
-		commandArray[10].velR = 0.02;
+		commandArray[10].mode = 3; // Прямо 113 метр
+		commandArray[10].len = 0.113;
 
-		commandArray[11].mode = 1;
-		commandArray[11].duration = 2000;
+		commandArray[11].mode = 1; // Задержка на месте
+		commandArray[11].duration = 1000;
 		commandArray[11].velL = 0.0;
 		commandArray[11].velR = 0.0;
 
-		commandArray[12].mode = 1;
-		commandArray[12].duration = 2000;
-		commandArray[12].velL = -0.02;
-		commandArray[12].velR = 0.02;
+		commandArray[12].mode = 2; // По часовой на 90 градусов
+		commandArray[12].angle = -180;
 
-		commandArray[13].mode = 1;
-		commandArray[13].duration = 2000;
+		commandArray[13].mode = 1; // Задержка на месте
+		commandArray[13].duration = 1000;
 		commandArray[13].velL = 0.0;
 		commandArray[13].velR = 0.0;
 
-		commandArray[14].mode = 1;
-		commandArray[14].duration = 2000;
-		commandArray[14].velL = -0.02;
-		commandArray[14].velR = 0.02;
+		commandArray[14].mode = 3; // Прямо 113 метр
+		commandArray[14].len = -0.113;
 
-		commandArray[15].mode = 1;
-		commandArray[15].duration = 2000;
+		commandArray[15].mode = 1; // Задержка на месте
+		commandArray[15].duration = 1000;
 		commandArray[15].velL = 0.0;
 		commandArray[15].velR = 0.0;
+//------------------------------------------------------------------------
+		commandArray[16].mode = 3; // Прямо 1 метр
+		commandArray[16].len = 0.7;
 
-		commandArray[16].mode = 1;
-		commandArray[16].duration = 2000;
-		commandArray[16].velL = -0.02;
-		commandArray[16].velR = 0.02;
-
-		commandArray[17].mode = 1;
-		commandArray[17].duration = 2000;
+		commandArray[17].mode = 1; // Задержка на месте
+		commandArray[17].duration = 1000;
 		commandArray[17].velL = 0.0;
 		commandArray[17].velR = 0.0;
 
-		commandArray[18].mode = 1;
-		commandArray[18].duration = 2000;
-		commandArray[18].velL = -0.02;
-		commandArray[18].velR = 0.02;
+		commandArray[18].mode = 3; // Прямо 113 метр
+		commandArray[18].len = 0.113;
 
-		commandArray[19].mode = 1;
-		commandArray[19].duration = 2000;
+		commandArray[19].mode = 1; // Задержка на месте
+		commandArray[19].duration = 1000;
 		commandArray[19].velL = 0.0;
 		commandArray[19].velR = 0.0;
 
-		commandArray[20].mode = 1;
-		commandArray[20].duration = 2000;
-		commandArray[20].velL = -0.02;
-		commandArray[20].velR = 0.02;
+		commandArray[20].mode = 2; // По часовой на 90 градусов
+		commandArray[20].angle = 90;
 
-		commandArray[21].mode = 1;
-		commandArray[21].duration = 2000;
+		commandArray[21].mode = 1; // Задержка на месте
+		commandArray[21].duration = 1000;
 		commandArray[21].velL = 0.0;
 		commandArray[21].velR = 0.0;
 
+		commandArray[22].mode = 3; // Прямо 113 метр
+		commandArray[22].len = -0.113;
+
+		commandArray[23].mode = 1; // Задержка на месте
+		commandArray[23].duration = 1000;
+		commandArray[23].velL = 0.0;
+		commandArray[23].velR = 0.0;
+//------------------------------------------------------------------------
+		commandArray[24].mode = 3; // Прямо 1 метр
+		commandArray[24].len = 0.7;
+
+		commandArray[25].mode = 1; // Задержка на месте
+		commandArray[25].duration = 1000;
+		commandArray[25].velL = 0.0;
+		commandArray[25].velR = 0.0;
+
+		commandArray[26].mode = 3; // Прямо 113 метр
+		commandArray[26].len = 0.113;
+
+		commandArray[27].mode = 1; // Задержка на месте
+		commandArray[27].duration = 1000;
+		commandArray[27].velL = 0.0;
+		commandArray[27].velR = 0.0;
+
+		commandArray[28].mode = 2; // По часовой на 90 градусов
+		commandArray[28].angle = 0;
+
+		commandArray[29].mode = 1; // Задержка на месте
+		commandArray[29].duration = 1000;
+		commandArray[29].velL = 0.0;
+		commandArray[29].velR = 0.0;
+
+		commandArray[30].mode = 3; // Прямо 113 метр
+		commandArray[30].len = -0.113;
+
+		commandArray[31].mode = 1; // Задержка на месте
+		commandArray[31].duration = 1000;
+		commandArray[31].velL = 0.0;
+		commandArray[31].velR = 0.0;
+//------------------------------------------------------------------------
 		//-----------------------
-		commandArray[22].mode = 9;
+		commandArray[32].mode = 9;
 	}
 	if (verCommand_ == 5)
 	{
@@ -366,7 +379,7 @@ void workAngle(float angle_, u_int64_t &time_)
 	static float minAngleMistake = 0.02; // Минимальная ошибка по углу в Градусах
 	static float angleMistake = 0;		 // Текущая ошибка по углу в градусах
 
-	float angleFact = msg_Pose.th.mode10;		// Угол который отслеживаем
+	float angleFact = msg_Pose.th.mode0;		// Угол который отслеживаем
 	angleMistake = angle_ - RAD2DEG(angleFact); // Смотрим какой угол.// Смотрим куда нам надо Считаем ошибку по углу и включаем колеса в нужную сторону с учетом ошибки по углу и максимально заданой скорости на колесах
 	ROS_INFO_THROTTLE(0.1, "    angle_ = %6.2f angleFact = %6.2f angleMistake = %6.2f", angle_, RAD2DEG(angleFact), angleMistake);
 	if (abs(angleMistake) <= minAngleMistake) // Когда ошибка по углу будет меньше заданной считаем что приехали и включаем время что-бы выйти из данного этапа алгоритма
@@ -402,16 +415,16 @@ void workAngle(float angle_, u_int64_t &time_)
 // Тут отрабатываем алгоритм отслеживания длины вектора при движении прямо
 void workVector(float len_, SPoint vectorStart_, u_int64_t &time_)
 {
-	static float vectorKoef = 0.01;		  // P коефициент пид регулятора
-	static float minVectorMistake = 0.02; // Минимальная ошибка по вектору в метрах
+	static float vectorKoef = 3.0;		  // P коефициент пид регулятора
+	static float minVectorMistake = 0.001; // Минимальная ошибка по вектору в метрах 1 мм
 	static float vectorMistake = 0;		  // Текущая ошибка по длине в местрах
 	static SPoint vectorEnd;
 
-	vectorEnd.x = msg_Pose.x.mode10;
-	vectorEnd.y = msg_Pose.y.mode10;
+	vectorEnd.x = msg_Pose.x.mode0;
+	vectorEnd.y = msg_Pose.y.mode0;
 	float vectorFact = vectorLen(vectorStart_, vectorEnd); // Находим длину вектора который отслеживаем
-	vectorMistake = len_ - vectorFact;					   // Смотрим какое растояние еще надо проехать  Считаем ошибку по длине и включаем колеса в нужную сторону с учетом ошибки максимально заданой скорости на колесах
-	ROS_INFO_THROTTLE(0.1, "    len_ = %6.2f vectorFact = %6.2f vectorMistake = %6.2f", len_, vectorFact, vectorMistake);
+	vectorMistake = abs(len_) - vectorFact;					   // Смотрим какое растояние еще надо проехать  Считаем ошибку по длине и включаем колеса в нужную сторону с учетом ошибки максимально заданой скорости на колесах
+	ROS_INFO_THROTTLE(0.1, "    len_ = %7.3f vectorFact = %7.3f vectorMistake = %7.3f", abs(len_), vectorFact, vectorMistake);
 	if (abs(vectorMistake) <= minVectorMistake) // Когда ошибка по длине будет меньше заданной считаем что приехали и включаем время что-бы выйти из данного этапа алгоритма
 	{
 		controlSpeed.control.speedL = 0;
@@ -429,15 +442,15 @@ void workVector(float len_, SPoint vectorStart_, u_int64_t &time_)
 		if (vectorSpeed < 0.0051) // Минимальная скорость
 			vectorSpeed = 0.0051;
 		ROS_INFO_THROTTLE(0.1, "    vectorSpeed real = %f", vectorSpeed);
-		if (vectorMistake > 0) // Если угол больше чем надо и положительный то вращается в одну сторону
+		if (len_ > 0) // Если длина положительная то вращается в одну сторону или в другую
 		{
-			controlSpeed.control.speedL = -vectorSpeed; // Скороть должна увеличивать до заданой или максимальной с учетом алогритма в data_node  а уменьшать будет по коефициету по ошибке
-			controlSpeed.control.speedR = -vectorSpeed;
+			controlSpeed.control.speedL = vectorSpeed; // Скороть должна увеличивать до заданой или максимальной с учетом алогритма в data_node  а уменьшать будет по коефициету по ошибке
+			controlSpeed.control.speedR = vectorSpeed;
 		}
 		else
 		{
-			controlSpeed.control.speedL = vectorSpeed;
-			controlSpeed.control.speedR = vectorSpeed;
+			controlSpeed.control.speedL = -vectorSpeed;
+			controlSpeed.control.speedR = -vectorSpeed;
 		}
 	}
 }
