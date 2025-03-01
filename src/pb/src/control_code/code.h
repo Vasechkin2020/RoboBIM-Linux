@@ -297,26 +297,38 @@ void initCommandArray(int verCommand_)
 		commandArray[1].duration = 5000;
 
 		commandArray[2].mode = 2;
-		commandArray[2].angle = 0;
+		commandArray[2].angle = -90;
 
 		commandArray[3].mode = 1;
-		commandArray[3].duration = 5000;
+		commandArray[3].duration = 10000;
 
 		commandArray[4].mode = 2;
-		commandArray[4].angle = 40;
+		commandArray[4].angle = 0;
 
 		commandArray[5].mode = 1;
-		commandArray[5].duration = 5000;
+		commandArray[5].duration = 10000;
 
 		commandArray[6].mode = 2;
-		commandArray[6].angle = 0;
+		commandArray[6].angle = 40;
 
 		commandArray[7].mode = 1;
 		commandArray[7].duration = 5000;
+		
+		commandArray[8].mode = 2;
+		commandArray[8].angle = 90;
 
-		commandArray[8].mode = 9;
+		commandArray[9].mode = 1;
+		commandArray[9].duration = 10000;
+	
+		commandArray[10].mode = 2;
+		commandArray[10].angle = 0;
 
-		for (int i = 0; i < 8; i++)
+		commandArray[11].mode = 1;
+		commandArray[11].duration = 10000;
+
+		commandArray[12].mode = 9;
+
+		for (int i = 0; i < 13; i++)
 		{
 			ROS_INFO("i=%i angle= %f", i, commandArray[i].angle);
 		}
@@ -379,7 +391,7 @@ void workAngle(float angle_, u_int64_t &time_)
 	static float minAngleMistake = 0.02; // Минимальная ошибка по углу в Градусах
 	static float angleMistake = 0;		 // Текущая ошибка по углу в градусах
 
-	float angleFact = msg_Pose.th.mode0;		// Угол который отслеживаем
+	float angleFact = msg_Pose.th.mode10;		// Угол который отслеживаем
 	angleMistake = angle_ - RAD2DEG(angleFact); // Смотрим какой угол.// Смотрим куда нам надо Считаем ошибку по углу и включаем колеса в нужную сторону с учетом ошибки по углу и максимально заданой скорости на колесах
 	ROS_INFO_THROTTLE(0.1, "    angle_ = %6.2f angleFact = %6.2f angleMistake = %6.2f", angle_, RAD2DEG(angleFact), angleMistake);
 	if (abs(angleMistake) <= minAngleMistake) // Когда ошибка по углу будет меньше заданной считаем что приехали и включаем время что-бы выйти из данного этапа алгоритма

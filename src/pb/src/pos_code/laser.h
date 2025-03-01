@@ -193,8 +193,7 @@ void CLaser::calcAnglePillarForLaser(CPillar::SPillar *pillar_, SPose &poseLidar
                 itog2 = (360 - itog) + 90;
             else
                 itog2 = 90 - itog;
-
-            // ROS_INFO("    ITOG[%i] = %8.3f                         ITOG2 = %8.3f ", i, itog, itog2);
+            //ROS_INFO("    ITOG[%i] = %8.3f                         ITOG2 = %8.3f ", i, itog, itog2);
             // ROS_INFO("    Var1= %.3f Var2= %.3f",90-itog, 90+ itog);
         }
         // ROS_INFO(" ");

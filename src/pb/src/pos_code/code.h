@@ -155,8 +155,8 @@ SPose convertLidar2Rotation(SPose pose_, std::string stroka_)
 	// ROS_INFO_THROTTLE(RATE_OUTPUT,"+++ convertLidar2Rotation %s", stroka_.c_str());
 	SPose ret;
 	// g_poseRotation.theta = DEG2RAD(45);							  // Присваиваем глобальному углу начальное значение
-	ret.x = pose_.x + (transformLidar2Rotation.x * cos(pose_.th));
-	ret.y = pose_.y + (transformLidar2Rotation.x * sin(pose_.th));
+	ret.x = pose_.x + (transformLidar2Rotation.x * cos(DEG2RAD(pose_.th)));
+	ret.y = pose_.y + (transformLidar2Rotation.x * sin(DEG2RAD(pose_.th)));
 	ret.th = DEG2RAD(pose_.th);
 	ROS_INFO_THROTTLE(RATE_OUTPUT,"    g_poseRotation %s x= %.3f y= %.3f th = %.3f (gradus) %.3f rad", stroka_.c_str(), ret.x, ret.y, RAD2DEG(ret.th), ret.th);
 	return ret;
@@ -178,11 +178,12 @@ void startPosition(geometry_msgs::Pose2D &startPose2d_)
 	g_poseLidar.mode10.y = startPose2d_.y;
 	g_poseLidar.mode10.th = startPose2d_.theta;
 	ROS_INFO("    startPose2d x= %.3f y= %.3f theta= %.3f ", startPose2d_.x, startPose2d_.y, startPose2d_.theta);
-	g_poseLidar.mode0 = g_poseLidar.mode10;
 
 
 	g_poseRotation.mode10 = convertLidar2Rotation(g_poseLidar.mode10, "mode10");
 	ROS_INFO("    start g_poseRotation.mode10 x= %.3f y= %.3f theta= %.3f ", g_poseRotation.mode10.x, g_poseRotation.mode10.y, g_poseRotation.mode10.th);
+	
+	g_poseLidar.mode0 = g_poseLidar.mode10;
 	g_poseRotation.mode0 = g_poseRotation.mode10;
 
 	ROS_INFO("--- startPosition");
