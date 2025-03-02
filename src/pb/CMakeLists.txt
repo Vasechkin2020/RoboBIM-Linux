@@ -1,3 +1,4 @@
+
 cmake_minimum_required(VERSION 3.0.2)
 project(pb)
 
@@ -13,9 +14,15 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   tf
   std_msgs
-  geometry_msgs
+  sensor_msgs
   pb_msgs
+  geometry_msgs
+  visualization_msgs
+  pcl_ros
 )
+
+#find_package(PCL 1.8 REQUIRED)rosdep
+find_package(PCL REQUIRED)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -174,6 +181,7 @@ CATKIN_DEPENDS roscpp rospy std_msgs geometry_msgs message_runtime message_gener
 include_directories(
 # include
   ${catkin_INCLUDE_DIRS}
+  ${PCL_INCLUDE_DIRS}
 )
 # ВЗЯТО отсюда https://wiki.ros.org/navigation/Tutorials/RobotSetup/TF
 
@@ -191,6 +199,9 @@ target_link_libraries(calibr_node ${catkin_LIBRARIES} -lwiringPi -lpthread)
 
 add_executable(write_node src/write_node.cpp)
 target_link_libraries(write_node ${catkin_LIBRARIES} -lwiringPi -lpthread)
+
+add_executable(grok src/grok.cpp)
+target_link_libraries(grok ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 
 #add_executable(pillar_node src/pillar_node.cpp)
 #target_link_libraries(pillar_node ${catkin_LIBRARIES})
