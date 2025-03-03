@@ -17,12 +17,14 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   pb_msgs
   geometry_msgs
-  visualization_msgs
-  pcl_ros
+  visualization_msgs 
+
+  #pcl_ros
 )
 
-#find_package(PCL 1.8 REQUIRED)rosdep
-find_package(PCL REQUIRED)
+#find_package(PCL 1.8 REQUIRED)
+#find_package(PCL 1.8 REQUIRED COMPONENTS common io segmentation)
+#find_package(PCL REQUIRED)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -62,53 +64,6 @@ find_package(PCL REQUIRED)
 #add_message_files(
   #FILES
  # point.msg    # x,y
-  #pointA.msg    # x,y
-  #pillar.msg    # 
-  #--------------Структуры для сообщений на данные с MODUL -----------------------------------------
-  #SMotorSend.msg
-  #SLaserSend.msg
-  #SModul2Data.msg 
-
-  #SPose.msg    # x,y, theta
-  #SPoseTrue.msg    # x,y, theta, flag
-  #STwist.msg    # x,y, theta
-  #SOdom.msg
-  #SMpu.msg
-  #SEuler.msg    # roll pitch yaw
-  #SSpi.msg
-  #SSensor.msg
-  #SMotor.msg
-  #SControl.msg
- # SDriver2Data.msg
-  #SEncoder.msg
-  #-------------------------------------------------------
- # Struct_PoseLidar.msg
-  #Struct_Info_SPI.msg
-  
- # SAngleLL.msg
- #SAngleLaserLidar.msg
-
-  #-------------------------------------------------------
- # SControlModul.msg    # Топик с командой управления углами лазеров
- # SControlDriver.msg
-
- # topicPillar.msg    # Топик с данными координаты реального положения столбов
- # PillarOut.msg
-  #-------------------------------------------------------
-  #SLed.msg
-  #SJoy.msg
-
-  #Struct_Car.msg
-  #Struct_Odom.msg
-  #Struct_Servo.msg
- # Struct_ServoOut.msg
-  #Struct_StatusDriver.msg
-  #Rpy.msg
- # Odomet.msg
- # Control.msg
- # DataTimeMy.msg
- # data_driver_control.msg
- # data_driver_odometr.msg
 #)
 
 ## Generate services in the 'srv' folder
@@ -183,6 +138,11 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
   ${PCL_INCLUDE_DIRS}
 )
+
+# Указание путей к библиотекам PCL (иногда требуется явно)
+link_directories(${PCL_LIBRARY_DIRS})
+add_definitions(${PCL_DEFINITIONS})
+
 # ВЗЯТО отсюда https://wiki.ros.org/navigation/Tutorials/RobotSetup/TF
 
 add_executable(data_node src/data_node.cpp)
@@ -202,6 +162,15 @@ target_link_libraries(write_node ${catkin_LIBRARIES} -lwiringPi -lpthread)
 
 add_executable(grok src/grok.cpp)
 target_link_libraries(grok ${catkin_LIBRARIES} ${PCL_LIBRARIES})
+
+add_executable(chatgpt src/chatgpt.cpp)
+target_link_libraries(chatgpt ${catkin_LIBRARIES} ${PCL_LIBRARIES})
+
+add_executable(qween src/qween.cpp)
+target_link_libraries(qween ${catkin_LIBRARIES} ${PCL_LIBRARIES})
+
+add_executable(deepseek src/deepseek.cpp)
+target_link_libraries(deepseek ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 
 #add_executable(pillar_node src/pillar_node.cpp)
 #target_link_libraries(pillar_node ${catkin_LIBRARIES})

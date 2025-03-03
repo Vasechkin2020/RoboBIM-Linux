@@ -1,4 +1,3 @@
-
 #include <ros/ros.h>
 #include <sensor_msgs/LaserScan.h>
 #include <visualization_msgs/Marker.h>
@@ -13,11 +12,10 @@ struct Point {
 
 // Глобальные переменные
 ros::Publisher marker_pub;
+ros::Publisher cluster_pub;
 double COLUMN_RADIUS = 0.1575;  // Ожидаемый радиус столбов (315 мм / 2)
-double DIST_THRESHOLD = 0.1; // Порог расстояния для кластеризации
-double MIN_POINT_DENSITY = 10; // Минимальное количество точек на единицу окружности
-double MAX_DETECTION_DISTANCE = 20.0; // Максимальное расстояние до столбов (20 метров)
-std::vector<Point> last_detected_columns;
+double DIST_THRESHOLD = 0.07; // Порог расстояния для кластеризации
+const double MAX_DETECTION_DISTANCE = 20.0; // Максимальная дистанция обнаружения
 
 // Функция преобразования полярных координат в декартовы
 std::vector<Point> convertToCartesian(const sensor_msgs::LaserScan::ConstPtr& scan) {
@@ -54,9 +52,13 @@ std::vector<std::vector<Point>> clusterize(const std::vector<Point>& points) {
             }
         }
 
-        if (cluster.size() > 5) // Фильтруем маленькие шумовые кластеры
+        if (cluster.size() > 11 && cluster.size() < 101) // Фильтруем маленькие шумовые кластеры
+        {
             clusters.push_back(cluster);
+            ROS_INFO("    clusters size %i: ", cluster.size());
+        }
     }
+    ROS_INFO("ChatGPT Count clusters %i: ", clusters.size());
     return clusters;
 }
 
@@ -64,6 +66,8 @@ std::vector<std::vector<Point>> clusterize(const std::vector<Point>& points) {
 bool fitCircle(const std::vector<Point>& cluster, Point& center, double& radius) {
     double sumX = 0, sumY = 0, sumX2 = 0, sumY2 = 0, sumXY = 0, sumR = 0;
     int n = cluster.size();
+    
+    if (n < 5) return false;
     
     for (const auto& p : cluster) {
         sumX += p.x;
@@ -77,9 +81,12 @@ bool fitCircle(const std::vector<Point>& cluster, Point& center, double& radius)
     double D = n * sumXY - sumX * sumY;
     double E = n * sumY2 - sumY * sumY;
     double G = 0.5 * (n * (sumX2 + sumY2) - (sumX * sumX + sumY * sumY));
+
+    double denom = C * E - D * D;
+    if (std::abs(denom) < 1e-6) return false; // Избегаем деления на 0
     
-    double a = (G * E - D * sumXY) / (C * E - D * D);
-    double b = (C * G - D * sumXY) / (C * E - D * D);
+    double a = (G * E - D * sumXY) / denom;
+    double b = (C * G - D * sumXY) / denom;
     
     center.x = a;
     center.y = b;
@@ -89,14 +96,11 @@ bool fitCircle(const std::vector<Point>& cluster, Point& center, double& radius)
     }
     
     radius = sumR / n;
-    double circumference = 2 * M_PI * radius;
-    double point_density = n / circumference;
-    
-    return std::abs(radius - COLUMN_RADIUS) < 0.05 && point_density > MIN_POINT_DENSITY; // Фильтр по радиусу и плотности точек
+    return std::abs(radius - COLUMN_RADIUS) < COLUMN_RADIUS * 0.1; // Проверяем радиус с допуском 10%
 }
 
 // Визуализация найденных столбов
-void publishMarkers() {
+void publishMarkers(const std::vector<Point>& centers) {
     visualization_msgs::Marker marker;
     marker.header.frame_id = "laser";
     marker.header.stamp = ros::Time::now();
@@ -104,15 +108,16 @@ void publishMarkers() {
     marker.id = 0;
     marker.type = visualization_msgs::Marker::SPHERE_LIST;
     marker.action = visualization_msgs::Marker::ADD;
-    marker.scale.x = 0.1;
-    marker.scale.y = 0.1;
-    marker.scale.z = 0.1;
+    marker.scale.x = 0.2;
+    marker.scale.y = 0.2;
+    marker.scale.z = 0.2;
     marker.color.r = 1.0;
     marker.color.g = 0.0;
     marker.color.b = 0.0;
     marker.color.a = 1.0;
+    marker.pose.orientation.w = 1.0; // Установка кватерниона
 
-    for (const auto& c : last_detected_columns) {
+    for (const auto& c : centers) {
         geometry_msgs::Point p;
         p.x = c.x;
         p.y = c.y;
@@ -123,20 +128,51 @@ void publishMarkers() {
     marker_pub.publish(marker);
 }
 
+// Визуализация кластеров
+void publishClusters(const std::vector<std::vector<Point>>& clusters) {
+    visualization_msgs::Marker marker;
+    marker.header.frame_id = "laser";
+    marker.header.stamp = ros::Time::now();
+    marker.ns = "clusters";
+    marker.id = 1;
+    marker.type = visualization_msgs::Marker::POINTS;
+    marker.action = visualization_msgs::Marker::ADD;
+    marker.scale.x = 0.05;
+    marker.scale.y = 0.05;
+    marker.color.r = 0.0;
+    marker.color.g = 1.0;
+    marker.color.b = 0.0;
+    marker.color.a = 1.0;
+    marker.pose.orientation.w = 1.0;
+
+    for (const auto& cluster : clusters) {
+        for (const auto& point : cluster) {
+            geometry_msgs::Point p;
+            p.x = point.x;
+            p.y = point.y;
+            p.z = 0.0;
+            marker.points.push_back(p);
+        }
+    }
+    cluster_pub.publish(marker);
+}
+
 // Основная функция обработки данных лидара
 void lidarCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
     std::vector<Point> points = convertToCartesian(scan);
     std::vector<std::vector<Point>> clusters = clusterize(points);
 
-    last_detected_columns.clear();
+    publishClusters(clusters);
+    std::vector<Point> detected_columns;
     for (const auto& cluster : clusters) {
         Point center;
         double radius;
         if (fitCircle(cluster, center, radius)) {
-            last_detected_columns.push_back(center);
+            detected_columns.push_back(center);
             ROS_INFO("Column detected at (%.2f, %.2f) with radius %.2f", center.x, center.y, radius);
         }
     }
+    publishMarkers(detected_columns);
 }
 
 int main(int argc, char** argv) {
@@ -145,11 +181,11 @@ int main(int argc, char** argv) {
 
     ros::Subscriber sub = nh.subscribe("/scan", 1, lidarCallback);
     marker_pub = nh.advertise<visualization_msgs::Marker>("detected_columns", 1);
+    cluster_pub = nh.advertise<visualization_msgs::Marker>("detected_clusters", 1);
 
     ros::Rate rate(1); // 1 раз в секунду
     while (ros::ok()) {
         ros::spinOnce();
-        publishMarkers();
         rate.sleep();
     }
     return 0;

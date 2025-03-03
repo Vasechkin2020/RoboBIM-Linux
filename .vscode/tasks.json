@@ -8,7 +8,7 @@
             "args": [
                 "--pkg",
                 "pb_msgs",
-                "-j4",
+                "-j2",
                 "-DCMAKE_BUILD_TYPE=Debug"
             ],
             "problemMatcher": [],
@@ -26,7 +26,23 @@
                 "/home/pi/RoboBIM-Linux",
                 "--pkg",
                 "pb",
-                "-j4",
+                "-j2",
+                "-DCMAKE_BUILD_TYPE=Debug",
+                "-DCMAKE_EXPORT_COMPILE_COMMANDS=1"
+            ],
+            "problemMatcher": "$catkin-gcc",
+            "group": "build"
+        },
+        {
+            "label": "grok",
+            "type": "shell",
+            "command": "catkin_make",
+            "args": [
+                "--directory",
+                "/home/pi/RoboBIM-Linux",
+                "--pkg",
+                "pb",
+                "-j2",
                 "-DCMAKE_BUILD_TYPE=Debug",
                 "-DCMAKE_EXPORT_COMPILE_COMMANDS=1"
             ],
@@ -40,7 +56,7 @@
             "args": [
                 "--pkg",
                 "pillar",
-                "-j4",
+                "-j2",
                 "-DCMAKE_BUILD_TYPE=Debug",
                 "-DCMAKE_EXPORT_COMPILE_COMMANDS=1"
             ],
@@ -54,7 +70,7 @@
             "args": [
                 "--pkg",
                 "data_node",
-                "-j4",
+                "-j2",
                 "-DCMAKE_BUILD_TYPE=Debug",
                 "-DCMAKE_EXPORT_COMPILE_COMMANDS=1"
             ],
@@ -68,7 +84,7 @@
             "args": [
                 "--pkg",
                 "rplidar_ros",
-                "-j4",
+                "-j2",
                 "-DCMAKE_BUILD_TYPE=Debug",
                 "-DCMAKE_EXPORT_COMPILE_COMMANDS=1"
             ],
