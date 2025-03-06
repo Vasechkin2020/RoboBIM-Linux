@@ -6,29 +6,35 @@
 #include <signal.h>               // Для обработки Ctrl+C
 
 // Константы для задачи
+const double CLUSTER_TOLERANCE = 0.051;   // Максимальное расстояние между точками в кластере (10 см)
+const int MIN_POINTS = 11;              // Минимальное количество точек для кластера
+const int MAX_POINTS = 101;             // Максимальное количество точек для кластера
+const double MIN_PILLAR_WIDTH = 0.2;    // Минимальная ширина кластера для столба (м)
+const double MAX_PILLAR_WIDTH = 0.4;    // Максимальная ширина кластера для столба (м)
 const double PILLAR_RADIUS = 0.1575;    // Радиус столба (половина диаметра 0,315 м)
-const double RADIUS_TOLERANCE = 0.05;   // Допуск на радиус столба (±5 см)
-const double MIN_ARC_ANGLE = 0.5236;    // Минимальный угол дуги столба (30° в радианах)
-
-const double CLUSTER_TOLERANCE = 0.07;   // Максимальное расстояние между точками в кластере (20 см)
-const int MINPOINTS = 11;                // Минимальное количество точек для кластера
-const int MAXPOINTS = 101;                // Минимальное количество точек для кластера
 
 // Структура для точки с координатами x и y
 struct PointXY 
 {
     double x;  // Координата x
     double y;  // Координата y
-    double angle;  // Угол
-    double range;  // Дистанция
 };
 
-// Структура для окружности (будем искать столбы как окружности)
-struct Circle 
+// Структура для информации о кластере
+struct ClusterInfo 
 {
-    double x_center;  // Координата x центра окружности
-    double y_center;  // Координата y центра окружности
-    double radius;    // Радиус окружности
+    std::vector<PointXY> points;  // Список точек кластера
+    int point_count;              // Количество точек в кластере
+    double azimuth;               // Азимут до центра масс кластера в радианах
+    double min_distance;          // Минимальное расстояние до кластера от лидара
+    double width;                 // Ширина кластера (максимальное расстояние между точками)
+};
+
+// Структура для столба (координаты центра)
+struct Pillar 
+{
+    double x_center;     // Координата x центра столба
+    double y_center;     // Координата y центра столба
 };
 
 // Переменная для остановки программы по Ctrl+C
@@ -56,8 +62,8 @@ public:
         // Создаём publisher для отправки маркеров кластеров в RViz
         cluster_publisher = node.advertise<visualization_msgs::Marker>("/cluster_markers", 1);
         
-        // Настраиваем таймер, чтобы визуализация столбов происходила раз в секунду
-        timer = node.createTimer(ros::Duration(1.0), &PillarDetector::visualizeCallback, this);
+        // Настраиваем таймер, чтобы визуализация происходила раз в секунду
+        timer = node.createTimer(ros::Duration(0.1), &PillarDetector::visualizeCallback, this);
         
         ROS_INFO("Program started. Press Ctrl+C to exit.");
     }
@@ -67,8 +73,9 @@ private:
     ros::Subscriber scan_subscriber; // Подписчик на данные лидара
     ros::Publisher marker_publisher; // Издатель для маркеров столбов
     ros::Publisher cluster_publisher; // Издатель для маркеров кластеров
-    ros::Timer timer;               // Таймер для визуализации столбов
-    std::vector<Circle> pillars;    // Список найденных столбов
+    ros::Timer timer;               // Таймер для визуализации
+    std::vector<Pillar> pillars;    // Список найденных столбов
+    std::vector<ClusterInfo> cluster_info_list; // Список информации о кластерах
 
     // Функция обработки данных от лидара
     void scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan)
@@ -89,29 +96,23 @@ private:
                 PointXY point;
                 point.x = range * cos(angle);
                 point.y = range * sin(angle);
-                point.angle = angle;
-                point.range = range;
                 // Добавляем точку в список
                 points.push_back(point);
-                // if (i<10)
-                //     ROS_INFO("Grok Point %zu: angle = %6.3f x = %6.3f, y = %6.3f", i, angle, point.x, point.y);
             }
         }
 
         // Находим группы точек (кластеры)
-        std::vector<std::vector<PointXY>> clusters = findClusters(points);
+        findClusters(points);
         // Ищем столбы в этих кластерах
-        findPillars(clusters);
-        
-        // Публикуем кластеры в RViz
-        publishClusters(clusters);
+        findPillars();
     }
 
     // Функция для поиска кластеров (групп точек)
-    std::vector<std::vector<PointXY>> findClusters(std::vector<PointXY> points)
+    void findClusters(std::vector<PointXY> points)
     {
-        // Создаём список для хранения кластеров
-        std::vector<std::vector<PointXY>> clusters;
+        // Очищаем список кластеров перед новым поиском
+        cluster_info_list.clear();
+
         // Создаём список, чтобы отмечать, какие точки уже обработаны (0 - нет, 1 - да)
         std::vector<int> used(points.size(), 0);
 
@@ -168,15 +169,66 @@ private:
                 }
             }
 
-            // Если в кластере достаточно точек, сохраняем его
-            if (cluster.size() >= MINPOINTS && cluster.size() < MAXPOINTS)
+            // Если в кластере от MIN_POINTS до MAX_POINTS точек, сохраняем его
+            if (cluster.size() >= MIN_POINTS && cluster.size() <= MAX_POINTS)
             {
-                clusters.push_back(cluster);
-                ROS_INFO(" clusters size %i: ", cluster.size());
+                // Создаём структуру для хранения информации о кластере
+                ClusterInfo cluster_info;
+                cluster_info.points = cluster;
+                cluster_info.point_count = cluster.size();
+
+                // Вычисляем центр масс кластера
+                double x_sum = 0;
+                double y_sum = 0;
+                for (int j = 0; j < cluster.size(); j++)
+                {
+                    x_sum += cluster[j].x;
+                    y_sum += cluster[j].y;
+                }
+                double x_center_mass = x_sum / cluster.size();
+                double y_center_mass = y_sum / cluster.size();
+
+                // Вычисляем азимут до центра масс кластера
+                cluster_info.azimuth = atan2(y_center_mass, x_center_mass);
+
+                // Вычисляем минимальное расстояние до кластера от лидара (0, 0)
+                double min_dist = 1000.0;  // Большое начальное значение
+                for (int j = 0; j < cluster.size(); j++)
+                {
+                    double dist = sqrt(cluster[j].x * cluster[j].x + cluster[j].y * cluster[j].y);
+                    if (dist < min_dist)
+                    {
+                        min_dist = dist;
+                    }
+                }
+                cluster_info.min_distance = min_dist;
+
+                // Вычисляем ширину кластера (максимальное расстояние между любыми двумя точками)
+                double max_width = 0.0;
+                for (int j = 0; j < cluster.size(); j++)
+                {
+                    for (int k = j + 1; k < cluster.size(); k++)
+                    {
+                        double dist = getDistance(cluster[j], cluster[k]);
+                        if (dist > max_width)
+                        {
+                            max_width = dist;
+                        }
+                    }
+                }
+                cluster_info.width = max_width;
+
+                // Выводим информацию о кластере в консоль
+                ROS_INFO("Cluster found: %d points, azimuth = %.2f rad, min_distance = %.2f m, width = %.2f m",
+                         cluster_info.point_count, cluster_info.azimuth, cluster_info.min_distance, cluster_info.width);
+
+                // Сохраняем информацию о кластере в список
+                cluster_info_list.push_back(cluster_info);
             }
         }
-        ROS_INFO("Grok Count clusters %i: ", clusters.size());
-        return clusters;
+
+        // Выводим общее количество найденных кластеров
+        ROS_INFO("Found %d clusters total", (int)cluster_info_list.size());
     }
 
     // Функция для вычисления расстояния между двумя точками
@@ -188,200 +240,120 @@ private:
         return sqrt(dx * dx + dy * dy);
     }
 
-    // Функция для поиска окружности в кластере (RANSAC)
-    Circle fitCircle(std::vector<PointXY> points)
-    {
-        // Создаём переменную для лучшей окружности
-        Circle best_circle;
-        best_circle.x_center = 0;
-        best_circle.y_center = 0;
-        best_circle.radius = 0;
-        int best_inliers = 0;  // Счётчик точек, попавших в лучшую окружность
-
-        // Пробуем 100 раз найти окружность
-        for (int iter = 0; iter < 100; iter++)
-        {
-            // Выбираем 3 случайные точки для построения окружности
-            int idx1 = rand() % points.size();
-            int idx2 = rand() % points.size();
-            int idx3 = rand() % points.size();
-            // Проверяем, что точки разные
-            if (idx1 == idx2 || idx2 == idx3 || idx1 == idx3)
-            {
-                continue;
-            }
-
-            PointXY p1 = points[idx1];
-            PointXY p2 = points[idx2];
-            PointXY p3 = points[idx3];
-
-            // Вычисляем центр окружности через 3 точки (математика из геометрии)
-            double d = 2 * (p1.x * (p2.y - p3.y) + p2.x * (p3.y - p1.y) + p3.x * (p1.y - p2.y));
-            // Если знаменатель слишком мал, пропускаем
-            if (fabs(d) < 0.000001)
-            {
-                continue;
-            }
-
-            double x_c = ((p1.x * p1.x + p1.y * p1.y) * (p2.y - p3.y) +
-                          (p2.x * p2.x + p2.y * p2.y) * (p3.y - p1.y) +
-                          (p3.x * p3.x + p3.y * p3.y) * (p1.y - p2.y)) / d;
-            double y_c = ((p1.x * p1.x + p1.y * p1.y) * (p3.x - p2.x) +
-                          (p2.x * p2.x + p2.y * p2.y) * (p1.x - p3.x) +
-                          (p3.x * p3.x + p3.y * p3.y) * (p2.x - p1.x)) / d;
-            double radius = sqrt((p1.x - x_c) * (p1.x - x_c) + (p1.y - y_c) * (p1.y - y_c));
-
-            // Считаем, сколько точек попадает в эту окружность
-            int inliers = 0;
-            for (int i = 0; i < points.size(); i++)
-            {
-                double dist = fabs(sqrt((points[i].x - x_c) * (points[i].x - x_c) + 
-                                       (points[i].y - y_c) * (points[i].y - y_c)) - radius);
-                if (dist < RADIUS_TOLERANCE)
-                {
-                    inliers++;
-                }
-            }
-
-            // Если эта окружность лучше предыдущей, сохраняем её
-            if (inliers > best_inliers)
-            {
-                best_inliers = inliers;
-                best_circle.x_center = x_c;
-                best_circle.y_center = y_c;
-                best_circle.radius = radius;
-            }
-        }
-
-        return best_circle;
-    }
-
-    // Функция для поиска столбов среди кластеров
-    void findPillars(std::vector<std::vector<PointXY>> clusters)
+    // Функция для поиска столбов среди кластеров (по ширине)
+    void findPillars()
     {
         pillars.clear();  // Очищаем список столбов перед поиском
 
         // Проходим по всем кластерам
-        for (int i = 0; i < clusters.size(); i++)
+        for (int i = 0; i < cluster_info_list.size(); i++)
         {
-            // Вычисляем минимальный и максимальный углы дуги кластера
-            double min_theta = atan2(clusters[i][0].y, clusters[i][0].x);
-            double max_theta = min_theta;
-            for (int j = 0; j < clusters[i].size(); j++)
+            // Проверяем ширину кластера
+            if (cluster_info_list[i].width >= MIN_PILLAR_WIDTH && cluster_info_list[i].width <= MAX_PILLAR_WIDTH)
             {
-                double theta = atan2(clusters[i][j].y, clusters[i][j].x);
-                if (theta < min_theta)
+                // Находим точку с минимальным расстоянием до лидара (0, 0)
+                double min_dist = 1000.0;
+                PointXY closest_point = {0.0, 0.0};
+                for (int j = 0; j < cluster_info_list[i].points.size(); j++)
                 {
-                    min_theta = theta;
+                    double dist = sqrt(cluster_info_list[i].points[j].x * cluster_info_list[i].points[j].x +
+                                      cluster_info_list[i].points[j].y * cluster_info_list[i].points[j].y);
+                    if (dist < min_dist)
+                    {
+                        min_dist = dist;
+                        closest_point = cluster_info_list[i].points[j];
+                    }
                 }
-                if (theta > max_theta)
-                {
-                    max_theta = theta;
-                }
-            }
-            // Если дуга слишком мала, это не столб
-            if (max_theta - min_theta < MIN_ARC_ANGLE)
-            {
-                continue;
-            }
 
-            // Проверяем, похож ли кластер на окружность
-            Circle circle = fitCircle(clusters[i]);
-            // Если радиус не соответствует столбу, пропускаем
-            if (fabs(circle.radius - PILLAR_RADIUS) > RADIUS_TOLERANCE)
-            {
-                continue;
+                // Используем азимут кластера для направления
+                double azimuth = cluster_info_list[i].azimuth;
+
+                // Смещаем центр столба на расстояние радиуса от ближайшей точки по азимуту
+                Pillar pillar;
+                pillar.x_center = closest_point.x + PILLAR_RADIUS * cos(azimuth);
+                pillar.y_center = closest_point.y + PILLAR_RADIUS * sin(azimuth);
+
+                // Добавляем найденный столб в список
+                pillars.push_back(pillar);
+
+                // Выводим информацию о столбе в консоль, включая координаты, ширину и номер кластера
+                ROS_INFO("Pillar detected from cluster %d: x = %.2f m, y = %.2f m, distance = %.2f m, direction = %.2f rad (%.1f deg), width = %.2f m",
+                         i,
+                         pillar.x_center, pillar.y_center,
+                         sqrt(pillar.x_center * pillar.x_center + pillar.y_center * pillar.y_center),
+                         atan2(pillar.y_center, pillar.x_center),
+                         atan2(pillar.y_center, pillar.x_center) * 180 / M_PI,
+                         cluster_info_list[i].width);
             }
-
-            // Добавляем найденный столб в список
-            pillars.push_back(circle);
-
-            // Вычисляем расстояние и угол до столба
-            double distance = sqrt(circle.x_center * circle.x_center + circle.y_center * circle.y_center);
-            double direction = atan2(circle.y_center, circle.x_center);
-            // Выводим информацию в консоль
-            ROS_INFO("Pillar detected: distance = %.2f m, direction = %.2f rad (%.1f deg), radius = %.3f m",
-                     distance, direction, direction * 180 / M_PI, circle.radius);
         }
     }
 
-    // Функция для публикации кластеров в RViz
-    void publishClusters(std::vector<std::vector<PointXY>> clusters)
-    {
-        // Создаём сообщение для RViz
-        visualization_msgs::Marker marker;
-        marker.header.frame_id = "laser";  // Система координат лидара
-        marker.header.stamp = ros::Time::now(); // Текущая метка времени
-        marker.ns = "clustersGrok";                 // Пространство имён для кластеров
-        marker.type = visualization_msgs::Marker::POINTS; // Тип маркера - точки
-        marker.action = visualization_msgs::Marker::ADD;  // Действие - добавить
-        marker.pose.orientation.w = 1.0;        // Ориентация (без вращения)
-        marker.scale.x = 0.05;                  // Размер точки по x (5 см)
-        marker.scale.y = 0.05;                  // Размер точки по y
-        marker.color.r = 0.0;                   // Цвет - красный
-        marker.color.g = 1.0;                   // Цвет - зелёный (для отличия от столбов)
-        marker.color.b = 0.0;                   // Цвет - синий
-        marker.color.a = 1.0;                   // Прозрачность (непрозрачный)
-        marker.id = 0;                          // Идентификатор маркера
-
-        // Проходим по всем кластерам
-        for (int i = 0; i < clusters.size(); i++)
-        {
-            // Проходим по всем точкам в текущем кластере
-            for (int j = 0; j < clusters[i].size(); j++)
-            {
-                geometry_msgs::Point point;
-                point.x = clusters[i][j].x;  // Координата x точки
-                point.y = clusters[i][j].y;  // Координата y точки
-                point.z = 0.0;               // Высота (z=0, так как 2D)
-                marker.points.push_back(point); // Добавляем точку в список
-            }
-        }
-
-        // Отправляем маркер в RViz
-        cluster_publisher.publish(marker);
-        ROS_INFO("Published %d clusters with %d points", (int)clusters.size(), (int)marker.points.size());
-    }
-
-    // Функция для визуализации столбов в RViz
+    // Функция для визуализации кластеров и столбов в RViz (вызывается раз в секунду)
     void visualizeCallback(const ros::TimerEvent&)
     {
-        // Если столбов нет, ничего не делаем
-        if (pillars.size() == 0)
+        // Создаём маркер для кластеров
+        visualization_msgs::Marker cluster_marker;
+        cluster_marker.header.frame_id = "laser";       // Система координат лидара
+        cluster_marker.header.stamp = ros::Time::now(); // Текущая метка времени
+        cluster_marker.ns = "clusters";                 // Пространство имён для кластеров
+        cluster_marker.type = visualization_msgs::Marker::POINTS; // Тип маркера - точки
+        cluster_marker.action = visualization_msgs::Marker::ADD;  // Действие - добавить
+        cluster_marker.pose.orientation.w = 1.0;        // Ориентация (без вращения)
+        cluster_marker.scale.x = 0.05;                  // Размер точки по x (5 см)
+        cluster_marker.scale.y = 0.05;                  // Размер точки по y
+        cluster_marker.color.r = 0.0;                   // Цвет - красный
+        cluster_marker.color.g = 1.0;                   // Цвет - зелёный (для отличия от столбов)
+        cluster_marker.color.b = 0.0;                   // Цвет - синий
+        cluster_marker.color.a = 1.0;                   // Прозрачность (непрозрачный)
+        cluster_marker.id = 0;                          // Идентификатор маркера
+
+        // Заполняем маркер кластерами
+        for (int i = 0; i < cluster_info_list.size(); i++)
         {
-            return;
+            for (int j = 0; j < cluster_info_list[i].points.size(); j++)
+            {
+                geometry_msgs::Point point;
+                point.x = cluster_info_list[i].points[j].x;  // Координата x точки
+                point.y = cluster_info_list[i].points[j].y;  // Координата y точки
+                point.z = 0.0;                               // Высота (z=0, так как 2D)
+                cluster_marker.points.push_back(point);      // Добавляем точку в список
+            }
         }
 
-        // Создаём сообщение для RViz
-        visualization_msgs::Marker marker;
-        marker.header.frame_id = "laser_frame";  // Система координат лидара
-        marker.header.stamp = ros::Time::now(); // Текущая метка времени
-        marker.ns = "pillars";                  // Пространство имён
-        marker.type = visualization_msgs::Marker::SPHERE_LIST; // Тип маркера - список сфер
-        marker.action = visualization_msgs::Marker::ADD;       // Действие - добавить
-        marker.pose.orientation.w = 1.0;        // Ориентация (без вращения)
-        marker.scale.x = 0.315;                 // Размер сферы по x (диаметр столба)
-        marker.scale.y = 0.315;                 // Размер сферы по y
-        marker.scale.z = 0.315;                 // Размер сферы по z
-        marker.color.r = 1.0;                   // Цвет - красный
-        marker.color.g = 0.0;                   // Цвет - зелёный
-        marker.color.b = 0.0;                   // Цвет - синий
-        marker.color.a = 1.0;                   // Прозрачность (непрозрачный)
-        marker.id = 0;                          // Идентификатор маркера
+        // Создаём маркер для столбов
+        visualization_msgs::Marker pillar_marker;
+        pillar_marker.header.frame_id = "laser";       // Система координат лидара
+        pillar_marker.header.stamp = ros::Time::now(); // Текущая метка времени
+        pillar_marker.ns = "pillars";                  // Пространство имён
+        pillar_marker.type = visualization_msgs::Marker::SPHERE_LIST; // Тип маркера - список сфер
+        pillar_marker.action = visualization_msgs::Marker::ADD;       // Действие - добавить
+        pillar_marker.pose.orientation.w = 1.0;        // Ориентация (без вращения)
+        pillar_marker.scale.x = 0.315;                 // Размер сферы по x (диаметр столба)
+        pillar_marker.scale.y = 0.315;                 // Размер сферы по y
+        pillar_marker.scale.z = 0.315;                 // Размер сферы по z
+        pillar_marker.color.r = 1.0;                   // Цвет - красный
+        pillar_marker.color.g = 0.0;                   // Цвет - зелёный
+        pillar_marker.color.b = 0.0;                   // Цвет - синий
+        pillar_marker.color.a = 1.0;                   // Прозрачность (непрозрачный)
+        pillar_marker.id = 0;                          // Идентификатор маркера
 
-        // Добавляем все столбы в маркер
+        // Заполняем маркер столбами
         for (int i = 0; i < pillars.size(); i++)
         {
             geometry_msgs::Point point;
             point.x = pillars[i].x_center;  // Координата x центра столба
             point.y = pillars[i].y_center;  // Координата y центра столба
             point.z = 0.0;                  // Высота (z=0, так как 2D)
-            marker.points.push_back(point); // Добавляем точку в список
+            pillar_marker.points.push_back(point); // Добавляем точку в список
         }
 
-        // Отправляем маркер в RViz
-        marker_publisher.publish(marker);
-        ROS_INFO("Published %d pillars", (int)pillars.size());
+        // Отправляем оба маркера в RViz
+        cluster_publisher.publish(cluster_marker);
+        marker_publisher.publish(pillar_marker);
+
+        // Выводим информацию о публикации
+        ROS_INFO("Published %d clusters with %d points and %d pillars",
+                 (int)cluster_info_list.size(), (int)cluster_marker.points.size(), (int)pillars.size());
     }
 };
 
