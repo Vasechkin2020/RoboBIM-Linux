@@ -160,8 +160,8 @@ target_link_libraries(calibr_node ${catkin_LIBRARIES} -lwiringPi -lpthread)
 add_executable(write_node src/write_node.cpp)
 target_link_libraries(write_node ${catkin_LIBRARIES} -lwiringPi -lpthread)
 
-add_executable(grok src/grok.cpp)
-target_link_libraries(grok ${catkin_LIBRARIES} ${PCL_LIBRARIES})
+add_executable(pillar_node src/pillar_node.cpp)
+target_link_libraries(pillar_node ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 
 add_executable(chatgpt src/chatgpt.cpp)
 target_link_libraries(chatgpt ${catkin_LIBRARIES} ${PCL_LIBRARIES})

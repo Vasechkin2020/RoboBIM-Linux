@@ -3,6 +3,12 @@
 #include </opt/ros/melodic/include/ros/ros.h>
 #include </opt/ros/melodic/include/ros/time.h>
 #include <log4cxx/mdc.h>
+#include <ros/ros.h>                   // Библиотека ROS для работы с узлами
+#include <sensor_msgs/LaserScan.h>     // Сообщения для данных лидара
+#include <visualization_msgs/Marker.h> // Сообщения для визуализации в RViz
+#include <vector>                      // Стандартный вектор C++
+#include <cmath>                       // Математические функции (sin, cos, sqrt)
+#include <signal.h>                    // Для обработки Ctrl+C
 
 
 static const double THROTTLE_PERIOD_1 = 1.0; // секунды 

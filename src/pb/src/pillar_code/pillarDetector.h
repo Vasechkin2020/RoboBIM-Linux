@@ -1,61 +1,7 @@
-#include <ros/ros.h>                   // Библиотека ROS для работы с узлами
-#include <sensor_msgs/LaserScan.h>     // Сообщения для данных лидара
-#include <visualization_msgs/Marker.h> // Сообщения для визуализации в RViz
-#include <vector>                      // Стандартный вектор C++
-#include <cmath>                       // Математические функции (sin, cos, sqrt)
-#include <signal.h>                    // Для обработки Ctrl+C
+#ifndef PILLAR_DETECTOR_H
+#define PILLAR_DETECTOR_H
 
-// Константы для задачи
-const double CLUSTER_TOLERANCE = 0.33; // Максимальное расстояние между точками в кластере (10 см)
-const int MIN_POINTS = 11;             // Минимальное количество точек для кластера
-const int MAX_POINTS = 101;            // Максимальное количество точек для кластера
-const double MIN_PILLAR_WIDTH = 0.20;  // Минимальная ширина кластера для столба (м)
-const double MAX_PILLAR_WIDTH = 0.40;  // Максимальная ширина кластера для столба (м)
-const double PILLAR_RADIUS = 0.1575;   // Радиус столба (половина диаметра 0,315 м)
-const double MAX_MATCH_DISTANCE = 0.3; // Максимальное расстояние для сопоставления столба (м)
-
-// Заданные координаты четырёх столбов (x, y) в метрах в глобальной системе координат
-const std::vector<std::pair<double, double>> KNOWN_PILLARS = {
-    {4.0, 0.3}, // Столб 1
-    {0.0, 0.5}, // Столб 3
-    {0.5, 4.0}, // Столб 2
-    {5.0, 4.0}  // Столб 4
-};
-
-// Структура для точки с координатами x и y
-struct PointXY
-{
-    double x; // Координата x
-    double y; // Координата y
-};
-
-// Структура для информации о кластере
-struct ClusterInfo
-{
-    std::vector<PointXY> points; // Список точек кластера (локальные координаты)
-    int point_count;             // Количество точек в кластере
-    double azimuth;              // Азимут до центра масс кластера в радианах (локальный)
-    double min_distance;         // Минимальное расстояние до кластера от лидара
-    double width;                // Ширина кластера (максимальное расстояние между точками)
-    double x_global;             // Глобальная координата x центра масс
-    double y_global;             // Глобальная координата y центра масс
-    double azimuth_global;       // Азимут в глобальной системе
-};
-
-// Структура для столба (координаты центра)
-struct Pillar
-{
-    double x_center;  // Координата x центра столба (локальная)
-    double y_center;  // Координата y центра столба (локальная)
-    double x_global;  // Глобальная координата x центра столба
-    double y_global;  // Глобальная координата y центра столба
-    double direction; // Направление
-    double distance;  // Дистанция
-    bool match;  // Сопоставление
-};
-
-// Переменная для остановки программы по Ctrl+C
-int keep_running = 1;
+// #include "genStruct.h" // Тут все общие структуры. Истользуются и Data и Main и Head
 
 // Класс для поиска и отображения столбов
 class PillarDetector
@@ -81,12 +27,54 @@ public:
         ROS_INFO("Program started. Press Ctrl+C to exit.");
     }
 
-    // Функция, которая срабатывает при нажатии Ctrl+C
-    static void stopProgram(int signal)
+    // Константы для задачи
+    const double CLUSTER_TOLERANCE = 0.33; // Максимальное расстояние между точками в кластере (10 см)
+    const int MIN_POINTS = 11;             // Минимальное количество точек для кластера
+    const int MAX_POINTS = 101;            // Максимальное количество точек для кластера
+    const double MIN_PILLAR_WIDTH = 0.20;  // Минимальная ширина кластера для столба (м)
+    const double MAX_PILLAR_WIDTH = 0.40;  // Максимальная ширина кластера для столба (м)
+    const double PILLAR_RADIUS = 0.1575;   // Радиус столба (половина диаметра 0,315 м)
+    const double MAX_MATCH_DISTANCE = 0.3; // Максимальное расстояние для сопоставления столба (м)
+
+    // Заданные координаты четырёх столбов (x, y) в метрах в глобальной системе координат
+    const std::vector<std::pair<double, double>> KNOWN_PILLARS = {
+        {4.0, 0.3}, // Столб 1
+        {0.0, 0.5}, // Столб 3
+        {0.5, 4.0}, // Столб 2
+        {5.0, 4.0}  // Столб 4
+    };
+
+    // Структура для точки с координатами x и y
+    struct PointXY
     {
-        keep_running = 0; // Устанавливаем флаг, чтобы остановить цикл
-        ros::shutdown();  // Завершаем работу ROS
-    }
+        double x; // Координата x
+        double y; // Координата y
+    };
+
+    // Структура для информации о кластере
+    struct ClusterInfo
+    {
+        std::vector<PointXY> points; // Список точек кластера (локальные координаты)
+        int point_count;             // Количество точек в кластере
+        double azimuth;              // Азимут до центра масс кластера в радианах (локальный)
+        double min_distance;         // Минимальное расстояние до кластера от лидара
+        double width;                // Ширина кластера (максимальное расстояние между точками)
+        double x_global;             // Глобальная координата x центра масс
+        double y_global;             // Глобальная координата y центра масс
+        double azimuth_global;       // Азимут в глобальной системе
+    };
+
+    // Структура для столба (координаты центра)
+    struct Pillar
+    {
+        double x_center;  // Координата x центра столба (локальная)
+        double y_center;  // Координата y центра столба (локальная)
+        double x_global;  // Глобальная координата x центра столба
+        double y_global;  // Глобальная координата y центра столба
+        double direction; // Направление
+        double distance;  // Дистанция
+        bool match;       // Сопоставление
+    };
 
 private:
     ros::NodeHandle node;                       // Узел ROS для работы с топиками
@@ -131,11 +119,11 @@ private:
         elapsed_time = ros::Time::now() - start_time;                      // Вычисляем интервал
         ROS_INFO("    End Scan Elapsed time: %.6f seconds", elapsed_time.toSec());
 
-        std::vector<std::vector<PointXY>> clusters1 = findClusters(points); // Находим группы точек (кластеры)
+        std::vector<std::vector<PointXY>> clusters1 = findClusters(points);          // Находим группы точек (кластеры)
         std::vector<ClusterInfo> cluster_info_list1 = createdClasterList(clusters1); // Список информации о кластерах
-        
+
         std::vector<std::vector<PointXY>> clusters2 = clusterChatGpt(points);
-        //std::vector<std::vector<PointXY>> clusters2 = clusterChatGpt(pointsInvers);
+        // std::vector<std::vector<PointXY>> clusters2 = clusterChatGpt(pointsInvers);
         std::vector<ClusterInfo> cluster_info_list2 = createdClasterList(clusters2); // Список информации о кластерах
 
         // std::vector<std::vector<PointXY>> clusters3 = clusterDeepSeek(points);
@@ -254,13 +242,13 @@ private:
 
         // Новые константы для кластеризации
         const double MAX_STEP_DISTANCE = 0.05; // Максимальное расстояние до предыдущей точки (5 см)
-        const int SEARCH_LIMIT = 100;           // Ограничение на количество точек для поиска от первой
+        const int SEARCH_LIMIT = 100;          // Ограничение на количество точек для поиска от первой
 
-        cluster_info_list.clear();// Очищаем список кластеров перед новым поиском
-        std::vector<int> used(points.size(), 0);// Создаём список, чтобы отмечать, какие точки уже обработаны (0 - нет, 1 - да)
-        for (int i = 0; i < points.size(); i++)// Проходим по всем точкам
+        cluster_info_list.clear();               // Очищаем список кластеров перед новым поиском
+        std::vector<int> used(points.size(), 0); // Создаём список, чтобы отмечать, какие точки уже обработаны (0 - нет, 1 - да)
+        for (int i = 0; i < points.size(); i++)  // Проходим по всем точкам
         {
-            if (used[i] == 1)// Если точка уже обработана, пропускаем её
+            if (used[i] == 1) // Если точка уже обработана, пропускаем её
                 continue;
 
             // Создаём новый кластер и добавляем в него первую точку
@@ -276,7 +264,7 @@ private:
                 if (i == j || used[j] == 1)
                     continue;
 
-                search_count++;// Увеличиваем счётчик проверенных точек
+                search_count++; // Увеличиваем счётчик проверенных точек
 
                 // Вычисляем расстояние до последней добавленной точки в кластере
                 double step_dist = getDistance(cluster.back(), points[j]);
@@ -489,8 +477,8 @@ private:
         for (size_t i = 0; i < pillars.size(); i++)
         {
             // ROS_INFO("Pillar %i", i);
-            double min_dist = 1e10; // Большое начальное значение
-            int best_match = -1;    // Индекс ближайшего известного столба
+            double min_dist = 1e10;   // Большое начальное значение
+            int best_match = -1;      // Индекс ближайшего известного столба
             pillars[i].match = false; // С начала он не сопоставленный
 
             // Находим ближайший известный столб (сравниваем по глобальным координатам)
@@ -685,7 +673,7 @@ private:
         // pillar_marker.color.g = 0.0;                                  // Цвет - зелёный
         // pillar_marker.color.b = 0.0;                                  // Цвет - синий
         // pillar_marker.color.a = 1.0;                                  // Прозрачность (непрозрачный)
-        pillar_marker.id = 0;                                         // Идентификатор маркера
+        pillar_marker.id = 0; // Идентификатор маркера
 
         // Заполняем маркер столбами (локальные координаты для RViz)
         for (int i = 0; i < pillars.size(); i++)
@@ -700,7 +688,7 @@ private:
             point.y = pillars[i].y_center;         // Локальная координата y центра столба
             point.z = 0.0;                         // Высота (z=0, так как 2D)
             pillar_marker.points.push_back(point); // Добавляем точку в список
-            pillar_marker.colors.push_back(color);     // Добавляем цвет в список
+            pillar_marker.colors.push_back(color); // Добавляем цвет в список
         }
 
         // Создаём маркер для лидара с направлением в глобальной системе координат
@@ -737,26 +725,4 @@ private:
     }
 };
 
-// Главная функция программы
-int main(int argc, char **argv)
-{
-    // Настраиваем обработку Ctrl+C
-    signal(SIGINT, PillarDetector::stopProgram);
-
-    // Инициализируем ROS с именем узла "pillar_detector"
-    ros::init(argc, argv, "pillar_detector");
-    // Создаём объект детектора столбов
-    PillarDetector detector;
-
-    // Создаём цикл с частотой 10 Гц
-    ros::Rate loop_rate(2);
-    // Пока ROS работает и не нажат Ctrl+C
-    while (ros::ok() && keep_running)
-    {
-        ros::spinOnce();   // Обрабатываем входящие сообщения
-        loop_rate.sleep(); // Ждём, чтобы поддерживать частоту 10 Гц
-    }
-
-    ROS_INFO("Program stopped");
-    return 0;
-}
+#endif
