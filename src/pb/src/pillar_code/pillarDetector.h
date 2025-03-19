@@ -1,8 +1,6 @@
 #ifndef PILLAR_DETECTOR_H
 #define PILLAR_DETECTOR_H
 
-// #include "genStruct.h" // Тут все общие структуры. Истользуются и Data и Main и Head
-
 // Класс для поиска и отображения столбов
 class PillarDetector
 {
@@ -10,7 +8,7 @@ public:
     PillarDetector()
     {
         // Подписываемся на топик /scan, чтобы получать данные лидара
-        scan_subscriber = node.subscribe("/scan", 1, &PillarDetector::scanCallback, this);
+        // scan_subscriber = node.subscribe("/scan", 1, &PillarDetector::scanCallback, this);
 
         // Создаём publisher для отправки маркеров столбов в RViz
         marker_publisher = node.advertise<visualization_msgs::Marker>("/pillar_markers", 1);
@@ -37,12 +35,29 @@ public:
     const double MAX_MATCH_DISTANCE = 0.3; // Максимальное расстояние для сопоставления столба (м)
 
     // Заданные координаты четырёх столбов (x, y) в метрах в глобальной системе координат
-    const std::vector<std::pair<double, double>> KNOWN_PILLARS = {
-        {4.0, 0.3}, // Столб 1
-        {0.0, 0.5}, // Столб 3
-        {0.5, 4.0}, // Столб 2
-        {5.0, 4.0}  // Столб 4
+    std::vector<std::pair<double, double>> KNOWN_PILLARS = {
+        {0.0, 0.0}, // Столб 1
+        {0.0, 0.0}, // Столб 3
+        {0.0, 0.0}, // Столб 2
+        {0.0, 0.0}  // Столб 4
     };
+
+    // Метод изменения известных столбов
+    void changeKnownPillars(int i, float first_, float second_)
+    {
+        // Изменение координат столба
+        KNOWN_PILLARS[i].first = first_;   // Новое значение x
+        KNOWN_PILLARS[i].second = second_; // Новое значение y
+        ROS_INFO("changeKnownPillars %i x= %.3f y= %.3f", i, KNOWN_PILLARS[i].first, KNOWN_PILLARS[i].second);
+    }
+    // Метод изменения положения лидара
+    void changePoseLidar(float x_, float y_, float th_)
+    {
+        lidar_x = x_;                             // Координата x лидара в глобальной системе
+        lidar_y = y_;                             // Координата y лидара в глобальной системе
+        lidar_theta = (th_ + 180) / (180 / M_PI); // Угол ориентации лидара в глобальной системе (рад)
+        ROS_INFO("changePoseLidar x= %.3f y= %.3f  th= %.4f (rad) th= %.3f (grad)", lidar_x, lidar_y, lidar_theta, th_);
+    }
 
     // Структура для точки с координатами x и y
     struct PointXY
@@ -76,28 +91,11 @@ public:
         bool match;       // Сопоставление
     };
 
-private:
-    ros::NodeHandle node;                       // Узел ROS для работы с топиками
-    ros::Subscriber scan_subscriber;            // Подписчик на данные лидара
-    ros::Publisher marker_publisher;            // Издатель для маркеров столбов
-    ros::Publisher cluster_publisher;           // Издатель для маркеров кластеров
-    ros::Publisher lidar_publisher;             // Издатель для маркера лидара
-    ros::Timer timer;                           // Таймер для визуализации
-    std::vector<Pillar> pillars;                // Список найденных столбов
-    std::vector<ClusterInfo> cluster_info_list; // Список информации о кластерах
-
-    double lidar_x = 1.0;        // Координата x лидара в глобальной системе
-    double lidar_y = 2.0;        // Координата y лидара в глобальной системе
-    double lidar_theta = 3.1415; // Угол ориентации лидара в глобальной системе (рад)
-    ros::Time start_time;        // Записываем конечное время
-    ros::Time end_time;          // Записываем конечное время
-    ros::Duration elapsed_time;  // Вычисляем интервал
-
     // Функция обработки данных от лидара
     void scanCallback(const sensor_msgs::LaserScan::ConstPtr &scan)
     {
         start_time = ros::Time::now(); // Записываем начальное время
-        ROS_INFO("    New Scan ");
+        ROS_INFO("++++ scanCallback");
         std::vector<PointXY> points; // Создаём пустой список точек
         points.reserve(4096);
 
@@ -117,26 +115,45 @@ private:
         }
         std::vector<PointXY> pointsInvers(points.rbegin(), points.rend()); // Создаем новый вектор с элементами в обратном порядке
         elapsed_time = ros::Time::now() - start_time;                      // Вычисляем интервал
-        ROS_INFO("    End Scan Elapsed time: %.6f seconds", elapsed_time.toSec());
+        // ROS_INFO("    End Scan Elapsed time: %.6f seconds", elapsed_time.toSec());
 
         std::vector<std::vector<PointXY>> clusters1 = findClusters(points);          // Находим группы точек (кластеры)
         std::vector<ClusterInfo> cluster_info_list1 = createdClasterList(clusters1); // Список информации о кластерах
 
-        std::vector<std::vector<PointXY>> clusters2 = clusterChatGpt(points);
+        // std::vector<std::vector<PointXY>> clusters2 = clusterChatGpt(points);
         // std::vector<std::vector<PointXY>> clusters2 = clusterChatGpt(pointsInvers);
-        std::vector<ClusterInfo> cluster_info_list2 = createdClasterList(clusters2); // Список информации о кластерах
+        // std::vector<ClusterInfo> cluster_info_list2 = createdClasterList(clusters2); // Список информации о кластерах
 
         // std::vector<std::vector<PointXY>> clusters3 = clusterDeepSeek(points);
         // std::vector<ClusterInfo> cluster_info_list3 = createdClasterList(clusters3); // Список информации о кластерах
 
         cluster_info_list = cluster_info_list1; // Какой кластер лист отображаем
 
+        ROS_INFO("    Lidar theta START = %.3f rad (%.3f deg)", lidar_theta, RAD2DEG(lidar_theta));
+
         // Ищем столбы в этих кластерах
         findPillars();
-        ROS_INFO("    End findPillars ");
+
         // // Сопоставляем столбы с известными координатами и вычисляем позицию и ориентацию лидара
         matchPillars();
     }
+
+private:
+    ros::NodeHandle node;                       // Узел ROS для работы с топиками
+    ros::Subscriber scan_subscriber;            // Подписчик на данные лидара
+    ros::Publisher marker_publisher;            // Издатель для маркеров столбов
+    ros::Publisher cluster_publisher;           // Издатель для маркеров кластеров
+    ros::Publisher lidar_publisher;             // Издатель для маркера лидара
+    ros::Timer timer;                           // Таймер для визуализации
+    std::vector<Pillar> pillars;                // Список найденных столбов
+    std::vector<ClusterInfo> cluster_info_list; // Список информации о кластерах
+
+    double lidar_x = 0.0;       // Координата x лидара в глобальной системе
+    double lidar_y = 0.0;       // Координата y лидара в глобальной системе
+    double lidar_theta = 0.0;   // Угол ориентации лидара в глобальной системе (рад)
+    ros::Time start_time;       // Записываем конечное время
+    ros::Time end_time;         // Записываем конечное время
+    ros::Duration elapsed_time; // Вычисляем интервал
 
     // Функция кластеризации (DBSCAN-подобный алгоритм)
     std::vector<std::vector<PointXY>> clusterChatGpt(const std::vector<PointXY> &points)
@@ -297,9 +314,9 @@ private:
                 // ROS_INFO("    clusters size %i: ", cluster.size());
             }
         }
-        ROS_INFO("Found %d clusters total", (int)clusters.size()); // Выводим общее количество найденных кластеров
-        elapsed_time = ros::Time::now() - start_time;              // Вычисляем интервал
-        ROS_INFO("    End findClusters Elapsed time: %.3f seconds", elapsed_time.toSec());
+        ROS_INFO("    Found %d clusters total", (int)clusters.size()); // Выводим общее количество найденных кластеров
+        elapsed_time = ros::Time::now() - start_time;                  // Вычисляем интервал
+        // ROS_INFO("    End findClusters Elapsed time: %.3f seconds", elapsed_time.toSec());
         return clusters;
     }
 
@@ -402,6 +419,8 @@ private:
     // Функция для поиска столбов среди кластеров (по ширине)
     void findPillars()
     {
+        ROS_INFO("+++ findPillars");
+
         pillars.clear(); // Очищаем список столбов перед поиском
 
         // Проходим по всем кластерам
@@ -442,7 +461,7 @@ private:
                 double direction = atan2(dy, dx);
 
                 pillar.direction = direction;
-                pillar.distance = distance;
+                pillar.distance = distance - PILLAR_RADIUS; // ОТНИМАЕМ ЧТОБЫ БЫЛО ОДИНАКОВО С ДРУГИМ АЛГОРИТМОМ
 
                 // Добавляем найденный столб в список
                 pillars.push_back(pillar);
@@ -457,6 +476,7 @@ private:
                 //          cluster_info_list[i].width);
             }
         }
+        ROS_INFO("    Found %d pillars total", (int)pillars.size()); // Выводим общее количество найденных кластеров
     }
 
     // Функция для сопоставления обнаруженных столбов с известными координатами и вычисления позиции и ориентации лидара
@@ -511,11 +531,11 @@ private:
                 pillars[i].match = true;
 
                 // Сохраняем пару координат и азимут для вычисления позиции и ориентации лидара
-                matched_pairs.push_back({pillars[i].x_center, pillars[i].y_center});
-                measured_azimuths.push_back(cluster_info_list[i].azimuth);
+                matched_pairs.push_back({pillars[i].x_global, pillars[i].y_global});
+                measured_azimuths.push_back(pillars[i].direction);
 
                 // Выводим результат сопоставления
-                ROS_INFO("   Pillar %zu matched to known pillar %d (x=%.2f, y=%.2f): delta_x = %.2f m, delta_y = %.2f m, gipotenuza = %.2f m, distance = %.2f m, direction = %.2f grad",
+                ROS_INFO("    Pillar %zu matched pillar %d (x=%.2f, y=%.2f): delta_x = %.3f m, delta_y = %.3f m, gipotenuza = %.3f m, distance = %.3f m, direction = %.3f grad",
                          i, best_match,
                          KNOWN_PILLARS[best_match].first, KNOWN_PILLARS[best_match].second,
                          delta_x, delta_y, min_dist, pillars[i].distance, pillars[i].direction * 180 / M_PI);
@@ -538,65 +558,70 @@ private:
             }
         }
 
-        // // Вычисляем координаты и ориентацию лидара в глобальной системе
-        // if (!matched_pairs.empty())
-        // {
-        //     double sum_x = 0.0;
-        //     double sum_y = 0.0;
-        //     double sum_theta = 0.0;
-        //     int count = 0;
+        // Вычисляем координаты и ориентацию лидара в глобальной системе
+        if (!matched_pairs.empty())
+        {
+            // ROS_INFO("+++ matched_pairs.empty %i", matched_pairs.size());
+            double sum_x = 0.0;
+            double sum_y = 0.0;
+            double sum_theta = 0.0;
+            int count = 0;
 
-        //     for (size_t i = 0; i < matched_pairs.size(); i++)
-        //     {
-        //         int global_idx = -1;
-        //         for (size_t j = 0; j < KNOWN_PILLARS.size(); j++)
-        //         {
-        //             double dx_local = matched_pairs[i].first - KNOWN_PILLARS[j].first;
-        //             double dy_local = matched_pairs[i].second - KNOWN_PILLARS[j].second;
-        //             double dist_local = sqrt(dx_local * dx_local + dy_local * dy_local);
-        //             double dx_global = pillars[i].x_global - KNOWN_PILLARS[j].first;
-        //             double dy_global = pillars[i].y_global - KNOWN_PILLARS[j].second;
-        //             double dist_global = sqrt(dx_global * dx_global + dy_global * dy_global);
-        //             if (dist_global <= MAX_MATCH_DISTANCE)
-        //             {
-        //                 global_idx = j;
-        //                 break;
-        //             }
-        //         }
+            for (size_t i = 0; i < matched_pairs.size(); i++)
+            {
+                int global_idx = -1;
+                for (size_t j = 0; j < KNOWN_PILLARS.size(); j++)
+                {
+                    double dx = matched_pairs[i].first - KNOWN_PILLARS[j].first;
+                    double dy = matched_pairs[i].second - KNOWN_PILLARS[j].second;
+                    double dist = sqrt(dx * dx + dy * dy);
 
-        //         if (global_idx != -1)
-        //         {
-        //             // Вычисляем позицию лидара: x_lidar = x_global - x_local (в локальной системе)
-        //             sum_x += KNOWN_PILLARS[global_idx].first - matched_pairs[i].first;
-        //             sum_y += KNOWN_PILLARS[global_idx].second - matched_pairs[i].second;
+                    // ROS_INFO("    j = %i dist= %f ", j, dist);
+                    if (dist <= MAX_MATCH_DISTANCE)
+                    {
+                        global_idx = j;
+                        // ROS_INFO("    global_idx = %i", j);
+                        break;
+                    }
+                }
 
-        //             // Вычисляем теоретический азимут в глобальной системе
-        //             double global_azimuth = atan2(KNOWN_PILLARS[global_idx].second - lidar_y,
-        //                                           KNOWN_PILLARS[global_idx].first - lidar_x);
-        //             // Разница между измеренным и глобальным азимутом даёт угол поворота лидара
-        //             double theta_diff = normalizeAngle(measured_azimuths[i] - global_azimuth);
-        //             sum_theta += theta_diff;
-        //             count++;
-        //         }
-        //     }
+                if (global_idx != -1)
+                {
+                    sum_x += KNOWN_PILLARS[global_idx].first - matched_pairs[i].first;
+                    sum_y += KNOWN_PILLARS[global_idx].second - matched_pairs[i].second;
 
-        //     if (count > 0)
-        //     {
-        //         lidar_x = sum_x / count;
-        //         lidar_y = sum_y / count;
-        //         lidar_theta = normalizeAngle(sum_theta / count);
-        //         ROS_INFO("Lidar position in global coordinates: x = %.2f m, y = %.2f m, theta = %.2f rad (%.1f deg) (based on %d matched pillars)",
-        //                  lidar_x, lidar_y, lidar_theta, lidar_theta * 180 / M_PI, count);
-        //     }
-        //     else
-        //     {
-        //         ROS_INFO("Could not compute lidar position and orientation: no valid matches.");
-        //     }
-        // }
-        // else
-        // {
-        //     ROS_INFO("Could not compute lidar position and orientation: no pillars matched.");
-        // }
+                    // Вычисляем теоретический азимут
+                    double global_azimuth = atan2(KNOWN_PILLARS[global_idx].second - lidar_y,
+                                                  KNOWN_PILLARS[global_idx].first - lidar_x);
+                    // Разница между измеренным и глобальным азимутом даёт угол поворота лидара
+                    double theta_diff = normalizeAngle(measured_azimuths[i] - global_azimuth);
+                    // ROS_INFO("    global_azimuth = %.3f, measured_azimuths = %.3f, theta_diff = %.3f", RAD2DEG(global_azimuth), RAD2DEG(measured_azimuths[i]), RAD2DEG(theta_diff));
+                    sum_theta += theta_diff;
+                    count++;
+                }
+            }
+
+            if (count > 0)
+            {
+                float lidar_xX = sum_x / count;
+                float lidar_yY = sum_y / count;
+                float lidar_theta_T = normalizeAngle(sum_theta / count)+ M_PI;
+                ROS_WARN("    MODE3 pose.x= %.3f y= %.3f theta= %.3f ", lidar_x + lidar_xX,lidar_y + lidar_yY, RAD2DEG(lidar_theta_T));
+                ROS_INFO("    Lidar theta END = %.3f rad (%.3f deg)", lidar_theta_T, RAD2DEG(lidar_theta_T));
+
+                lidar_x += lidar_xX;
+                lidar_y += lidar_yY;
+                lidar_theta = lidar_theta_T;
+            }
+            else
+            {
+                ROS_INFO("Could not compute lidar position and orientation: no valid matches.");
+            }
+        }
+        else
+        {
+            ROS_INFO("Could not compute lidar position and orientation: no pillars matched.");
+        }
     }
 
     // Функция для визуализации кластеров, столбов и лидара в RViz (вызывается раз в секунду)

@@ -163,14 +163,14 @@ target_link_libraries(write_node ${catkin_LIBRARIES} -lwiringPi -lpthread)
 add_executable(pillar_node src/pillar_node.cpp)
 target_link_libraries(pillar_node ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 
-add_executable(chatgpt src/chatgpt.cpp)
-target_link_libraries(chatgpt ${catkin_LIBRARIES} ${PCL_LIBRARIES})
+#add_executable(chatgpt src/chatgpt.cpp)
+#target_link_libraries(chatgpt ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 
-add_executable(qween src/qween.cpp)
-target_link_libraries(qween ${catkin_LIBRARIES} ${PCL_LIBRARIES})
+#add_executable(qween src/qween.cpp)
+#target_link_libraries(qween ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 
-add_executable(deepseek src/deepseek.cpp)
-target_link_libraries(deepseek ${catkin_LIBRARIES} ${PCL_LIBRARIES})
+#add_executable(deepseek src/deepseek.cpp)
+#target_link_libraries(deepseek ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 
 #add_executable(pillar_node src/pillar_node.cpp)
 #target_link_libraries(pillar_node ${catkin_LIBRARIES})
