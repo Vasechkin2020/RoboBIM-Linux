@@ -273,9 +273,9 @@ void CTopic::publicationPoseLidar() // Формируем перемнную с 
 {
     pb_msgs::Struct_PoseLidar poseLidarAll_msg; // Обобщенные данные в моем формате о всех вариантах расчета позиции
 
-    poseLidarAll_msg.mode0.x = g_poseLidar.mode0.x;
-    poseLidarAll_msg.mode0.y = g_poseLidar.mode0.y;
-    poseLidarAll_msg.mode0.th = g_poseLidar.mode0.th;
+    poseLidarAll_msg.mode.x = g_poseLidar.mode0.x;
+    poseLidarAll_msg.mode.y = g_poseLidar.mode0.y;
+    poseLidarAll_msg.mode.th = g_poseLidar.mode0.th;
 
     poseLidarAll_msg.mode1.x = g_poseLidar.mode1.x;
     poseLidarAll_msg.mode1.y = g_poseLidar.mode1.y;
@@ -288,10 +288,6 @@ void CTopic::publicationPoseLidar() // Формируем перемнную с 
     poseLidarAll_msg.mode3.x = g_poseLidar.mode3.x;
     poseLidarAll_msg.mode3.y = g_poseLidar.mode3.y;
     poseLidarAll_msg.mode3.th = g_poseLidar.mode3.th;
-
-    poseLidarAll_msg.mode10.x = g_poseLidar.mode10.x;
-    poseLidarAll_msg.mode10.y = g_poseLidar.mode10.y;
-    poseLidarAll_msg.mode10.th = g_poseLidar.mode10.th;
 
     pub_poseLidar.publish(poseLidarAll_msg); // Публикуем информацию по позиции лидара
 }

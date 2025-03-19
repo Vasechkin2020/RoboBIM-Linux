@@ -64,13 +64,13 @@ bool flag_dataPillar = false; // Флаг что разобрали данные
 bool flag_startPose = false;  // Флаг что разобрали данные по координатам машины и можно обсчитывать дальше
 bool flag_dataLidar = false;  // Флаг что разобрали данные по лидару и можно сопоставлять столбы
 
-std::string log_name = "pos_node";
+std::string log_name = "lidar_node";
 
 // float gTheta = 0; // Угол куда смотрит робот theta
 
 struct SPoseLidar // Варианты расчетов координат лидара
 {
-    SPose mode0;  // Для лидара по растоянию
+    SPose mode;  // Для лидара по растоянию
     SPose mode1;  // Для лидара по растоянию
     SPose mode2;  // Для лидара по углу
     SPose mode3;  // Для лазерных датчиков

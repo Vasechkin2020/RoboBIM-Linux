@@ -6,11 +6,13 @@
 #include <signal.h>                    // Для обработки Ctrl+C
 
 #include "genStruct.h" // Тут все общие структуры. Истользуются и Data и Main и Head
-#include "pillar_code/config.h"
-#include "pillar_code/pillar.h"
-#include "pillar_code/pillarDetector.h"
+#include "lidar_code/config.h"
+#include "lidar_code/pillar.h"
+#include "lidar_code/pillarDetector.h"
 
-#include "pillar_code/topic.h" // Файл для функций для формирования топиков в нужном виде и формате
+SPoseLidar g_poseLidar;  // Позиции лидара по расчетам Центральная система координат
+
+#include "lidar_code/topic.h" // Файл для функций для формирования топиков в нужном виде и формате
 
 
 int keep_running = 1;                       // Переменная для остановки программы по Ctrl+C
@@ -26,14 +28,14 @@ static void stopProgram(int signal);                       // Функция, к
 int main(int argc, char **argv)
 {
     signal(SIGINT, stopProgram);          // Настраиваем обработку Ctrl+C
-    ros::init(argc, argv, "pillar_node"); // Инициализируем ROS с именем узла "pillar_node"
+    ros::init(argc, argv, "lidar_node"); // Инициализируем ROS с именем узла "lidar_node"
 
     ros::NodeHandle nh;
     ros::Subscriber subscriber_Lidar = nh.subscribe<sensor_msgs::LaserScan>("/scan", 1000, callback_Lidar);
 
-    SPoseLidar g_poseLidar;  // Позиции лидара по расчетам Центральная система координат
     CPillar pillar;          // Обьявляем экземпляр класса в нем вся обработка и обсчет столбов
     PillarDetector detector; // Создаём объект детектора столбов
+    CTopic topic; // Экземпляр класса для всех публикуемых топиков
 
     SPose startPose;
     SPoint startPillar[4];
@@ -48,10 +50,13 @@ int main(int argc, char **argv)
     detector.changeKnownPillars(2, startPillar[2].x, startPillar[2].y);
     detector.changeKnownPillars(3, startPillar[3].x, startPillar[3].y);
 
+    static ros::Time timeStart = ros::Time::now(); // Захватываем начальный момент времени
+    static ros::Time timeNow = ros::Time::now();   // Захватываем конечный момент времени
 
     ros::Rate loop_rate(5);           // Создаём цикл с частотой 10 Гц
     while (ros::ok() && keep_running) // Пока ROS работает и не нажат Ctrl+C
     {
+        timeNow = ros::Time::now(); // Захватываем текущий момент времени начала цикла
         ros::spinOnce(); // Обрабатываем входящие сообщения
 
         // Выполняется 10 Hz как ЛИДАР ПРИШЛЕТ ***************************************************************************************************************************************************
@@ -69,16 +74,33 @@ int main(int argc, char **argv)
             pillar.getLocationMode1(g_poseLidar.mode1, g_poseLidar.mode1); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
             pillar.getLocationMode2(g_poseLidar.mode2, g_poseLidar.mode1); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
 
-            // topic.visualPoseLidarMode_1_2();                                // Отобращение стрелкой где начало и куда смотрит в Mode0 1 2
-            // topic.visualPublishOdomMode_1(); // Отобращение стрелкой где начало и куда смотрит в Mode0 1 2
-            // topic.visualPublishOdomMode_2(); // Отобращение стрелкой где начало и куда смотрит в Mode0 1 2
+            if (isnan(g_poseLidar.mode2.x) || isnan(g_poseLidar.mode2.y) || isnan(g_poseLidar.mode2.th))
+            {
+                ROS_ERROR("STOP MODE 1-2");
+                exit(0);
+            }
 
-            // if (isnan(g_poseLidar.mode2.x) || isnan(g_poseLidar.mode2.y) || isnan(g_poseLidar.mode2.th))
-            // {
-            //     ROS_ERROR("STOP MODE 1-2");
-            //     exit(0);
-            // }
+            topic.publicationPoseLidar();     // Публикуем все варианты расчета позиций mode 0.1.2.3.4
+
+            topic.visualStartPose(startPose);           // Отобращение стрелкой где начало стартовой позиции и куда направлен нос платформы
+            topic.visualPillarPoint(pillar);   // Отображение места размещения столбов
+            topic.visualPublishOdomMode_1(); // Отобращение стрелкой где начало и куда смотрит в Mode0 1 2
+            topic.visualPublishOdomMode_2(); // Отобращение стрелкой где начало и куда смотрит в Mode0 1 2
         }
+
+        // static ros::Time timeMil = ros::Time::now();   // Захватываем начальный момент времени
+        // ros::Duration durationMil = timeNow - timeMil; // Находим разницу между началом и концом
+        // double dtMil = durationMil.toSec();            // Получаем количество секунд
+        // // ROS_INFO("--- %f ", dtMil);
+        // if (dtMil >= 0.1)
+        // {
+        //     ROS_INFO("    visualStartPose %f ", dtMil);
+        //     timeMil = ros::Time::now(); // Захватываем момент времени
+        // }
+        timeCycle(timeStart, timeNow); // Выводим справочно время работы цикла и время с начала работы программы
+
+
+
         loop_rate.sleep(); // Ждём, чтобы поддерживать частоту 10 Гц
     }
 
