@@ -62,7 +62,7 @@ int main(int argc, char **argv)
         // Выполняется 10 Hz как ЛИДАР ПРИШЛЕТ ***************************************************************************************************************************************************
         if (flag_msgLidar) // Если пришло сообщение в топик от лидара и мы уже разобрали данные по координатам машинки, а значит можем грубо посчитать где стоят столбы.  И знаем где истинные столбы
         {
-            ROS_INFO("--------------------------------------- flag_msgLidar ***");
+            ROS_INFO("--------------------------------------- flag_msgLidar 22 ***");
             flag_msgLidar = false;
 
             detector.scanCallback(msg_lidar);
@@ -79,6 +79,9 @@ int main(int argc, char **argv)
                 ROS_ERROR("STOP MODE 1-2");
                 exit(0);
             }
+            g_poseLidar.mode.x = (g_poseLidar.mode1.x + g_poseLidar.mode2.x)/2.0;
+            g_poseLidar.mode.y = (g_poseLidar.mode1.y + g_poseLidar.mode2.y)/2.0;
+            g_poseLidar.mode.th = (g_poseLidar.mode1.th + g_poseLidar.mode2.th)/2.0;
 
             topic.publicationPoseLidar();     // Публикуем все варианты расчета позиций mode 0.1.2.3.4
 

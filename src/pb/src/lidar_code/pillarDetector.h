@@ -607,11 +607,11 @@ private:
                 float lidar_yY = sum_y / count;
                 float lidar_theta_T = normalizeAngle(sum_theta / count)+ M_PI;
                 ROS_WARN("    MODE3 pose.x= %.3f y= %.3f theta= %.3f ", lidar_x + lidar_xX,lidar_y + lidar_yY, RAD2DEG(lidar_theta_T));
-                ROS_INFO("    Lidar theta END = %.3f rad (%.3f deg)", lidar_theta_T, RAD2DEG(lidar_theta_T));
+                ROS_INFO("    Lidar theta END 22 = %.3f rad (%.3f deg)", lidar_theta_T, RAD2DEG(lidar_theta_T));
 
-                lidar_x += lidar_xX;
-                lidar_y += lidar_yY;
-                lidar_theta = lidar_theta_T;
+                // lidar_x += lidar_xX;
+                // lidar_y += lidar_yY;
+                // lidar_theta = lidar_theta_T;
             }
             else
             {
