@@ -34,6 +34,21 @@ public:
     const double PILLAR_RADIUS = 0.1575;   // Радиус столба (половина диаметра 0,315 м)
     const double MAX_MATCH_DISTANCE = 0.3; // Максимальное расстояние для сопоставления столба (м)
 
+    // Структура для столба (координаты центра)
+    struct Pillar
+    {
+        double x_center;  // Координата x центра столба (локальная)
+        double y_center;  // Координата y центра столба (локальная)
+        double x_global;  // Глобальная координата x центра столба
+        double y_global;  // Глобальная координата y центра столба
+        double direction; // Направление
+        double distance;  // Дистанция
+        bool match;       // Сопоставление
+        int count;       // Флаг что есть значение
+    };
+
+    Pillar matchPillar[4]; // Сопоставленные столбы по порядку
+
     // Заданные координаты четырёх столбов (x, y) в метрах в глобальной системе координат
     std::vector<std::pair<double, double>> KNOWN_PILLARS = {
         {0.0, 0.0}, // Столб 1
@@ -79,17 +94,7 @@ public:
         double azimuth_global;       // Азимут в глобальной системе
     };
 
-    // Структура для столба (координаты центра)
-    struct Pillar
-    {
-        double x_center;  // Координата x центра столба (локальная)
-        double y_center;  // Координата y центра столба (локальная)
-        double x_global;  // Глобальная координата x центра столба
-        double y_global;  // Глобальная координата y центра столба
-        double direction; // Направление
-        double distance;  // Дистанция
-        bool match;       // Сопоставление
-    };
+
 
     // Функция обработки данных от лидара
     void scanCallback(const sensor_msgs::LaserScan::ConstPtr &scan)
@@ -493,6 +498,16 @@ private:
         std::vector<std::pair<double, double>> matched_pairs; // Список пар (локальные, глобальные) координат
         std::vector<double> measured_azimuths;                // Измеренные азимуты от лидара
 
+        for (size_t i = 0; i < 4; i++) // Обнуляем данные
+        {
+            matchPillar[i].direction = 0;
+            matchPillar[i].distance = 0;
+            matchPillar[i].x_global = 0;
+            matchPillar[i].y_global = 0;
+            matchPillar[i].count = 0;
+        }
+        
+
         // Проходим по всем обнаруженным столбам
         for (size_t i = 0; i < pillars.size(); i++)
         {
@@ -539,6 +554,18 @@ private:
                          i, best_match,
                          KNOWN_PILLARS[best_match].first, KNOWN_PILLARS[best_match].second,
                          delta_x, delta_y, min_dist, pillars[i].distance, pillars[i].direction * 180 / M_PI);
+
+                matchPillar[best_match].x_global = KNOWN_PILLARS[best_match].first;
+                matchPillar[best_match].y_global = KNOWN_PILLARS[best_match].second;
+                matchPillar[best_match].distance = pillars[i].distance;
+                
+                float direct =  RAD2DEG(pillars[i].direction);
+                if (direct < 0) 
+                    direct = -direct;
+                    else if (direct > 0) 
+                    direct = 360 - direct; 
+                matchPillar[best_match].direction = direct;
+                matchPillar[best_match].count = 1;
             }
             else
             {

@@ -10,32 +10,39 @@
 #include "lidar_code/pillar.h"
 #include "lidar_code/pillarDetector.h"
 
-SPoseLidar g_poseLidar;  // Позиции лидара по расчетам Центральная система координат
+SPoseLidar g_poseLidar; // Позиции лидара по расчетам Центральная система координат
 
 #include "lidar_code/topic.h" // Файл для функций для формирования топиков в нужном виде и формате
-
 
 int keep_running = 1;                       // Переменная для остановки программы по Ctrl+C
 sensor_msgs::LaserScan::ConstPtr msg_lidar; // Перемеенная в которую сохраняем данные лидара из сообщения
 
 //**************************** ОБЬЯВЛЕНИЕ ПРОЦЕДУР и ФУНКЦИЙ **********************************
-void callback_Lidar(sensor_msgs::LaserScan::ConstPtr msg); //
-void timeCycle(ros::Time timeStart_, ros::Time timeNow_);  // Выводим справочно время работы цикла
-void readParam(SPose &startPose, SPoint *startPillar);     // Считывание переменных параметров из лаунч файла при запуске. Там офсеты и режимы работы
-static void stopProgram(int signal);                       // Функция, которая срабатывает при нажатии Ctrl+C
+void callback_Lidar(sensor_msgs::LaserScan::ConstPtr msg);                             //
+void timeCycle(ros::Time timeStart_, ros::Time timeNow_);                              // Выводим справочно время работы цикла
+void readParam(SPose &startPose, SPoint *startPillar);                                 // Считывание переменных параметров из лаунч файла при запуске. Там офсеты и режимы работы
+static void stopProgram(int signal);                                                   // Функция, которая срабатывает при нажатии Ctrl+C
+void calcDistDirect(SDistDirect *distDirect, CPillar pillar, PillarDetector detector); // Обьединение сопоставленных столбов в итоговую таблицу. Дальше по этой таблице все считается
 
 // Главная функция программы
 int main(int argc, char **argv)
 {
-    signal(SIGINT, stopProgram);          // Настраиваем обработку Ctrl+C
+    signal(SIGINT, stopProgram);         // Настраиваем обработку Ctrl+C
     ros::init(argc, argv, "lidar_node"); // Инициализируем ROS с именем узла "lidar_node"
 
     ros::NodeHandle nh;
     ros::Subscriber subscriber_Lidar = nh.subscribe<sensor_msgs::LaserScan>("/scan", 1000, callback_Lidar);
+    ros::Duration(1).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
 
     CPillar pillar;          // Обьявляем экземпляр класса в нем вся обработка и обсчет столбов
     PillarDetector detector; // Создаём объект детектора столбов
-    CTopic topic; // Экземпляр класса для всех публикуемых топиков
+    CTopic topic;            // Экземпляр класса для всех публикуемых топиков
+
+    SDistDirect distDirect[4] = {
+        {0.0, 0.0}, // Столб 1
+        {0.0, 0.0}, // Столб 3
+        {0.0, 0.0}, // Столб 2
+        {0.0, 0.0}};
 
     SPose startPose;
     SPoint startPillar[4];
@@ -50,19 +57,25 @@ int main(int argc, char **argv)
     detector.changeKnownPillars(2, startPillar[2].x, startPillar[2].y);
     detector.changeKnownPillars(3, startPillar[3].x, startPillar[3].y);
 
-    static ros::Time timeStart = ros::Time::now(); // Захватываем начальный момент времени
-    static ros::Time timeNow = ros::Time::now();   // Захватываем конечный момент времени
+    ros::Time timeStart = ros::Time::now(); // Время начала программы
+    ros::Time timeLoop = ros::Time::now();  // Время начала текущего цикла
 
-    ros::Rate loop_rate(5);           // Создаём цикл с частотой 10 Гц
+    std::time_t timeSec = static_cast<std::time_t>(timeStart.toSec()); // Преобразуем время в секундах в структуру tm
+    std::tm *formattedTime = std::localtime(&timeSec);
+    char buffer[80]; // Форматируем вывод
+    std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", formattedTime);
+    ROS_INFO("TIME START NODE current time: %s", buffer); // Выводим в консоль
+
+    ros::Rate loop_rate(2);           // Создаём цикл с частотой 10 Гц
     while (ros::ok() && keep_running) // Пока ROS работает и не нажат Ctrl+C
     {
-        timeNow = ros::Time::now(); // Захватываем текущий момент времени начала цикла
-        ros::spinOnce(); // Обрабатываем входящие сообщения
+        timeLoop = ros::Time::now(); // Захватываем текущий момент времени начала цикла
+        ros::spinOnce();             // Обрабатываем входящие сообщения
 
         // Выполняется 10 Hz как ЛИДАР ПРИШЛЕТ ***************************************************************************************************************************************************
         if (flag_msgLidar) // Если пришло сообщение в топик от лидара и мы уже разобрали данные по координатам машинки, а значит можем грубо посчитать где стоят столбы.  И знаем где истинные столбы
         {
-            ROS_INFO("--------------------------------------- flag_msgLidar 22 ***");
+            ROS_INFO("--------------------------------------- flag_msgLidar 33 ***");
             flag_msgLidar = false;
 
             detector.scanCallback(msg_lidar);
@@ -71,40 +84,30 @@ int main(int argc, char **argv)
             pillar.comparisonPillar();                         // Сопоставляем столбы
             // topic.publicationPillarAll(pillar);                // Публикуем всю обобщенную информацию по столб
 
-            pillar.getLocationMode1(g_poseLidar.mode1, g_poseLidar.mode1); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
-            pillar.getLocationMode2(g_poseLidar.mode2, g_poseLidar.mode1); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
+            calcDistDirect(distDirect, pillar, detector); // Обьединение сопоставленных столбов в итоговую таблицу. Дальше по этой таблице все считается
+
+            g_poseLidar.mode1 = pillar.getLocationMode1(distDirect, g_poseLidar.mode1); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
+            g_poseLidar.mode2 = pillar.getLocationMode2(distDirect, g_poseLidar.mode1); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
 
             if (isnan(g_poseLidar.mode2.x) || isnan(g_poseLidar.mode2.y) || isnan(g_poseLidar.mode2.th))
             {
                 ROS_ERROR("STOP MODE 1-2");
                 exit(0);
             }
-            g_poseLidar.mode.x = (g_poseLidar.mode1.x + g_poseLidar.mode2.x)/2.0;
-            g_poseLidar.mode.y = (g_poseLidar.mode1.y + g_poseLidar.mode2.y)/2.0;
-            g_poseLidar.mode.th = (g_poseLidar.mode1.th + g_poseLidar.mode2.th)/2.0;
+            g_poseLidar.mode.x = (g_poseLidar.mode1.x + g_poseLidar.mode2.x) / 2.0;
+            g_poseLidar.mode.y = (g_poseLidar.mode1.y + g_poseLidar.mode2.y) / 2.0;
+            g_poseLidar.mode.th = (g_poseLidar.mode1.th + g_poseLidar.mode2.th) / 2.0;
 
-            topic.publicationPoseLidar();     // Публикуем все варианты расчета позиций mode 0.1.2.3.4
+            topic.publicationPoseLidar(); // Публикуем все варианты расчета позиций mode 0.1.2.3.4
 
-            topic.visualStartPose(startPose);           // Отобращение стрелкой где начало стартовой позиции и куда направлен нос платформы
-            topic.visualPillarPoint(pillar);   // Отображение места размещения столбов
-            topic.visualPublishOdomMode_1(); // Отобращение стрелкой где начало и куда смотрит в Mode0 1 2
-            topic.visualPublishOdomMode_2(); // Отобращение стрелкой где начало и куда смотрит в Mode0 1 2
+            topic.visualStartPose(startPose); // Отобращение стрелкой где начало стартовой позиции и куда направлен нос платформы
+            topic.visualPillarPoint(pillar);  // Отображение места размещения столбов
+            topic.visualPublishOdomMode_1();  // Отобращение стрелкой где начало и куда смотрит в Mode0 1 2
+            topic.visualPublishOdomMode_2();  // Отобращение стрелкой где начало и куда смотрит в Mode0 1 2
         }
 
-        // static ros::Time timeMil = ros::Time::now();   // Захватываем начальный момент времени
-        // ros::Duration durationMil = timeNow - timeMil; // Находим разницу между началом и концом
-        // double dtMil = durationMil.toSec();            // Получаем количество секунд
-        // // ROS_INFO("--- %f ", dtMil);
-        // if (dtMil >= 0.1)
-        // {
-        //     ROS_INFO("    visualStartPose %f ", dtMil);
-        //     timeMil = ros::Time::now(); // Захватываем момент времени
-        // }
-        timeCycle(timeStart, timeNow); // Выводим справочно время работы цикла и время с начала работы программы
-
-
-
-        loop_rate.sleep(); // Ждём, чтобы поддерживать частоту 10 Гц
+        timeCycle(timeStart, timeLoop); // Выводим справочно время работы цикла и время с начала работы программы
+        loop_rate.sleep();              // Ждём, чтобы поддерживать частоту 10 Гц
     }
 
     ROS_INFO("Program stopped");
@@ -119,17 +122,15 @@ void callback_Lidar(sensor_msgs::LaserScan::ConstPtr msg)
 }
 
 // Выводим справочно время работы цикла
-void timeCycle(ros::Time timeStart_, ros::Time timeNow_)
+void timeCycle(ros::Time timeStart_, ros::Time timeLoop_)
 {
-    ros::Time timeEnd = ros::Time::now();               // Захватываем конечный момент времени
-    ros::Duration durationEnd = timeEnd - timeNow_;     // Находим разницу между началом и концом
-    ros::Duration durationStart = timeEnd - timeStart_; // Находим разницу между началом и концом
-    double dtEnd = durationEnd.toSec() * 1000;          // Получаем количество милисекунд
-    double dtStart = durationStart.toSec();             // Получаем количество секунд
-    if (dtEnd > 5)                                      // Если цикл занял бользе 5 милисекунд значит что не уложились в 200 Нz
-        ROS_INFO("    !!! cycle = %8.3f msec", dtEnd);  // Время цикла в милисекундах
-    else
-        ROS_INFO_THROTTLE(1, "    dtStart = %7.0f sec | last cycle = %8.3f msec", dtStart, dtEnd); // Время цикла в милисекундах
+    ros::Duration durationStart = ros::Time::now() - timeStart_;                                                                                        // Находим разницу между началом и концом
+    ros::Duration durationLoop = ros::Time::now() - timeLoop_;                                                                                          // Находим разницу между началом и концом
+    ROS_INFO("    2 dtStart = %.3f sec | 2 last cycle = %.3f sec and %d nanoseconds ", durationStart.toSec(), durationLoop.toSec(), durationLoop.nsec); // Время цикла в милисекундах
+    // ROS_INFO("Current time: %d seconds and %d nanoseconds", durationLoop.sec, durationLoop.nsec);
+    // if (dtEnd > 5)                                      // Если цикл занял бользе 5 милисекунд значит что не уложились в 200 Нz
+    //     ROS_INFO("    !!! cycle = %8.3f msec", dtEnd);  // Время цикла в милисекундах
+    // else
 }
 
 // Считывание переменных параметров из лаунч файла при запуске. Там офсеты и режимы работы
@@ -176,9 +177,41 @@ void readParam(SPose &startPose, SPoint *startPillar)
     ROS_INFO("    x3= %.3f y3 = %.3f", startPillar[3].x, startPillar[3].y);
     ROS_INFO("--- readParam");
 }
-
-static void stopProgram(int signal) // Функция, которая срабатывает при нажатии Ctrl+C
+// Функция, которая срабатывает при нажатии Ctrl+C
+static void stopProgram(int signal)
 {
     keep_running = 0; // Устанавливаем флаг, чтобы остановить цикл
     ros::shutdown();  // Завершаем работу ROS
+}
+
+// Обьединение сопоставленных столбов в итоговую таблицу. Дальше по этой таблице все считается
+void calcDistDirect(SDistDirect *distDirect, CPillar pillar, PillarDetector detector)
+{
+    for (size_t i = 0; i < 4; i++)
+    {
+        distDirect[i].distance = 0;
+        distDirect[i].direction = 0;
+        distDirect[i].count = 0;
+        ROS_INFO("x_true = %.3f x_true = %.3f  | y_true = %.3f y_true = %.3f  | distance = %.5f distance = %.5f  | direction = %.3f direction = %.3f",
+                 pillar.pillar[i].x_true, detector.matchPillar[i].x_global,
+                 pillar.pillar[i].y_true, detector.matchPillar[i].y_global,
+                 pillar.pillar[i].distance_lidar, detector.matchPillar[i].distance,
+                 pillar.pillar[i].azimuth, detector.matchPillar[i].direction);
+        if (pillar.pillar[i].status) // Теперь в зависимости от статуса заполняем табличку
+        {
+            distDirect[i].x_true = pillar.pillar[i].x_true;
+            distDirect[i].y_true = pillar.pillar[i].y_true;
+            distDirect[i].distance = pillar.pillar[i].distance_lidar;
+            distDirect[i].direction = pillar.pillar[i].azimuth;
+            distDirect[i].count = 1;
+        }
+        float count = distDirect[i].count + detector.matchPillar[i].count;
+        if (count > 0)
+        {
+            distDirect[i].distance = (distDirect[i].distance + detector.matchPillar[i].distance) / count;
+            distDirect[i].direction = (distDirect[i].direction + detector.matchPillar[i].direction) / count;
+        }
+        ROS_INFO("x_true = %.3f y_true = %.3f distance = %.5f direction = %.3f",
+                 distDirect[i].x_true,distDirect[i].y_true, distDirect[i].distance, distDirect[i].direction);
+    }
 }
