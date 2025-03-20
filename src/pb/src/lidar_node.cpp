@@ -66,7 +66,7 @@ int main(int argc, char **argv)
     std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", formattedTime);
     ROS_INFO("TIME START NODE current time: %s", buffer); // Выводим в консоль
 
-    ros::Rate loop_rate(2);           // Создаём цикл с частотой 10 Гц
+    ros::Rate loop_rate(20);           // Создаём цикл с частотой 10 Гц
     while (ros::ok() && keep_running) // Пока ROS работает и не нажат Ctrl+C
     {
         timeLoop = ros::Time::now(); // Захватываем текущий момент времени начала цикла
@@ -75,14 +75,14 @@ int main(int argc, char **argv)
         // Выполняется 10 Hz как ЛИДАР ПРИШЛЕТ ***************************************************************************************************************************************************
         if (flag_msgLidar) // Если пришло сообщение в топик от лидара и мы уже разобрали данные по координатам машинки, а значит можем грубо посчитать где стоят столбы.  И знаем где истинные столбы
         {
-            ROS_INFO("--------------------------------------- flag_msgLidar 33 ***");
+            ROS_INFO("------------       flag_msgLidar    -------------");
             flag_msgLidar = false;
-
-            detector.scanCallback(msg_lidar);
 
             pillar.parsingLidar(msg_lidar, g_poseLidar.mode1); // Разбираем пришедшие данные и ищем там столбы.
             pillar.comparisonPillar();                         // Сопоставляем столбы
             // topic.publicationPillarAll(pillar);                // Публикуем всю обобщенную информацию по столб
+
+            detector.scanCallback(msg_lidar);
 
             calcDistDirect(distDirect, pillar, detector); // Обьединение сопоставленных столбов в итоговую таблицу. Дальше по этой таблице все считается
 
@@ -104,9 +104,9 @@ int main(int argc, char **argv)
             topic.visualPillarPoint(pillar);  // Отображение места размещения столбов
             topic.visualPublishOdomMode_1();  // Отобращение стрелкой где начало и куда смотрит в Mode0 1 2
             topic.visualPublishOdomMode_2();  // Отобращение стрелкой где начало и куда смотрит в Mode0 1 2
+            timeCycle(timeStart, timeLoop); // Выводим справочно время работы цикла и время с начала работы программы
         }
 
-        timeCycle(timeStart, timeLoop); // Выводим справочно время работы цикла и время с начала работы программы
         loop_rate.sleep();              // Ждём, чтобы поддерживать частоту 10 Гц
     }
 
@@ -126,7 +126,7 @@ void timeCycle(ros::Time timeStart_, ros::Time timeLoop_)
 {
     ros::Duration durationStart = ros::Time::now() - timeStart_;                                                                                        // Находим разницу между началом и концом
     ros::Duration durationLoop = ros::Time::now() - timeLoop_;                                                                                          // Находим разницу между началом и концом
-    ROS_INFO("    2 dtStart = %.3f sec | 2 last cycle = %.3f sec and %d nanoseconds ", durationStart.toSec(), durationLoop.toSec(), durationLoop.nsec); // Время цикла в милисекундах
+    ROS_INFO("    dt Start = %.3f sec | dt last cycle = %.3f sec and %d nanoseconds ", durationStart.toSec(), durationLoop.toSec(), durationLoop.nsec); // Время цикла в милисекундах
     // ROS_INFO("Current time: %d seconds and %d nanoseconds", durationLoop.sec, durationLoop.nsec);
     // if (dtEnd > 5)                                      // Если цикл занял бользе 5 милисекунд значит что не уложились в 200 Нz
     //     ROS_INFO("    !!! cycle = %8.3f msec", dtEnd);  // Время цикла в милисекундах
@@ -187,16 +187,17 @@ static void stopProgram(int signal)
 // Обьединение сопоставленных столбов в итоговую таблицу. Дальше по этой таблице все считается
 void calcDistDirect(SDistDirect *distDirect, CPillar pillar, PillarDetector detector)
 {
+    int sum = 0;
     for (size_t i = 0; i < 4; i++)
     {
         distDirect[i].distance = 0;
         distDirect[i].direction = 0;
         distDirect[i].count = 0;
-        ROS_INFO("x_true = %.3f x_true = %.3f  | y_true = %.3f y_true = %.3f  | distance = %.5f distance = %.5f  | direction = %.3f direction = %.3f",
-                 pillar.pillar[i].x_true, detector.matchPillar[i].x_global,
-                 pillar.pillar[i].y_true, detector.matchPillar[i].y_global,
-                 pillar.pillar[i].distance_lidar, detector.matchPillar[i].distance,
-                 pillar.pillar[i].azimuth, detector.matchPillar[i].direction);
+        // ROS_INFO("x_true = %.3f x_true = %.3f  | y_true = %.3f y_true = %.3f  | distance = %.5f distance = %.5f  | direction = %.3f direction = %.3f",
+        //          pillar.pillar[i].x_true, detector.matchPillar[i].x_global,
+        //          pillar.pillar[i].y_true, detector.matchPillar[i].y_global,
+        //          pillar.pillar[i].distance_lidar, detector.matchPillar[i].distance,
+        //          pillar.pillar[i].azimuth, detector.matchPillar[i].direction);
         if (pillar.pillar[i].status) // Теперь в зависимости от статуса заполняем табличку
         {
             distDirect[i].x_true = pillar.pillar[i].x_true;
@@ -206,12 +207,17 @@ void calcDistDirect(SDistDirect *distDirect, CPillar pillar, PillarDetector dete
             distDirect[i].count = 1;
         }
         float count = distDirect[i].count + detector.matchPillar[i].count;
+        sum += count;
+
         if (count > 0)
         {
             distDirect[i].distance = (distDirect[i].distance + detector.matchPillar[i].distance) / count;
             distDirect[i].direction = (distDirect[i].direction + detector.matchPillar[i].direction) / count;
         }
-        ROS_INFO("x_true = %.3f y_true = %.3f distance = %.5f direction = %.3f",
-                 distDirect[i].x_true,distDirect[i].y_true, distDirect[i].distance, distDirect[i].direction);
+        // ROS_INFO("x_true = %.3f y_true = %.3f distance = %.5f direction = %.3f", distDirect[i].x_true,distDirect[i].y_true, distDirect[i].distance, distDirect[i].direction);
+
+        g_poseLidar.azimut[i] = distDirect[i].direction; // Индивидуальные углы наведения
     }
+    ROS_INFO("    sum = %i",sum);
+    g_poseLidar.countMatchPillar = sum;
 }
