@@ -8,9 +8,9 @@
 #define OTKLONENIE_PILLAR 0.33 // Отклонение между истинным и лидарным столбом при котором они сопоставляются
 #define DELTA_MINIMUMA 0.03     // Величина отклонения на которую увеличиваем минимальную дистация до столба при отборе угла на середину, что-бы не первую попавшийся минимум брать +-3 см как в даташите пока взял для тестов
 
-/* Класс для всего что связано с внешними установленными столбами, по которым определяем свою позицию
+extern SPoseLidar g_poseLidar; // Позиции лидара по расчетам Центральная система координат
 
-*/
+/* Класс для всего что связано с внешними установленными столбами, по которым определяем свою позицию*/
 class CPillar
 {
 
@@ -24,9 +24,9 @@ public:
         float distance_laser = 0; // Расстояние до столба измеренное лазером
         float x_true = 0;         // Истинные значения
         float y_true = 0;
-        float theta_true1 = 0; // Угол какой должен быть из текущих координат от У в глобальной системе. Куда смотрит нос лидара
-        float theta_true2 = 0; // Угол какой должен быть из текущих координат
-        float theta_true3 = 0; // Угол какой должен быть из текущих координат
+        // float theta_true1 = 0; // Угол какой должен быть из текущих координат от У в глобальной системе. Куда смотрит нос лидара
+        // float theta_true2 = 0; // Угол какой должен быть из текущих координат
+        // float theta_true3 = 0; // Угол какой должен быть из текущих координат
         float x_lidar = 0;
         float y_lidar = 0;
     };
@@ -136,7 +136,7 @@ SPose CPillar::getLocationMode1(SDistDirect *distDirect, SPose pose_) // На в
         poseLidar.y = poseLidar.y / count_poseLidarMode1;
 
         poseLidar.th = 90 - getTheta(poseLidar, 1); // Получаем угол куда смотрит нос лидара в системе "odom" + 90 так как сиcтема координат повернута относительно /odom/
-        ROS_WARN_THROTTLE(THROTTLE_PERIOD_5,"    MODE1 pose.x= %.3f y= %.3f theta= %.3f ", poseLidar.x, poseLidar.y, poseLidar.th);
+        ROS_WARN("    MODE1 pose.x= %.3f y= %.3f theta= %.3f ", poseLidar.x, poseLidar.y, poseLidar.th);
         // return poseLidar;
         poseReturn_ = poseLidar;
     }
@@ -164,18 +164,18 @@ float CPillar::getTheta(SPose poseLidar_, int mode_)
             float alfa = RAD2DEG(atan2(a, b));
             // ROS_INFO("a= %.3f b= %.3f  alfa= %.3f ", a, b, alfa); // Это вектор из нашего текущего положения на столб и угол на него от оси Y
             (alfa < 0) ? alfa += 360 : alfa = alfa;
-            if (mode_ == 1)
-            {
-                pillar[i].theta_true1 = alfa;
-            }
-            if (mode_ == 2)
-            {
-                pillar[i].theta_true2 = alfa;
-            }
-            if (mode_ == 3)
-            {
-                pillar[i].theta_true3 = alfa;
-            }
+            // if (mode_ == 1)
+            // {
+            //     pillar[i].theta_true1 = alfa;
+            // }
+            // if (mode_ == 2)
+            // {
+            //     pillar[i].theta_true2 = alfa;
+            // }
+            // if (mode_ == 3)
+            // {
+            //     pillar[i].theta_true3 = alfa;
+            // }
             float delta = (alfa - pillar[i].azimuth);
             float delta2 = delta;
             if (delta < -180) // Если больше значит угол не с той стороны измерили
@@ -209,7 +209,6 @@ float CPillar::getTheta(SPose poseLidar_, int mode_)
 SPose CPillar::getLocationMode2(SDistDirect *distDirect, SPose pose_) // На вход подается последняя полученная/посчитанная позиция лидара
 {
     ROS_INFO("+++ getLocationMode2");
-    SPose poseReturn_;
     // ROS_INFO("pose IN x= %.3f y= %.3f theta= %.3f ", pose_.x, pose_.y, pose_.theta);
     SPoint p1, p2, p3;
     float a1, a2;
@@ -235,8 +234,8 @@ SPose CPillar::getLocationMode2(SDistDirect *distDirect, SPose pose_) // На в
             if (a1 > 30 && a1 < 150)                // Проверка угла. Если вне диапазона то результаты не точные
             {
                 c = getCircle(p1, p2, a1); // Ищем 2 окружности по 2 точкам и углу между ними  https://lektsia.com/1x1ff.html https://studfile.net/preview/1853275/page:2/ https://vk.com/@theoryofsailing-navigaciya-glava-5-33-opredelenie-mesta-po-dvum-gorizontalny
-                c.c1.r = c.c1.r + 0.01;    // Гипотеза что если увеличить радиус чуть-чуть по будет больше пересечений и лучше результат )
-                c.c2.r = c.c2.r + 0.01;
+                c.c1.r = c.c1.r + 0.05;    // Гипотеза что если увеличить радиус чуть-чуть по будет больше пересечений и лучше результат )
+                c.c2.r = c.c2.r + 0.05;
                 circleAnglePillar[count_circleAnglePillar] = c.c1; // Записываем 2 окружности
                 count_circleAnglePillar++;
                 circleAnglePillar[count_circleAnglePillar] = c.c2;
@@ -261,6 +260,8 @@ SPose CPillar::getLocationMode2(SDistDirect *distDirect, SPose pose_) // На в
         }
     }
     ROS_INFO("    count_poseLidarMode2 = %i", count_poseLidarMode2);
+
+    g_poseLidar.countCrossCircle = count_poseLidarMode2;
     if (count_poseLidarMode2 > 100)
     {
         ROS_ERROR("count_poseLidarMode2 ERROR !!!!");
@@ -279,9 +280,8 @@ SPose CPillar::getLocationMode2(SDistDirect *distDirect, SPose pose_) // На в
         poseLidar.x = poseLidar.x / count_poseLidarMode2;
         poseLidar.y = poseLidar.y / count_poseLidarMode2;
         poseLidar.th = 90 - getTheta(poseLidar, 2); // Получаем угол куда смотрит нос лидара в системе "odom"
-        ROS_WARN_THROTTLE(THROTTLE_PERIOD_3,"    MODE2 pose.x= %.3f y= %.3f theta= %.3f ", poseLidar.x, poseLidar.y, poseLidar.th);
-        poseReturn_ = poseLidar;
-
+        ROS_WARN("    MODE2 pose.x= %.3f y= %.3f theta= %.3f ", poseLidar.x, poseLidar.y, poseLidar.th);
+        return poseLidar;
         // // Находим куда смотрит лидар на основе полученного положения и результтов с лидара фактических
         // float gamma = 0;
         // for (int i = 0; i < countPillar; i++)
@@ -295,9 +295,11 @@ SPose CPillar::getLocationMode2(SDistDirect *distDirect, SPose pose_) // На в
         // }
         // poseLidar.theta = gamma / countPillar; // Усредняем угол погрешности
     }
-
     else
-        ROS_ERROR("MODE2 ERROR count_poseLidarMode2 < 2");
+    {
+        ROS_ERROR("MODE2 ERROR count_poseLidarMode2 <= 2");
+        return pose_; // Возвращаем что и было
+    }
 
     // ROS_INFO("===");
     // return poseLidar;
@@ -342,7 +344,6 @@ SPose CPillar::getLocationMode2(SDistDirect *distDirect, SPose pose_) // На в
     // ret.theta = poseLidar.theta;
     // ROS_INFO("--- getLocationMode2");
 
-    return poseReturn_;
 }
 // Функция возвращает 2 окружности(координаты и радиус)
 // Основанно на идее что вписанный угол в окружность равен половине угла из центра на эту же хорду. Далее по формулам отсюда  Нахождение центра окружности по 2м точкам и углу https://dxdy.ru/topic4265.html
@@ -512,7 +513,7 @@ void CPillar::parsingLidar(const sensor_msgs::LaserScan::ConstPtr &scan, SPose &
     int count = scan->scan_time / scan->time_increment;
 
     // ROS_INFO("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! ");
-    ROS_INFO("    Lidar data received %s [%d]:", scan->header.frame_id.c_str(), count);
+    // ROS_INFO("    Lidar data received %s [%d]:", scan->header.frame_id.c_str(), count);
     // ROS_INFO("angle_range, %f, %f", RAD2DEG(scan->angle_min), RAD2DEG(scan->angle_max));
 
     int j = 0;

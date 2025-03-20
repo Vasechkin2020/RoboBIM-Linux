@@ -11,13 +11,13 @@ public:
         // scan_subscriber = node.subscribe("/scan", 1, &PillarDetector::scanCallback, this);
 
         // Создаём publisher для отправки маркеров столбов в RViz
-        marker_publisher = node.advertise<visualization_msgs::Marker>("/pillar_markers", 1);
+        marker_publisher = node.advertise<visualization_msgs::Marker>("pbRviz/pillar_markers", 1);
 
         // Создаём publisher для отправки маркеров кластеров в RViz
-        cluster_publisher = node.advertise<visualization_msgs::Marker>("/cluster_markers", 1);
+        cluster_publisher = node.advertise<visualization_msgs::Marker>("pbRviz/cluster_markers", 1);
 
         // Создаём publisher для отправки маркера лидара в RViz
-        lidar_publisher = node.advertise<visualization_msgs::Marker>("/lidar_marker", 1);
+        lidar_publisher = node.advertise<visualization_msgs::Marker>("pbRviz/lidar_marker", 1);
 
         // Настраиваем таймер, чтобы визуализация происходила раз в секунду
         timer = node.createTimer(ros::Duration(0.25), &PillarDetector::visualizeCallback, this);
@@ -134,7 +134,7 @@ public:
 
         cluster_info_list = cluster_info_list1; // Какой кластер лист отображаем
 
-        ROS_INFO("    Lidar theta START = %.3f rad (%.3f deg)", lidar_theta, RAD2DEG(lidar_theta));
+        // ROS_INFO("    Lidar theta START = %.3f rad (%.3f deg)", lidar_theta, RAD2DEG(lidar_theta));
 
         // Ищем столбы в этих кластерах
         findPillars();
@@ -424,7 +424,7 @@ private:
     // Функция для поиска столбов среди кластеров (по ширине)
     void findPillars()
     {
-        ROS_INFO("+++ findPillars");
+        // ROS_INFO("+++ findPillars");
 
         pillars.clear(); // Очищаем список столбов перед поиском
 
@@ -481,7 +481,7 @@ private:
                 //          cluster_info_list[i].width);
             }
         }
-        ROS_INFO("    Found %d pillars total", (int)pillars.size()); // Выводим общее количество найденных кластеров
+        // ROS_INFO("    Found %d pillars total", (int)pillars.size()); // Выводим общее количество найденных кластеров
     }
 
     // Функция для сопоставления обнаруженных столбов с известными координатами и вычисления позиции и ориентации лидара
@@ -634,7 +634,7 @@ private:
                 float lidar_yY = sum_y / count;
                 float lidar_theta_T = normalizeAngle(sum_theta / count)+ M_PI;
                 ROS_WARN("    MODE3 pose.x= %.3f y= %.3f theta= %.3f ", lidar_x + lidar_xX,lidar_y + lidar_yY, RAD2DEG(lidar_theta_T));
-                ROS_INFO("    Lidar theta END 22 = %.3f rad (%.3f deg)", lidar_theta_T, RAD2DEG(lidar_theta_T));
+                // ROS_INFO("    Lidar theta END 22 = %.3f rad (%.3f deg)", lidar_theta_T, RAD2DEG(lidar_theta_T));
 
                 // lidar_x += lidar_xX;
                 // lidar_y += lidar_yY;
@@ -772,7 +772,7 @@ private:
         lidar_publisher.publish(lidar_marker);
 
         // Выводим информацию о публикации
-        ROS_INFO("Published %d clusters with %d points, %d pillars, and lidar position with orientation",
+        ROS_INFO("    RVIZ pub %d clusters with %d points, %d pillars, and lidar position with orientation",
                  (int)cluster_info_list.size(), (int)cluster_marker.points.size(), (int)pillars.size());
     }
 };

@@ -150,9 +150,13 @@ public:
         poseLidarAll_msg.mode2.y = g_poseLidar.mode2.y;
         poseLidarAll_msg.mode2.th = g_poseLidar.mode2.th;
 
-        poseLidarAll_msg.mode3.x = g_poseLidar.mode3.x;
-        poseLidarAll_msg.mode3.y = g_poseLidar.mode3.y;
-        poseLidarAll_msg.mode3.th = g_poseLidar.mode3.th;
+        poseLidarAll_msg.countMatchPillar = g_poseLidar.countMatchPillar;
+        poseLidarAll_msg.countCrossCircle = g_poseLidar.countCrossCircle;
+        
+        poseLidarAll_msg.azimut[0] = g_poseLidar.azimut[0];
+        poseLidarAll_msg.azimut[1] = g_poseLidar.azimut[1];
+        poseLidarAll_msg.azimut[2] = g_poseLidar.azimut[2];
+        poseLidarAll_msg.azimut[3] = g_poseLidar.azimut[3];
 
         pub_poseLidar.publish(poseLidarAll_msg); // Публикуем информацию по позиции лидара
     }
@@ -215,24 +219,24 @@ public:
         // pub_PoseLidarMode2.publish(poseLidarMode2_msg);                                                            // Публикуем информацию по позиции лидара mode2
     }
     // Отобращение стрелкой где начало и куда смотрит в Mode3
-    void visualPublishOdomMode_3()
-    {
-        // Публикация Одометрии
-        nav_msgs::Odometry mode_msg;
-        mode_msg.header.stamp = ros::Time::now(); // Время ROS
-        mode_msg.header.frame_id = "laser";        // Поза в этом сообщении должна быть указана в системе координат, заданной header.frame_id.
-        // set the position
-        mode_msg.pose.pose.position.x = g_poseLidar.mode3.x;
-        mode_msg.pose.pose.position.y = g_poseLidar.mode3.y;
-        geometry_msgs::Quaternion quat = tf::createQuaternionMsgFromYaw(DEG2RAD(g_poseLidar.mode3.th)); // Минус так как вращение у меня по часовой а не по "буравчику" и + 90 так как считал я что 0 градусов это по оси Y Глядел на стену надо переписывать
-        mode_msg.pose.pose.orientation = quat;
-        // set the velocity
-        mode_msg.child_frame_id = "laser"; // Поворот в этом сообщении должен быть указан в системе координат, заданной child_frame_id
-        mode_msg.twist.twist.linear.x = 0;
-        mode_msg.twist.twist.linear.y = 0;
-        mode_msg.twist.twist.angular.z = 0;
-        publish_Mode3.publish(mode_msg); // Публикация полученных данных
-    }
+    // void visualPublishOdomMode_3()
+    // {
+    //     // Публикация Одометрии
+    //     nav_msgs::Odometry mode_msg;
+    //     mode_msg.header.stamp = ros::Time::now(); // Время ROS
+    //     mode_msg.header.frame_id = "laser";        // Поза в этом сообщении должна быть указана в системе координат, заданной header.frame_id.
+    //     // set the position
+    //     mode_msg.pose.pose.position.x = g_poseLidar.mode3.x;
+    //     mode_msg.pose.pose.position.y = g_poseLidar.mode3.y;
+    //     geometry_msgs::Quaternion quat = tf::createQuaternionMsgFromYaw(DEG2RAD(g_poseLidar.mode3.th)); // Минус так как вращение у меня по часовой а не по "буравчику" и + 90 так как считал я что 0 градусов это по оси Y Глядел на стену надо переписывать
+    //     mode_msg.pose.pose.orientation = quat;
+    //     // set the velocity
+    //     mode_msg.child_frame_id = "laser"; // Поворот в этом сообщении должен быть указан в системе координат, заданной child_frame_id
+    //     mode_msg.twist.twist.linear.x = 0;
+    //     mode_msg.twist.twist.linear.y = 0;
+    //     mode_msg.twist.twist.angular.z = 0;
+    //     publish_Mode3.publish(mode_msg); // Публикация полученных данных
+    // }
 
 private:
     ros::NodeHandle _nh;

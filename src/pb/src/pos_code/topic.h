@@ -285,10 +285,6 @@ void CTopic::publicationPoseLidar() // Формируем перемнную с 
     poseLidarAll_msg.mode2.y = g_poseLidar.mode2.y;
     poseLidarAll_msg.mode2.th = g_poseLidar.mode2.th;
 
-    poseLidarAll_msg.mode3.x = g_poseLidar.mode3.x;
-    poseLidarAll_msg.mode3.y = g_poseLidar.mode3.y;
-    poseLidarAll_msg.mode3.th = g_poseLidar.mode3.th;
-
     pub_poseLidar.publish(poseLidarAll_msg); // Публикуем информацию по позиции лидара
 }
 void CTopic::publicationPoseRotattion() // Вывод в топик данных с координатами и углом точки вращения Rotation
