@@ -66,7 +66,7 @@ int main(int argc, char **argv)
     std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", formattedTime);
     ROS_INFO("TIME START NODE current time: %s", buffer); // Выводим в консоль
 
-    ros::Rate loop_rate(20);           // Создаём цикл с частотой 10 Гц
+    ros::Rate loop_rate(5);           // Создаём цикл с частотой 10 Гц
     while (ros::ok() && keep_running) // Пока ROS работает и не нажат Ctrl+C
     {
         timeLoop = ros::Time::now(); // Захватываем текущий момент времени начала цикла
@@ -94,9 +94,9 @@ int main(int argc, char **argv)
                 ROS_ERROR("STOP MODE 1-2");
                 exit(0);
             }
-            g_poseLidar.mode.x = (g_poseLidar.mode1.x + g_poseLidar.mode2.x) / 2.0;
-            g_poseLidar.mode.y = (g_poseLidar.mode1.y + g_poseLidar.mode2.y) / 2.0;
-            g_poseLidar.mode.th = (g_poseLidar.mode1.th + g_poseLidar.mode2.th) / 2.0;
+            g_poseLidar.mode.x = g_poseLidar.mode1.x * 0.9 + g_poseLidar.mode2.x * 0.1; // Легкая комплементация двух методов расчета. Второй сильно волатильный
+            g_poseLidar.mode.y = g_poseLidar.mode1.y * 0.9 + g_poseLidar.mode2.y * 0.1;
+            g_poseLidar.mode.th = g_poseLidar.mode.th * 0.66 + ((g_poseLidar.mode1.th + g_poseLidar.mode2.th) / 2.0) * 0.34;
 
             topic.publicationPoseLidar(); // Публикуем все варианты расчета позиций mode 0.1.2.3.4
 
