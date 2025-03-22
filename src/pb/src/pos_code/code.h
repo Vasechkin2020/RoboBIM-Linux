@@ -60,7 +60,7 @@ float filtrComplem(float koef_, float oldData_, float newData_)
 	return (1 - koef_) * oldData_ + (koef_ * newData_);
 }
 
-void callback_Lidar(sensor_msgs::LaserScan::ConstPtr msg)
+void callback_Lidar(pb_msgs::Struct_PoseLidar msg)
 {
 	msg_lidar = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
 	flag_msgLidar = true;

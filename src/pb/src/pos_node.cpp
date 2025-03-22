@@ -48,7 +48,7 @@ int main(int argc, char **argv)
     CTopic topic; // Экземпляр класса для всех публикуемых топиков
 
     //----------------------------- ПОДПИСКИ НА ТОПИКИ -------НЕ УБИРАЮ В КЛАСС ТАК КАК НУЖНЫ ГЛОБАЛЬНЫЕ КОЛБЕКИ И ПРОЧАЯ ХЕРНЯ --------
-    ros::Subscriber subscriber_Lidar = nh.subscribe<sensor_msgs::LaserScan>("/scan", 1000, callback_Lidar);
+    ros::Subscriber subscriber_Lidar = nh.subscribe<pb_msgs::Struct_PoseLidar>("pbLidar/PoseLidar", 1000, callback_Lidar);
     ros::Subscriber subscriber_Modul = nh.subscribe<pb_msgs::Struct_Modul2Data>("pbData/Modul", 1000, callback_Modul);
     ros::Subscriber subscriber_Speed = nh.subscribe<pb_msgs::SSetSpeed>("pbData/Speed", 1000, callback_Speed);
 
@@ -63,7 +63,7 @@ int main(int argc, char **argv)
 
     startPosition(msg_startPose2d); // Определяем начальное положение
 
-    // pillar.parsingPillar(msg_pillar); // Разбираем пришедшие данные Заполняем массив правильных координат.
+    pillar.parsingPillar(msg_pillar); // Разбираем пришедшие данные Заполняем массив правильных координат.
 
     ros::Rate r(200);         // Частота в Герцах - задержка
     ros::Duration(2).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
@@ -150,10 +150,15 @@ int main(int argc, char **argv)
         // }
 
         // Выполняется 10 Hz как ЛИДАР ПРИШЛЕТ ***************************************************************************************************************************************************
-        // if (flag_msgLidar) // Если пришло сообщение в топик от лидара и мы уже разобрали данные по координатам машинки, а значит можем грубо посчитать где стоят столбы.  И знаем где истинные столбы
-        // {
-        //     ROS_INFO("--------------------------------------- flag_msgLidar ***");
-        //     flag_msgLidar = false;
+        if (flag_msgLidar) // Если пришло сообщение в топик от лидара и мы уже разобрали данные по координатам машинки, а значит можем грубо посчитать где стоят столбы.  И знаем где истинные столбы
+        {
+              ROS_INFO("--------------------------------------- flag_msgLidar ***");
+              flag_msgLidar = false;
+
+              ROS_INFO("    msg_Lidar.x = %.3f y = %.3f th = %.3f | match = %i cross = %i | azimut %.3f %.3f %.3f %.3f ",
+                msg_lidar.mode.x,msg_lidar.mode.y,msg_lidar.mode.th,
+                msg_lidar.countMatchPillar, msg_lidar.countCrossCircle,
+                msg_lidar.azimut[0],msg_lidar.azimut[1],msg_lidar.azimut[2],msg_lidar.azimut[3]);
         //     pillar.parsingLidar(msg_lidar, g_poseLidar.mode0); // Разбираем пришедшие данные и ищем там столбы.
         //     pillar.comparisonPillar();                         // Сопоставляем столбы
         //     // topic.publicationPillarAll(pillar);                // Публикуем всю обобщенную информацию по столб
@@ -176,10 +181,10 @@ int main(int argc, char **argv)
         //         ROS_ERROR("STOP MODE 1-2");
         //         exit(0);
         //     }
-        // }
-        // else // Если не пришло новых данных в этом цикле то значит просто корректируем предыдущий расчет на величину угловых и линейных скорстей полученых с одометрии и INU
-        // {
-        // }
+        }
+        else // Если не пришло новых данных в этом цикле то значит просто корректируем предыдущий расчет на величину угловых и линейных скорстей полученых с одометрии и INU
+        {
+        }
 
         // g_poseRotation.mode10 = g_poseRotation.mode0; // Времено. ПОТОМ ТУТ НАДО ИТОГОВУЮ КОМПЛЕМЕНТАЦИЮ СДЕЛАТЬ
         // Тут строка перевода в g_poseLidaк.mode10 для использовании  в расчетаз в следущей итерации

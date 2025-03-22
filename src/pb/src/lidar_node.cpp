@@ -11,6 +11,7 @@
 #include "lidar_code/pillarDetector.h"
 
 SPoseLidar g_poseLidar; // Позиции лидара по расчетам Центральная система координат
+#define COMPLEMENTARN 0.8
 
 #include "lidar_code/topic.h" // Файл для функций для формирования топиков в нужном виде и формате
 
@@ -66,7 +67,7 @@ int main(int argc, char **argv)
     std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", formattedTime);
     ROS_INFO("TIME START NODE current time: %s", buffer); // Выводим в консоль
 
-    ros::Rate loop_rate(5);           // Создаём цикл с частотой 10 Гц
+    ros::Rate loop_rate(20);           // Создаём цикл с частотой 10 Гц
     while (ros::ok() && keep_running) // Пока ROS работает и не нажат Ctrl+C
     {
         timeLoop = ros::Time::now(); // Захватываем текущий момент времени начала цикла
@@ -96,7 +97,7 @@ int main(int argc, char **argv)
             }
             g_poseLidar.mode.x = g_poseLidar.mode1.x * 0.9 + g_poseLidar.mode2.x * 0.1; // Легкая комплементация двух методов расчета. Второй сильно волатильный
             g_poseLidar.mode.y = g_poseLidar.mode1.y * 0.9 + g_poseLidar.mode2.y * 0.1;
-            g_poseLidar.mode.th = g_poseLidar.mode.th * 0.66 + ((g_poseLidar.mode1.th + g_poseLidar.mode2.th) / 2.0) * 0.34;
+            g_poseLidar.mode.th = g_poseLidar.mode.th * COMPLEMENTARN + ((g_poseLidar.mode1.th + g_poseLidar.mode2.th) / 2.0) * (1 - COMPLEMENTARN);
 
             topic.publicationPoseLidar(); // Публикуем все варианты расчета позиций mode 0.1.2.3.4
 
@@ -216,7 +217,8 @@ void calcDistDirect(SDistDirect *distDirect, CPillar pillar, PillarDetector dete
         }
         // ROS_INFO("x_true = %.3f y_true = %.3f distance = %.5f direction = %.3f", distDirect[i].x_true,distDirect[i].y_true, distDirect[i].distance, distDirect[i].direction);
 
-        g_poseLidar.azimut[i] = distDirect[i].direction; // Индивидуальные углы наведения
+        // g_poseLidar.azimut[i] = distDirect[i].direction; // Индивидуальные углы наведения
+        g_poseLidar.azimut[i] = g_poseLidar.azimut[i] * COMPLEMENTARN + distDirect[i].direction * (1 - COMPLEMENTARN);
     }
     ROS_INFO("    sum = %i",sum);
     g_poseLidar.countMatchPillar = sum;

@@ -1,5 +1,5 @@
 <launch>
-
+  <include file="$(find rplidar_ros)/launch/rplidar_s2.launch" />
   <node pkg="pb" type="lidar_node" name="lidar_node" output ="screen">
 
     <!-- Указываем стартовую позицию робота. В какое место поставили и куда направили-->
