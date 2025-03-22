@@ -94,8 +94,6 @@ public:
         double azimuth_global;       // Азимут в глобальной системе
     };
 
-
-
     // Функция обработки данных от лидара
     void scanCallback(const sensor_msgs::LaserScan::ConstPtr &scan)
     {
@@ -103,17 +101,15 @@ public:
         ROS_INFO("++++ scanCallback");
         std::vector<PointXY> points; // Создаём пустой список точек
         points.reserve(4096);
-
-        // Проходим по всем измерениям лидара
-        for (int i = 0; i < scan->ranges.size(); i++)
+        
+        for (int i = 0; i < scan->ranges.size(); i++)// Проходим по всем измерениям лидара
         {
             float range = scan->ranges[i];                            // Расстояние до объекта в текущем направлении
             if (range >= scan->range_min && range <= scan->range_max) // Проверяем, что расстояние в допустимом диапазоне
             {
                 float angle = scan->angle_min + i * scan->angle_increment; // Вычисляем угол для текущей точки
-                // Переводим полярные координаты (угол, расстояние) в декартовы (x, y)
                 PointXY point;
-                point.x = range * cos(angle);
+                point.x = range * cos(angle);// Переводим полярные координаты (угол, расстояние) в декартовы (x, y)
                 point.y = range * sin(angle);
                 points.push_back(point); // Добавляем точку в список
             }
@@ -122,25 +118,13 @@ public:
         elapsed_time = ros::Time::now() - start_time;                      // Вычисляем интервал
         // ROS_INFO("    End Scan Elapsed time: %.6f seconds", elapsed_time.toSec());
 
-        std::vector<std::vector<PointXY>> clusters1 = findClusters(points);          // Находим группы точек (кластеры)
-        std::vector<ClusterInfo> cluster_info_list1 = createdClasterList(clusters1); // Список информации о кластерах
-
-        // std::vector<std::vector<PointXY>> clusters2 = clusterChatGpt(points);
-        // std::vector<std::vector<PointXY>> clusters2 = clusterChatGpt(pointsInvers);
-        // std::vector<ClusterInfo> cluster_info_list2 = createdClasterList(clusters2); // Список информации о кластерах
-
-        // std::vector<std::vector<PointXY>> clusters3 = clusterDeepSeek(points);
-        // std::vector<ClusterInfo> cluster_info_list3 = createdClasterList(clusters3); // Список информации о кластерах
-
-        cluster_info_list = cluster_info_list1; // Какой кластер лист отображаем
+        std::vector<std::vector<PointXY>> clusters = findClusters(points);          // Находим группы точек (кластеры)
+        cluster_info_list = createdClasterList(clusters); // Список информации о кластерах
 
         // ROS_INFO("    Lidar theta START = %.3f rad (%.3f deg)", lidar_theta, RAD2DEG(lidar_theta));
 
-        // Ищем столбы в этих кластерах
-        findPillars();
-
-        // // Сопоставляем столбы с известными координатами и вычисляем позицию и ориентацию лидара
-        matchPillars();
+        findPillars(); // Ищем столбы в этих кластерах
+        matchPillars(); // // Сопоставляем столбы с известными координатами и вычисляем позицию и ориентацию лидара
     }
 
 private:
@@ -159,101 +143,6 @@ private:
     ros::Time start_time;       // Записываем конечное время
     ros::Time end_time;         // Записываем конечное время
     ros::Duration elapsed_time; // Вычисляем интервал
-
-    // Функция кластеризации (DBSCAN-подобный алгоритм)
-    std::vector<std::vector<PointXY>> clusterChatGpt(const std::vector<PointXY> &points)
-    {
-        start_time = ros::Time::now(); // Записываем начальное время
-        std::vector<std::vector<PointXY>> clusters;
-        std::vector<bool> visited(points.size(), false);
-        int ia;
-        int ja;
-
-        for (size_t i = 0; i < points.size(); ++i)
-        {
-            if (visited[i])
-                continue;
-
-            std::vector<PointXY> cluster;
-            cluster.push_back(points[i]);
-            visited[i] = true;
-
-            for (size_t j = i + 1; j < points.size(); ++j)
-            {
-                if (visited[j])
-                    continue;
-                double dist = std::hypot(points[j].x - points[i].x, points[j].y - points[i].y);
-                if (dist < CLUSTER_TOLERANCE)
-                {
-                    cluster.push_back(points[j]);
-                    visited[j] = true;
-                    ja = j;
-                }
-            }
-
-            ia = i;
-            if (cluster.size() > MIN_POINTS && cluster.size() < MAX_POINTS) // Фильтруем маленькие шумовые кластеры
-            {
-                clusters.push_back(cluster);
-                // ROS_INFO("    clusters size %i: i= %i j=%i", cluster.size(),ia,ja);
-            }
-        }
-        ROS_INFO("ChatGPT Count clusters %i: ", clusters.size());
-        elapsed_time = ros::Time::now() - start_time; // Вычисляем интервал
-        ROS_INFO("    clusterChatGpt Elapsed time: %.3f seconds", elapsed_time.toSec());
-        return clusters;
-    }
-
-    // Функция кластеризации (DBSCAN-подобный алгоритм)
-    std::vector<std::vector<PointXY>> clusterDeepSeek(const std::vector<PointXY> &points)
-    {
-        start_time = ros::Time::now(); // Записываем начальное время
-        std::vector<std::vector<PointXY>> clusters;
-        std::vector<bool> processed(points.size(), false); // Массив для отметки обработанных точек
-
-        for (size_t i = 0; i < points.size(); ++i)
-        {
-            if (processed[i]) // Если точка уже обработана, пропустить
-                continue;
-
-            std::vector<PointXY> cluster;    // Новый кластер
-            std::vector<size_t> queue = {i}; // Очередь для обработки точек
-            processed[i] = true;             // Отметить точку как обработанную
-
-            while (!queue.empty())
-            {
-                size_t idx = queue.back(); // Берем последнюю точку из очереди
-                queue.pop_back();
-                cluster.push_back(points[idx]); // Добавляем точку в кластер
-
-                // Поиск соседних точек
-                for (size_t j = 0; j < points.size(); ++j)
-                {
-                    if (processed[j]) // Если точка уже обработана, пропустить
-                        continue;
-
-                    float dx = points[idx].x - points[j].x; // Разница по X
-                    float dy = points[idx].y - points[j].y; // Разница по Y
-                    if (hypotf(dx, dy) < CLUSTER_TOLERANCE) // Если расстояние меньше порога
-                    {
-                        processed[j] = true; // Отметить точку как обработанную
-                        queue.push_back(j);  // Добавить точку в очередь
-                    }
-                }
-            }
-
-            if (cluster.size() >= MIN_POINTS && cluster.size() < MAX_POINTS) // Если кластер достаточно большой
-            {
-                clusters.push_back(cluster); // Добавить кластер в список
-                // ROS_INFO("    clusters size %i: ", cluster.size());
-            }
-        }
-        ROS_INFO("DeepSeek Count clusters %i: ", clusters.size());
-
-        elapsed_time = ros::Time::now() - start_time; // Вычисляем интервал
-        ROS_INFO("    clusterDeepSeek Elapsed time: %.3f seconds", elapsed_time.toSec());
-        return clusters;
-    }
 
     // Функция для поиска кластеров (групп точек)
     std::vector<std::vector<PointXY>> findClusters(std::vector<PointXY> points)
