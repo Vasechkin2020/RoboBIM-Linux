@@ -20,6 +20,7 @@
 
 #include <nav_msgs/Odometry.h>
 #include <visualization_msgs/Marker.h>
+#include <visualization_msgs/MarkerArray.h>
 // #include <pb_msgs/point.h>
 
 #include <pb_msgs/Struct_Data2Driver.h>

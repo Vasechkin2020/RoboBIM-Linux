@@ -81,9 +81,10 @@ public:
         marker.type = visualization_msgs::Marker::CYLINDER;
         marker.action = visualization_msgs::Marker::ADD;
         marker.pose.orientation = tf::createQuaternionMsgFromYaw(0);
-        marker.scale.x = 0.31;
-        marker.scale.y = 0.31;
+        marker.scale.x = 0.315;
+        marker.scale.y = 0.315;
         marker.scale.z = 0.5;
+
         marker.color.a = 0.7; // Don't forget to set the alpha!
         marker.color.r = 0.8;
         marker.color.g = 0.2;
@@ -96,11 +97,11 @@ public:
             point_global.x = pillar_.pillar[i].x_true;
             point_global.y = pillar_.pillar[i].y_true;
             point_local = pointGlobal2Local(point_global, g_transformGlobal2Local); // Вариант поворота по стандарту РОС что вращение против часовой
-            // ROS_INFO("Global x = %.2f y = %.2f | Local x = %.2f y = %.2f | Pose x = %.2f y = %.2f th grad = %.2f th rad = %.2f", 
+            // ROS_INFO("Global x = %.2f y = %.2f | Local x = %.2f y = %.2f | Pose x = %.2f y = %.2f th grad = %.2f th rad = %.2f",
             //     point_global.x,point_global.y,point_local.x,point_local.y,g_transformGlobal2Local.x, g_transformGlobal2Local.y, g_transformGlobal2Local.th, DEG2RAD(g_transformGlobal2Local.th));
             marker.pose.position.x = point_local.x;
             marker.pose.position.y = point_local.y;
-            marker.pose.position.z = 0.25;
+            marker.pose.position.z = 0.0;
             marker.id = i;
             pub_markerPillar.publish(marker);
         }
@@ -230,28 +231,9 @@ public:
         // poseLidarMode2_msg.pose.orientation = tf::createQuaternionMsgFromYaw(DEG2RAD(-g_poseLidar.mode2.th + 90)); // + 90 Так как у них оси расположены не так как я меня. У меня ноль вверх а у них вправо и вращение у них против часовой
         // pub_PoseLidarMode2.publish(poseLidarMode2_msg);                                                            // Публикуем информацию по позиции лидара mode2
     }
-    // Отобращение стрелкой где начало и куда смотрит в Mode3
-    // void visualPublishOdomMode_3()
-    // {
-    //     // Публикация Одометрии
-    //     nav_msgs::Odometry mode_msg;
-    //     mode_msg.header.stamp = ros::Time::now(); // Время ROS
-    //     mode_msg.header.frame_id = "laser";        // Поза в этом сообщении должна быть указана в системе координат, заданной header.frame_id.
-    //     // set the position
-    //     mode_msg.pose.pose.position.x = g_poseLidar.mode3.x;
-    //     mode_msg.pose.pose.position.y = g_poseLidar.mode3.y;
-    //     geometry_msgs::Quaternion quat = tf::createQuaternionMsgFromYaw(DEG2RAD(g_poseLidar.mode3.th)); // Минус так как вращение у меня по часовой а не по "буравчику" и + 90 так как считал я что 0 градусов это по оси Y Глядел на стену надо переписывать
-    //     mode_msg.pose.pose.orientation = quat;
-    //     // set the velocity
-    //     mode_msg.child_frame_id = "laser"; // Поворот в этом сообщении должен быть указан в системе координат, заданной child_frame_id
-    //     mode_msg.twist.twist.linear.x = 0;
-    //     mode_msg.twist.twist.linear.y = 0;
-    //     mode_msg.twist.twist.angular.z = 0;
-    //     publish_Mode3.publish(mode_msg); // Публикация полученных данных
-    // }
 
     // Функция для визуализации кластеров, столбов и лидара в RViz (вызывается раз в секунду)
-    void visualizeClasters( std::vector<PillarDetector::ClusterInfo> cluster_info_list) // Список информации о кластерах)
+    void visualizeClasters(std::vector<PillarDetector::ClusterInfo> cluster_info_list) // Список информации о кластерах)
     {
         // Создаём маркер для кластеров
         visualization_msgs::Marker cluster_marker;
@@ -263,7 +245,7 @@ public:
         cluster_marker.pose.orientation.w = 1.0;                  // Ориентация (без вращения)
         cluster_marker.scale.x = 0.03;                            // Размер точки по x (5 см)
         cluster_marker.scale.y = 0.03;                            // Размер точки по y
-        cluster_marker.id = 0; // Идентификатор маркера
+        cluster_marker.id = 0;                                    // Идентификатор маркера
         int aa = 1;
 
         // Заполняем маркер кластерами (локальные координаты для RViz)
@@ -294,56 +276,45 @@ public:
         ROS_INFO("    RVIZ pub %d clusters", (int)cluster_info_list.size());
     }
     // Список найденных столбов
-    void visualizePillars( std::vector<PillarDetector::Pillar> pillars)            
+    void visualizePillars(std::vector<PillarDetector::Pillar> pillars)
     {
-        // Создаём маркер для столбов
-        visualization_msgs::Marker pillar_marker;
-        pillar_marker.header.frame_id = "laser";                      // Система координат лидара
-        pillar_marker.header.stamp = ros::Time::now();                // Текущая метка времени
-        pillar_marker.ns = "pillars";                                 // Пространство имён
-        pillar_marker.type = visualization_msgs::Marker::SPHERE_LIST; // Тип маркера - список сфер
-        pillar_marker.action = visualization_msgs::Marker::ADD;       // Действие - добавить
-        pillar_marker.pose.orientation.w = 1.0;                       // Ориентация (без вращения)
-        pillar_marker.scale.x = 0.315;                                // Размер сферы по x (диаметр столба)
-        pillar_marker.scale.y = 0.315;                                // Размер сферы по y
-        pillar_marker.scale.z = 0.315;                                // Размер сферы по z
-        // pillar_marker.color.r = 1.0;                                  // Цвет - красный
-        // pillar_marker.color.g = 0.0;                                  // Цвет - зелёный
-        // pillar_marker.color.b = 0.0;                                  // Цвет - синий
-        // pillar_marker.color.a = 1.0;                                  // Прозрачность (непрозрачный)
-        pillar_marker.id = 0; // Идентификатор маркера
-
         // Заполняем маркер столбами (локальные координаты для RViz)
         for (int i = 0; i < pillars.size(); i++)
         {
-            geometry_msgs::Point point;
-            point.x = pillars[i].x_center;         // Локальная координата x центра столба
-            point.y = pillars[i].y_center;         // Локальная координата y центра столба
-            point.z = 0.0;                         // Высота (z=0, так как 2D)
+            visualization_msgs::Marker pillar_marker;                  // Создаём маркер для столбов
+            pillar_marker.header.frame_id = "laser";                   // Система координат лидара
+            pillar_marker.header.stamp = ros::Time::now();             // Текущая метка времени
+            pillar_marker.ns = "pillars";                              // Пространство имён
+            pillar_marker.type = visualization_msgs::Marker::CYLINDER; // Тип маркера - список сфер
+            pillar_marker.action = visualization_msgs::Marker::ADD;    // Действие - добавить
+            pillar_marker.scale.x = 0.315;                             // Размер сферы по x (диаметр столба)
+            pillar_marker.scale.y = 0.315;                             // Размер сферы по y
+            pillar_marker.scale.z = 0.5;                               // Размер сферы по z
+            pillar_marker.id = i;                                      // Идентификатор маркера
+            pillar_marker.color = color2;
+            pillar_marker.lifetime = ros::Duration(0.5); // Маркер исчезнет через 0,5 секунд
+
+            pillar_marker.pose.position.x = pillars[i].x_center; // Локальная координата x центра столба
+            pillar_marker.pose.position.y = pillars[i].y_center; // Локальная координата y центра столба
+            pillar_marker.pose.position.z = 0.0;                 // Высота (z=0, так как 2D)
+            pillar_marker.pose.orientation.w = 1.0;              // Ориентация (без вращения)
+
             if (pillars[i].match == true)
             {
-                color = color2;
-                pillar_marker.points.push_back(point); // Добавляем точку в список
-                pillar_marker.colors.push_back(color); // Добавляем цвет в список
+                marker_publisher.publish(pillar_marker); // Отправляем маркеры в RViz
             }
-            else
-            {
-                color = color3;
-            }
-
         }
-        // Отправляем маркеры в RViz
-        marker_publisher.publish(pillar_marker);
-        // Выводим информацию о публикации
-        ROS_INFO("    RVIZ pub with %d points %d pillars,", (int)pillar_marker.points.size(), (int)pillars.size());
+        // ROS_INFO("    RVIZ pub with %d points %d pillars,", (int)pillar_marker.points.size(), (int)pillars.size());// Выводим информацию о публикации
+        ROS_INFO("    RVIZ pub %d pillars,", (int)pillars.size()); // Выводим информацию о публикации
     }
+
     void visualizeLidar()
     {
         // Создаём маркер для лидара с направлением в глобальной системе координат
         visualization_msgs::Marker lidar_marker;
         lidar_marker.header.frame_id = "laser";                 // Используем систему laser для простоты
         lidar_marker.header.stamp = ros::Time::now();           // Текущая метка времени
-        lidar_marker.ns = "lidar_sphere";                              // Пространство имён
+        lidar_marker.ns = "lidar_sphere";                       // Пространство имён
         lidar_marker.type = visualization_msgs::Marker::SPHERE; // Тип маркера - сфера
         lidar_marker.action = visualization_msgs::Marker::ADD;  // Добавление маркера
 
@@ -376,9 +347,56 @@ public:
         ROS_INFO("    RVIZ pub lidar position with orientation");
     }
 
+    void transformLidar() // Публикуем системы трансормаций из одних систем координат в другие
+    {
+        // --------------------------------- base laser Для ЛИДАРА---------------------------------------
+        geometry_msgs::TransformStamped tfOdomLaser;
+        tfOdomLaser.header.stamp = ros::Time::now();
+        tfOdomLaser.header.frame_id = "base";
+        tfOdomLaser.child_frame_id = "laser";
+        tfOdomLaser.transform.translation.x = 0;
+        tfOdomLaser.transform.translation.y = 0;
+        tfOdomLaser.transform.translation.z = 0.0;
+        tfOdomLaser.transform.rotation = tf::createQuaternionMsgFromYaw(DEG2RAD(-180)); // Из градусов в радианы добавляем минус, так как в РОС вращение плюс против часовой, а у меня по часовой
+        tfBroadcaster.sendTransform(tfOdomLaser);                                       // Публикация системы преобразования из odom в map Тут динамически, а статически выглядит так   <node pkg="tf" type="static_transform_publisher" name="static_map_odom_tf" args="0 0 0 0 0 0 map odom 100" /> <!--http://wiki.ros.org/tf-->
+    }
+
+    // Отобращение стрелкой напрвлениена сопоставленные столбы из центра где лидар расположен
+    void visualPoseAngleLaser()
+    {
+        visualization_msgs::MarkerArray marker_array; // Создаем MarkerArray
+        for (int i = 0; i < 4; ++i)
+        {
+            visualization_msgs::Marker arrow_marker; // Создаем маркер типа ARROW
+            arrow_marker.header.frame_id = "base";   // Система координат
+            arrow_marker.header.stamp = ros::Time::now();
+            arrow_marker.ns = "arrows";
+            arrow_marker.id = i;                                   // Уникальный ID для каждой стрелки
+            arrow_marker.type = visualization_msgs::Marker::ARROW; // Тип маркера - стрелка
+            arrow_marker.action = visualization_msgs::Marker::ADD;
+
+            // Настройка масштаба (длина и толщина стрелки)
+            arrow_marker.scale.x = 5.0; // Длина стрелки
+            arrow_marker.scale.y = 0.02;
+            arrow_marker.scale.z = 0.02; // Толщина стрелки
+
+            arrow_marker.color = color3; // Настройка цвета
+
+            // Устанавливаем позицию и ориентацию стрелки
+            arrow_marker.pose.position.x = 0.0;                                                              // Расположение по X
+            arrow_marker.pose.position.y = 0.0;                                                              // Расположение по Y
+            arrow_marker.pose.position.z = 0.0;                                                              // Расположение по Z
+            arrow_marker.pose.orientation = tf::createQuaternionMsgFromYaw(-DEG2RAD(g_poseLidar.azimut[i])); // Минус так как у меня вращение по часовой
+
+            marker_array.markers.push_back(arrow_marker); // Добавляем маркер в массив
+        }
+        pub_pointers.publish(marker_array);
+    }
+
 private:
     ros::NodeHandle _nh;
-    ros::Time ros_time; // Время ROS
+    tf::TransformBroadcaster tfBroadcaster;            // Вещание данных преобразования систем координат
+    ros::Time ros_time;                                // Время ROS
     std_msgs::ColorRGBA color, color1, color2, color3; // Добавляем цвета для каждой точки
 
     //--------------------------------- ПУБЛИКАЦИЯ В ТОПИКИ -------------------------------------------------
@@ -393,10 +411,13 @@ private:
     ros::Publisher publish_Mode1 = _nh.advertise<nav_msgs::Odometry>("pbRviz/mode1", 8); // Это мы создаем публикатор и определяем название топика в рос
     ros::Publisher publish_Mode2 = _nh.advertise<nav_msgs::Odometry>("pbRviz/mode2", 8); // Это мы создаем публикатор и определяем название топика в рос
     ros::Publisher publish_Mode3 = _nh.advertise<nav_msgs::Odometry>("pbRviz/mode3", 8); // Это мы создаем публикатор и определяем название топика в рос
-            
-    ros::Publisher marker_publisher = _nh.advertise<visualization_msgs::Marker>("pbRviz/pillar_markers", 1);// Создаём publisher для отправки маркеров столбов в RViz
-    ros::Publisher cluster_publisher = _nh.advertise<visualization_msgs::Marker>("pbRviz/cluster_markers", 1);// Создаём publisher для отправки маркеров кластеров в RViz
-    ros::Publisher lidar_publisher = _nh.advertise<visualization_msgs::Marker>("pbRviz/lidar_marker", 1);// Создаём publisher для отправки маркера лидара в RViz
+
+    ros::Publisher marker_publisher = _nh.advertise<visualization_msgs::Marker>("pbRviz/pillar_markers", 1);   // Создаём publisher для отправки маркеров столбов в RViz
+    ros::Publisher cluster_publisher = _nh.advertise<visualization_msgs::Marker>("pbRviz/cluster_markers", 1); // Создаём publisher для отправки маркеров кластеров в RViz
+    ros::Publisher lidar_publisher = _nh.advertise<visualization_msgs::Marker>("pbRviz/lidar_marker", 1);      // Создаём publisher для отправки маркера лидара в RViz
+
+    // Создаем публикатор для MarkerArray// СТРЕЛКИ на столбы
+    ros::Publisher pub_pointers = _nh.advertise<visualization_msgs::MarkerArray>("pbLidar/rviz/pointers", 10);
 
     // ros::Publisher pub_PoseLidarMode1 = _nh.advertise<geometry_msgs::PoseStamped>("pbRviz/PoseLidarMode1", 16); // Это мы публикуем итоговую информацию по позици лидара расчет по mode1
     // ros::Publisher pub_PoseLidarMode2 = _nh.advertise<geometry_msgs::PoseStamped>("pbRviz/PoseLidarMode2", 16); // Это мы публикуем итоговую информацию по позици лидара расчет по mode2

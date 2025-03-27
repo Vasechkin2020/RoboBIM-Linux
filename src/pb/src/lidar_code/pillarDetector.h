@@ -346,7 +346,7 @@ private:
                 pillars.push_back(pillar);
 
                 // Выводим информацию о столбе в консоль в глобальных координатах
-                // ROS_INFO("Pillar detected from cluster %d: x_global = %.2f m, y_global = %.2f m, distance = %.2f m, direction = %.2f rad (%.1f deg), width = %.2f m",
+                // ROS_INFO("Pillar detected from cluster %d: x_global = %.2f m, y_global = %.2f m, distance = %.2f  %.2f rad (%.1f deg), width = %.2f m",
                 //          i,
                 //          pillar.x_global, pillar.y_global,
                 //          distance,
