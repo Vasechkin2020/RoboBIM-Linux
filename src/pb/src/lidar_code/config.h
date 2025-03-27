@@ -150,6 +150,7 @@ SPoint pointGlobal2Local(SPoint pointGlobal_, SPose poseLocal_)
     ret.y = ynew;
     return ret;
 }
+
 SPoint pointGlobal2LocalRos(SPoint pointGlobal_, SPose poseLocal_) // Вариант поворота по стандарту РОС что вращение против часовой
 {
     SPoint ret;

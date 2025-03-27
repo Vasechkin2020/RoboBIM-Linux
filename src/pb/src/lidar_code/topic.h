@@ -12,10 +12,12 @@ extern SPoseLidar g_poseLidar; // Позиции лидара по расчет�
 class CTopic
 {
 public:
-    CTopic(/* args */)// Реализация конструктора
-    {}
+    CTopic(/* args */) // Реализация конструктора
+    {
+    }
     ~CTopic() // Реализация деструктора
-    {}
+    {
+    }
 
     void visualStartPose(SPose startPose2d)
     {
@@ -63,12 +65,8 @@ public:
         marker.header.frame_id = "laser";
         marker.header.stamp = ros::Time::now(); // Время ROS;
         marker.ns = "pillars";
-        marker.id = 0;
         marker.type = visualization_msgs::Marker::CYLINDER;
         marker.action = visualization_msgs::Marker::ADD;
-        marker.pose.position.x = pillar_.pillar[0].x_true;
-        marker.pose.position.y = pillar_.pillar[0].y_true;
-        marker.pose.position.z = 0.25;
         marker.pose.orientation = tf::createQuaternionMsgFromYaw(0);
         marker.scale.x = 0.31;
         marker.scale.y = 0.31;
@@ -78,62 +76,63 @@ public:
         marker.color.g = 0.2;
         marker.color.b = 0.8;
 
-        pub_markerPillar.publish(marker);
+        SPoint point_local, point_global;
 
-        marker.id = 1;
-        marker.pose.position.x = pillar_.pillar[1].x_true;
-        marker.pose.position.y = pillar_.pillar[1].y_true;
-        pub_markerPillar.publish(marker);
-        marker.id = 2;
-        marker.pose.position.x = pillar_.pillar[2].x_true;
-        marker.pose.position.y = pillar_.pillar[2].y_true;
-        pub_markerPillar.publish(marker);
-        marker.id = 3;
-        marker.pose.position.x = pillar_.pillar[3].x_true;
-        marker.pose.position.y = pillar_.pillar[3].y_true;
-        pub_markerPillar.publish(marker);
-    }
-/*
-    void publicationPillarAll(CPillar pillar_) // Формируем перемнную с собщением для публикации
-    {
-        // ROS_INFO("+++ %i",pillar.countPillar);
-        pb_msgs::PillarOut pillarAll_msg; // Перемеенная в которую пишем данные для опубликования в топик
-        pb_msgs::pillar data;
-        pillarAll_msg.data.clear(); // Очищаем старые точки из массива
-        for (int i = 0; i < pillar_.countPillar; i++)
+        for (size_t i = 0; i < 4; i++)
         {
-            data.status = pillar_.pillar[i].status;
-            data.azimuth = pillar_.pillar[i].azimuth;
-            data.hypotenuse = pillar_.pillar[i].hypotenuse;
-            data.distance_lidar = pillar_.pillar[i].distance_lidar;
-            data.x_true = pillar_.pillar[i].x_true;
-            data.y_true = pillar_.pillar[i].y_true;
-            data.theta_true1 = pillar_.pillar[i].theta_true1;
-            data.theta_true2 = pillar_.pillar[i].theta_true2;
-            data.x_lidar = pillar_.pillar[i].x_lidar;
-            data.y_lidar = pillar_.pillar[i].y_lidar;
-            // ROS_INFO("Status= %i azimuth= %.3f",pillar_out_msg.data[i].status,pillar_out_msg.data[i].azimuth);
-            pillarAll_msg.data.push_back(data);
+            point_global.x = pillar_.pillar[i].x_true;
+            point_global.y = pillar_.pillar[i].y_true;
+            point_local = pointGlobal2Local(point_global, g_transformGlobal2Local); // Вариант поворота по стандарту РОС что вращение против часовой
+            // ROS_INFO("Global x = %.2f y = %.2f | Local x = %.2f y = %.2f | Pose x = %.2f y = %.2f th grad = %.2f th rad = %.2f", 
+            //     point_global.x,point_global.y,point_local.x,point_local.y,g_transformGlobal2Local.x, g_transformGlobal2Local.y, g_transformGlobal2Local.th, DEG2RAD(g_transformGlobal2Local.th));
+            marker.pose.position.x = point_local.x;
+            marker.pose.position.y = point_local.y;
+            marker.pose.position.z = 0.25;
+            marker.id = i;
+            pub_markerPillar.publish(marker);
         }
-        pub_PillarAll.publish(pillarAll_msg); // Публикуем информацию по столбам
-
-        // pointPillar0_msg.header.stamp = ros::Time::now();
-        // pointPillar0_msg.header.frame_id = "odom";
-        // pointPillar0_msg.point.x = pillar_.pillar[0].y_lidar;
-        // pointPillar0_msg.point.y = pillar_.pillar[0].x_lidar;
-
-        // pointPillarA_msg.header.stamp = ros::Time::now();
-        // pointPillarA_msg.header.frame_id = "odom";
-        // pointPillarA_msg.points.clear(); // Очищаем старые точки из массива
-        // geometry_msgs::Point32 p[4];
-        // for (int i = 0; i < pillar_.countPillar; i++)
-        // {
-        //     p[i].x = pillar_.pillar[0].x_lidar + 1;
-        //     p[i].y = pillar_.pillar[0].y_lidar + 1;
-        //     pointPillarA_msg.points.push_back(p[i]);
-        // }
     }
-*/
+    /*
+        void publicationPillarAll(CPillar pillar_) // Формируем перемнную с собщением для публикации
+        {
+            // ROS_INFO("+++ %i",pillar.countPillar);
+            pb_msgs::PillarOut pillarAll_msg; // Перемеенная в которую пишем данные для опубликования в топик
+            pb_msgs::pillar data;
+            pillarAll_msg.data.clear(); // Очищаем старые точки из массива
+            for (int i = 0; i < pillar_.countPillar; i++)
+            {
+                data.status = pillar_.pillar[i].status;
+                data.azimuth = pillar_.pillar[i].azimuth;
+                data.hypotenuse = pillar_.pillar[i].hypotenuse;
+                data.distance_lidar = pillar_.pillar[i].distance_lidar;
+                data.x_true = pillar_.pillar[i].x_true;
+                data.y_true = pillar_.pillar[i].y_true;
+                data.theta_true1 = pillar_.pillar[i].theta_true1;
+                data.theta_true2 = pillar_.pillar[i].theta_true2;
+                data.x_lidar = pillar_.pillar[i].x_lidar;
+                data.y_lidar = pillar_.pillar[i].y_lidar;
+                // ROS_INFO("Status= %i azimuth= %.3f",pillar_out_msg.data[i].status,pillar_out_msg.data[i].azimuth);
+                pillarAll_msg.data.push_back(data);
+            }
+            pub_PillarAll.publish(pillarAll_msg); // Публикуем информацию по столбам
+
+            // pointPillar0_msg.header.stamp = ros::Time::now();
+            // pointPillar0_msg.header.frame_id = "odom";
+            // pointPillar0_msg.point.x = pillar_.pillar[0].y_lidar;
+            // pointPillar0_msg.point.y = pillar_.pillar[0].x_lidar;
+
+            // pointPillarA_msg.header.stamp = ros::Time::now();
+            // pointPillarA_msg.header.frame_id = "odom";
+            // pointPillarA_msg.points.clear(); // Очищаем старые точки из массива
+            // geometry_msgs::Point32 p[4];
+            // for (int i = 0; i < pillar_.countPillar; i++)
+            // {
+            //     p[i].x = pillar_.pillar[0].x_lidar + 1;
+            //     p[i].y = pillar_.pillar[0].y_lidar + 1;
+            //     pointPillarA_msg.points.push_back(p[i]);
+            // }
+        }
+    */
     void publicationPoseLidar() // Формируем перемнную с собщением для публикации
     {
         pb_msgs::Struct_PoseLidar poseLidarAll_msg; // Обобщенные данные в моем формате о всех вариантах расчета позиции
@@ -152,7 +151,7 @@ public:
 
         poseLidarAll_msg.countMatchPillar = g_poseLidar.countMatchPillar;
         poseLidarAll_msg.countCrossCircle = g_poseLidar.countCrossCircle;
-        
+
         poseLidarAll_msg.azimut[0] = g_poseLidar.azimut[0];
         poseLidarAll_msg.azimut[1] = g_poseLidar.azimut[1];
         poseLidarAll_msg.azimut[2] = g_poseLidar.azimut[2];
@@ -166,7 +165,7 @@ public:
         // Публикация Одометрии
         nav_msgs::Odometry mode1_msg;
         mode1_msg.header.stamp = ros::Time::now(); // Время ROS
-        mode1_msg.header.frame_id = "laser";        // Поза в этом сообщении должна быть указана в системе координат, заданной header.frame_id.
+        mode1_msg.header.frame_id = "laser";       // Поза в этом сообщении должна быть указана в системе координат, заданной header.frame_id.
         // set the position
         mode1_msg.pose.pose.position.x = g_poseLidar.mode1.x;
         mode1_msg.pose.pose.position.y = g_poseLidar.mode1.y;
@@ -195,7 +194,7 @@ public:
         // Публикация Одометрии
         nav_msgs::Odometry mode2_msg;
         mode2_msg.header.stamp = ros::Time::now(); // Время ROS
-        mode2_msg.header.frame_id = "laser";        // Поза в этом сообщении должна быть указана в системе координат, заданной header.frame_id.
+        mode2_msg.header.frame_id = "laser";       // Поза в этом сообщении должна быть указана в системе координат, заданной header.frame_id.
         // set the position
         mode2_msg.pose.pose.position.x = g_poseLidar.mode2.x;
         mode2_msg.pose.pose.position.y = g_poseLidar.mode2.y;
@@ -240,20 +239,20 @@ public:
 
 private:
     ros::NodeHandle _nh;
-    ros::Time ros_time;                     // Время ROS
+    ros::Time ros_time; // Время ROS
 
     //--------------------------------- ПУБЛИКАЦИЯ В ТОПИКИ -------------------------------------------------
 
-    ros::Publisher pub_poseLidar = _nh.advertise<pb_msgs::Struct_PoseLidar>("pbLidar/PoseLidar", 8);          // Это мы публикуем итоговую информацию по позици лидара обобщенную
+    ros::Publisher pub_poseLidar = _nh.advertise<pb_msgs::Struct_PoseLidar>("pbLidar/PoseLidar", 8); // Это мы публикуем итоговую информацию по позици лидара обобщенную
     // ros::Publisher pub_PillarAll = _nh.advertise<pb_msgs::PillarOut>("pbPos/PillarAll", 16); // Это мы публикуем итоговую обобщенную информацию по столбам где все данные указаны НАФИГА?
-    ros::Publisher pub_markerPillar = _nh.advertise<visualization_msgs::Marker>("pbRviz/markerPillar", 0);    // Публикуем столбы как маркер тип цилиндр
+    ros::Publisher pub_markerPillar = _nh.advertise<visualization_msgs::Marker>("pbRviz/markerPillar", 0);     // Публикуем столбы как маркер тип цилиндр
     ros::Publisher pub_markerPosition = _nh.advertise<visualization_msgs::Marker>("pbRviz/markerPosition", 0); // Публикуем столики как точки позиций
-    ros::Publisher pub_StartPose = _nh.advertise<geometry_msgs::PoseStamped>("pbRviz/StartPose", 16); // Для публикации стартовой позиции
+    ros::Publisher pub_StartPose = _nh.advertise<geometry_msgs::PoseStamped>("pbRviz/StartPose", 16);          // Для публикации стартовой позиции
 
-    ros::Publisher publish_Mode0 = _nh.advertise<nav_msgs::Odometry>("pbRviz/mode0", 8);     // Это мы создаем публикатор и определяем название топика в рос
-    ros::Publisher publish_Mode1 = _nh.advertise<nav_msgs::Odometry>("pbRviz/mode1", 8);     // Это мы создаем публикатор и определяем название топика в рос
-    ros::Publisher publish_Mode2 = _nh.advertise<nav_msgs::Odometry>("pbRviz/mode2", 8);     // Это мы создаем публикатор и определяем название топика в рос
-    ros::Publisher publish_Mode3 = _nh.advertise<nav_msgs::Odometry>("pbRviz/mode3", 8);     // Это мы создаем публикатор и определяем название топика в рос
+    ros::Publisher publish_Mode0 = _nh.advertise<nav_msgs::Odometry>("pbRviz/mode0", 8); // Это мы создаем публикатор и определяем название топика в рос
+    ros::Publisher publish_Mode1 = _nh.advertise<nav_msgs::Odometry>("pbRviz/mode1", 8); // Это мы создаем публикатор и определяем название топика в рос
+    ros::Publisher publish_Mode2 = _nh.advertise<nav_msgs::Odometry>("pbRviz/mode2", 8); // Это мы создаем публикатор и определяем название топика в рос
+    ros::Publisher publish_Mode3 = _nh.advertise<nav_msgs::Odometry>("pbRviz/mode3", 8); // Это мы создаем публикатор и определяем название топика в рос
 
     // ros::Publisher pub_PoseLidarMode1 = _nh.advertise<geometry_msgs::PoseStamped>("pbRviz/PoseLidarMode1", 16); // Это мы публикуем итоговую информацию по позици лидара расчет по mode1
     // ros::Publisher pub_PoseLidarMode2 = _nh.advertise<geometry_msgs::PoseStamped>("pbRviz/PoseLidarMode2", 16); // Это мы публикуем итоговую информацию по позици лидара расчет по mode2

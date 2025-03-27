@@ -11,6 +11,7 @@
 #include "lidar_code/pillarDetector.h"
 
 SPoseLidar g_poseLidar; // Позиции лидара по расчетам Центральная система координат
+SPose g_transformGlobal2Local; // Система трансоформации из одной позиции в другую
 #define COMPLEMENTARN 0.8
 
 #include "lidar_code/topic.h" // Файл для функций для формирования топиков в нужном виде и формате
@@ -67,7 +68,7 @@ int main(int argc, char **argv)
     std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", formattedTime);
     ROS_INFO("TIME START NODE current time: %s", buffer); // Выводим в консоль
 
-    ros::Rate loop_rate(20);           // Создаём цикл с частотой 10 Гц
+    ros::Rate loop_rate(2);           // Создаём цикл с частотой 10 Гц
     while (ros::ok() && keep_running) // Пока ROS работает и не нажат Ctrl+C
     {
         timeLoop = ros::Time::now(); // Захватываем текущий момент времени начала цикла
@@ -84,6 +85,9 @@ int main(int argc, char **argv)
             // topic.publicationPillarAll(pillar);                // Публикуем всю обобщенную информацию по столб
 
             detector.scanCallback(msg_lidar);
+            // detector.visualizeClasters();
+            detector.visualizePillars();
+            detector.visualizeLidar();
 
             calcDistDirect(distDirect, pillar, detector); // Обьединение сопоставленных столбов в итоговую таблицу. Дальше по этой таблице все считается
 
@@ -149,6 +153,10 @@ void readParam(SPose &startPose, SPoint *startPillar)
     if (!nh_private.getParam("theta", startPose.th))
         startPose.th = 0.11;
 
+    g_transformGlobal2Local.x = startPose.x;
+    g_transformGlobal2Local.y = startPose.y;
+    g_transformGlobal2Local.th = startPose.th + 180;
+
     //<!-- Указываем места расположения столбов на локальной карте -->
     if (!nh_private.getParam("x0", startPillar[0].x))
         startPillar[0].x = 0.11;
@@ -170,7 +178,8 @@ void readParam(SPose &startPose, SPoint *startPillar)
     if (!nh_private.getParam("y3", startPillar[3].y))
         startPillar[3].y = 3.11;
 
-    ROS_INFO("    startPose x = %.3f y = %.3f th = %.3f", startPose.x, startPose.y, startPose.th);
+    ROS_INFO("    startPose x = %.3f y = %.3f th = %.3f gradus", startPose.x, startPose.y, startPose.th);
+    ROS_INFO("    g_transformGlobal2Local x = %.3f y = %.3f th = %.3f gradus", g_transformGlobal2Local.x, g_transformGlobal2Local.y, g_transformGlobal2Local.th);
     ROS_INFO("    start PillarPose");
     ROS_INFO("    x0= %.3f y0 = %.3f", startPillar[0].x, startPillar[0].y);
     ROS_INFO("    x1= %.3f y1 = %.3f", startPillar[1].x, startPillar[1].y);

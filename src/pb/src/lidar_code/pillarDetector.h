@@ -7,6 +7,19 @@ class PillarDetector
 public:
     PillarDetector()
     {
+        color1.r = 1.0;
+        color1.g = 0.0;
+        color1.b = 0.0;
+        color1.a = 1.0; // Красный
+        color2.r = 0.0;
+        color2.g = 1.0;
+        color2.b = 0.0;
+        color2.a = 1.0; // Зеленый
+        color3.r = 0.0;
+        color3.g = 0.0;
+        color3.b = 1.0;
+        color3.a = 1.0; // Синий
+
         // Подписываемся на топик /scan, чтобы получать данные лидара
         // scan_subscriber = node.subscribe("/scan", 1, &PillarDetector::scanCallback, this);
 
@@ -20,7 +33,7 @@ public:
         lidar_publisher = node.advertise<visualization_msgs::Marker>("pbRviz/lidar_marker", 1);
 
         // Настраиваем таймер, чтобы визуализация происходила раз в секунду
-        timer = node.createTimer(ros::Duration(0.25), &PillarDetector::visualizeCallback, this);
+        // timer = node.createTimer(ros::Duration(0.25), &PillarDetector::visualizeCallback, this);
 
         ROS_INFO("Program started. Press Ctrl+C to exit.");
     }
@@ -44,7 +57,7 @@ public:
         double direction; // Направление
         double distance;  // Дистанция
         bool match;       // Сопоставление
-        int count;       // Флаг что есть значение
+        int count;        // Флаг что есть значение
     };
 
     Pillar matchPillar[4]; // Сопоставленные столбы по порядку
@@ -101,15 +114,15 @@ public:
         ROS_INFO("++++ scanCallback");
         std::vector<PointXY> points; // Создаём пустой список точек
         points.reserve(4096);
-        
-        for (int i = 0; i < scan->ranges.size(); i++)// Проходим по всем измерениям лидара
+
+        for (int i = 0; i < scan->ranges.size(); i++) // Проходим по всем измерениям лидара
         {
             float range = scan->ranges[i];                            // Расстояние до объекта в текущем направлении
             if (range >= scan->range_min && range <= scan->range_max) // Проверяем, что расстояние в допустимом диапазоне
             {
                 float angle = scan->angle_min + i * scan->angle_increment; // Вычисляем угол для текущей точки
                 PointXY point;
-                point.x = range * cos(angle);// Переводим полярные координаты (угол, расстояние) в декартовы (x, y)
+                point.x = range * cos(angle); // Переводим полярные координаты (угол, расстояние) в декартовы (x, y)
                 point.y = range * sin(angle);
                 points.push_back(point); // Добавляем точку в список
             }
@@ -118,12 +131,12 @@ public:
         elapsed_time = ros::Time::now() - start_time;                      // Вычисляем интервал
         // ROS_INFO("    End Scan Elapsed time: %.6f seconds", elapsed_time.toSec());
 
-        std::vector<std::vector<PointXY>> clusters = findClusters(points);          // Находим группы точек (кластеры)
-        cluster_info_list = createdClasterList(clusters); // Список информации о кластерах
+        std::vector<std::vector<PointXY>> clusters = findClusters(points); // Находим группы точек (кластеры)
+        cluster_info_list = createdClasterList(clusters);                  // Список информации о кластерах
 
         // ROS_INFO("    Lidar theta START = %.3f rad (%.3f deg)", lidar_theta, RAD2DEG(lidar_theta));
 
-        findPillars(); // Ищем столбы в этих кластерах
+        findPillars();  // Ищем столбы в этих кластерах
         matchPillars(); // // Сопоставляем столбы с известными координатами и вычисляем позицию и ориентацию лидара
     }
 
@@ -143,6 +156,8 @@ private:
     ros::Time start_time;       // Записываем конечное время
     ros::Time end_time;         // Записываем конечное время
     ros::Duration elapsed_time; // Вычисляем интервал
+
+    std_msgs::ColorRGBA color, color1, color2, color3; // Добавляем цвета для каждой точки
 
     // Функция для поиска кластеров (групп точек)
     std::vector<std::vector<PointXY>> findClusters(std::vector<PointXY> points)
@@ -395,7 +410,6 @@ private:
             matchPillar[i].y_global = 0;
             matchPillar[i].count = 0;
         }
-        
 
         // Проходим по всем обнаруженным столбам
         for (size_t i = 0; i < pillars.size(); i++)
@@ -447,12 +461,12 @@ private:
                 matchPillar[best_match].x_global = KNOWN_PILLARS[best_match].first;
                 matchPillar[best_match].y_global = KNOWN_PILLARS[best_match].second;
                 matchPillar[best_match].distance = pillars[i].distance;
-                
-                float direct =  RAD2DEG(pillars[i].direction);
-                if (direct < 0) 
+
+                float direct = RAD2DEG(pillars[i].direction);
+                if (direct < 0)
                     direct = -direct;
-                    else if (direct > 0) 
-                    direct = 360 - direct; 
+                else if (direct > 0)
+                    direct = 360 - direct;
                 matchPillar[best_match].direction = direct;
                 matchPillar[best_match].count = 1;
             }
@@ -521,8 +535,8 @@ private:
             {
                 float lidar_xX = sum_x / count;
                 float lidar_yY = sum_y / count;
-                float lidar_theta_T = normalizeAngle(sum_theta / count)+ M_PI;
-                ROS_WARN("    MODE3 pose.x= %.3f y= %.3f theta= %.3f ", lidar_x + lidar_xX,lidar_y + lidar_yY, RAD2DEG(lidar_theta_T));
+                float lidar_theta_T = normalizeAngle(sum_theta / count) + M_PI;
+                ROS_WARN("    MODE3 pose.x= %.3f y= %.3f theta= %.3f ", lidar_x + lidar_xX, lidar_y + lidar_yY, RAD2DEG(lidar_theta_T));
                 // ROS_INFO("    Lidar theta END 22 = %.3f rad (%.3f deg)", lidar_theta_T, RAD2DEG(lidar_theta_T));
 
                 // lidar_x += lidar_xX;
@@ -540,24 +554,11 @@ private:
         }
     }
 
+public:
     // Функция для визуализации кластеров, столбов и лидара в RViz (вызывается раз в секунду)
-    void visualizeCallback(const ros::TimerEvent &)
+    // void visualizeCallback(const ros::TimerEvent &)
+    void visualizeClasters()
     {
-        // Добавляем цвета для каждой точки
-        std_msgs::ColorRGBA color, color1, color2, color3;
-        color1.r = 1.0;
-        color1.g = 0.0;
-        color1.b = 0.0;
-        color1.a = 1.0; // Красный
-        color2.r = 0.0;
-        color2.g = 1.0;
-        color2.b = 0.0;
-        color2.a = 1.0; // Зеленый
-        color3.r = 0.0;
-        color3.g = 0.0;
-        color3.b = 1.0;
-        color3.a = 1.0; // Синий
-
         // Создаём маркер для кластеров
         visualization_msgs::Marker cluster_marker;
         cluster_marker.header.frame_id = "laser";                 // Система координат лидара
@@ -598,7 +599,12 @@ private:
                 cluster_marker.colors.push_back(color);     // Добавляем цвет в список
             }
         }
-
+        cluster_publisher.publish(cluster_marker);
+        // Выводим информацию о публикации
+        ROS_INFO("    RVIZ pub %d clusters", (int)cluster_info_list.size());
+    }
+    void visualizePillars()
+    {
         // Создаём маркер для столбов
         visualization_msgs::Marker pillar_marker;
         pillar_marker.header.frame_id = "laser";                      // Система координат лидара
@@ -631,38 +637,48 @@ private:
             pillar_marker.points.push_back(point); // Добавляем точку в список
             pillar_marker.colors.push_back(color); // Добавляем цвет в список
         }
-
+        // Отправляем маркеры в RViz
+        marker_publisher.publish(pillar_marker);
+        // Выводим информацию о публикации
+        ROS_INFO("    RVIZ pub with %d points %d pillars,", (int)pillar_marker.points.size(), (int)pillars.size());
+    }
+    void visualizeLidar()
+    {
         // Создаём маркер для лидара с направлением в глобальной системе координат
         visualization_msgs::Marker lidar_marker;
-        lidar_marker.header.frame_id = "laser";                // Используем систему laser для простоты
-        lidar_marker.header.stamp = ros::Time::now();          // Текущая метка времени
-        lidar_marker.ns = "lidar";                             // Пространство имён
-        lidar_marker.type = visualization_msgs::Marker::ARROW; // Тип маркера - стрелка
-        lidar_marker.action = visualization_msgs::Marker::ADD; // Действие - добавить
-        lidar_marker.pose.position.x = lidar_x;                // Координата x лидара (глобальная, но в laser для простоты)
-        lidar_marker.pose.position.y = lidar_y;                // Координата y лидара
-        lidar_marker.pose.position.z = 0.0;                    // Высота (z=0, так как 2D)
+        lidar_marker.header.frame_id = "laser";                 // Используем систему laser для простоты
+        lidar_marker.header.stamp = ros::Time::now();           // Текущая метка времени
+        lidar_marker.ns = "lidar_sphere";                              // Пространство имён
+        lidar_marker.type = visualization_msgs::Marker::SPHERE; // Тип маркера - сфера
+        lidar_marker.action = visualization_msgs::Marker::ADD;  // Добавление маркера
+
+        // Параметры масштабирования (размер сферы)
+        lidar_marker.scale.x = 0.2; // Диаметр сферы по оси X
+        lidar_marker.scale.y = 0.2; // Диаметр сферы по оси Y
+        lidar_marker.scale.z = 0.1; // Диаметр сферы по оси Z
+
+        // Цвет сферы (RGBA, значения от 0 до 1)
+        lidar_marker.color.r = 0.5; // Красный
+        lidar_marker.color.g = 0.6; // Зеленый
+        lidar_marker.color.b = 0.7; // Синий
+        lidar_marker.color.a = 0.5; // Прозрачность (1.0 = полностью непрозрачный)
+
+        // Позиция сферы
+        lidar_marker.pose.position.x = 0.0;
+        lidar_marker.pose.position.y = 0.0;
+        lidar_marker.pose.position.z = 0.0;
+
+        // Ориентация сферы (обычно не требуется для сферы)
         lidar_marker.pose.orientation.x = 0.0;
         lidar_marker.pose.orientation.y = 0.0;
-        lidar_marker.pose.orientation.z = sin(lidar_theta / 2.0); // Кватернион для поворота
-        lidar_marker.pose.orientation.w = cos(lidar_theta / 2.0);
-        lidar_marker.scale.x = 0.5; // Длина стрелки
-        lidar_marker.scale.y = 0.1; // Ширина стрелки
-        lidar_marker.scale.z = 0.1; // Высота стрелки
-        lidar_marker.color.r = 0.0; // Цвет - красный
-        lidar_marker.color.g = 0.0; // Цвет - зелёный
-        lidar_marker.color.b = 1.0; // Цвет - синий
-        lidar_marker.color.a = 1.0; // Прозрачность (непрозрачный)
-        lidar_marker.id = 0;        // Идентификатор маркера
+        lidar_marker.pose.orientation.z = 0.0;
+        lidar_marker.pose.orientation.w = 1.0;
 
         // Отправляем маркеры в RViz
-        cluster_publisher.publish(cluster_marker);
-        marker_publisher.publish(pillar_marker);
         lidar_publisher.publish(lidar_marker);
 
         // Выводим информацию о публикации
-        ROS_INFO("    RVIZ pub %d clusters with %d points, %d pillars, and lidar position with orientation",
-                 (int)cluster_info_list.size(), (int)cluster_marker.points.size(), (int)pillars.size());
+        ROS_INFO("    RVIZ pub lidar position with orientation");
     }
 };
 
