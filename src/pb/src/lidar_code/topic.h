@@ -403,18 +403,17 @@ private:
 
     ros::Publisher pub_poseLidar = _nh.advertise<pb_msgs::Struct_PoseLidar>("pbLidar/PoseLidar", 8); // Это мы публикуем итоговую информацию по позици лидара обобщенную
     // ros::Publisher pub_PillarAll = _nh.advertise<pb_msgs::PillarOut>("pbPos/PillarAll", 16); // Это мы публикуем итоговую обобщенную информацию по столбам где все данные указаны НАФИГА?
-    ros::Publisher pub_markerPillar = _nh.advertise<visualization_msgs::Marker>("pbRviz/markerPillar", 0);     // Публикуем столбы как маркер тип цилиндр
-    ros::Publisher pub_markerPosition = _nh.advertise<visualization_msgs::Marker>("pbRviz/markerPosition", 0); // Публикуем столики как точки позиций
-    ros::Publisher pub_StartPose = _nh.advertise<geometry_msgs::PoseStamped>("pbRviz/StartPose", 16);          // Для публикации стартовой позиции
 
-    ros::Publisher publish_Mode0 = _nh.advertise<nav_msgs::Odometry>("pbRviz/mode0", 8); // Это мы создаем публикатор и определяем название топика в рос
-    ros::Publisher publish_Mode1 = _nh.advertise<nav_msgs::Odometry>("pbRviz/mode1", 8); // Это мы создаем публикатор и определяем название топика в рос
-    ros::Publisher publish_Mode2 = _nh.advertise<nav_msgs::Odometry>("pbRviz/mode2", 8); // Это мы создаем публикатор и определяем название топика в рос
-    ros::Publisher publish_Mode3 = _nh.advertise<nav_msgs::Odometry>("pbRviz/mode3", 8); // Это мы создаем публикатор и определяем название топика в рос
+    ros::Publisher pub_markerPillar = _nh.advertise<visualization_msgs::Marker>("pbLidar/rviz/markerPillar", 0);     // Публикуем столбы как маркер тип цилиндр
+    ros::Publisher pub_markerPosition = _nh.advertise<visualization_msgs::Marker>("pbLidar/rviz/markerPosition", 0); // Публикуем столики как точки позиций
+    ros::Publisher pub_StartPose = _nh.advertise<geometry_msgs::PoseStamped>("pbLidar/rviz/StartPose", 16);          // Для публикации стартовой позиции
 
-    ros::Publisher marker_publisher = _nh.advertise<visualization_msgs::Marker>("pbRviz/pillar_markers", 1);   // Создаём publisher для отправки маркеров столбов в RViz
-    ros::Publisher cluster_publisher = _nh.advertise<visualization_msgs::Marker>("pbRviz/cluster_markers", 1); // Создаём publisher для отправки маркеров кластеров в RViz
-    ros::Publisher lidar_publisher = _nh.advertise<visualization_msgs::Marker>("pbRviz/lidar_marker", 1);      // Создаём publisher для отправки маркера лидара в RViz
+    ros::Publisher publish_Mode1 = _nh.advertise<nav_msgs::Odometry>("pbLidar/rviz//mode1", 8); // Это мы создаем публикатор и определяем название топика в рос
+    ros::Publisher publish_Mode2 = _nh.advertise<nav_msgs::Odometry>("pbLidar/rviz/mode2", 8); // Это мы создаем публикатор и определяем название топика в рос
+
+    ros::Publisher marker_publisher = _nh.advertise<visualization_msgs::Marker>("pbLidar/rviz/pillar_markers", 1);   // Создаём publisher для отправки маркеров столбов в RViz
+    ros::Publisher cluster_publisher = _nh.advertise<visualization_msgs::Marker>("pbLidar/rviz/cluster_markers", 1); // Создаём publisher для отправки маркеров кластеров в RViz
+    ros::Publisher lidar_publisher = _nh.advertise<visualization_msgs::Marker>("pbLidar/rviz/lidar_marker", 1);      // Создаём publisher для отправки маркера лидара в RViz
 
     // Создаем публикатор для MarkerArray// СТРЕЛКИ на столбы
     ros::Publisher pub_pointers = _nh.advertise<visualization_msgs::MarkerArray>("pbLidar/rviz/pointers", 10);
