@@ -85,9 +85,9 @@ int main(int argc, char **argv)
             // topic.publicationPillarAll(pillar);                // Публикуем всю обобщенную информацию по столб
 
             detector.scanCallback(msg_lidar);
-            // detector.visualizeClasters();
-            detector.visualizePillars();
-            detector.visualizeLidar();
+            // topic.visualizeClasters(detector.cluster_info_list); // Большой обьем данных. Лучше отклычать
+            topic.visualizePillars(detector.pillars);
+            topic.visualizeLidar();
 
             calcDistDirect(distDirect, pillar, detector); // Обьединение сопоставленных столбов в итоговую таблицу. Дальше по этой таблице все считается
 

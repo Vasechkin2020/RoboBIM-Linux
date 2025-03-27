@@ -7,34 +7,8 @@ class PillarDetector
 public:
     PillarDetector()
     {
-        color1.r = 1.0;
-        color1.g = 0.0;
-        color1.b = 0.0;
-        color1.a = 1.0; // Красный
-        color2.r = 0.0;
-        color2.g = 1.0;
-        color2.b = 0.0;
-        color2.a = 1.0; // Зеленый
-        color3.r = 0.0;
-        color3.g = 0.0;
-        color3.b = 1.0;
-        color3.a = 1.0; // Синий
-
-        // Подписываемся на топик /scan, чтобы получать данные лидара
-        // scan_subscriber = node.subscribe("/scan", 1, &PillarDetector::scanCallback, this);
-
-        // Создаём publisher для отправки маркеров столбов в RViz
-        marker_publisher = node.advertise<visualization_msgs::Marker>("pbRviz/pillar_markers", 1);
-
-        // Создаём publisher для отправки маркеров кластеров в RViz
-        cluster_publisher = node.advertise<visualization_msgs::Marker>("pbRviz/cluster_markers", 1);
-
-        // Создаём publisher для отправки маркера лидара в RViz
-        lidar_publisher = node.advertise<visualization_msgs::Marker>("pbRviz/lidar_marker", 1);
-
-        // Настраиваем таймер, чтобы визуализация происходила раз в секунду
-        // timer = node.createTimer(ros::Duration(0.25), &PillarDetector::visualizeCallback, this);
-
+        // scan_subscriber = node.subscribe("/scan", 1, &PillarDetector::scanCallback, this);// Подписываемся на топик /scan, чтобы получать данные лидара
+        // timer = node.createTimer(ros::Duration(0.25), &PillarDetector::visualizeCallback, this); // Настраиваем таймер, чтобы визуализация происходила раз в секунду
         ROS_INFO("Program started. Press Ctrl+C to exit.");
     }
 
@@ -107,6 +81,9 @@ public:
         double azimuth_global;       // Азимут в глобальной системе
     };
 
+    std::vector<Pillar> pillars;                // Список найденных столбов
+    std::vector<ClusterInfo> cluster_info_list; // Список информации о кластерах
+    
     // Функция обработки данных от лидара
     void scanCallback(const sensor_msgs::LaserScan::ConstPtr &scan)
     {
@@ -143,12 +120,7 @@ public:
 private:
     ros::NodeHandle node;                       // Узел ROS для работы с топиками
     ros::Subscriber scan_subscriber;            // Подписчик на данные лидара
-    ros::Publisher marker_publisher;            // Издатель для маркеров столбов
-    ros::Publisher cluster_publisher;           // Издатель для маркеров кластеров
-    ros::Publisher lidar_publisher;             // Издатель для маркера лидара
     ros::Timer timer;                           // Таймер для визуализации
-    std::vector<Pillar> pillars;                // Список найденных столбов
-    std::vector<ClusterInfo> cluster_info_list; // Список информации о кластерах
 
     double lidar_x = 0.0;       // Координата x лидара в глобальной системе
     double lidar_y = 0.0;       // Координата y лидара в глобальной системе
@@ -156,8 +128,6 @@ private:
     ros::Time start_time;       // Записываем конечное время
     ros::Time end_time;         // Записываем конечное время
     ros::Duration elapsed_time; // Вычисляем интервал
-
-    std_msgs::ColorRGBA color, color1, color2, color3; // Добавляем цвета для каждой точки
 
     // Функция для поиска кластеров (групп точек)
     std::vector<std::vector<PointXY>> findClusters(std::vector<PointXY> points)
@@ -555,131 +525,7 @@ private:
     }
 
 public:
-    // Функция для визуализации кластеров, столбов и лидара в RViz (вызывается раз в секунду)
-    // void visualizeCallback(const ros::TimerEvent &)
-    void visualizeClasters()
-    {
-        // Создаём маркер для кластеров
-        visualization_msgs::Marker cluster_marker;
-        cluster_marker.header.frame_id = "laser";                 // Система координат лидара
-        cluster_marker.header.stamp = ros::Time::now();           // Текущая метка времени
-        cluster_marker.ns = "clusters";                           // Пространство имён для кластеров
-        cluster_marker.type = visualization_msgs::Marker::POINTS; // Тип маркера - точки
-        cluster_marker.action = visualization_msgs::Marker::ADD;  // Действие - добавить
-        cluster_marker.pose.orientation.w = 1.0;                  // Ориентация (без вращения)
-        cluster_marker.scale.x = 0.03;                            // Размер точки по x (5 см)
-        cluster_marker.scale.y = 0.03;                            // Размер точки по y
-        // cluster_marker.color.r = 0.0;                             // Цвет - красный
-        // cluster_marker.color.g = 1.0;                             // Цвет - зелёный (для отличия от столбов)
-        // cluster_marker.color.b = 0.0;                             // Цвет - синий
-        // cluster_marker.color.a = 1.0;                             // Прозрачность (непрозрачный)
-        cluster_marker.id = 0; // Идентификатор маркера
-        int aa = 1;
 
-        // Заполняем маркер кластерами (локальные координаты для RViz)
-        for (int i = 0; i < cluster_info_list.size(); i++)
-        {
-            if (aa == 1)
-            {
-                color = color2;
-                aa = 0;
-            }
-            else
-            {
-                color = color3;
-                aa = 1;
-            }
-            for (int j = 0; j < cluster_info_list[i].points.size(); j++)
-            {
-                geometry_msgs::Point point;
-                point.x = cluster_info_list[i].points[j].x; // Локальная координата x
-                point.y = cluster_info_list[i].points[j].y; // Локальная координата y
-                point.z = 0.0;                              // Высота (z=0, так как 2D)
-                cluster_marker.points.push_back(point);     // Добавляем точку в список
-                cluster_marker.colors.push_back(color);     // Добавляем цвет в список
-            }
-        }
-        cluster_publisher.publish(cluster_marker);
-        // Выводим информацию о публикации
-        ROS_INFO("    RVIZ pub %d clusters", (int)cluster_info_list.size());
-    }
-    void visualizePillars()
-    {
-        // Создаём маркер для столбов
-        visualization_msgs::Marker pillar_marker;
-        pillar_marker.header.frame_id = "laser";                      // Система координат лидара
-        pillar_marker.header.stamp = ros::Time::now();                // Текущая метка времени
-        pillar_marker.ns = "pillars";                                 // Пространство имён
-        pillar_marker.type = visualization_msgs::Marker::SPHERE_LIST; // Тип маркера - список сфер
-        pillar_marker.action = visualization_msgs::Marker::ADD;       // Действие - добавить
-        pillar_marker.pose.orientation.w = 1.0;                       // Ориентация (без вращения)
-        pillar_marker.scale.x = 0.315;                                // Размер сферы по x (диаметр столба)
-        pillar_marker.scale.y = 0.315;                                // Размер сферы по y
-        pillar_marker.scale.z = 0.315;                                // Размер сферы по z
-        // pillar_marker.color.r = 1.0;                                  // Цвет - красный
-        // pillar_marker.color.g = 0.0;                                  // Цвет - зелёный
-        // pillar_marker.color.b = 0.0;                                  // Цвет - синий
-        // pillar_marker.color.a = 1.0;                                  // Прозрачность (непрозрачный)
-        pillar_marker.id = 0; // Идентификатор маркера
-
-        // Заполняем маркер столбами (локальные координаты для RViz)
-        for (int i = 0; i < pillars.size(); i++)
-        {
-            if (pillars[i].match == true)
-                color = color2;
-            else
-                color = color3;
-
-            geometry_msgs::Point point;
-            point.x = pillars[i].x_center;         // Локальная координата x центра столба
-            point.y = pillars[i].y_center;         // Локальная координата y центра столба
-            point.z = 0.0;                         // Высота (z=0, так как 2D)
-            pillar_marker.points.push_back(point); // Добавляем точку в список
-            pillar_marker.colors.push_back(color); // Добавляем цвет в список
-        }
-        // Отправляем маркеры в RViz
-        marker_publisher.publish(pillar_marker);
-        // Выводим информацию о публикации
-        ROS_INFO("    RVIZ pub with %d points %d pillars,", (int)pillar_marker.points.size(), (int)pillars.size());
-    }
-    void visualizeLidar()
-    {
-        // Создаём маркер для лидара с направлением в глобальной системе координат
-        visualization_msgs::Marker lidar_marker;
-        lidar_marker.header.frame_id = "laser";                 // Используем систему laser для простоты
-        lidar_marker.header.stamp = ros::Time::now();           // Текущая метка времени
-        lidar_marker.ns = "lidar_sphere";                              // Пространство имён
-        lidar_marker.type = visualization_msgs::Marker::SPHERE; // Тип маркера - сфера
-        lidar_marker.action = visualization_msgs::Marker::ADD;  // Добавление маркера
-
-        // Параметры масштабирования (размер сферы)
-        lidar_marker.scale.x = 0.2; // Диаметр сферы по оси X
-        lidar_marker.scale.y = 0.2; // Диаметр сферы по оси Y
-        lidar_marker.scale.z = 0.1; // Диаметр сферы по оси Z
-
-        // Цвет сферы (RGBA, значения от 0 до 1)
-        lidar_marker.color.r = 0.5; // Красный
-        lidar_marker.color.g = 0.6; // Зеленый
-        lidar_marker.color.b = 0.7; // Синий
-        lidar_marker.color.a = 0.5; // Прозрачность (1.0 = полностью непрозрачный)
-
-        // Позиция сферы
-        lidar_marker.pose.position.x = 0.0;
-        lidar_marker.pose.position.y = 0.0;
-        lidar_marker.pose.position.z = 0.0;
-
-        // Ориентация сферы (обычно не требуется для сферы)
-        lidar_marker.pose.orientation.x = 0.0;
-        lidar_marker.pose.orientation.y = 0.0;
-        lidar_marker.pose.orientation.z = 0.0;
-        lidar_marker.pose.orientation.w = 1.0;
-
-        // Отправляем маркеры в RViz
-        lidar_publisher.publish(lidar_marker);
-
-        // Выводим информацию о публикации
-        ROS_INFO("    RVIZ pub lidar position with orientation");
-    }
 };
 
 #endif
