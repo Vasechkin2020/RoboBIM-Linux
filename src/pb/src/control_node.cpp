@@ -94,12 +94,12 @@ int main(int argc, char **argv)
 
         if (flagAngle) // Отслеживание угла
         {
-            workAngle(commandArray[i].angle, time); // Тут отрабатываем алгоритм отслеживания угла при повороте
+            workAngle(commandArray[i].angle, time, commandArray[i].velAngle); // Тут отрабатываем алгоритм отслеживания угла при повороте
         }
 
         if (flagVector) // Отслеживание длины вектора
         {
-            workVector(commandArray[i].len, vectorStart, time); // Тут отрабатываем алгоритм отслеживания длины вектора при движении прямо
+            workVector(commandArray[i].len, vectorStart, time, commandArray[i].velLen); // Тут отрабатываем алгоритм отслеживания длины вектора при движении прямо
         }
 
         if (time < millis())

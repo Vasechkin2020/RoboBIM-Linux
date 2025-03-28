@@ -68,7 +68,7 @@ int main(int argc, char **argv)
     std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", formattedTime);
     ROS_INFO("TIME START NODE current time: %s", buffer); // Выводим в консоль
 
-    ros::Rate loop_rate(5);           // Создаём цикл с частотой 10 Гц
+    ros::Rate loop_rate(20);           // Создаём цикл с частотой 10 Гц
     while (ros::ok() && keep_running) // Пока ROS работает и не нажат Ctrl+C
     {
         timeLoop = ros::Time::now(); // Захватываем текущий момент времени начала цикла

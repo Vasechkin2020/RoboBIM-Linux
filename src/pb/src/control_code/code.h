@@ -8,7 +8,7 @@ void readParam(); // Считывание переменных параметр�
 
 void initCommandArray(int verCommand_); // Заполнение маасива команд
 
-void workAngle(float angle_, u_int64_t &time_);	  // Тут отрабатываем алгоритм отслеживания угла при повороте
+void workAngle(float angle_, u_int64_t &time_);						// Тут отрабатываем алгоритм отслеживания угла при повороте
 void workVector(float len_, SPoint vectorStart_, u_int64_t &time_); // Тут отрабатываем алгоритм отслеживания длины вектора при движении прямо
 
 // pb_msgs::SControlDriver speedCorrect(pb_msgs::SDriver2Data Driver2Data_msg_, pb_msgs::SControlDriver Data2Driver_); // Корректировка скорости движения в зависимости от датчиков растояния перед
@@ -94,18 +94,20 @@ void initCommandArray(int verCommand_)
 	if (verCommand_ == 2)
 	{
 		commandArray[0].mode = 3;
-		commandArray[0].len = 0.7;
+		commandArray[0].len = 3.0;
+		commandArray[0].velLen = 0.1;
 
 		commandArray[1].mode = 1;
-		commandArray[1].duration = 5000;
+		commandArray[1].duration = 10000;
 		commandArray[1].velL = 0.0;
 		commandArray[1].velR = 0.0;
 
 		commandArray[2].mode = 3;
-		commandArray[2].len = -0.7;
+		commandArray[2].len = -3.0;
+		commandArray[2].velLen = 0.1;
 
 		commandArray[3].mode = 1;
-		commandArray[3].duration = 5000;
+		commandArray[3].duration = 50000;
 		commandArray[3].velL = 0.0;
 		commandArray[3].velR = 0.0;
 
@@ -188,7 +190,7 @@ void initCommandArray(int verCommand_)
 		commandArray[7].duration = 1000;
 		commandArray[7].velL = 0.0;
 		commandArray[7].velR = 0.0;
-//------------------------------------------------------------------------
+		//------------------------------------------------------------------------
 		commandArray[8].mode = 3; // Прямо 1 метр
 		commandArray[8].len = 0.7;
 
@@ -220,7 +222,7 @@ void initCommandArray(int verCommand_)
 		commandArray[15].duration = 1000;
 		commandArray[15].velL = 0.0;
 		commandArray[15].velR = 0.0;
-//------------------------------------------------------------------------
+		//------------------------------------------------------------------------
 		commandArray[16].mode = 3; // Прямо 1 метр
 		commandArray[16].len = 0.7;
 
@@ -252,7 +254,7 @@ void initCommandArray(int verCommand_)
 		commandArray[23].duration = 1000;
 		commandArray[23].velL = 0.0;
 		commandArray[23].velR = 0.0;
-//------------------------------------------------------------------------
+		//------------------------------------------------------------------------
 		commandArray[24].mode = 3; // Прямо 1 метр
 		commandArray[24].len = 0.7;
 
@@ -284,7 +286,7 @@ void initCommandArray(int verCommand_)
 		commandArray[31].duration = 1000;
 		commandArray[31].velL = 0.0;
 		commandArray[31].velR = 0.0;
-//------------------------------------------------------------------------
+		//------------------------------------------------------------------------
 		//-----------------------
 		commandArray[32].mode = 9;
 	}
@@ -292,36 +294,42 @@ void initCommandArray(int verCommand_)
 	{
 		commandArray[0].mode = 2;
 		commandArray[0].angle = -40;
+		commandArray[0].velAngle = 0.02;
 
 		commandArray[1].mode = 1;
 		commandArray[1].duration = 5000;
 
 		commandArray[2].mode = 2;
 		commandArray[2].angle = -90;
+		commandArray[2].velAngle = 0.02;
 
 		commandArray[3].mode = 1;
 		commandArray[3].duration = 10000;
 
 		commandArray[4].mode = 2;
 		commandArray[4].angle = 0;
+		commandArray[4].velAngle = 0.02;
 
 		commandArray[5].mode = 1;
 		commandArray[5].duration = 10000;
 
 		commandArray[6].mode = 2;
 		commandArray[6].angle = 40;
+		commandArray[8].velAngle = 0.02;
 
 		commandArray[7].mode = 1;
 		commandArray[7].duration = 5000;
-		
+
 		commandArray[8].mode = 2;
 		commandArray[8].angle = 90;
+		commandArray[8].velAngle = 0.02;
 
 		commandArray[9].mode = 1;
 		commandArray[9].duration = 10000;
-	
+
 		commandArray[10].mode = 2;
 		commandArray[10].angle = 0;
+		commandArray[10].velAngle = 0.02;
 
 		commandArray[11].mode = 1;
 		commandArray[11].duration = 10000;
@@ -335,25 +343,43 @@ void initCommandArray(int verCommand_)
 	}
 	if (verCommand_ == 6)
 	{
-		commandArray[0].mode = 2;
+		commandArray[0].mode = 2; // Управление по углу
 		commandArray[0].angle = -40;
+		commandArray[0].velAngle = 0.02;
 
-		commandArray[1].mode = 1;
+		commandArray[1].mode = 1; // Управление по времени
 		commandArray[1].duration = 5000;
+		commandArray[1].velL = 0.00;
+		commandArray[1].velR = 0.00;
 
 		commandArray[2].mode = 2;
-		commandArray[2].angle = 40;
+		commandArray[2].angle = 0;
+		commandArray[2].velAngle = 0.02;
 
 		commandArray[3].mode = 1;
 		commandArray[3].duration = 5000;
+		commandArray[3].velL = 0.0;
+		commandArray[3].velR = 0.0;
 
 		commandArray[4].mode = 2;
-		commandArray[4].angle = 0;
+		commandArray[4].angle = 40;
+		commandArray[4].velAngle = 0.02;
 
 		commandArray[5].mode = 1;
 		commandArray[5].duration = 5000;
+		commandArray[5].velL = 0.0;
+		commandArray[5].velR = 0.0;
 
-		commandArray[6].mode = 9;
+		commandArray[6].mode = 2;
+		commandArray[6].angle = 0;
+		commandArray[6].velAngle = 0.02;
+
+		commandArray[7].mode = 1;
+		commandArray[7].duration = 50000;
+		commandArray[7].velL = 0.0;
+		commandArray[7].velR = 0.0;
+
+		commandArray[8].mode = 9;
 	}
 }
 
@@ -384,7 +410,7 @@ void timeCycle(ros::Time timeStart_, ros::Time timeNow_)
 }
 
 // Тут отрабатываем алгоритм отслеживания угла при повороте
-void workAngle(float angle_, u_int64_t &time_)
+void workAngle(float angle_, u_int64_t &time_, float velAngle_)
 {
 
 	static float angleKoef = 0.01;		 // P коефициент пид регулятора
@@ -406,8 +432,8 @@ void workAngle(float angle_, u_int64_t &time_)
 	{
 		float angleSpeed = abs(angleMistake * angleKoef);
 		ROS_INFO_THROTTLE(0.1, "    angleSpeed koef = %f", angleSpeed);
-		if (angleSpeed > 0.2) // Максимальная скорость
-			angleSpeed = 0.2;
+		if (angleSpeed > velAngle_) // Максимальная скорость
+			angleSpeed = velAngle_;
 		if (angleSpeed < 0.0051) // Минимальная скорость
 			angleSpeed = 0.0051;
 		ROS_INFO_THROTTLE(0.1, "    angleSpeed real = %f", angleSpeed);
@@ -425,17 +451,17 @@ void workAngle(float angle_, u_int64_t &time_)
 }
 
 // Тут отрабатываем алгоритм отслеживания длины вектора при движении прямо
-void workVector(float len_, SPoint vectorStart_, u_int64_t &time_)
+void workVector(float len_, SPoint vectorStart_, u_int64_t &time_, float velLen_)
 {
-	static float vectorKoef = 3.0;		  // P коефициент пид регулятора
+	static float vectorKoef = 3.0;		   // P коефициент пид регулятора
 	static float minVectorMistake = 0.001; // Минимальная ошибка по вектору в метрах 1 мм
-	static float vectorMistake = 0;		  // Текущая ошибка по длине в местрах
+	static float vectorMistake = 0;		   // Текущая ошибка по длине в местрах
 	static SPoint vectorEnd;
 
 	vectorEnd.x = msg_Pose.x.mode0;
 	vectorEnd.y = msg_Pose.y.mode0;
 	float vectorFact = vectorLen(vectorStart_, vectorEnd); // Находим длину вектора который отслеживаем
-	vectorMistake = abs(len_) - vectorFact;					   // Смотрим какое растояние еще надо проехать  Считаем ошибку по длине и включаем колеса в нужную сторону с учетом ошибки максимально заданой скорости на колесах
+	vectorMistake = abs(len_) - vectorFact;				   // Смотрим какое растояние еще надо проехать  Считаем ошибку по длине и включаем колеса в нужную сторону с учетом ошибки максимально заданой скорости на колесах
 	ROS_INFO_THROTTLE(0.1, "    len_ = %7.3f vectorFact = %7.3f vectorMistake = %7.3f", abs(len_), vectorFact, vectorMistake);
 	if (abs(vectorMistake) <= minVectorMistake) // Когда ошибка по длине будет меньше заданной считаем что приехали и включаем время что-бы выйти из данного этапа алгоритма
 	{
@@ -449,8 +475,8 @@ void workVector(float len_, SPoint vectorStart_, u_int64_t &time_)
 	{
 		float vectorSpeed = abs(vectorMistake * vectorKoef);
 		ROS_INFO_THROTTLE(0.1, "    vectorSpeed vectorKoef = %f", vectorSpeed);
-		if (vectorSpeed > 0.2) // Максимальная скорость
-			vectorSpeed = 0.2;
+		if (vectorSpeed > velLen_) // Максимальная скорость
+			vectorSpeed = velLen_;
 		if (vectorSpeed < 0.0051) // Минимальная скорость
 			vectorSpeed = 0.0051;
 		ROS_INFO_THROTTLE(0.1, "    vectorSpeed real = %f", vectorSpeed);
