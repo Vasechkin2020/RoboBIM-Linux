@@ -6,11 +6,8 @@
 // #include "pillar.h"
 //**************************** ОБЬЯВЛЕНИЕ ПРОЦЕДУР **********************************
 void callback_Lidar(sensor_msgs::LaserScan::ConstPtr msg); //
-void callback_Pillar(pb_msgs::topicPillar msg);			   //
-void callback_StartPose2D(pb_msgs::SPoint msg);			   //
-
-void callback_Driver(pb_msgs::Struct_Driver2Data msg); //
 void callback_Modul(pb_msgs::Struct_Modul2Data msg);
+void callback_Speed(pb_msgs::SSetSpeed msg);
 
 void readParam(); // Считывание переменных параметров из лаунч файла при запуске. Там офсеты и режимы работы
 void calcMode0(); // Расчет одометрии и применения ее для всех режимов
@@ -75,21 +72,6 @@ void callback_Speed(pb_msgs::SSetSpeed msg)
 	msg_Speed = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
 	flag_msgSpeed = true;
 }
-// void callback_Pillar(pb_msgs::topicPillar msg)
-// {
-// 	msg_pillar = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
-// 	flag_msgPillar = true;
-// }
-// void callback_StartPose2D(geometry_msgs::Pose2D msg)
-// {
-// 	msg_startPose2d = msg; // Пишем в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
-// 	flag_msgStartPose = true;
-// }
-// void callback_Driver(pb_msgs::Struct_Driver2Data msg)
-// {
-// 	msg_Driver2Data = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
-// 	flag_msgDriver = true;
-// }
 
 // Находим минимальную дистанцию из 3 датчиков
 float minDistance(float laserL_, float laserR_, float uzi1_)
@@ -106,10 +88,6 @@ float minDistance(float laserL_, float laserR_, float uzi1_)
 	return min;
 }
 
-// Расчет угла на основании данных гироскопа и аксельрометра
-void calcAngleAccelGyr()
-{
-}
 // Расчет линейных и угловой скоростей
 void calcLinAngVel()
 {
@@ -178,7 +156,6 @@ void startPosition(geometry_msgs::Pose2D &startPose2d_)
 	g_poseBase.mode10.y = startPose2d_.y;
 	g_poseBase.mode10.th = startPose2d_.theta;
 	ROS_INFO("    startPose2d x= %.3f y= %.3f theta= %.3f ", startPose2d_.x, startPose2d_.y, startPose2d_.theta);
-
 
 	g_poseRotation.mode10 = convertBase2Rotation(g_poseBase.mode10, "mode10");
 	ROS_INFO("    start g_poseRotation.mode10 x= %.3f y= %.3f theta= %.3f ", g_poseRotation.mode10.x, g_poseRotation.mode10.y, g_poseRotation.mode10.th);
@@ -273,30 +250,6 @@ long map(long x, long in_min, long in_max, long out_min, long out_max)
 //     //INFO ROS_INFO("-------------- ");
 //     //-----------------------------------------------------------
 // }
-// Тест математических ипрочих функций
-void testFunction()
-{
-
-	// SPoint test1;
-	// SPose test2;
-	// test1.x = 1376.27;
-	// test1.y = 1079.32;
-
-	// test2.x= 500;
-	// test2.y= 900;
-	// test2.th= 15;
-
-	// SPoint ggg = pointGlobal2Local(test1,test2);
-
-	// test1.x=800;
-	// test1.y=400;
-	// ggg = pointLocal2Global(test1,test2);
-
-	// test1.x=2699.55;
-	// test1.y=428.29;
-
-	// float rrr = angleThetaFromPoint(test1);
-}
 
 // Обработка пришедших данных.Обсчитываем одометрию по энкодеру
 SPose calcNewOdom(SPose odom_, STwistDt data_, std::string stroka_, float koef_) // На вход подаются старая одометрия и новые угловая угловая скорость. Возвращается новая позиция по данным угловым скоростям
@@ -743,27 +696,6 @@ void calcMode0()
 
 	// ROS_WARN_THROTTLE(THROTTLE_PERIOD_3, "    MODE0 pose.x= %.3f y= %.3f theta= %.3f ", g_poseBase.mode0.x, g_poseBase.mode0.y, g_poseBase.mode0.th);
 	ROS_INFO("--- calcMode0");
-}
-// Расчет одометрии и применения ее для всех режимов
-void calcMode11()
-{
-	// printf("1 RAD2DEG(odomMode0.pose.th) = % .3f \n", RAD2DEG(odomMode0.pose.th));
-	// calcNewOdom(odomMode11, g_linAngVel.wheel); // На основе линейных скоростей считаем новую позицию и угол по колесам
-	// ROS_WARN("    odomMode11 pose.x= %.3f y= %.3f theta= %.2f ", odomMode11.pose.x, odomMode11.pose.y, odomMode11.pose.th);
-}
-// Расчет одометрии и применения ее для всех режимов
-void calcMode12()
-{
-	// printf("1 RAD2DEG(odomMode0.pose.th) = % .3f \n", RAD2DEG(odomMode0.pose.th));
-	// calcNewOdom(odomMode12, g_linAngVel.wheel); // На основе линейных скоростей считаем новую позицию и угол по колесам
-	// ROS_WARN("odomMode12 pose.x= %.3f y= %.3f theta= %.2f ", odomMode12.pose.x, odomMode12.pose.y, odomMode12.pose.th);
-}
-// Расчет одометрии и применения ее для всех режимов
-void calcMode13()
-{
-	// printf("1 RAD2DEG(odomMode0.pose.th) = % .3f \n", RAD2DEG(odomMode0.pose.th));
-	// calcNewOdom(odomMode13, g_linAngVel.wheel); // На основе линейных скоростей считаем новую позицию и угол по колесам
-	// ROS_WARN("odomModeE13 pose.x= %.3f y= %.3f theta= %.2f ", odomMode13.pose.x, odomMode13.pose.y, odomMode13.pose.th);
 }
 
 // Комплементация Mode123 это усреднение данных по Mode0 Mode2 Mode3

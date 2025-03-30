@@ -38,8 +38,6 @@ int main(int argc, char **argv)
     ROS_FATAL("--------------------------------------------------------\n");
 
     ros::init(argc, argv, "pos_node");
-    // topic.init(argc, argv);
-
     ros::NodeHandle nh;
 
     static ros::Time timeStart = ros::Time::now(); // Захватываем начальный момент времени
@@ -51,10 +49,6 @@ int main(int argc, char **argv)
     ros::Subscriber subscriber_Lidar = nh.subscribe<pb_msgs::Struct_PoseLidar>("pbLidar/PoseLidar", 1000, callback_Lidar);
     ros::Subscriber subscriber_Modul = nh.subscribe<pb_msgs::Struct_Modul2Data>("pbData/Modul", 1000, callback_Modul);
     ros::Subscriber subscriber_Speed = nh.subscribe<pb_msgs::SSetSpeed>("pbData/Speed", 1000, callback_Speed);
-
-    // ros::Subscriber subscriber_Pillar = nh.subscribe<pb_msgs::topicPillar>("pbStart/Pillar", 1000, callback_Pillar);
-    // ros::Subscriber subscriber_StartPose2D = nh.subscribe<geometry_msgs::Pose2D>("pbStart/Pose2D", 1000, callback_StartPose2D);
-    // ros::Subscriber subscriber_Driver = nh.subscribe<pb_msgs::Struct_Driver2Data>("pbData/Driver", 1000, callback_Driver);
     //---------------------------------------------------------------------------------------------------------------------------
 
     initKalman(); // Задаем коэфициенты для Калмана
@@ -87,19 +81,13 @@ int main(int argc, char **argv)
             // calcAngleAccelGyr(); // Не стал пока делать. Расчет самостоятельно угла на основании данных гироскопа и аксельрометра
             calcLinAngVel(); // Расчет линейных и угловой скоростей на основаниие данных скоростей колес и скоростей с IMU 055 и их комплементация в united
 
-            // MODE 0
             g_poseRotation.mode0 = calcNewOdom(g_poseRotation.mode0, g_linAngVel.wheel, "mode 0", 1); // На основе линейных скоростей считаем новую позицию и угол по колесам
-            // MODE 10
             // g_poseRotation.mode10 = calcNewOdom2(g_poseRotation.mode10, g_linAngVel.united, "mode10"); // На основе линейных скоростей считаем новую позицию и угол по колесам
             // g_poseRotation.mode10.th = DEG2RAD(g_angleEuler.yaw); // Напрямую присваиваем угол. Заменяем тот угол что насчитали внутри
             // ROS_INFO("    g_poseRotation mode10 x = %.3f y = %.3f theta = %.3f (radian)", g_poseRotation.mode10.x, g_poseRotation.mode10.y, g_poseRotation.mode10.th);
 
             g_poseBase.mode0 = convertRotation2Base(g_poseRotation.mode0, "mode 0");   // Эти данные mode10 используем как основную точку для расчета mode1.2.3
             // g_poseBase.mode10 = convertRotation2Base(g_poseRotation.mode10, "mode10"); // Эти данные mode10 используем как основную точку для расчета mode1.2.3
-
-            // g_poseRotation.mode99 = calcNewOdom(g_poseRotation.mode10, g_linAngVel.united, "mode99",5); // На основе линейных скоростей считаем новую позицию и угол по колесам
-            // g_poseBase.mode99 = convertRotation2Base(g_poseRotation.mode0, "mode99"); // Эти данные mode10 используем как основную точку для расчета mode1.2.3
-            // ROS_INFO("    g_poseBase    mode10 x = %.3f y = %.3f | theta = %.3f gradus %.4f rad ", g_poseBase.mode10.x, g_poseBase.mode10.y, g_poseBase.mode10.th, DEG2RAD(g_poseBase.mode10.th));
 
             // calcMode0(); // Расчет одометрии Mode0
             // calcMode11();  // На основе линейных скоростей считаем новую позицию и угол для одометрии 100 Герц считаем и потом 10 Герц правим            // calcMode12();  // На основе линейных скоростей считаем новую позицию и угол для одометрии 100 Герц считаем и потом 10 Герц правим
@@ -117,7 +105,7 @@ int main(int argc, char **argv)
             // void angleMPU(); // Расчет угла положения на основе данных сдатчика MPU
             // topic.publishOdomMpu();
         }
-        /*
+        /* 
        // 100 Hz ************************************************************ ОБРАБОТКА ДАННЫХ ИЗ ТОПИКОВ ЧТО ПОДПИСАНЫ  СРАБАТЫВАЕТ КАК ОТПРАВЛЯЕТ DATA_NODE  ********************************************
        if (flag_msgModul) // Флаг что пришло сообщение от ноды Data по Modul. Тут пишем какую-то обработку данных если нужно. Это будет MODE_3
        {
@@ -140,15 +128,8 @@ int main(int argc, char **argv)
                exit(3);
            }
        }
-        */
-        // if (!modeColibrovka) // Тут исполняется основной режим, не колибровка // ДОБАВИТЬ ФИЛЬТР КАЛМАНА для покааний С МОДЕЛЬЮ, так как знаем что окружность известного диаметра и расстояние до столюа
-        // {
-        // }
-        // else // Тут делаем колибровку лазерами туда-сюда
-        // {
         //     startColibrovka(topic); // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! Сделать определние начального угла Theta при запуске путем сканирования лазерами туда-сюда и нахождения минимальной точки и вычисления угла на основе локальных углов
-        // }
-
+        */
         // Выполняется 10 Hz как ЛИДАР ПРИШЛЕТ ***************************************************************************************************************************************************
         if (flag_msgLidar) // Если пришло сообщение в топик от лидара и мы уже разобрали данные по координатам машинки, а значит можем грубо посчитать где стоят столбы.  И знаем где истинные столбы
         {
@@ -159,12 +140,6 @@ int main(int argc, char **argv)
                 msg_lidar.mode.x,msg_lidar.mode.y,msg_lidar.mode.th,
                 msg_lidar.countMatchPillar, msg_lidar.countCrossCircle,
                 msg_lidar.azimut[0],msg_lidar.azimut[1],msg_lidar.azimut[2],msg_lidar.azimut[3]);
-        //     pillar.parsingLidar(msg_lidar, g_poseBase.mode0); // Разбираем пришедшие данные и ищем там столбы.
-        //     pillar.comparisonPillar();                         // Сопоставляем столбы
-        //     // topic.publicationPillarAll(pillar);                // Публикуем всю обобщенную информацию по столб
-
-        //     pillar.getLocationMode1(g_poseBase.mode1, g_poseBase.mode0); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
-        //     pillar.getLocationMode2(g_poseBase.mode2, g_poseBase.mode1); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
 
         //     // odomMode11.pose.x = kalman11.calcX(g_poseBase.mode1.x, odomMode11.pose.x); // Фильр Калмана для координаты Х. На вход подаем измеренное значение по MODE1  и вычисленное значение по модели ускорение на время плюс старое знаение
         //     // odomMode11.pose.y = kalman11.calcY(g_poseBase.mode1.y, odomMode11.pose.y); // Фильр Калмана для координаты Y. На вход подаем измеренное значение по MODE1  и вычисленное значение по модели ускорение на время плюс старое знаение
@@ -182,9 +157,6 @@ int main(int argc, char **argv)
         //         exit(0);
         //     }
         }
-        else // Если не пришло новых данных в этом цикле то значит просто корректируем предыдущий расчет на величину угловых и линейных скорстей полученых с одометрии и INU
-        {
-        }
 
         // g_poseRotation.mode10 = g_poseRotation.mode0; // Времено. ПОТОМ ТУТ НАДО ИТОГОВУЮ КОМПЛЕМЕНТАЦИЮ СДЕЛАТЬ
         // Тут строка перевода в g_poseLidaк.mode10 для использовании  в расчетаз в следущей итерации
@@ -192,7 +164,7 @@ int main(int argc, char **argv)
         if (flagPublish) //
         {
             flagPublish = false;
-            // topic.publicationPoseLidar();     // Публикуем все варианты расчета позиций mode 0.1.2.3.4
+            // topic.publicationPoseBase();     // Публикуем все варианты расчета позиций mode 0.1.2.3.4
             topic.publicationPoseRotattion(); // Публикуем все варианты расчета позиций mode 0.1.2.3.4
             topic.publicationLinAngVel();     // Вывод в топик данных с данными угловой и линейной скоростью
             // topic.publishOdomUnited();              // Публикация одометрии по моторам с корректировкой с верхнего уровня
@@ -203,7 +175,6 @@ int main(int argc, char **argv)
         {
             // Публикуем тут так как если один раз опубликовать то они исчезают через некоторое время.
             topic.transformBase(g_poseBase.mode0); // Публикуем трансформации систем координат, задаем по какому расчету трансформировать
-            topic.transformLidar();                 // Публикуем трансформации систем координат , задаем по какому расчету трансформировать
             topic.transformLaser(laser);            // Публикуем трансформации систем координат, задаем по какому расчету трансформировать
             topic.transformRotation();              // Публикуем трансформации систем координат
 
@@ -214,24 +185,8 @@ int main(int argc, char **argv)
             // topic.visualPublishOdomMode_0(); // Публикация одометрии по моторам которая получается от начальной точки
             // topic.visualPublishOdomMode_11(); // Публикация одометрии по моторам которая получается от начальной точки
             // topic.visualPublishOdomMode_12(); // Публикация одометрии по моторам которая получается от начальной точки
-            // topic.visualPublishOdomMode_13(); // Публикация одометрии по моторам которая получается от начальной точки
-            // topic.visualPublishOdomMode_123(); // Публикация одометрии по моторам которая получается от начальной точки
-
             timeRviz = millis() + 33; // 30 Hz
         }
-
-        // static u_int64_t timeMil = millis();
-        // if (timeMil <= millis())
-        // {
-        //     // ROS_WARN("mode0.x= %.3f y= %.3f th= %.2f", g_poseBase.mode0.x, g_poseBase.mode0.y, g_poseBase.mode0.th);
-        //     // ROS_WARN("mode1.x= %.3f y= %.3f th= %.2f", g_poseBase.mode1.x, g_poseBase.mode1.y, g_poseBase.mode1.th);
-        //     // ROS_WARN("mode2.x= %.3f y= %.3f th= %.2f", g_poseBase.mode2.x, g_poseBase.mode2.y, g_poseBase.mode2.th);
-        //     // ROS_WARN("mode3.x= %.3f y= %.3f th= %.2f", g_poseBase.mode3.x, g_poseBase.mode3.y, g_poseBase.mode3.th);
-
-        //     // ROS_WARN("angle= %.3f numPillar = %i | angle= %.3f numPillar = %i | angle= %.3f numPillar = %i | angle= %.3f numPillar = %i",
-        //     //          g_angleLaser[0], g_numPillar[0], g_angleLaser[1], g_numPillar[1], g_angleLaser[2], g_numPillar[2], g_angleLaser[3], g_numPillar[3]);
-        //     timeMil = millis() + 1000;
-        // }
 
         static ros::Time timeMil = ros::Time::now();   // Захватываем начальный момент времени
         ros::Duration durationMil = timeNow - timeMil; // Находим разницу между началом и концом
