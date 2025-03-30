@@ -75,7 +75,7 @@ public:
     void visualPillarPoint(CPillar pillar_) // Готовим одиночные точки столбов для RVIZ  в системе координат "odom"
     {
         visualization_msgs::Marker marker;
-        marker.header.frame_id = "laser";
+        marker.header.frame_id = "base";
         marker.header.stamp = ros::Time::now(); // Время ROS;
         marker.ns = "pillars";
         marker.type = visualization_msgs::Marker::CYLINDER;
@@ -96,7 +96,8 @@ public:
         {
             point_global.x = pillar_.pillar[i].x_true;
             point_global.y = pillar_.pillar[i].y_true;
-            point_local = pointGlobal2Local(point_global, g_transformGlobal2Local); // Вариант поворота по стандарту РОС что вращение против часовой
+            point_local = pointGlobal2Local(point_global, g_poseLidar.mode); // Вариант поворота по стандарту РОС что вращение против часовой
+            // point_local = pointGlobal2Local(point_global, g_transformGlobal2Local); // Вариант поворота по стандарту РОС что вращение против часовой
             // ROS_INFO("Global x = %.2f y = %.2f | Local x = %.2f y = %.2f | Pose x = %.2f y = %.2f th grad = %.2f th rad = %.2f",
             //     point_global.x,point_global.y,point_local.x,point_local.y,g_transformGlobal2Local.x, g_transformGlobal2Local.y, g_transformGlobal2Local.th, DEG2RAD(g_transformGlobal2Local.th));
             marker.pose.position.x = point_local.x;
@@ -162,6 +163,10 @@ public:
         poseLidarAll_msg.mode2.x = g_poseLidar.mode2.x;
         poseLidarAll_msg.mode2.y = g_poseLidar.mode2.y;
         poseLidarAll_msg.mode2.th = g_poseLidar.mode2.th;
+
+        poseLidarAll_msg.mode3.x = g_poseLidar.mode3.x;
+        poseLidarAll_msg.mode3.y = g_poseLidar.mode3.y;
+        poseLidarAll_msg.mode3.th = g_poseLidar.mode3.th;
 
         poseLidarAll_msg.countMatchPillar = g_poseLidar.countMatchPillar;
         poseLidarAll_msg.countCrossCircle = g_poseLidar.countCrossCircle;
@@ -300,7 +305,7 @@ public:
             pillar_marker.pose.orientation.w = 1.0;              // Ориентация (без вращения)
 
             if (pillars[i].match == true)
-            {
+            {  
                 marker_publisher.publish(pillar_marker); // Отправляем маркеры в RViz
             }
         }

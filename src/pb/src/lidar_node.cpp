@@ -11,8 +11,8 @@
 #include "lidar_code/pillarDetector.h"
 
 SPoseLidar g_poseLidar; // Позиции лидара по расчетам Центральная система координат
-SPose g_transformGlobal2Local; // Система трансоформации из одной позиции в другую
-#define COMPLEMENTARN 0.8
+SPose g_transformGlobal2Local; // Система трансформации из одной позиции в другую
+#define COMPLEMENTARN 0.5
 
 #include "lidar_code/topic.h" // Файл для функций для формирования топиков в нужном виде и формате
 
@@ -50,7 +50,9 @@ int main(int argc, char **argv)
     SPoint startPillar[4];
     readParam(startPose, startPillar); // Считывание переменных параметров из лаунч файла при запуске. Там офсеты и режимы работы
 
+    g_poseLidar.mode = startPose;
     g_poseLidar.mode1 = startPose;
+    g_poseLidar.mode2 = startPose;
     pillar.parsingPillar(startPillar); // Разбираем пришедшие данные Заполняем массив правильных координат.
 
     detector.changePoseLidar(startPose.x, startPose.y, startPose.th);
@@ -79,20 +81,20 @@ int main(int argc, char **argv)
         {
             ROS_INFO("------------       flag_msgLidar    -------------");
             flag_msgLidar = false;
-
-            pillar.parsingLidar(msg_lidar, g_poseLidar.mode1); // Разбираем пришедшие данные и ищем там столбы.
+            // ROS_INFO("=== %.3f %.3f | %.3f %.3f | %.3f %.3f",g_poseLidar.mode1.x, g_poseLidar.mode.x, g_poseLidar.mode1.y, g_poseLidar.mode.y, g_poseLidar.mode1.th, g_poseLidar.mode.th);
+            pillar.parsingLidar(msg_lidar, g_poseLidar.mode); // Разбираем пришедшие данные и ищем там столбы.
             pillar.comparisonPillar();                         // Сопоставляем столбы
             // topic.publicationPillarAll(pillar);                // Публикуем всю обобщенную информацию по столб
 
-            detector.scanCallback(msg_lidar);
-            // topic.visualizeClasters(detector.cluster_info_list); // Большой обьем данных. Лучше отклычать
+            detector.scanCallback(msg_lidar, g_poseLidar.mode);
+            // topic.visualizeClasters(detector.cluster_info_list); // Большой обьем данных. Лучше отключать
             topic.visualizePillars(detector.pillars);
             topic.visualizeLidar();
 
             calcDistDirect(distDirect, pillar, detector); // Обьединение сопоставленных столбов в итоговую таблицу. Дальше по этой таблице все считается
 
-            g_poseLidar.mode1 = pillar.getLocationMode1(distDirect, g_poseLidar.mode1); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
-            g_poseLidar.mode2 = pillar.getLocationMode2(distDirect, g_poseLidar.mode1); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
+            g_poseLidar.mode1 = pillar.getLocationMode1(distDirect, g_poseLidar.mode); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
+            g_poseLidar.mode2 = pillar.getLocationMode2(distDirect, g_poseLidar.mode); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
 
             if (isnan(g_poseLidar.mode2.x) || isnan(g_poseLidar.mode2.y) || isnan(g_poseLidar.mode2.th))
             {
@@ -103,19 +105,23 @@ int main(int argc, char **argv)
             g_poseLidar.mode.y = g_poseLidar.mode1.y * 0.9 + g_poseLidar.mode2.y * 0.1;
             g_poseLidar.mode.th = g_poseLidar.mode.th * COMPLEMENTARN + ((g_poseLidar.mode1.th + g_poseLidar.mode2.th) / 2.0) * (1 - COMPLEMENTARN);
 
-            topic.transformLidar();                 // Публикуем трансформации систем координат , задаем по какому расчету трансформировать
             
-            topic.publicationPoseLidar(); // Публикуем все варианты расчета позиций mode 0.1.2.3.4
+            // g_transformGlobal2Local.x = g_poseLidar.mode.x;
+            // g_transformGlobal2Local.y = g_poseLidar.mode.y;
+            // g_transformGlobal2Local.th = g_poseLidar.mode.th;
 
-            topic.visualStartPose(startPose); // Отобращение стрелкой где начало стартовой позиции и куда направлен нос платформы
+            topic.publicationPoseLidar(); // Публикуем все варианты расчета позиций mode 0.1.2.3.4
             topic.visualPillarPoint(pillar);  // Отображение места размещения столбов
-            topic.visualPublishOdomMode_1();  // Отобращение стрелкой где начало и куда смотрит в Mode0 1 2
-            topic.visualPublishOdomMode_2();  // Отобращение стрелкой где начало и куда смотрит в Mode0 1 2
+
+            topic.transformLidar();                 // Публикуем трансформации систем координат , задаем по какому расчету трансформировать
+            topic.visualStartPose(startPose); // Отобращение стрелкой где начало стартовой позиции и куда направлен нос платформы
+            // topic.visualPublishOdomMode_1();  // Отобращение стрелкой где начало и куда смотрит в Mode 0 1 2
+            // topic.visualPublishOdomMode_2();  // Отобращение стрелкой где начало и куда смотрит в Mode 0 1 2
 
             topic.visualPoseAngleLaser();
-            timeCycle(timeStart, timeLoop); // Выводим справочно время работы цикла и время с начала работы программы
         }
 
+        timeCycle(timeStart, timeLoop); // Выводим справочно время работы цикла и время с начала работы программы
         loop_rate.sleep();              // Ждём, чтобы поддерживать частоту 10 Гц
     }
 

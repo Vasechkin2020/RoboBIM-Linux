@@ -85,10 +85,10 @@ public:
     std::vector<ClusterInfo> cluster_info_list; // Список информации о кластерах
     
     // Функция обработки данных от лидара
-    void scanCallback(const sensor_msgs::LaserScan::ConstPtr &scan)
+    void scanCallback(const sensor_msgs::LaserScan::ConstPtr &scan, SPose poseLidar_)
     {
         start_time = ros::Time::now(); // Записываем начальное время
-        ROS_INFO("++++ scanCallback");
+        // ROS_INFO("+++ scanCallback");
         std::vector<PointXY> points; // Создаём пустой список точек
         points.reserve(4096);
 
@@ -111,7 +111,11 @@ public:
         std::vector<std::vector<PointXY>> clusters = findClusters(points); // Находим группы точек (кластеры)
         cluster_info_list = createdClasterList(clusters);                  // Список информации о кластерах
 
+        lidar_x = poseLidar_.x;
+        lidar_y = poseLidar_.y;
+        lidar_theta = DEG2RAD(poseLidar_.th) + M_PI;
         // ROS_INFO("    Lidar theta START = %.3f rad (%.3f deg)", lidar_theta, RAD2DEG(lidar_theta));
+        ROS_INFO("   PoseLidar x= %.3f y= %.3f  th= %.4f (rad)  th= %.3f (grad)", lidar_x, lidar_y, lidar_theta, RAD2DEG(lidar_theta));
 
         findPillars();  // Ищем столбы в этих кластерах
         matchPillars(); // // Сопоставляем столбы с известными координатами и вычисляем позицию и ориентацию лидара
@@ -133,7 +137,7 @@ private:
     std::vector<std::vector<PointXY>> findClusters(std::vector<PointXY> points)
     {
         start_time = ros::Time::now(); // Записываем начальное время
-        ROS_INFO("+++ findClusters");
+        // ROS_INFO("+++ findClusters");
         std::vector<std::vector<PointXY>> clusters;
 
         // Новые константы для кластеризации
@@ -193,7 +197,7 @@ private:
                 // ROS_INFO("    clusters size %i: ", cluster.size());
             }
         }
-        ROS_INFO("    Found %d clusters total", (int)clusters.size()); // Выводим общее количество найденных кластеров
+        // ROS_INFO("    Found %d clusters total", (int)clusters.size()); // Выводим общее количество найденных кластеров
         elapsed_time = ros::Time::now() - start_time;                  // Вычисляем интервал
         // ROS_INFO("    End findClusters Elapsed time: %.3f seconds", elapsed_time.toSec());
         return clusters;
@@ -355,13 +359,13 @@ private:
                 //          cluster_info_list[i].width);
             }
         }
-        // ROS_INFO("    Found %d pillars total", (int)pillars.size()); // Выводим общее количество найденных кластеров
+        ROS_INFO("    Found %d pillars total", (int)pillars.size()); // Выводим общее количество найденных столбов
     }
 
     // Функция для сопоставления обнаруженных столбов с известными координатами и вычисления позиции и ориентации лидара
     void matchPillars()
     {
-        ROS_INFO("+++ matchPillars");
+        // ROS_INFO("+++ matchPillars");
         if (pillars.empty())
         {
             ROS_INFO("No pillars detected to match with known coordinates.");
@@ -505,7 +509,12 @@ private:
             {
                 float lidar_xX = sum_x / count;
                 float lidar_yY = sum_y / count;
-                float lidar_theta_T = normalizeAngle(sum_theta / count) + M_PI;
+                float lidar_theta_T = normalizeAngle(sum_theta / count);
+
+                g_poseLidar.mode3.x = lidar_x + lidar_xX;
+                g_poseLidar.mode3.y = lidar_y + lidar_yY;
+                g_poseLidar.mode3.th = RAD2DEG(lidar_theta_T);
+
                 ROS_WARN("    MODE3 pose.x= %.3f y= %.3f theta= %.3f ", lidar_x + lidar_xX, lidar_y + lidar_yY, RAD2DEG(lidar_theta_T));
                 // ROS_INFO("    Lidar theta END 22 = %.3f rad (%.3f deg)", lidar_theta_T, RAD2DEG(lidar_theta_T));
 
