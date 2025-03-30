@@ -30,8 +30,8 @@ void calcEuler();		  // Расчет угла Эллера
 void calcLinAngVel();	  // Расчет линейных и угловой скоростей
 void calcAngleAccelGyr(); // Расчет угла на основании данных гироскопа и аксельрометра
 
-SPose convertRotation2Lidar(SPose pose_, std::string stroka_); // Конвертация координат из Rotattion в Lidar систему
-SPose convertLidar2Rotation(SPose pose_, std::string stroka_); // Конвертация координат из Lidar в Rotattion систему
+SPose convertRotation2Base(SPose pose_, std::string stroka_); // Конвертация координат из Rotattion в Lidar систему
+SPose convertBase2Rotation(SPose pose_, std::string stroka_); // Конвертация координат из Lidar в Rotattion систему
 
 float minDistance(float laserL_, float laserR_, float uzi1_); // Находим минимальную дистанцию из 3 датчиков
 
@@ -115,8 +115,8 @@ void calcLinAngVel()
 {
 	// ROS_INFO("+++ calcLinAngVel");
 	g_linAngVel.wheel = calcTwistFromWheel(msg_Speed);						  // Обработка пришедших данных. По ним считаем линейные скорости по осям и угловую по углу. Запоминаем dt
-	g_linAngVel.mpu = calcTwistFromMpu(msg_Modul2Data);						  // Обработка пришедших данных для расчета линейных и угловых скоростей
-	g_linAngVel.united = calcTwistUnited(g_linAngVel.wheel, g_linAngVel.mpu); // тут написать функцию комплементации данных угловых скоростей с разными условиями когда и в каком соотношении скомплементировать скорсти с двух источников
+	// g_linAngVel.mpu = calcTwistFromMpu(msg_Modul2Data);						  // Обработка пришедших данных для расчета линейных и угловых скоростей
+	// g_linAngVel.united = calcTwistUnited(g_linAngVel.wheel, g_linAngVel.mpu); // тут написать функцию комплементации данных угловых скоростей с разными условиями когда и в каком соотношении скомплементировать скорсти с двух источников
 
 	// g_linAngVel.united = g_linAngVel.wheel; // Пока нет расчет по IMU и комплментации используем только по колесам
 }
@@ -139,20 +139,20 @@ void calcEuler()
 }
 
 // Конвертация координат из Rotattion в Lidar систему
-SPose convertRotation2Lidar(SPose pose_, std::string stroka_)
+SPose convertRotation2Base(SPose pose_, std::string stroka_)
 {
-	// ROS_INFO_THROTTLE(RATE_OUTPUT,"+++ convertRotation2Lidar %s", stroka_.c_str());
+	// ROS_INFO_THROTTLE(RATE_OUTPUT,"+++ convertRotation2Base %s", stroka_.c_str());
 	SPose ret;
 	ret.x = pose_.x - (transformLidar2Rotation.x * cos(pose_.th));
 	ret.y = pose_.y - (transformLidar2Rotation.x * sin(pose_.th));
-	ret.th = RAD2DEG(pose_.th); // в g_poseLidar угол в градусах
-	ROS_INFO_THROTTLE(RATE_OUTPUT, "    g_poseLidar %s x = %.3f y = %.3f theta = %.3f (gradus) %.3f rad", stroka_.c_str(),ret.x, ret.y, ret.th, pose_.th);
+	ret.th = RAD2DEG(pose_.th); // в g_poseBase угол в градусах
+	ROS_INFO_THROTTLE(RATE_OUTPUT, "    g_poseBase %s x = %.3f y = %.3f theta = %.3f (gradus) %.3f rad", stroka_.c_str(),ret.x, ret.y, ret.th, pose_.th);
 	return ret;
 }
 // Конвертация координат из Lidar в Rotattion систему
-SPose convertLidar2Rotation(SPose pose_, std::string stroka_)
+SPose convertBase2Rotation(SPose pose_, std::string stroka_)
 {
-	// ROS_INFO_THROTTLE(RATE_OUTPUT,"+++ convertLidar2Rotation %s", stroka_.c_str());
+	// ROS_INFO_THROTTLE(RATE_OUTPUT,"+++ convertBase2Rotation %s", stroka_.c_str());
 	SPose ret;
 	// g_poseRotation.theta = DEG2RAD(45);							  // Присваиваем глобальному углу начальное значение
 	ret.x = pose_.x + (transformLidar2Rotation.x * cos(DEG2RAD(pose_.th)));
@@ -174,16 +174,16 @@ void startPosition(geometry_msgs::Pose2D &startPose2d_)
 	g_angleEuler.yaw = startPose2d_.theta; // Присваиваем yaw углу начальное значение
 	// g_poseRotation.theta = DEG2RAD(startPose2d_.theta); // Присваиваем глобальному углу начальное значение
 
-	g_poseLidar.mode10.x = startPose2d_.x; // Устанавливаем координаты для mode10 что-бы по нему начало все считаться
-	g_poseLidar.mode10.y = startPose2d_.y;
-	g_poseLidar.mode10.th = startPose2d_.theta;
+	g_poseBase.mode10.x = startPose2d_.x; // Устанавливаем координаты для mode10 что-бы по нему начало все считаться
+	g_poseBase.mode10.y = startPose2d_.y;
+	g_poseBase.mode10.th = startPose2d_.theta;
 	ROS_INFO("    startPose2d x= %.3f y= %.3f theta= %.3f ", startPose2d_.x, startPose2d_.y, startPose2d_.theta);
 
 
-	g_poseRotation.mode10 = convertLidar2Rotation(g_poseLidar.mode10, "mode10");
+	g_poseRotation.mode10 = convertBase2Rotation(g_poseBase.mode10, "mode10");
 	ROS_INFO("    start g_poseRotation.mode10 x= %.3f y= %.3f theta= %.3f ", g_poseRotation.mode10.x, g_poseRotation.mode10.y, g_poseRotation.mode10.th);
 	
-	g_poseLidar.mode0 = g_poseLidar.mode10;
+	g_poseBase.mode0 = g_poseBase.mode10;
 	g_poseRotation.mode0 = g_poseRotation.mode10;
 
 	ROS_INFO("--- startPosition");
@@ -737,11 +737,11 @@ void calcMode0()
 	// printf("1 RAD2DEG(odomMode0.pose.th) = % .3f \n", RAD2DEG(odomMode0.pose.th));
 	g_poseRotation.mode0 = calcNewOdom(g_poseRotation.mode0, g_linAngVel.wheel, "mode0", 1); // На основе линейных скоростей считаем новую позицию и угол по колесам
 
-	// g_poseLidar.mode0.x = odomMode0.pose.x;
-	// g_poseLidar.mode0.y = odomMode0.pose.y;
-	// g_poseLidar.mode0.th = RAD2DEG(odomMode0.pose.th);
+	// g_poseBase.mode0.x = odomMode0.pose.x;
+	// g_poseBase.mode0.y = odomMode0.pose.y;
+	// g_poseBase.mode0.th = RAD2DEG(odomMode0.pose.th);
 
-	// ROS_WARN_THROTTLE(THROTTLE_PERIOD_3, "    MODE0 pose.x= %.3f y= %.3f theta= %.3f ", g_poseLidar.mode0.x, g_poseLidar.mode0.y, g_poseLidar.mode0.th);
+	// ROS_WARN_THROTTLE(THROTTLE_PERIOD_3, "    MODE0 pose.x= %.3f y= %.3f theta= %.3f ", g_poseBase.mode0.x, g_poseBase.mode0.y, g_poseBase.mode0.th);
 	ROS_INFO("--- calcMode0");
 }
 // Расчет одометрии и применения ее для всех режимов
@@ -771,9 +771,9 @@ void calcMode123()
 {
 	// ROS_INFO("+++ calcMode123");
 	// SPose pose;
-	// pose.x = (g_poseLidar.mode1.x + g_poseLidar.mode2.x + g_poseLidar.mode3.x) / 3.0;
-	// pose.y = (g_poseLidar.mode1.y + g_poseLidar.mode2.y + g_poseLidar.mode3.y) / 3.0;
-	// pose.th = (g_poseLidar.mode1.th + g_poseLidar.mode2.th + g_poseLidar.mode3.th) / 3.0;
+	// pose.x = (g_poseBase.mode1.x + g_poseBase.mode2.x + g_poseBase.mode3.x) / 3.0;
+	// pose.y = (g_poseBase.mode1.y + g_poseBase.mode2.y + g_poseBase.mode3.y) / 3.0;
+	// pose.th = (g_poseBase.mode1.th + g_poseBase.mode2.th + g_poseBase.mode3.th) / 3.0;
 	// if (isnan(pose.x) || isnan(pose.y) || isnan(pose.th))
 	// {
 	// 	ROS_ERROR("calcMode123 ERROR.");
@@ -781,8 +781,8 @@ void calcMode123()
 	// }
 	// else
 	// {
-	// 	g_poseLidar.mode123 = pose;
-	// 	ROS_WARN_THROTTLE(THROTTLE_PERIOD_3, "    MODE123 pose.x= % .3f y= % .3f theta= %.3f", g_poseLidar.mode123.x, g_poseLidar.mode123.y, g_poseLidar.mode123.th);
+	// 	g_poseBase.mode123 = pose;
+	// 	ROS_WARN_THROTTLE(THROTTLE_PERIOD_3, "    MODE123 pose.x= % .3f y= % .3f theta= %.3f", g_poseBase.mode123.x, g_poseBase.mode123.y, g_poseBase.mode123.th);
 	// }
 	// ROS_INFO("--- calcMode123.");
 }
@@ -953,7 +953,7 @@ void startColibrovka(CTopic &topic)
 	if (time1Colibrovka < millis() && flag1Colibrovka)
 	{
 		//  Считаем угол на столбы и считаем на какой угол от него надо отклониться чтобы гарантированно отсканировать столб
-		laser.calcAnglePillarForLaser(pillar.pillar, g_poseLidar.mode1); // Расчет углов в локальной системе лазеров на столбы для передачи на нижний уровень для исполнения
+		laser.calcAnglePillarForLaser(pillar.pillar, g_poseBase.mode1); // Расчет углов в локальной системе лазеров на столбы для передачи на нижний уровень для исполнения
 		// Включаем назерные датчики
 		dataControlModul.controlLaser.mode = 1;
 		dataControlModul.controlMotor.mode = 1;

@@ -273,17 +273,17 @@ void CTopic::publicationPoseLidar() // Формируем перемнную с 
 {
     pb_msgs::Struct_PoseLidar poseLidarAll_msg; // Обобщенные данные в моем формате о всех вариантах расчета позиции
 
-    poseLidarAll_msg.mode.x = g_poseLidar.mode0.x;
-    poseLidarAll_msg.mode.y = g_poseLidar.mode0.y;
-    poseLidarAll_msg.mode.th = g_poseLidar.mode0.th;
+    poseLidarAll_msg.mode.x = g_poseBase.mode0.x;
+    poseLidarAll_msg.mode.y = g_poseBase.mode0.y;
+    poseLidarAll_msg.mode.th = g_poseBase.mode0.th;
 
-    poseLidarAll_msg.mode1.x = g_poseLidar.mode1.x;
-    poseLidarAll_msg.mode1.y = g_poseLidar.mode1.y;
-    poseLidarAll_msg.mode1.th = g_poseLidar.mode1.th;
+    // poseLidarAll_msg.mode1.x = g_poseBase.mode1.x;
+    // poseLidarAll_msg.mode1.y = g_poseBase.mode1.y;
+    // poseLidarAll_msg.mode1.th = g_poseBase.mode1.th;
 
-    poseLidarAll_msg.mode2.x = g_poseLidar.mode2.x;
-    poseLidarAll_msg.mode2.y = g_poseLidar.mode2.y;
-    poseLidarAll_msg.mode2.th = g_poseLidar.mode2.th;
+    // poseLidarAll_msg.mode2.x = g_poseBase.mode2.x;
+    // poseLidarAll_msg.mode2.y = g_poseBase.mode2.y;
+    // poseLidarAll_msg.mode2.th = g_poseBase.mode2.th;
 
     pub_poseLidar.publish(poseLidarAll_msg); // Публикуем информацию по позиции лидара
 }
@@ -419,82 +419,82 @@ void CTopic::visualPoseAngleLaser(CLaser &laser_)
 }
 
 // Отобращение стрелкой где начало и куда смотрит в Mode0 1 2
-void CTopic::visualPublishOdomMode_1()
-{
-    // Публикация Одометрии
-    nav_msgs::Odometry mode1_msg;
-    mode1_msg.header.stamp = ros::Time::now(); // Время ROS
-    mode1_msg.header.frame_id = "odom";        // Поза в этом сообщении должна быть указана в системе координат, заданной header.frame_id.
-    // set the position
-    mode1_msg.pose.pose.position.x = g_poseLidar.mode1.x;
-    mode1_msg.pose.pose.position.y = g_poseLidar.mode1.y;
-    // geometry_msgs::Quaternion quat = tf::createQuaternionMsgFromYaw(DEG2RAD(-g_poseLidar.mode1.th + 90)); // Минус так как вращение у меня по часовой а не по "буравчику" и + 90 так как считал я что 0 градусов это по оси Y Глядел на стену надо переписывать
-    geometry_msgs::Quaternion quat = tf::createQuaternionMsgFromYaw(DEG2RAD(g_poseLidar.mode1.th)); // Минус так как вращение у меня по часовой а не по "буравчику" и + 90 так как считал я что 0 градусов это по оси Y Глядел на стену надо переписывать
-    mode1_msg.pose.pose.orientation = quat;
-    // set the velocity
-    mode1_msg.child_frame_id = "odom"; // Поворот в этом сообщении должен быть указан в системе координат, заданной child_frame_id
-    mode1_msg.twist.twist.linear.x = 0;
-    mode1_msg.twist.twist.linear.y = 0;
-    mode1_msg.twist.twist.angular.z = 0;
-    publish_Mode1.publish(mode1_msg); // Публикация полученных данных
+// void CTopic::visualPublishOdomMode_1()
+// {
+//     // Публикация Одометрии
+//     nav_msgs::Odometry mode1_msg;
+//     mode1_msg.header.stamp = ros::Time::now(); // Время ROS
+//     mode1_msg.header.frame_id = "odom";        // Поза в этом сообщении должна быть указана в системе координат, заданной header.frame_id.
+//     // set the position
+//     mode1_msg.pose.pose.position.x = g_poseBase.mode1.x;
+//     mode1_msg.pose.pose.position.y = g_poseBase.mode1.y;
+//     // geometry_msgs::Quaternion quat = tf::createQuaternionMsgFromYaw(DEG2RAD(-g_poseBase.mode1.th + 90)); // Минус так как вращение у меня по часовой а не по "буравчику" и + 90 так как считал я что 0 градусов это по оси Y Глядел на стену надо переписывать
+//     geometry_msgs::Quaternion quat = tf::createQuaternionMsgFromYaw(DEG2RAD(g_poseBase.mode1.th)); // Минус так как вращение у меня по часовой а не по "буравчику" и + 90 так как считал я что 0 градусов это по оси Y Глядел на стену надо переписывать
+//     mode1_msg.pose.pose.orientation = quat;
+//     // set the velocity
+//     mode1_msg.child_frame_id = "odom"; // Поворот в этом сообщении должен быть указан в системе координат, заданной child_frame_id
+//     mode1_msg.twist.twist.linear.x = 0;
+//     mode1_msg.twist.twist.linear.y = 0;
+//     mode1_msg.twist.twist.angular.z = 0;
+//     publish_Mode1.publish(mode1_msg); // Публикация полученных данных
 
-    // geometry_msgs::PoseStamped poseLidarMode1_msg; // Перемеенная в которую сохраняем данные лидара из сообщения
-    // ros_time = ros::Time::now(); // Время ROS
-    // poseLidarMode1_msg.header.stamp = ros_time;
-    // poseLidarMode1_msg.header.frame_id = "odom";
-    // poseLidarMode1_msg.pose.position.x = g_poseLidar.mode1.x;
-    // poseLidarMode1_msg.pose.position.y = g_poseLidar.mode1.y;
-    // poseLidarMode1_msg.pose.orientation = tf::createQuaternionMsgFromYaw(DEG2RAD(-g_poseLidar.mode1.th + 90)); // + 90 Так как у них оси расположены не так как я меня. У меня ноль вверх а у них вправо и вращение у них против часовой
-    // pub_PoseLidarMode1.publish(poseLidarMode1_msg);                                                            // Публикуем информацию по позиции лидара mode1
-}
+//     // geometry_msgs::PoseStamped poseLidarMode1_msg; // Перемеенная в которую сохраняем данные лидара из сообщения
+//     // ros_time = ros::Time::now(); // Время ROS
+//     // poseLidarMode1_msg.header.stamp = ros_time;
+//     // poseLidarMode1_msg.header.frame_id = "odom";
+//     // poseLidarMode1_msg.pose.position.x = g_poseBase.mode1.x;
+//     // poseLidarMode1_msg.pose.position.y = g_poseBase.mode1.y;
+//     // poseLidarMode1_msg.pose.orientation = tf::createQuaternionMsgFromYaw(DEG2RAD(-g_poseBase.mode1.th + 90)); // + 90 Так как у них оси расположены не так как я меня. У меня ноль вверх а у них вправо и вращение у них против часовой
+//     // pub_PoseLidarMode1.publish(poseLidarMode1_msg);                                                            // Публикуем информацию по позиции лидара mode1
+// }
 // Отобращение стрелкой где начало и куда смотрит в Mode0 1 2
-void CTopic::visualPublishOdomMode_2()
-{
-    // Публикация Одометрии
-    nav_msgs::Odometry mode2_msg;
-    mode2_msg.header.stamp = ros::Time::now(); // Время ROS
-    mode2_msg.header.frame_id = "odom";        // Поза в этом сообщении должна быть указана в системе координат, заданной header.frame_id.
-    // set the position
-    mode2_msg.pose.pose.position.x = g_poseLidar.mode2.x;
-    mode2_msg.pose.pose.position.y = g_poseLidar.mode2.y;
-    // geometry_msgs::Quaternion quat = tf::createQuaternionMsgFromYaw(DEG2RAD(-g_poseLidar.mode2.th + 90)); // Минус так как вращение у меня по часовой а не по "буравчику" и + 90 так как считал я что 0 градусов это по оси Y Глядел на стену надо переписывать
-    geometry_msgs::Quaternion quat = tf::createQuaternionMsgFromYaw(DEG2RAD(g_poseLidar.mode2.th)); // Минус так как вращение у меня по часовой а не по "буравчику" и + 90 так как считал я что 0 градусов это по оси Y Глядел на стену надо переписывать
-    mode2_msg.pose.pose.orientation = quat;
-    // set the velocity
-    mode2_msg.child_frame_id = "odom"; // Поворот в этом сообщении должен быть указан в системе координат, заданной child_frame_id
-    mode2_msg.twist.twist.linear.x = 0;
-    mode2_msg.twist.twist.linear.y = 0;
-    mode2_msg.twist.twist.angular.z = 0;
-    publish_Mode2.publish(mode2_msg); // Публикация полученных данных
+// void CTopic::visualPublishOdomMode_2()
+// {
+//     // Публикация Одометрии
+//     nav_msgs::Odometry mode2_msg;
+//     mode2_msg.header.stamp = ros::Time::now(); // Время ROS
+//     mode2_msg.header.frame_id = "odom";        // Поза в этом сообщении должна быть указана в системе координат, заданной header.frame_id.
+//     // set the position
+//     mode2_msg.pose.pose.position.x = g_poseBase.mode2.x;
+//     mode2_msg.pose.pose.position.y = g_poseBase.mode2.y;
+//     // geometry_msgs::Quaternion quat = tf::createQuaternionMsgFromYaw(DEG2RAD(-g_poseBase.mode2.th + 90)); // Минус так как вращение у меня по часовой а не по "буравчику" и + 90 так как считал я что 0 градусов это по оси Y Глядел на стену надо переписывать
+//     geometry_msgs::Quaternion quat = tf::createQuaternionMsgFromYaw(DEG2RAD(g_poseBase.mode2.th)); // Минус так как вращение у меня по часовой а не по "буравчику" и + 90 так как считал я что 0 градусов это по оси Y Глядел на стену надо переписывать
+//     mode2_msg.pose.pose.orientation = quat;
+//     // set the velocity
+//     mode2_msg.child_frame_id = "odom"; // Поворот в этом сообщении должен быть указан в системе координат, заданной child_frame_id
+//     mode2_msg.twist.twist.linear.x = 0;
+//     mode2_msg.twist.twist.linear.y = 0;
+//     mode2_msg.twist.twist.angular.z = 0;
+//     publish_Mode2.publish(mode2_msg); // Публикация полученных данных
 
-    // geometry_msgs::PoseStamped poseLidarMode2_msg; // Перемеенная в которую сохраняем данные лидара из сообщения
-    // ros_time = ros::Time::now(); // Время ROS
-    // poseLidarMode2_msg.header.stamp = ros_time;
-    // poseLidarMode2_msg.header.frame_id = "odom";
-    // poseLidarMode2_msg.pose.position.x = g_poseLidar.mode2.x;
-    // poseLidarMode2_msg.pose.position.y = g_poseLidar.mode2.y;
-    // poseLidarMode2_msg.pose.orientation = tf::createQuaternionMsgFromYaw(DEG2RAD(-g_poseLidar.mode2.th + 90)); // + 90 Так как у них оси расположены не так как я меня. У меня ноль вверх а у них вправо и вращение у них против часовой
-    // pub_PoseLidarMode2.publish(poseLidarMode2_msg);                                                            // Публикуем информацию по позиции лидара mode2
-}
+//     // geometry_msgs::PoseStamped poseLidarMode2_msg; // Перемеенная в которую сохраняем данные лидара из сообщения
+//     // ros_time = ros::Time::now(); // Время ROS
+//     // poseLidarMode2_msg.header.stamp = ros_time;
+//     // poseLidarMode2_msg.header.frame_id = "odom";
+//     // poseLidarMode2_msg.pose.position.x = g_poseBase.mode2.x;
+//     // poseLidarMode2_msg.pose.position.y = g_poseBase.mode2.y;
+//     // poseLidarMode2_msg.pose.orientation = tf::createQuaternionMsgFromYaw(DEG2RAD(-g_poseBase.mode2.th + 90)); // + 90 Так как у них оси расположены не так как я меня. У меня ноль вверх а у них вправо и вращение у них против часовой
+//     // pub_PoseLidarMode2.publish(poseLidarMode2_msg);                                                            // Публикуем информацию по позиции лидара mode2
+// }
 // Отобращение стрелкой где начало и куда смотрит в Mode3
-void CTopic::visualPublishOdomMode_3()
-{
-    // Публикация Одометрии
-    nav_msgs::Odometry mode_msg;
-    mode_msg.header.stamp = ros::Time::now(); // Время ROS
-    mode_msg.header.frame_id = "odom";        // Поза в этом сообщении должна быть указана в системе координат, заданной header.frame_id.
-    // set the position
-    mode_msg.pose.pose.position.x = g_poseLidar.mode3.x;
-    mode_msg.pose.pose.position.y = g_poseLidar.mode3.y;
-    geometry_msgs::Quaternion quat = tf::createQuaternionMsgFromYaw(DEG2RAD(g_poseLidar.mode3.th)); // Минус так как вращение у меня по часовой а не по "буравчику" и + 90 так как считал я что 0 градусов это по оси Y Глядел на стену надо переписывать
-    mode_msg.pose.pose.orientation = quat;
-    // set the velocity
-    mode_msg.child_frame_id = "odom"; // Поворот в этом сообщении должен быть указан в системе координат, заданной child_frame_id
-    mode_msg.twist.twist.linear.x = 0;
-    mode_msg.twist.twist.linear.y = 0;
-    mode_msg.twist.twist.angular.z = 0;
-    publish_Mode3.publish(mode_msg); // Публикация полученных данных
-}
+// void CTopic::visualPublishOdomMode_3()
+// {
+//     // Публикация Одометрии
+//     nav_msgs::Odometry mode_msg;
+//     mode_msg.header.stamp = ros::Time::now(); // Время ROS
+//     mode_msg.header.frame_id = "odom";        // Поза в этом сообщении должна быть указана в системе координат, заданной header.frame_id.
+//     // set the position
+//     mode_msg.pose.pose.position.x = g_poseBase.mode3.x;
+//     mode_msg.pose.pose.position.y = g_poseBase.mode3.y;
+//     geometry_msgs::Quaternion quat = tf::createQuaternionMsgFromYaw(DEG2RAD(g_poseBase.mode3.th)); // Минус так как вращение у меня по часовой а не по "буравчику" и + 90 так как считал я что 0 градусов это по оси Y Глядел на стену надо переписывать
+//     mode_msg.pose.pose.orientation = quat;
+//     // set the velocity
+//     mode_msg.child_frame_id = "odom"; // Поворот в этом сообщении должен быть указан в системе координат, заданной child_frame_id
+//     mode_msg.twist.twist.linear.x = 0;
+//     mode_msg.twist.twist.linear.y = 0;
+//     mode_msg.twist.twist.angular.z = 0;
+//     publish_Mode3.publish(mode_msg); // Публикация полученных данных
+// }
 // Отобращение стрелкой где начало и куда смотрит в Mode123
 void CTopic::visualPublishOdomMode_123()
 {
@@ -503,9 +503,9 @@ void CTopic::visualPublishOdomMode_123()
     // mode_msg.header.stamp = ros::Time::now(); // Время ROS
     // mode_msg.header.frame_id = "odom";        // Поза в этом сообщении должна быть указана в системе координат, заданной header.frame_id.
     // // set the position
-    // mode_msg.pose.pose.position.x = g_poseLidar.mode123.x;
-    // mode_msg.pose.pose.position.y = g_poseLidar.mode123.y;
-    // geometry_msgs::Quaternion quat = tf::createQuaternionMsgFromYaw(DEG2RAD(g_poseLidar.mode123.th)); // Минус так как вращение у меня по часовой а не по "буравчику" и + 90 так как считал я что 0 градусов это по оси Y Глядел на стену надо переписывать
+    // mode_msg.pose.pose.position.x = g_poseBase.mode123.x;
+    // mode_msg.pose.pose.position.y = g_poseBase.mode123.y;
+    // geometry_msgs::Quaternion quat = tf::createQuaternionMsgFromYaw(DEG2RAD(g_poseBase.mode123.th)); // Минус так как вращение у меня по часовой а не по "буравчику" и + 90 так как считал я что 0 градусов это по оси Y Глядел на стену надо переписывать
     // mode_msg.pose.pose.orientation = quat;
     // // set the velocity
     // mode_msg.child_frame_id = "odom"; // Поворот в этом сообщении должен быть указан в системе координат, заданной child_frame_id
