@@ -92,6 +92,7 @@ add_message_files(
   
   #-------------------------------------------------------
   Struct_PoseLidar.msg
+  Struct_PoseBase.msg
   Struct_PoseRotation.msg
   
   SAngleLL.msg

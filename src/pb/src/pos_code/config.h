@@ -34,6 +34,7 @@
 #include <pb_msgs/topicPillar.h>
 #include <pb_msgs/SAngleLaserLidar.h>
 #include <pb_msgs/SAngleLL.h>
+#include <pb_msgs/Struct_PoseBase.h>
 #include <pb_msgs/Struct_PoseLidar.h>
 #include <pb_msgs/Struct_PoseRotation.h>
 #include <pb_msgs/SLinAngVel.h>

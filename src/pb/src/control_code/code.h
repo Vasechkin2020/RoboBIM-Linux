@@ -94,24 +94,61 @@ void initCommandArray(int verCommand_)
 	if (verCommand_ == 2)
 	{
 		commandArray[0].mode = 3;
-		commandArray[0].len = 3.0;
+		commandArray[0].len = 1.0;
 		commandArray[0].velLen = 0.1;
 
 		commandArray[1].mode = 1;
-		commandArray[1].duration = 10000;
+		commandArray[1].duration = 5000;
 		commandArray[1].velL = 0.0;
 		commandArray[1].velR = 0.0;
 
 		commandArray[2].mode = 3;
-		commandArray[2].len = -3.0;
-		commandArray[2].velLen = 0.1;
+		commandArray[2].len = 1.0;
+		commandArray[2].velLen = 0.2;
 
 		commandArray[3].mode = 1;
-		commandArray[3].duration = 50000;
+		commandArray[3].duration = 5000;
 		commandArray[3].velL = 0.0;
 		commandArray[3].velR = 0.0;
 
-		commandArray[4].mode = 9;
+		commandArray[4].mode = 3;
+		commandArray[4].len = 1.0;
+		commandArray[4].velLen = 0.1;
+
+		commandArray[5].mode = 1;
+		commandArray[5].duration = 10000;
+		commandArray[5].velL = 0.0;
+		commandArray[5].velR = 0.0;
+//***************************************************
+
+		commandArray[6].mode = 3;
+		commandArray[6].len = -1.0;
+		commandArray[6].velLen = 0.1;
+
+		commandArray[7].mode = 1;
+		commandArray[7].duration = 5000;
+		commandArray[7].velL = 0.0;
+		commandArray[7].velR = 0.0;
+
+		commandArray[8].mode = 3;
+		commandArray[8].len = -1.0;
+		commandArray[8].velLen = 0.2;
+
+		commandArray[9].mode = 1;
+		commandArray[9].duration = 5000;
+		commandArray[9].velL = 0.0;
+		commandArray[9].velR = 0.0;
+		
+		commandArray[10].mode = 3;
+		commandArray[10].len = -1.0;
+		commandArray[10].velLen = 0.1;
+
+		commandArray[11].mode = 1;
+		commandArray[11].duration = 20000;
+		commandArray[11].velL = 0.0;
+		commandArray[11].velR = 0.0;
+
+		commandArray[12].mode = 9;
 	}
 	if (verCommand_ == 3)
 	{

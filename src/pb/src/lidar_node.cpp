@@ -10,7 +10,7 @@
 #include "lidar_code/pillar.h"
 #include "lidar_code/pillarDetector.h"
 
-SPoseLidar g_poseLidar; // Позиции лидара по расчетам Центральная система координат
+SPoseLidar g_poseLidar;        // Позиции лидара по расчетам Центральная система координат
 SPose g_transformGlobal2Local; // Система трансформации из одной позиции в другую
 #define COMPLEMENTARN 0.5
 
@@ -70,7 +70,7 @@ int main(int argc, char **argv)
     std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", formattedTime);
     ROS_INFO("TIME START NODE current time: %s", buffer); // Выводим в консоль
 
-    ros::Rate loop_rate(20);           // Создаём цикл с частотой 10 Гц
+    ros::Rate loop_rate(20);          // Создаём цикл с частотой 10 Гц
     while (ros::ok() && keep_running) // Пока ROS работает и не нажат Ctrl+C
     {
         timeLoop = ros::Time::now(); // Захватываем текущий момент времени начала цикла
@@ -83,12 +83,12 @@ int main(int argc, char **argv)
             flag_msgLidar = false;
             // ROS_INFO("=== %.3f %.3f | %.3f %.3f | %.3f %.3f",g_poseLidar.mode1.x, g_poseLidar.mode.x, g_poseLidar.mode1.y, g_poseLidar.mode.y, g_poseLidar.mode1.th, g_poseLidar.mode.th);
             pillar.parsingLidar(msg_lidar, g_poseLidar.mode); // Разбираем пришедшие данные и ищем там столбы.
-            pillar.comparisonPillar();                         // Сопоставляем столбы
+            pillar.comparisonPillar();                        // Сопоставляем столбы
             // topic.publicationPillarAll(pillar);                // Публикуем всю обобщенную информацию по столб
 
             detector.scanCallback(msg_lidar, g_poseLidar.mode);
             // topic.visualizeClasters(detector.cluster_info_list); // Большой обьем данных. Лучше отключать
-            topic.visualizePillars(detector.pillars);
+            topic.visualizePillars(detector.pillars); // Визуализация найденых столбов
             topic.visualizeLidar();
 
             calcDistDirect(distDirect, pillar, detector); // Обьединение сопоставленных столбов в итоговую таблицу. Дальше по этой таблице все считается
@@ -105,15 +105,14 @@ int main(int argc, char **argv)
             g_poseLidar.mode.y = g_poseLidar.mode1.y * 0.9 + g_poseLidar.mode2.y * 0.1;
             g_poseLidar.mode.th = g_poseLidar.mode.th * COMPLEMENTARN + ((g_poseLidar.mode1.th + g_poseLidar.mode2.th) / 2.0) * (1 - COMPLEMENTARN);
 
-            
             // g_transformGlobal2Local.x = g_poseLidar.mode.x;
             // g_transformGlobal2Local.y = g_poseLidar.mode.y;
             // g_transformGlobal2Local.th = g_poseLidar.mode.th;
 
-            topic.publicationPoseLidar(); // Публикуем все варианты расчета позиций mode 0.1.2.3.4
-            topic.visualPillarPoint(pillar);  // Отображение места размещения столбов
+            topic.publicationPoseLidar();    // Публикуем все варианты расчета позиций mode 0.1.2.3.4
+            topic.visualPillarPoint(pillar); // Отображение места размещения столбов
 
-            topic.transformLidar();                 // Публикуем трансформации систем координат , задаем по какому расчету трансформировать
+            topic.transformLidar();           // Публикуем трансформации систем координат , задаем по какому расчету трансформировать
             topic.visualStartPose(startPose); // Отобращение стрелкой где начало стартовой позиции и куда направлен нос платформы
             // topic.visualPublishOdomMode_1();  // Отобращение стрелкой где начало и куда смотрит в Mode 0 1 2
             // topic.visualPublishOdomMode_2();  // Отобращение стрелкой где начало и куда смотрит в Mode 0 1 2
@@ -246,6 +245,6 @@ void calcDistDirect(SDistDirect *distDirect, CPillar pillar, PillarDetector dete
             g_poseLidar.azimut[i] = g_poseLidar.azimut[i] * COMPLEMENTARN + distDirect[i].direction * (1 - COMPLEMENTARN);
     }
     flagFirst = 1;
-    ROS_INFO("    sum = %i",sum);
+    ROS_INFO("    sum = %i", sum);
     g_poseLidar.countMatchPillar = sum;
 }

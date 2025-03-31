@@ -14,7 +14,6 @@ public:
     ~CTopic();
     //**************************** ОБЬЯВЛЕНИЕ ПРОЦЕДУР **********************************
     void transformBase(SPose poseBase_); // Публикуем трансформации для системы координат
-    void transformLidar();               // Публикуем трансформации для системы координат
     void transformLaser(CLaser &laser_); // Публикуем трансформации для системы координат
     void transformRotation();            // Публикуем трансформации систем координат
 
@@ -34,12 +33,7 @@ public:
     void visualPublishOdomMode_0();
     void visualPublishOdomMode_1();
     void visualPublishOdomMode_2();
-    void visualPublishOdomMode_3();
     void visualPublishOdomMode_123();
-
-    void visualPublishOdomMode_11();
-    void visualPublishOdomMode_12();
-    void visualPublishOdomMode_13();
 
     // void publishOdomMpu();
     // void publishOdomUnited();
@@ -54,7 +48,7 @@ private:
 
     ros::Publisher pub_ControlModul = _nh.advertise<pb_msgs::Struct_Data2Modul>("pbPos/ControlModul", 16); // Это мы публикуем структуру которую отправляем к исполнению на драйвер
 
-    ros::Publisher pub_poseBase = _nh.advertise<pb_msgs::Struct_PoseLidar>("pbPos/PoseBase", 8);          // Это мы публикуем итоговую информацию по позици лидара обобщенную
+    ros::Publisher pub_poseBase = _nh.advertise<pb_msgs::Struct_PoseBase>("pbPos/PoseBase", 8);          // Это мы публикуем итоговую информацию по позици лидара обобщенную
     ros::Publisher pub_poseRotation = _nh.advertise<pb_msgs::Struct_PoseRotation>("pbPos/PoseRotation", 8); // Это мы публикуем итоговую информацию по позици лидара обобщенную
     ros::Publisher pub_linAngVel = _nh.advertise<pb_msgs::SLinAngVel>("pbPos/LinAngVel", 8);                // Это мы публикуем итоговую информацию линейной скорости угловой
 
@@ -265,7 +259,7 @@ void CTopic::publicationAngleLaser(CLaser &laser_)
 
 void CTopic::publicationPoseBase() // Формируем перемнную с собщением для публикации
 {
-    pb_msgs::Struct_PoseLidar poseBase_msg; // Обобщенные данные в моем формате о всех вариантах расчета позиции
+    pb_msgs::Struct_PoseBase poseBase_msg; // Обобщенные данные в моем формате о всех вариантах расчета позиции
 
     poseBase_msg.mode.x = g_poseBase.mode0.x;
     poseBase_msg.mode.y = g_poseBase.mode0.y;

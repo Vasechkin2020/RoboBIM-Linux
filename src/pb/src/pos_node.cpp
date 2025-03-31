@@ -164,7 +164,7 @@ int main(int argc, char **argv)
         if (flagPublish) //
         {
             flagPublish = false;
-            // topic.publicationPoseBase();     // Публикуем все варианты расчета позиций mode 0.1.2.3.4
+            topic.publicationPoseBase();     // Публикуем все варианты расчета позиций mode 0.1.2.3.4
             topic.publicationPoseRotattion(); // Публикуем все варианты расчета позиций mode 0.1.2.3.4
             topic.publicationLinAngVel();     // Вывод в топик данных с данными угловой и линейной скоростью
             // topic.publishOdomUnited();              // Публикация одометрии по моторам с корректировкой с верхнего уровня
@@ -198,7 +198,7 @@ int main(int argc, char **argv)
         }
         timeCycle(timeStart, timeNow); // Выводим справочно время работы цикла и время с начала работы программы
         r.sleep();                     // Интеллектуальная задержка на указанную частоту
-        // ros::spinOnce(); // Опрашиваем ядро ROS и по этой команде наши срабатывают колбеки. Нужно только для подписки на топики
+        // ros::spinOnce();            // Опрашиваем ядро ROS и по этой команде наши срабатывают колбеки. Нужно только для подписки на топики
     }
 
     printf("pos_node STOP \n");
