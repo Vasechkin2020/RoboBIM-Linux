@@ -261,9 +261,13 @@ void CTopic::publicationPoseBase() // Формируем перемнную с �
 {
     pb_msgs::Struct_PoseBase poseBase_msg; // Обобщенные данные в моем формате о всех вариантах расчета позиции
 
-    poseBase_msg.mode.x = g_poseBase.mode0.x;
-    poseBase_msg.mode.y = g_poseBase.mode0.y;
-    poseBase_msg.mode.th = g_poseBase.mode0.th;
+    poseBase_msg.mode.x = g_poseBase.mode.x;
+    poseBase_msg.mode.y = g_poseBase.mode.y;
+    poseBase_msg.mode.th = g_poseBase.mode.th;
+
+    poseBase_msg.mode0.x = g_poseBase.mode0.x;
+    poseBase_msg.mode0.y = g_poseBase.mode0.y;
+    poseBase_msg.mode0.th = g_poseBase.mode0.th;
 
     pub_poseBase.publish(poseBase_msg); // Публикуем информацию по позиции лидара
 }

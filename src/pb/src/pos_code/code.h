@@ -92,9 +92,9 @@ float minDistance(float laserL_, float laserR_, float uzi1_)
 void calcLinAngVel()
 {
 	// ROS_INFO("+++ calcLinAngVel");
-	g_linAngVel.wheel = calcTwistFromWheel(msg_Speed);						  // Обработка пришедших данных. По ним считаем линейные скорости по осям и угловую по углу. Запоминаем dt
-	// g_linAngVel.mpu = calcTwistFromMpu(msg_Modul2Data);						  // Обработка пришедших данных для расчета линейных и угловых скоростей
-	// g_linAngVel.united = calcTwistUnited(g_linAngVel.wheel, g_linAngVel.mpu); // тут написать функцию комплементации данных угловых скоростей с разными условиями когда и в каком соотношении скомплементировать скорсти с двух источников
+	g_linAngVel.wheel = calcTwistFromWheel(msg_Speed); // Обработка пришедших данных. По ним считаем линейные скорости по осям и угловую по углу. Запоминаем dt
+													   // g_linAngVel.mpu = calcTwistFromMpu(msg_Modul2Data);						  // Обработка пришедших данных для расчета линейных и угловых скоростей
+													   // g_linAngVel.united = calcTwistUnited(g_linAngVel.wheel, g_linAngVel.mpu); // тут написать функцию комплементации данных угловых скоростей с разными условиями когда и в каком соотношении скомплементировать скорсти с двух источников
 
 	// g_linAngVel.united = g_linAngVel.wheel; // Пока нет расчет по IMU и комплментации используем только по колесам
 }
@@ -112,7 +112,7 @@ void calcEuler()
 	// if (g_angleEuler.yaw < 0)
 	// 	g_angleEuler.yaw = g_angleEuler.yaw + 360;
 	prev_yaw = msg_Modul2Data.mpu.angleEuler.yaw;
-	ROS_INFO_THROTTLE(RATE_OUTPUT,"    msg_Modul2Data.mpu.angleEuler.yaw = %.3f g_angleEuler.yaw = %.3f (gradus) %.3f rad", msg_Modul2Data.mpu.angleEuler.yaw, g_angleEuler.yaw, DEG2RAD(g_angleEuler.yaw));
+	ROS_INFO_THROTTLE(RATE_OUTPUT, "    msg_Modul2Data.mpu.angleEuler.yaw = %.3f g_angleEuler.yaw = %.3f (gradus) %.3f rad", msg_Modul2Data.mpu.angleEuler.yaw, g_angleEuler.yaw, DEG2RAD(g_angleEuler.yaw));
 	// ROS_INFO("--- calcAngleThata");
 }
 
@@ -124,7 +124,7 @@ SPose convertRotation2Base(SPose pose_, std::string stroka_)
 	ret.x = pose_.x - (transformLidar2Rotation.x * cos(pose_.th));
 	ret.y = pose_.y - (transformLidar2Rotation.x * sin(pose_.th));
 	ret.th = RAD2DEG(pose_.th); // в g_poseBase угол в градусах
-	ROS_INFO_THROTTLE(RATE_OUTPUT, "    g_poseBase %s x = %.3f y = %.3f theta = %.3f (gradus) %.3f rad", stroka_.c_str(),ret.x, ret.y, ret.th, pose_.th);
+	ROS_INFO_THROTTLE(RATE_OUTPUT, "    convertRotation2Base %s x = %.3f y = %.3f theta = %.3f (gradus) %.3f rad", stroka_.c_str(), ret.x, ret.y, ret.th, pose_.th);
 	return ret;
 }
 // Конвертация координат из Lidar в Rotattion систему
@@ -136,7 +136,7 @@ SPose convertBase2Rotation(SPose pose_, std::string stroka_)
 	ret.x = pose_.x + (transformLidar2Rotation.x * cos(DEG2RAD(pose_.th)));
 	ret.y = pose_.y + (transformLidar2Rotation.x * sin(DEG2RAD(pose_.th)));
 	ret.th = DEG2RAD(pose_.th);
-	ROS_INFO_THROTTLE(RATE_OUTPUT,"    g_poseRotation %s x= %.3f y= %.3f th = %.3f (gradus) %.3f rad", stroka_.c_str(), ret.x, ret.y, RAD2DEG(ret.th), ret.th);
+	ROS_INFO_THROTTLE(RATE_OUTPUT, "    convertBase2Rotation %s x= %.3f y= %.3f th = %.3f (gradus) %.3f rad", stroka_.c_str(), ret.x, ret.y, RAD2DEG(ret.th), ret.th);
 	return ret;
 }
 
@@ -159,7 +159,7 @@ void startPosition(geometry_msgs::Pose2D &startPose2d_)
 
 	g_poseRotation.mode10 = convertBase2Rotation(g_poseBase.mode10, "mode10");
 	ROS_INFO("    start g_poseRotation.mode10 x= %.3f y= %.3f theta= %.3f ", g_poseRotation.mode10.x, g_poseRotation.mode10.y, g_poseRotation.mode10.th);
-	
+
 	g_poseBase.mode0 = g_poseBase.mode10;
 	g_poseRotation.mode0 = g_poseRotation.mode10;
 
@@ -296,7 +296,7 @@ SPose calcNewOdom(SPose odom_, STwistDt data_, std::string stroka_, float koef_)
 	// 	(odom_.th -= (2 * M_PI));
 	// if (odom_.th < 0)
 	// 	(odom_.th += (2 * M_PI));
-	ROS_INFO_THROTTLE(RATE_OUTPUT,"    calcNewOdom Rotation %s pose.x= % .3f y= % .3f | th= % .3f gradus th= % .4f rad", stroka_.c_str(), odom_.x, odom_.y, RAD2DEG(odom_.th), odom_.th);
+	ROS_INFO_THROTTLE(RATE_OUTPUT, "    calcNewOdom Rotation %s pose.x= % .3f y= % .3f | th= % .3f gradus th= % .4f rad", stroka_.c_str(), odom_.x, odom_.y, RAD2DEG(odom_.th), odom_.th);
 
 	// ROS_INFO("--- calcNewOdom");
 	return odom_;
@@ -332,8 +332,8 @@ SPose calcNewOdom2(SPose odom_, STwistDt data_, std::string stroka_) // На в�
 	// ROS_INFO("    IN odom_.th = %.3f data_.dt= %.3f  * data_.twist.vth= %.3f ", odom_.th, data_.dt, data_.twist.vth);
 
 	float k = 0.1;
-	odom_.th = ( odom_.th + data_.vth * data_.dt) * (1-k) + DEG2RAD(g_angleEuler.yaw) * k; // Комплементарный фильтр. Берем старое значение и увеличиваем на новый , берем с коефициентом большим и стабилизируем по точному значению
-	ROS_INFO_THROTTLE(RATE_OUTPUT,"    calcNewOdom2 Rotation %s pose.x= % .3f y= % .3f | th= % .3f gradus th= % .4f rad", stroka_.c_str(), odom_.x, odom_.y, RAD2DEG(odom_.th), odom_.th);
+	odom_.th = (odom_.th + data_.vth * data_.dt) * (1 - k) + DEG2RAD(g_angleEuler.yaw) * k; // Комплементарный фильтр. Берем старое значение и увеличиваем на новый , берем с коефициентом большим и стабилизируем по точному значению
+	ROS_INFO_THROTTLE(RATE_OUTPUT, "    calcNewOdom2 Rotation %s pose.x= % .3f y= % .3f | th= % .3f gradus th= % .4f rad", stroka_.c_str(), odom_.x, odom_.y, RAD2DEG(odom_.th), odom_.th);
 
 	return odom_;
 }
@@ -356,15 +356,15 @@ STwistDt calcTwistFromWheel(pb_msgs::SSetSpeed control_)
 	double dt = duration.toSec();					// Получаем количество секунд и преобразуем в миллисекунды
 	start_time = end_time;
 
-	static unsigned long time = micros();		 // Время предыдущего расчета// Функция из WiringPi.
-	unsigned long time_now = micros();			 // Время в которое делаем расчет
+	static unsigned long time = micros();				// Время предыдущего расчета// Функция из WiringPi.
+	unsigned long time_now = micros();					// Время в которое делаем расчет
 	double dt_micros = ((time_now - time) / 1000000.0); // Интервал расчета переводим сразу в секунды Находим интревал между текущим и предыдущим расчетом в секундах
 	time = time_now;
 	// ROS_INFO("    micros dt_micros = %f sec millis = %f", dt_micros, millis());
 
 	if (dt < 0.002) // При первом запуске просто выходим из функции
 	{
-		ROS_INFO("    First start. alcTwistFromWheel dt< 0.002 dt= %f | dt_micros = %f sec", dt,dt_micros);
+		ROS_INFO("    First start. alcTwistFromWheel dt< 0.002 dt= %f | dt_micros = %f sec", dt, dt_micros);
 		return ret;
 	}
 	// double speedL = PERIMETR * Driver2Data.motor.rpsEncodL; // По формуле периметр колеса на обороты это и есть пройденный путь за секунду Это и есть скорость за секунду
@@ -434,9 +434,9 @@ STwistDt calcTwistFromWheel(pb_msgs::SSetSpeed control_)
 	twist.vx = speed * cos(theta * dt); // Проекция моей скорости на ось X получаем линейную скорость по оси за секунуду
 	twist.vy = speed * sin(theta * dt); // Проекция моей скорости на ось Y получаем линейную скорость по оси за секунуду
 	twist.vth = theta;					// Угловая скорость в радианах.
-	twist.dt = dt;				
+	twist.dt = dt;
 
-	ROS_INFO_THROTTLE(RATE_OUTPUT,"    Twist Wheel dt = %.3f vx= %.3f vy= %.3f vth= %.3f w= %.3f gradus/sec  %.3f rad/sec", dt, twist.vx, twist.vy, RAD2DEG(twist.vth), RAD2DEG(w), w);
+	ROS_INFO_THROTTLE(RATE_OUTPUT, "    Twist Wheel dt = %.3f vx= %.3f vy= %.3f vth= %.3f w= %.3f gradus/sec  %.3f rad/sec", dt, twist.vx, twist.vy, RAD2DEG(twist.vth), RAD2DEG(w), w);
 	// if (w==0)
 	// ROS_INFO("NULL");
 
@@ -520,7 +520,7 @@ STwistDt calcTwistFromMpu(pb_msgs::Struct_Modul2Data msg_Modul2Data_)
 
 	if (dt < 0.003) // При первом запуске просто выходим из функции
 	{
-		ROS_INFO("    calcTwistFromMpu dt< 0.003 !!!! dt = %f",dt);
+		ROS_INFO("    calcTwistFromMpu dt< 0.003 !!!! dt = %f", dt);
 		predAngleZ = mpu_.angleEuler.z;
 		return ret;
 	}
@@ -565,7 +565,7 @@ STwistDt calcTwistFromMpu(pb_msgs::Struct_Modul2Data msg_Modul2Data_)
 	if (delta_th > 180)
 		(delta_th = delta_th - 360); // Если
 	if (delta_th < -180)
-		(delta_th = delta_th + 360);		// Если
+		(delta_th = delta_th + 360);  // Если
 	ret.vth = DEG2RAD(delta_th) / dt; // превращаем в радианы в секунды Угловая скорость вращения
 	float kk = 0.05;
 	g_linAngVel.filtr_mpu.vth = g_linAngVel.filtr_mpu.vth * (1 - kk) + ret.vth * kk; // Фильтр
@@ -578,8 +578,8 @@ STwistDt calcTwistFromMpu(pb_msgs::Struct_Modul2Data msg_Modul2Data_)
 	}
 
 	// printf(" ||| LinearSpeed vx= % .3f vy=  % .3f vth= % .6f | ", ret.twist.vx, ret.twist.vy, ret.twist.vth);
-	// printf(" |Vel= % .3f % .3f % .3f\n", ret.twist.vx, ret.twist.vy, ret.twist.vth); 
-	ROS_INFO_THROTTLE(RATE_OUTPUT,"    Twist MPU   dt = %.3f vx= %.3f vy= %.3f vth= %.3f             gradus/sec %.4f rad/sec", dt, ret.vx, ret.vy, RAD2DEG(ret.vth), ret.vth);
+	// printf(" |Vel= % .3f % .3f % .3f\n", ret.twist.vx, ret.twist.vy, ret.twist.vth);
+	ROS_INFO_THROTTLE(RATE_OUTPUT, "    Twist MPU   dt = %.3f vx= %.3f vy= %.3f vth= %.3f             gradus/sec %.4f rad/sec", dt, ret.vx, ret.vy, RAD2DEG(ret.vth), ret.vth);
 	// ROS_INFO("--- calcTwistFromMpu");
 	return ret;
 }
@@ -589,7 +589,7 @@ STwistDt calcTwistUnited(STwistDt wheelTwist_, STwistDt mpuTwist_)
 	// ROS_INFO_THROTTLE(RATE_OUTPUT,"+++ calcTwistUnited");
 	STwistDt ret;
 	float dt = wheelTwist_.dt * 0.5 + mpuTwist_.dt * 0.5;
-	if ( dt < 0.003) // При первом запуске просто выходим из функции
+	if (dt < 0.003) // При первом запуске просто выходим из функции
 	{
 		ROS_INFO("    calcTwistUnited dt< 0.003 !!!!  dt = %f", dt);
 		return ret;
@@ -601,13 +601,13 @@ STwistDt calcTwistUnited(STwistDt wheelTwist_, STwistDt mpuTwist_)
 
 	float koefTh = 0.5; // Коефициант по умолчанию.Пополам.
 	ret.vth = g_linAngVel.filtr_mpu.vth * (1 - koefTh) + g_linAngVel.wheel.vth * koefTh;
-	
+
 	ret.dt = dt;
 
-	ROS_INFO_THROTTLE(RATE_OUTPUT,"    United Wheel | %.3f %.3f %.3f %.3f | %.3f %.3f %.3f %.3f || %.3f %.3f %.3f %.3f  ",
-			 wheelTwist_.vx, wheelTwist_.vy, wheelTwist_.vth,wheelTwist_.dt,
-			 mpuTwist_.vx, mpuTwist_.vy, mpuTwist_.vth, mpuTwist_.dt,
-			 ret.vx, ret.vy, ret.vth, ret.dt);
+	ROS_INFO_THROTTLE(RATE_OUTPUT, "    United Wheel | %.3f %.3f %.3f %.3f | %.3f %.3f %.3f %.3f || %.3f %.3f %.3f %.3f  ",
+					  wheelTwist_.vx, wheelTwist_.vy, wheelTwist_.vth, wheelTwist_.dt,
+					  mpuTwist_.vx, mpuTwist_.vy, mpuTwist_.vth, mpuTwist_.dt,
+					  ret.vx, ret.vy, ret.vth, ret.dt);
 
 	return ret;
 }
@@ -1118,8 +1118,8 @@ void readParam()
 double calculateAngleDifference(double prev_angle, double current_angle)
 {
 	// ROS_INFO("+++ calculateAngleDifference");
-	double diff = fmod((current_angle - prev_angle), 360.0);// Вычисляем первоначальную разницу
-	if (diff > 180.0)// Корректируем разницу, чтобы она находилась в диапазоне [-180, 180]
+	double diff = fmod((current_angle - prev_angle), 360.0); // Вычисляем первоначальную разницу
+	if (diff > 180.0)										 // Корректируем разницу, чтобы она находилась в диапазоне [-180, 180]
 	{
 		diff -= 360.0;
 	}
@@ -1127,14 +1127,14 @@ double calculateAngleDifference(double prev_angle, double current_angle)
 	{
 		diff += 360.0;
 	}
-	ROS_INFO_THROTTLE(RATE_OUTPUT,"    calculateAngleDifference = %.3f gradus   %.3f rad", diff, DEG2RAD(diff));
+	ROS_INFO_THROTTLE(RATE_OUTPUT, "    calculateAngleDifference = %.3f gradus   %.3f rad", diff, DEG2RAD(diff));
 	return diff;
 }
 
 // Расчет частоты изменения данных с лазеров
 void rateLaserData()
 {
-	ROS_INFO_THROTTLE(RATE_OUTPUT,"+++ raterateLaserData");
+	ROS_INFO_THROTTLE(RATE_OUTPUT, "+++ raterateLaserData");
 	static uint32_t rateLaserData = 0;	   // Частота с какой меняются данные по лазерам
 	static uint32_t timeRateLaserData = 0; // время для расчета
 	static float prevSum = 0;			   // Предыдущее значение дистанции с лазера 0
@@ -1155,16 +1155,37 @@ void rateLaserData()
 	// ROS_INFO("--- raterateLaserData");
 }
 // Выводим справочно время работы цикла
-void timeCycle(ros::Time timeStart_, ros::Time timeNow_) 
+void timeCycle(ros::Time timeStart_, ros::Time timeNow_)
 {
-	    ros::Time timeEnd = ros::Time::now(); // Захватываем конечный момент времени
-        ros::Duration durationEnd = timeEnd - timeNow_; // Находим разницу между началом и концом
-        ros::Duration durationStart = timeEnd - timeStart_; // Находим разницу между началом и концом
-        double dtEnd = durationEnd.toSec()*1000;            // Получаем количество милисекунд
-        double dtStart = durationStart.toSec();            // Получаем количество секунд
-		if (dtEnd>5) // Если цикл занял бользе 5 милисекунд значит что не уложились в 200 Нz
-        	ROS_INFO("    !!! cycle = %8.3f msec", dtEnd); // Время цикла в милисекундах
-		else
-        	ROS_INFO_THROTTLE(1,"    dtStart = %7.0f sec | last cycle = %8.3f msec", dtStart, dtEnd); // Время цикла в милисекундах
+	ros::Time timeEnd = ros::Time::now();				// Захватываем конечный момент времени
+	ros::Duration durationEnd = timeEnd - timeNow_;		// Находим разницу между началом и концом
+	ros::Duration durationStart = timeEnd - timeStart_; // Находим разницу между началом и концом
+	double dtEnd = durationEnd.toSec() * 1000;			// Получаем количество милисекунд
+	double dtStart = durationStart.toSec();				// Получаем количество секунд
+	if (dtEnd > 5)										// Если цикл занял бользе 5 милисекунд значит что не уложились в 200 Нz
+		ROS_INFO("    !!! cycle = %8.3f msec", dtEnd);	// Время цикла в милисекундах
+	else
+		ROS_INFO_THROTTLE(1, "    dtStart = %7.0f sec | last cycle = %8.3f msec", dtStart, dtEnd); // Время цикла в милисекундах
 }
+// Расчет времени когда остановились. ЕСли движемся то выдаем текущее время. Если стоим то время когда остановились
+ros::Time timeStopping(pb_msgs::SSetSpeed msgSpeed_)
+{
+	static ros::Time timeRet = ros::Time::now();
+	static float speedPrev = msgSpeed_.speedL + msgSpeed_.speedR;
+	float speed = msgSpeed_.speedL + msgSpeed_.speedR;
+	// ROS_INFO("    SumSpeed  %f", speed); // 
+
+	if (speed != 0) // Если скрость не ноль то возвращаем текущее время
+	{
+		timeRet = ros::Time::now();
+	}
+	else if (speed == 0 && speedPrev != 0) // Если текущая сумма скоростей равна нулю а предыдущая нет то меняем время на текущее и в дальнейшем выдвем его пока не тронемся.
+	{
+		timeRet = ros::Time::now();
+		ROS_INFO("    timeStopping = %8.3f sec", timeRet.toSec()); // Время
+	}
+	speedPrev = speed;
+	return timeRet;
+}
+
 #endif
