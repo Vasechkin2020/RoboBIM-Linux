@@ -269,6 +269,11 @@ void CTopic::publicationPoseBase() // Формируем перемнную с �
     poseBase_msg.mode0.y = g_poseBase.mode0.y;
     poseBase_msg.mode0.th = g_poseBase.mode0.th;
 
+    poseBase_msg.azimut[0] =  g_poseBase.azimut[0];
+    poseBase_msg.azimut[1] =  g_poseBase.azimut[1];
+    poseBase_msg.azimut[2] =  g_poseBase.azimut[2];
+    poseBase_msg.azimut[3] =  g_poseBase.azimut[3];
+
     pub_poseBase.publish(poseBase_msg); // Публикуем информацию по позиции лидара
 }
 void CTopic::publicationPoseRotattion() // Вывод в топик данных с координатами и углом точки вращения Rotation

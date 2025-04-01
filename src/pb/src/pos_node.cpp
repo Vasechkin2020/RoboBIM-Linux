@@ -77,8 +77,8 @@ int main(int argc, char **argv)
         // 100 Hz ************************************************************ ОБРАБОТКА ДАННЫХ ИЗ ТОПИКОВ ЧТО ПОДПИСАНЫ  СРАБАТЫВАЕТ КАК ОТПРАВЛЯЕТ DATA_NODE  ********************************************
         if (flag_msgSpeed) // Флаг что пришло сообщение от ноды Data по Speed. Расчитываем линейную и угловую скорость и потом на нее основе расчитываем остальное
         {
-            ROS_INFO( "--- ");
-            ROS_INFO( "--- flag_msgSpeed");
+            ROS_INFO("--- ");
+            ROS_INFO("--- flag_msgSpeed");
             flag_msgSpeed = false;
             flagPublish = true;
             timeStop = timeStopping(msg_Speed); // Расчет времени когда остановились. ЕСли движемся то выдаем текущее время. Если стоим то время когда остановились
@@ -88,11 +88,13 @@ int main(int argc, char **argv)
             calcLinAngVel(); // Расчет линейных и угловой скоростей на основаниие данных скоростей колес и скоростей с IMU 055 и их комплементация в united
 
             g_poseRotation.mode0 = calcNewOdom(g_poseRotation.mode0, g_linAngVel.wheel, "mode 0", 1); // На основе линейных скоростей считаем новую позицию и угол по колесам
+            g_poseRotation.mode10 = calcNewOdom(g_poseRotation.mode10, g_linAngVel.wheel, "mode 10", 1); // На основе линейных скоростей считаем новую позицию и угол по колесам
             // g_poseRotation.mode10 = calcNewOdom2(g_poseRotation.mode10, g_linAngVel.united, "mode10"); // На основе линейных скоростей считаем новую позицию и угол по колесам
             // g_poseRotation.mode10.th = DEG2RAD(g_angleEuler.yaw); // Напрямую присваиваем угол. Заменяем тот угол что насчитали внутри
             // ROS_INFO("    g_poseRotation mode10 x = %.3f y = %.3f theta = %.3f (radian)", g_poseRotation.mode10.x, g_poseRotation.mode10.y, g_poseRotation.mode10.th);
 
             g_poseBase.mode0 = convertRotation2Base(g_poseRotation.mode0, "mode 0"); // Эти данные mode10 используем как основную точку для расчета mode1.2.3
+            g_poseBase.mode10 = convertRotation2Base(g_poseRotation.mode10, "mode 10"); // Эти данные mode10 используем как основную точку для расчета mode1.2.3
             // g_poseBase.mode10 = convertRotation2Base(g_poseRotation.mode10, "mode10"); // Эти данные mode10 используем как основную точку для расчета mode1.2.3
 
             // calcMode0(); // Расчет одометрии Mode0
@@ -103,7 +105,7 @@ int main(int argc, char **argv)
             // РАСЧЕТ НАПРАВЛЕНИЯ УГЛОВ ЛАЗЕРОВ
             // Тут поддумать как можно предсказывать угол поворота. Например учитывая угловую и линейные скорости считать вперед и поворачивать нс учетом будующей позиции переделать на вывод в переменную а не изменение имеющейся глобальной внутри
             laser.calcAnglePillarForLaser(pillar.pillar, g_poseBase.mode0); // Расчет углов в локальной системе лазеров на столбы для передачи на нижний уровень для исполнения
-            topic.publicationControlModul(); // Формируем и Публикуем команды для управления Modul
+            topic.publicationControlModul();                                // Формируем и Публикуем команды для управления Modul
 
             // topic.visualPublishOdomMode_3();                                  // Отобращение стрелкой где начало и куда смотрит в Mode3
             // topic.publicationAngleLaser(laser);                               // Формируем перемнную с собщением для публикации
@@ -123,11 +125,11 @@ int main(int argc, char **argv)
             ROS_INFO("---- IN Data PoseLidar x = %.3f y = %.3f th = %.3f | match = %i cross = %i | azimut %.3f %.3f %.3f %.3f | dtStoping = %f msec",
                      msg_lidar.mode.x, msg_lidar.mode.y, msg_lidar.mode.th,
                      msg_lidar.countMatchPillar, msg_lidar.countCrossCircle,
-                     msg_lidar.azimut[0], msg_lidar.azimut[1], msg_lidar.azimut[2], msg_lidar.azimut[3],dtStoping * 1000);
+                     msg_lidar.azimut[0], msg_lidar.azimut[1], msg_lidar.azimut[2], msg_lidar.azimut[3], dtStoping * 1000);
 
             // ROS_INFO("    dtStoping = %f msec", dtStoping * 1000);
 
-            if (dtStoping < 0.2) // Если меньше 0,2 секунды то возвращаем что есть
+            if (dtStoping < 0.1) // Если меньше 0,2 секунды то возвращаем что есть
             {
                 aver.x = msg_lidar.mode.x;
                 aver.y = msg_lidar.mode.y;
@@ -137,22 +139,21 @@ int main(int argc, char **argv)
             else // Если прошло больше 0,2 секунды с момента остановки начинаем усреднять позицию
             {
                 averCount++;
-                aver.x = aver.x + msg_lidar.mode.x ;
+                aver.x = aver.x + msg_lidar.mode.x;
                 aver.y = aver.y + msg_lidar.mode.y;
                 aver.th = aver.th + msg_lidar.mode.th;
                 // ROS_INFO("    averCount = %i aver.x = %.3f aver.x / averCount = %.3f", averCount, aver.x, aver.x / averCount);
 
-                if (dtStoping > 0.5) // Если прошло больше 0,5 секунды с момента остановки тогда комплементируем позицию.
+                if (dtStoping > 0.6) // Если прошло больше 0,5 секунды с момента остановки тогда комплементируем позицию.
                 {
                     // ROS_INFO("    --- complementation Pose Average to Mode ---");
-                    g_poseBase.mode0.x = aver.x / averCount;
-                    g_poseBase.mode0.y = aver.y / averCount;
-                    g_poseBase.mode0.th = aver.th / averCount;
+                    g_poseBase.mode10.x = aver.x / averCount;
+                    g_poseBase.mode10.y = aver.y / averCount;
+                    g_poseBase.mode10.th = aver.th / averCount;
+                    g_poseRotation.mode10 = convertBase2Rotation(g_poseBase.mode10, "mode10");
 
-                    g_poseBase.mode = g_poseBase.mode0;
-
-                    ROS_INFO("    complementation g_poseBase.mode0 x= %.3f y= %.3f theta= %.3f grad", g_poseBase.mode0.x, g_poseBase.mode0.y, g_poseBase.mode0.th);
-                    g_poseRotation.mode0 = convertBase2Rotation(g_poseBase.mode0, "mode0");
+                    g_poseBase.mode = g_poseBase.mode10;
+                    ROS_INFO("    complementation g_poseBase.mode x= %.3f y= %.3f theta= %.3f grad", g_poseBase.mode.x, g_poseBase.mode.y, g_poseBase.mode.th);
 
                     // ROS_INFO("    complementation g_poseRotation.mode0 x= %.3f y= %.3f theta= %.3f grad", g_poseRotation.mode0.x, g_poseRotation.mode0.y, RAD2DEG(g_poseRotation.mode0.th));
                 }

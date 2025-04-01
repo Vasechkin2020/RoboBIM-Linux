@@ -12,7 +12,7 @@
 
 SPoseLidar g_poseLidar;        // Позиции лидара по расчетам Центральная система координат
 SPose g_transformGlobal2Local; // Система трансформации из одной позиции в другую
-#define COMPLEMENTARN 0.5
+#define COMPLEMENTARN 0.1
 
 #include "lidar_code/topic.h" // Файл для функций для формирования топиков в нужном виде и формате
 

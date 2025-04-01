@@ -59,37 +59,88 @@ void initCommandArray(int verCommand_)
 {
 	if (verCommand_ == 1)
 	{
-		commandArray[0].mode = 1;
-		commandArray[0].duration = 20000;
-		commandArray[0].velL = 0.05;
-		commandArray[0].velR = 0.05;
+		commandArray[0].mode = 3;
+		commandArray[0].len = 0.7;
+		commandArray[0].velLen = 0.1;
 
 		commandArray[1].mode = 1;
-		commandArray[1].duration = 22000;
-		commandArray[1].velL = 0.1;
-		commandArray[1].velR = 0.1;
+		commandArray[1].duration = 5000;
+		commandArray[1].velL = 0.0;
+		commandArray[1].velR = 0.0;
 
-		commandArray[2].mode = 1;
-		commandArray[2].duration = 10000;
-		commandArray[2].velL = 0;
-		commandArray[2].velR = 0;
+		commandArray[2].mode = 2;
+		commandArray[2].angle = 45;
+		commandArray[2].velAngle = 0.02;
 
 		commandArray[3].mode = 1;
-		commandArray[3].duration = 20000;
-		commandArray[3].velL = -0.05;
-		commandArray[3].velR = -0.05;
+		commandArray[3].duration = 5000;
+		commandArray[3].velL = 0.0;
+		commandArray[3].velR = 0.0;
 
-		commandArray[4].mode = 1;
-		commandArray[4].duration = 22000;
-		commandArray[4].velL = -0.1;
-		commandArray[4].velR = -0.1;
+		commandArray[4].mode = 3;
+		commandArray[4].len = 0.7;
+		commandArray[4].velLen = 0.1;
 
 		commandArray[5].mode = 1;
-		commandArray[5].duration = 50000;
-		commandArray[5].velL = 0;
-		commandArray[5].velR = 0;
+		commandArray[5].duration = 5000;
+		commandArray[5].velL = 0.0;
+		commandArray[5].velR = 0.0;
 
-		commandArray[6].mode = 9;
+		commandArray[6].mode = 2;
+		commandArray[6].angle = 0.0;
+		commandArray[6].velAngle = 0.02;
+
+		commandArray[7].mode = 1;
+		commandArray[7].duration = 5000;
+		commandArray[7].velL = 0.0;
+		commandArray[7].velR = 0.0;
+
+		commandArray[8].mode = 3;
+		commandArray[8].len = 0.7;
+		commandArray[8].velLen = 0.1;
+
+		commandArray[9].mode = 1;
+		commandArray[9].duration = 5000;
+		commandArray[9].velL = 0.0;
+		commandArray[9].velR = 0.0;
+
+		commandArray[10].mode = 2;
+		commandArray[10].angle = -45;
+		commandArray[10].velAngle = 0.02;
+
+		commandArray[11].mode = 1;
+		commandArray[11].duration = 5000;
+		commandArray[11].velL = 0.0;
+		commandArray[11].velR = 0.0;
+
+		commandArray[12].mode = 3;
+		commandArray[12].len = 0.7;
+		commandArray[12].velLen = 0.1;
+
+		commandArray[13].mode = 1;
+		commandArray[13].duration = 5000;
+		commandArray[13].velL = 0.0;
+		commandArray[13].velR = 0.0;
+
+		commandArray[14].mode = 2;
+		commandArray[14].angle = 0;
+		commandArray[14].velAngle = 0.02;
+
+		commandArray[15].mode = 1;
+		commandArray[15].duration = 5000;
+		commandArray[15].velL = 0.0;
+		commandArray[15].velR = 0.0;
+
+		commandArray[16].mode = 3;
+		commandArray[16].len = 0.7;
+		commandArray[16].velLen = 0.1;
+
+		commandArray[17].mode = 1;
+		commandArray[17].duration = 50000;
+		commandArray[17].velL = 0.0;
+		commandArray[17].velR = 0.0;
+
+		commandArray[18].mode = 9;
 	}
 	if (verCommand_ == 2)
 	{
@@ -454,7 +505,7 @@ void workAngle(float angle_, u_int64_t &time_, float velAngle_)
 	static float minAngleMistake = 0.02; // Минимальная ошибка по углу в Градусах
 	static float angleMistake = 0;		 // Текущая ошибка по углу в градусах
 
-	float angleFact = msg_Pose.th.mode10;		// Угол который отслеживаем
+	float angleFact = msg_Pose.th.mode0;		// Угол который отслеживаем
 	angleMistake = angle_ - RAD2DEG(angleFact); // Смотрим какой угол.// Смотрим куда нам надо Считаем ошибку по углу и включаем колеса в нужную сторону с учетом ошибки по углу и максимально заданой скорости на колесах
 	ROS_INFO_THROTTLE(0.1, "    angle_ = %6.2f angleFact = %6.2f angleMistake = %6.2f", angle_, RAD2DEG(angleFact), angleMistake);
 	if (abs(angleMistake) <= minAngleMistake) // Когда ошибка по углу будет меньше заданной считаем что приехали и включаем время что-бы выйти из данного этапа алгоритма
