@@ -150,33 +150,40 @@ public:
     */
     void publicationPoseLidar() // Формируем перемнную с собщением для публикации
     {
-        pb_msgs::Struct_PoseLidar poseLidarAll_msg; // Обобщенные данные в моем формате о всех вариантах расчета позиции
+        pb_msgs::Struct_PoseLidar msg; // Обобщенные данные в моем формате о всех вариантах расчета позиции
 
-        poseLidarAll_msg.mode.x = g_poseLidar.mode.x;
-        poseLidarAll_msg.mode.y = g_poseLidar.mode.y;
-        poseLidarAll_msg.mode.th = g_poseLidar.mode.th;
+        msg.mode.x = g_poseLidar.mode.x;
+        msg.mode.y = g_poseLidar.mode.y;
+        msg.mode.th = g_poseLidar.mode.th;
 
-        poseLidarAll_msg.mode1.x = g_poseLidar.mode1.x;
-        poseLidarAll_msg.mode1.y = g_poseLidar.mode1.y;
-        poseLidarAll_msg.mode1.th = g_poseLidar.mode1.th;
+        msg.mode1.x = g_poseLidar.mode1.x;
+        msg.mode1.y = g_poseLidar.mode1.y;
+        msg.mode1.th = g_poseLidar.mode1.th;
 
-        poseLidarAll_msg.mode2.x = g_poseLidar.mode2.x;
-        poseLidarAll_msg.mode2.y = g_poseLidar.mode2.y;
-        poseLidarAll_msg.mode2.th = g_poseLidar.mode2.th;
+        msg.mode2.x = g_poseLidar.mode2.x;
+        msg.mode2.y = g_poseLidar.mode2.y;
+        msg.mode2.th = g_poseLidar.mode2.th;
 
-        poseLidarAll_msg.mode3.x = g_poseLidar.mode3.x;
-        poseLidarAll_msg.mode3.y = g_poseLidar.mode3.y;
-        poseLidarAll_msg.mode3.th = g_poseLidar.mode3.th;
+        msg.mode3.x = g_poseLidar.mode3.x;
+        msg.mode3.y = g_poseLidar.mode3.y;
+        msg.mode3.th = g_poseLidar.mode3.th;
 
-        poseLidarAll_msg.countMatchPillar = g_poseLidar.countMatchPillar;
-        poseLidarAll_msg.countCrossCircle = g_poseLidar.countCrossCircle;
+        msg.countMatchPillar = g_poseLidar.countMatchPillar;
+        msg.countCrossCircle = g_poseLidar.countCrossCircle;
 
-        poseLidarAll_msg.azimut[0] = g_poseLidar.azimut[0];
-        poseLidarAll_msg.azimut[1] = g_poseLidar.azimut[1];
-        poseLidarAll_msg.azimut[2] = g_poseLidar.azimut[2];
-        poseLidarAll_msg.azimut[3] = g_poseLidar.azimut[3];
+        for (size_t i = 0; i < 4; i++)
+        {
+            float temp = -g_poseLidar.azimut[i]; // Переделываем под стандарт ROS.
+            if (temp < -180)
+                temp = 360 + temp;
+            msg.azimut[i] = temp;
+        }
+        
+        // msg.azimut[1] = g_poseLidar.azimut[1];
+        // msg.azimut[2] = g_poseLidar.azimut[2];
+        // msg.azimut[3] = g_poseLidar.azimut[3];
 
-        pub_poseLidar.publish(poseLidarAll_msg); // Публикуем информацию по позиции лидара
+        pub_poseLidar.publish(msg); // Публикуем информацию по позиции лидара
     }
     // Отобращение стрелкой где начало и куда смотрит в Mode0 1 2
     void visualPublishOdomMode_1()
