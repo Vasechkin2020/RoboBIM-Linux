@@ -3,7 +3,7 @@
   <node pkg="pb" type="pos_node" name="pos_node" output ="screen">
 
     <!-- Указываем стартовую позицию робота. В какое место поставили и куда направили-->
-    <param name="x" type="double" value="1.00" />
+    <param name="x" type="double" value="1.0160" />
     <param name="y" type="double" value="2.00" />
     <param name="theta" type="double" value="0.0" />
 

@@ -1171,20 +1171,21 @@ void timeCycle(ros::Time timeStart_, ros::Time timeNow_)
 ros::Time timeStopping(pb_msgs::SSetSpeed msgSpeed_)
 {
 	static ros::Time timeRet = ros::Time::now();
-	static float speedPrev = msgSpeed_.speedL + msgSpeed_.speedR;
-	float speed = msgSpeed_.speedL + msgSpeed_.speedR;
+	static float speedPrevL = msgSpeed_.speedL;
+	static float speedPrevR = msgSpeed_.speedR;
 	// ROS_INFO("    SumSpeed  %f", speed); // 
 
-	if (speed != 0) // Если скрость не ноль то возвращаем текущее время
+	if (msgSpeed_.speedL != 0 || msgSpeed_.speedR != 0) // Если текущая скорость не ноль по люблму колесу то возвращаем текущее время
 	{
 		timeRet = ros::Time::now();
 	}
-	else if (speed == 0 && speedPrev != 0) // Если текущая сумма скоростей равна нулю а предыдущая нет то меняем время на текущее и в дальнейшем выдвем его пока не тронемся.
+	else if ((msgSpeed_.speedL == 0 && msgSpeed_.speedR == 0) && (speedPrevL != 0 && speedPrevR != 0)) // Если текущая сумма скоростей равна нулю а предыдущая нет то меняем время на текущее и в дальнейшем выдвем его пока не тронемся.
 	{
 		timeRet = ros::Time::now();
 		ROS_INFO("    timeStopping = %8.3f sec", timeRet.toSec()); // Время
 	}
-	speedPrev = speed;
+	speedPrevL = msgSpeed_.speedL;
+	speedPrevR = msgSpeed_.speedR;
 	return timeRet;
 }
 

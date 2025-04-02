@@ -87,13 +87,13 @@ int main(int argc, char **argv)
             // calcAngleAccelGyr(); // Не стал пока делать. Расчет самостоятельно угла на основании данных гироскопа и аксельрометра
             calcLinAngVel(); // Расчет линейных и угловой скоростей на основаниие данных скоростей колес и скоростей с IMU 055 и их комплементация в united
 
-            g_poseRotation.mode0 = calcNewOdom(g_poseRotation.mode0, g_linAngVel.wheel, "mode 0", 1); // На основе линейных скоростей считаем новую позицию и угол по колесам
+            g_poseRotation.mode0 = calcNewOdom(g_poseRotation.mode0, g_linAngVel.wheel, "mode 0", 1);    // На основе линейных скоростей считаем новую позицию и угол по колесам
             g_poseRotation.mode10 = calcNewOdom(g_poseRotation.mode10, g_linAngVel.wheel, "mode 10", 1); // На основе линейных скоростей считаем новую позицию и угол по колесам
             // g_poseRotation.mode10 = calcNewOdom2(g_poseRotation.mode10, g_linAngVel.united, "mode10"); // На основе линейных скоростей считаем новую позицию и угол по колесам
             // g_poseRotation.mode10.th = DEG2RAD(g_angleEuler.yaw); // Напрямую присваиваем угол. Заменяем тот угол что насчитали внутри
             // ROS_INFO("    g_poseRotation mode10 x = %.3f y = %.3f theta = %.3f (radian)", g_poseRotation.mode10.x, g_poseRotation.mode10.y, g_poseRotation.mode10.th);
 
-            g_poseBase.mode0 = convertRotation2Base(g_poseRotation.mode0, "mode 0"); // Эти данные mode10 используем как основную точку для расчета mode1.2.3
+            g_poseBase.mode0 = convertRotation2Base(g_poseRotation.mode0, "mode 0");    // Эти данные mode10 используем как основную точку для расчета mode1.2.3
             g_poseBase.mode10 = convertRotation2Base(g_poseRotation.mode10, "mode 10"); // Эти данные mode10 используем как основную точку для расчета mode1.2.3
             // g_poseBase.mode10 = convertRotation2Base(g_poseRotation.mode10, "mode10"); // Эти данные mode10 используем как основную точку для расчета mode1.2.3
 
@@ -138,14 +138,18 @@ int main(int argc, char **argv)
             }
             else // Если прошло больше 0,2 секунды с момента остановки начинаем усреднять позицию
             {
-                averCount++;
                 aver.x = aver.x + msg_lidar.mode.x;
                 aver.y = aver.y + msg_lidar.mode.y;
                 aver.th = aver.th + msg_lidar.mode.th;
+                averCount++;
                 // ROS_INFO("    averCount = %i aver.x = %.3f aver.x / averCount = %.3f", averCount, aver.x, aver.x / averCount);
 
                 if (dtStoping > 0.6) // Если прошло больше 0,5 секунды с момента остановки тогда комплементируем позицию.
                 {
+                    aver.x = aver.x - (aver.x / averCount);
+                    aver.y = aver.y - (aver.y / averCount);
+                    aver.th = aver.th - (aver.th / averCount);
+                    averCount--;
                     // ROS_INFO("    --- complementation Pose Average to Mode ---");
                     g_poseBase.mode10.x = aver.x / averCount;
                     g_poseBase.mode10.y = aver.y / averCount;

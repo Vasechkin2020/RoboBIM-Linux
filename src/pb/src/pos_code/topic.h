@@ -269,6 +269,10 @@ void CTopic::publicationPoseBase() // Формируем перемнную с �
     poseBase_msg.mode0.y = g_poseBase.mode0.y;
     poseBase_msg.mode0.th = g_poseBase.mode0.th;
 
+    poseBase_msg.mode10.x = g_poseBase.mode10.x;
+    poseBase_msg.mode10.y = g_poseBase.mode10.y;
+    poseBase_msg.mode10.th = g_poseBase.mode10.th;
+
     poseBase_msg.azimut[0] =  g_poseBase.azimut[0];
     poseBase_msg.azimut[1] =  g_poseBase.azimut[1];
     poseBase_msg.azimut[2] =  g_poseBase.azimut[2];
