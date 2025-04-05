@@ -24,14 +24,15 @@ public:
     // Структура для столба (координаты центра)
     struct Pillar
     {
-        double x_center;  // Координата x центра столба (локальная)
-        double y_center;  // Координата y центра столба (локальная)
-        double x_global;  // Глобальная координата x центра столба
-        double y_global;  // Глобальная координата y центра столба
-        double direction; // Направление
-        double distance;  // Дистанция
-        bool match;       // Сопоставление
-        int count;        // Флаг что есть значение
+        double x_center;       // Координата x центра столба (локальная)
+        double y_center;       // Координата y центра столба (локальная)
+        double x_global;       // Глобальная координата x центра столба
+        double y_global;       // Глобальная координата y центра столба
+        double direction;      // Направление
+        double claster_azimut; // Направление
+        double distance;       // Дистанция
+        bool match;            // Сопоставление
+        int count;             // Флаг что есть значение
     };
 
     Pillar matchPillar[4]; // Сопоставленные столбы по порядку
@@ -83,7 +84,7 @@ public:
 
     std::vector<Pillar> pillars;                // Список найденных столбов
     std::vector<ClusterInfo> cluster_info_list; // Список информации о кластерах
-    
+
     // Функция обработки данных от лидара
     void scanCallback(const sensor_msgs::LaserScan::ConstPtr &scan, SPose poseLidar_)
     {
@@ -122,9 +123,9 @@ public:
     }
 
 private:
-    ros::NodeHandle node;                       // Узел ROS для работы с топиками
-    ros::Subscriber scan_subscriber;            // Подписчик на данные лидара
-    ros::Timer timer;                           // Таймер для визуализации
+    ros::NodeHandle node;            // Узел ROS для работы с топиками
+    ros::Subscriber scan_subscriber; // Подписчик на данные лидара
+    ros::Timer timer;                // Таймер для визуализации
 
     double lidar_x = 0.0;       // Координата x лидара в глобальной системе
     double lidar_y = 0.0;       // Координата y лидара в глобальной системе
@@ -198,7 +199,7 @@ private:
             }
         }
         // ROS_INFO("    Found %d clusters total", (int)clusters.size()); // Выводим общее количество найденных кластеров
-        elapsed_time = ros::Time::now() - start_time;                  // Вычисляем интервал
+        elapsed_time = ros::Time::now() - start_time; // Вычисляем интервал
         // ROS_INFO("    End findClusters Elapsed time: %.3f seconds", elapsed_time.toSec());
         return clusters;
     }
@@ -327,7 +328,7 @@ private:
                 }
 
                 // Используем азимут кластера для направления
-                double azimuth = cluster_info_list[i].azimuth;
+                float azimuth = cluster_info_list[i].azimuth;
 
                 // Смещаем центр столба на расстояние радиуса от ближайшей точки по азимуту
                 Pillar pillar;
@@ -342,8 +343,17 @@ private:
                 double dy = pillar.y_global - lidar_y;
                 double distance = sqrt(dx * dx + dy * dy);
                 double direction = atan2(dy, dx);
-
                 pillar.direction = direction;
+                // ROS_INFO("azimuth1 = %.3f", azimuth);
+                azimuth = 180 + RAD2DEG(azimuth); // Преобразование угла из лидара в Base. он у меня повернут на 180
+                if (azimuth > 180)
+                {
+                    azimuth = azimuth - 360; // Подгонка под стандарт
+                }
+                // ROS_INFO("azimuth2 = %.3f", azimuth);
+
+                pillar.claster_azimut = DEG2RAD(azimuth); // В радианы как положено
+
                 pillar.distance = distance - PILLAR_RADIUS; // ОТНИМАЕМ ЧТОБЫ БЫЛО ОДИНАКОВО С ДРУГИМ АЛГОРИТМОМ
 
                 // Добавляем найденный столб в список
@@ -424,19 +434,25 @@ private:
 
                 // Сохраняем пару координат и азимут для вычисления позиции и ориентации лидара
                 matched_pairs.push_back({pillars[i].x_global, pillars[i].y_global});
-                measured_azimuths.push_back(pillars[i].direction);
 
+                // ROS_INFO("    pillars.claster_azimut = %.3f pillars.direction = %.3f", RAD2DEG(pillars[i].claster_azimut), RAD2DEG(pillars[i].direction));
+
+                // measured_azimuths.push_back(pillars[i].direction); // Тут направление влокальнй системе записано, надо его потом в преобразовать с учетом куда смотрим угла theta
+                measured_azimuths.push_back(pillars[i].claster_azimut); // 
+                // pillars[i].direction - это направление на кластер теоретический угол из полученых координат
+                // pillars[i].claster_azimut - это направление на кластер из лидара по его лидарной системе
                 // Выводим результат сопоставления
-                ROS_INFO("    Pillar %zu matched pillar %d (x=%.2f, y=%.2f): delta_x = %.3f m, delta_y = %.3f m, gipotenuza = %.3f m, distance = %.3f m, direction = %.3f grad",
+                ROS_INFO("    Pillar %zu matched pillar %d (x=%.2f, y=%.2f): delta_x = %.3f m, delta_y = %.3f m, gipotenuza = %.3f m, distance = %.3f m, direction = %.3f grad, claster_azimut = %.3f grad",
                          i, best_match,
                          KNOWN_PILLARS[best_match].first, KNOWN_PILLARS[best_match].second,
-                         delta_x, delta_y, min_dist, pillars[i].distance, pillars[i].direction * 180 / M_PI);
+                         delta_x, delta_y, min_dist, pillars[i].distance, RAD2DEG(pillars[i].direction), RAD2DEG(pillars[i].claster_azimut));
 
                 matchPillar[best_match].x_global = KNOWN_PILLARS[best_match].first;
                 matchPillar[best_match].y_global = KNOWN_PILLARS[best_match].second;
                 matchPillar[best_match].distance = pillars[i].distance;
 
-                float direct = RAD2DEG(pillars[i].direction);
+                // float direct = RAD2DEG(pillars[i].direction);
+                float direct = RAD2DEG(pillars[i].claster_azimut); // Тут указываем напрвление
                 if (direct < 0)
                     direct = -direct;
                 else if (direct > 0)
@@ -494,12 +510,13 @@ private:
                     sum_x += KNOWN_PILLARS[global_idx].first - matched_pairs[i].first;
                     sum_y += KNOWN_PILLARS[global_idx].second - matched_pairs[i].second;
 
-                    // Вычисляем теоретический азимут
+                    // Вычисляем теоретический азимут. Это угол который должен быть в идеале из этих координат
                     double global_azimuth = atan2(KNOWN_PILLARS[global_idx].second - lidar_y,
                                                   KNOWN_PILLARS[global_idx].first - lidar_x);
                     // Разница между измеренным и глобальным азимутом даёт угол поворота лидара
-                    double theta_diff = normalizeAngle(measured_azimuths[i] - global_azimuth);
-                    // ROS_INFO("    global_azimuth = %.3f, measured_azimuths = %.3f, theta_diff = %.3f", RAD2DEG(global_azimuth), RAD2DEG(measured_azimuths[i]), RAD2DEG(theta_diff));
+                    double theta_diff = - normalizeAngle(measured_azimuths[i] - global_azimuth); // Минус чтобы совпадало по знаку
+                    ROS_INFO("    global_azimuth = %.3f, measured_azimuths = %.3f, theta_diff = %.3f |  lidar_x = %.3f  lidar_y = %.3f",
+                             RAD2DEG(global_azimuth), RAD2DEG(measured_azimuths[i]), RAD2DEG(theta_diff), lidar_x, lidar_y);
                     sum_theta += theta_diff;
                     count++;
                 }
@@ -534,7 +551,6 @@ private:
     }
 
 public:
-
 };
 
 #endif

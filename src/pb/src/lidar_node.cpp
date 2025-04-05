@@ -232,6 +232,7 @@ void calcDistDirect(SDistDirect *distDirect, CPillar pillar, PillarDetector dete
         if (count > 0)
         {
             distDirect[i].distance = (distDirect[i].distance + detector.matchPillar[i].distance) / count;
+            ROS_INFO("    distDirect[i].direction = %.3f ||| detector.matchPillar[i].direction = %.3f count = %.1f", distDirect[i].direction, detector.matchPillar[i].direction,count);
             distDirect[i].direction = (distDirect[i].direction + detector.matchPillar[i].direction) / count;
         }
         // ROS_INFO("x_true = %.3f y_true = %.3f distance = %.5f direction = %.3f", distDirect[i].x_true,distDirect[i].y_true, distDirect[i].distance, distDirect[i].direction);
