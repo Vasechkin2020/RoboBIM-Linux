@@ -381,48 +381,48 @@ void initCommandArray(int verCommand_)
 	if (verCommand_ == 5)
 	{
 		commandArray[0].mode = 2;
-		commandArray[0].angle = -40;
-		commandArray[0].velAngle = 0.02;
+		commandArray[0].angle = -175;
+		commandArray[0].velAngle = 0.03;
 
 		commandArray[1].mode = 1;
 		commandArray[1].duration = 5000;
 
 		commandArray[2].mode = 2;
-		commandArray[2].angle = -90;
-		commandArray[2].velAngle = 0.02;
+		commandArray[2].angle = 0;
+		commandArray[2].velAngle = 0.03;
 
 		commandArray[3].mode = 1;
-		commandArray[3].duration = 10000;
+		commandArray[3].duration = 5000;
 
 		commandArray[4].mode = 2;
-		commandArray[4].angle = 0;
-		commandArray[4].velAngle = 0.02;
+		commandArray[4].angle = 175;
+		commandArray[4].velAngle = 0.03;
 
 		commandArray[5].mode = 1;
-		commandArray[5].duration = 10000;
+		commandArray[5].duration = 5000;
 
 		commandArray[6].mode = 2;
-		commandArray[6].angle = 40;
-		commandArray[8].velAngle = 0.02;
+		commandArray[6].angle = 0;
+		commandArray[6].velAngle = 0.03;
 
 		commandArray[7].mode = 1;
 		commandArray[7].duration = 5000;
 
-		commandArray[8].mode = 2;
-		commandArray[8].angle = 90;
-		commandArray[8].velAngle = 0.02;
+		// commandArray[8].mode = 2;
+		// commandArray[8].angle = 90;
+		// commandArray[8].velAngle = 0.02;
 
-		commandArray[9].mode = 1;
-		commandArray[9].duration = 10000;
+		// commandArray[9].mode = 1;
+		// commandArray[9].duration = 10000;
 
-		commandArray[10].mode = 2;
-		commandArray[10].angle = 0;
-		commandArray[10].velAngle = 0.02;
+		// commandArray[10].mode = 2;
+		// commandArray[10].angle = 0;
+		// commandArray[10].velAngle = 0.02;
 
-		commandArray[11].mode = 1;
-		commandArray[11].duration = 10000;
+		// commandArray[11].mode = 1;
+		// commandArray[11].duration = 10000;
 
-		commandArray[12].mode = 9;
+		commandArray[8].mode = 9;
 
 		for (int i = 0; i < 13; i++)
 		{

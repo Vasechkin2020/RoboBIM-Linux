@@ -151,6 +151,7 @@ SPose CPillar::getLocationMode1(SDistDirect *distDirect, SPose pose_) // На в
 // Метод возвращает угол между ось. Y вверх и напрвлением лидара вперед Сравнивается с Azimit который посчитали ранее
 float CPillar::getTheta(SPose poseLidar_, int mode_)
 {
+    ROS_INFO("+++ getTheta"); // Это вектор из нашего текущего положения на столб и угол на него от оси Y
     // Находим куда смотрит лидар на основе полученного положения и результатов с лидара фактических
     float gamma = 0;
     int count = 0; // Для усреднения считаем сколько столбов было
@@ -163,6 +164,7 @@ float CPillar::getTheta(SPose poseLidar_, int mode_)
             float b = (pillar[i].y_true - poseLidar_.y);
             float alfa = RAD2DEG(atan2(a, b));
             // ROS_INFO("a= %.3f b= %.3f  alfa= %.3f ", a, b, alfa); // Это вектор из нашего текущего положения на столб и угол на него от оси Y
+            ROS_INFO("    alfa= %.3f ", alfa); // Это вектор из нашего текущего положения на столб и угол на него от оси Y
             (alfa < 0) ? alfa += 360 : alfa = alfa;
             // if (mode_ == 1)
             // {
@@ -176,7 +178,9 @@ float CPillar::getTheta(SPose poseLidar_, int mode_)
             // {
             //     pillar[i].theta_true3 = alfa;
             // }
+            ROS_INFO("    alfa2= %.3f ", alfa); // Это вектор из нашего текущего положения на столб и угол на него от оси Y
             float delta = (alfa - pillar[i].azimuth);
+            ROS_INFO("    delta= %.3f ", delta); // Это вектор из нашего текущего положения на столб и угол на него от оси Y
             float delta2 = delta;
             if (delta < -180) // Если больше значит угол не с той стороны измерили
             {
@@ -186,6 +190,7 @@ float CPillar::getTheta(SPose poseLidar_, int mode_)
             {
                 delta2 = delta - 360;
             }
+            ROS_INFO("    delta2= %.3f ", delta2); // Это вектор из нашего текущего положения на столб и угол на него от оси Y
             gamma = gamma + delta2;
             count++; // Считаем на сколько отличаются углы, это значит на столько повернут нос лидара
             // ROS_INFO("alfa360= %.3f azimuth= %.3f delta= %.3f delta2= %.3f ", pillar[i].azimuth, alfa, delta, delta2); //
@@ -201,6 +206,7 @@ float CPillar::getTheta(SPose poseLidar_, int mode_)
     if (count != 0)
     {
         rez = (gamma / count); // Усредняем угол
+        ROS_INFO("    getTheta= %.3f ", rez); // Это вектор из нашего текущего положения на столб и угол на него от оси Y
     }
     return rez;
 }
