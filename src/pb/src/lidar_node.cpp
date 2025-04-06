@@ -101,9 +101,23 @@ int main(int argc, char **argv)
                 ROS_ERROR("STOP MODE 1-2");
                 exit(0);
             }
-            g_poseLidar.mode.x = g_poseLidar.mode1.x * 0.9 + g_poseLidar.mode2.x * 0.1; // Легкая комплементация двух методов расчета. Второй сильно волатильный
-            g_poseLidar.mode.y = g_poseLidar.mode1.y * 0.9 + g_poseLidar.mode2.y * 0.1;
-            g_poseLidar.mode.th = g_poseLidar.mode.th * COMPLEMENTARN + ((g_poseLidar.mode1.th + g_poseLidar.mode2.th) / 2.0) * (1 - COMPLEMENTARN);
+            g_poseLidar.mode.x = g_poseLidar.mode1.x * 0.8 + g_poseLidar.mode2.x * 0.1 + g_poseLidar.mode3.x * 0.1; // Легкая комплементация двух методов расчета. Второй сильно волатильный
+            g_poseLidar.mode.y = g_poseLidar.mode1.y * 0.8 + g_poseLidar.mode2.y * 0.1 + g_poseLidar.mode3.y * 0.1;
+            // g_poseLidar.mode.th = g_poseLidar.mode1.th * 0.4 + g_poseLidar.mode2.th * 0.3 + g_poseLidar.mode3.th * 0.3;
+
+            // Перед комплментацией углы нужно привести к 360 градусов чтобы правильно усреднять
+            float angle1, angle2, angle3, angleSum;
+            (g_poseLidar.mode1.th < 0) ? angle1 = g_poseLidar.mode1.th + 360 : angle1 = g_poseLidar.mode1.th;
+            (g_poseLidar.mode2.th < 0) ? angle2 = g_poseLidar.mode2.th + 360 : angle2 = g_poseLidar.mode2.th;
+            (g_poseLidar.mode3.th < 0) ? angle3 = g_poseLidar.mode3.th + 360 : angle3 = g_poseLidar.mode3.th;
+
+            angleSum = angle1 * 0.4 + angle2 * 0.3 + angle3 * 0.3;
+            (angleSum > 180) ? angleSum = angleSum - 360 : angleSum = angleSum; // Обратно после усреденения превращаем в +-180
+            g_poseLidar.mode.th = angleSum;
+
+            ROS_WARN("    g_poseLidar.mode.x = %.3f th = %.3f th = %.3f ", g_poseLidar.mode.x, g_poseLidar.mode.y, g_poseLidar.mode.th);
+
+            // g_poseLidar.mode.th = g_poseLidar.mode.th * COMPLEMENTARN + ((g_poseLidar.mode1.th + g_poseLidar.mode2.th) / 2.0) * (1 - COMPLEMENTARN);
 
             // g_transformGlobal2Local.x = g_poseLidar.mode.x;
             // g_transformGlobal2Local.y = g_poseLidar.mode.y;
@@ -232,7 +246,7 @@ void calcDistDirect(SDistDirect *distDirect, CPillar pillar, PillarDetector dete
         if (count > 0)
         {
             distDirect[i].distance = (distDirect[i].distance + detector.matchPillar[i].distance) / count;
-            ROS_INFO("    distDirect[i].direction = %.3f ||| detector.matchPillar[i].direction = %.3f count = %.1f", distDirect[i].direction, detector.matchPillar[i].direction,count);
+            // ROS_INFO("    distDirect[i].direction = %.3f ||| detector.matchPillar[i].direction = %.3f count = %.1f", distDirect[i].direction, detector.matchPillar[i].direction,count);
             distDirect[i].direction = (distDirect[i].direction + detector.matchPillar[i].direction) / count;
         }
         // ROS_INFO("x_true = %.3f y_true = %.3f distance = %.5f direction = %.3f", distDirect[i].x_true,distDirect[i].y_true, distDirect[i].distance, distDirect[i].direction);
