@@ -135,7 +135,8 @@ SPose CPillar::getLocationMode1(SDistDirect *distDirect, SPose pose_) // На в
         poseLidar.x = poseLidar.x / count_poseLidarMode1;
         poseLidar.y = poseLidar.y / count_poseLidarMode1;
 
-        poseLidar.th = 90 - getTheta(poseLidar, 1); // Получаем угол куда смотрит нос лидара в системе "odom" + 90 так как сиcтема координат повернута относительно /odom/
+        // poseLidar.th = 90 - getTheta(poseLidar, 1); // Получаем угол куда смотрит нос лидара в системе "odom" + 90 так как сиcтема координат повернута относительно /odom/
+        poseLidar.th = - getTheta(poseLidar, 1); // Получаем угол куда смотрит нос лидара в системе "odom" + 90 так как сиcтема координат повернута относительно /odom/
         ROS_WARN("    MODE1 pose.x= %.3f y= %.3f theta= %.3f ", poseLidar.x, poseLidar.y, poseLidar.th);
         // return poseLidar;
         poseReturn_ = poseLidar;
@@ -151,7 +152,7 @@ SPose CPillar::getLocationMode1(SDistDirect *distDirect, SPose pose_) // На в
 // Метод возвращает угол между ось. Y вверх и напрвлением лидара вперед Сравнивается с Azimit который посчитали ранее
 float CPillar::getTheta(SPose poseLidar_, int mode_)
 {
-    ROS_INFO("+++ getTheta"); // Это вектор из нашего текущего положения на столб и угол на него от оси Y
+    // ROS_INFO("+++ getTheta"); // Это вектор из нашего текущего положения на столб и угол на него от оси Y
     // Находим куда смотрит лидар на основе полученного положения и результатов с лидара фактических
     float gamma = 0;
     int count = 0; // Для усреднения считаем сколько столбов было
@@ -160,12 +161,13 @@ float CPillar::getTheta(SPose poseLidar_, int mode_)
         // printf("pillar[i].status = %i \n",pillar[i].status);
         if (pillar[i].status) // Берем только сопоставленные столбы
         {
+            // ROS_INFO("    x_true = %.3f y_true = %.3f | poseLidar_.x = %.3f poseLidar_.y = %.3f", pillar[i].x_true, pillar[i].y_true, poseLidar_.x, poseLidar_.y); // Это вектор из нашего текущего положения на столб и угол на него от оси Y
             float a = (pillar[i].x_true - poseLidar_.x);
             float b = (pillar[i].y_true - poseLidar_.y);
-            float alfa = RAD2DEG(atan2(a, b));
-            // ROS_INFO("a= %.3f b= %.3f  alfa= %.3f ", a, b, alfa); // Это вектор из нашего текущего положения на столб и угол на него от оси Y
-            ROS_INFO("    alfa= %.3f ", alfa); // Это вектор из нашего текущего положения на столб и угол на него от оси Y
-            (alfa < 0) ? alfa += 360 : alfa = alfa;
+            float alfa = RAD2DEG(atan2(b, a));
+            // ROS_INFO("     a= %.3f b= %.3f  alfa= %.3f ", a, b, alfa); // Это вектор из нашего текущего положения на столб и угол на него от оси Y
+            // ROS_INFO("    alfa= %.3f ", alfa); // Это вектор из нашего текущего положения на столб и угол на него от оси Y
+            // (alfa < 0) ? alfa += 360 : alfa = alfa;
             // if (mode_ == 1)
             // {
             //     pillar[i].theta_true1 = alfa;
@@ -178,9 +180,12 @@ float CPillar::getTheta(SPose poseLidar_, int mode_)
             // {
             //     pillar[i].theta_true3 = alfa;
             // }
-            ROS_INFO("    alfa2= %.3f ", alfa); // Это вектор из нашего текущего положения на столб и угол на него от оси Y
+            alfa = -alfa; //Меняею знак так как там азимут сделан что положительный по часовой
+            if (alfa < 0)
+            alfa = 360 + alfa; //Превращаем в 360 из +-180
+            // ROS_INFO("    alfa2= %.3f pillar[i].azimuth = %.3f ", alfa,pillar[i].azimuth); // Это вектор из нашего текущего положения на столб и угол на него от оси Y
             float delta = (alfa - pillar[i].azimuth);
-            ROS_INFO("    delta= %.3f ", delta); // Это вектор из нашего текущего положения на столб и угол на него от оси Y
+            // ROS_INFO("    delta= %.3f ", delta); // Это вектор из нашего текущего положения на столб и угол на него от оси Y
             float delta2 = delta;
             if (delta < -180) // Если больше значит угол не с той стороны измерили
             {
@@ -190,7 +195,7 @@ float CPillar::getTheta(SPose poseLidar_, int mode_)
             {
                 delta2 = delta - 360;
             }
-            ROS_INFO("    delta2= %.3f ", delta2); // Это вектор из нашего текущего положения на столб и угол на него от оси Y
+            // ROS_INFO("    delta2= %.3f ", delta2); // Это вектор из нашего текущего положения на столб и угол на него от оси Y
             gamma = gamma + delta2;
             count++; // Считаем на сколько отличаются углы, это значит на столько повернут нос лидара
             // ROS_INFO("alfa360= %.3f azimuth= %.3f delta= %.3f delta2= %.3f ", pillar[i].azimuth, alfa, delta, delta2); //
@@ -205,8 +210,8 @@ float CPillar::getTheta(SPose poseLidar_, int mode_)
     float rez = 0;
     if (count != 0)
     {
-        rez = (gamma / count); // Усредняем угол
-        ROS_INFO("    getTheta= %.3f ", rez); // Это вектор из нашего текущего положения на столб и угол на него от оси Y
+        rez = (gamma / count);                // Усредняем угол
+        // ROS_INFO("    getTheta= %.3f ", rez); // Это вектор из нашего текущего положения на столб и угол на него от оси Y
     }
     return rez;
 }
@@ -241,7 +246,7 @@ SPose CPillar::getLocationMode2(SDistDirect *distDirect, SPose pose_) // На в
             {
                 c = getCircle(p1, p2, a1); // Ищем 2 окружности по 2 точкам и углу между ними  https://lektsia.com/1x1ff.html https://studfile.net/preview/1853275/page:2/ https://vk.com/@theoryofsailing-navigaciya-glava-5-33-opredelenie-mesta-po-dvum-gorizontalny
                 // ROS_INFO("p1 x= %.3f y= %.3f | p2 x= %.3f y= %.3f | a1 = %.3f ", p1.x, p1.y, p2.x, p2.y, a1);
-                c.c1.r = c.c1.r + 0.0;     // Гипотеза что если увеличить радиус чуть-чуть по будет больше пересечений и лучше результат )
+                c.c1.r = c.c1.r + 0.0; // Гипотеза что если увеличить радиус чуть-чуть по будет больше пересечений и лучше результат )
                 c.c2.r = c.c2.r + 0.0;
                 circleAnglePillar[count_circleAnglePillar] = c.c1; // Записываем 2 окружности
                 count_circleAnglePillar++;
@@ -259,7 +264,7 @@ SPose CPillar::getLocationMode2(SDistDirect *distDirect, SPose pose_) // На в
             c1 = circleAnglePillar[i];
             c2 = circleAnglePillar[j];
             int rez = getCrossing(c1, c2, pose_, point, 0.16); // Считаем пересечение окружнойстей и в итоге получаем текущее положение по 2 окружностям
-            if (rez == 1)                                     // Если результат 1 значит нашли пересечения иначе пропускаем
+            if (rez == 1)                                      // Если результат 1 значит нашли пересечения иначе пропускаем
             {
                 poseLidarMode2[count_poseLidarMode2].x = point.x;
                 poseLidarMode2[count_poseLidarMode2].y = point.y;
@@ -287,7 +292,8 @@ SPose CPillar::getLocationMode2(SDistDirect *distDirect, SPose pose_) // На в
         // printf("\n");
         poseLidar.x = poseLidar.x / count_poseLidarMode2;
         poseLidar.y = poseLidar.y / count_poseLidarMode2;
-        poseLidar.th = 90 - getTheta(poseLidar, 2); // Получаем угол куда смотрит нос лидара в системе "odom"
+        // poseLidar.th = 90 - getTheta(poseLidar, 2); // Получаем угол куда смотрит нос лидара в системе "odom"
+        poseLidar.th = - getTheta(poseLidar, 2); // Получаем угол куда смотрит нос лидара в системе "odom"
         ROS_WARN("    MODE2 pose.x= %.3f y= %.3f theta= %.3f ", poseLidar.x, poseLidar.y, poseLidar.th);
         return poseLidar;
         // // Находим куда смотрит лидар на основе полученного положения и результтов с лидара фактических
@@ -383,7 +389,7 @@ SCircle2 CPillar::getCircle(SPoint p1_, SPoint p2_, float angle_) // На вхо
 int CPillar::getCrossing(SCircle c1_, SCircle c2_, SPose pose_, SPoint &pointX_, float len_) // https://algolist.manual.ru/maths/geom/intersect/circlecircle2d.php https://planetcalc.ru/8098/ https://paulbourke.net/geometry/circlesphere/
 {
     // ROS_INFO("getCrossing IN c1 x= %.3f y= %.3f c1 = %.3f | c2 x= %.3f y= %.3f c2 = %.3f | pose_ x= %.3f y= %.3f th= %.3f | len= %.3f",
-            //  c1_.x, c1_.y, c1_.r, c2_.x, c2_.y, c2_.r, pose_.x, pose_.y, pose_.th, len_);
+    //  c1_.x, c1_.y, c1_.r, c2_.x, c2_.y, c2_.r, pose_.x, pose_.y, pose_.th, len_);
     int ret = 0;
     // Находим раастояние между центрами окружностей
     SPoint p0;

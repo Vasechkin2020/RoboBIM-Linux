@@ -442,7 +442,7 @@ private:
                 // pillars[i].direction - это направление на кластер теоретический угол из полученых координат
                 // pillars[i].claster_azimut - это направление на кластер из лидара по его лидарной системе
                 // Выводим результат сопоставления
-                ROS_INFO("    Pillar %zu matched pillar %d (x=%.2f, y=%.2f): delta_x = %.3f m, delta_y = %.3f m, gipotenuza = %.3f m, distance = %.3f m, direction = %.3f grad, claster_azimut = %.3f grad",
+                ROS_INFO("    Pillar %zu matched pillar %d (x=%.2f, y=%.2f): delta_x= %.3f m, delta_y= %.3f m, gipot= %.3f m, dist= %.3f m, direc= %.3f grad, cla_azimut= %.3f grad",
                          i, best_match,
                          KNOWN_PILLARS[best_match].first, KNOWN_PILLARS[best_match].second,
                          delta_x, delta_y, min_dist, pillars[i].distance, RAD2DEG(pillars[i].direction), RAD2DEG(pillars[i].claster_azimut));
