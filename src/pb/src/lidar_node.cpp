@@ -25,6 +25,7 @@ void timeCycle(ros::Time timeStart_, ros::Time timeNow_);                       
 void readParam(SPose &startPose, SPoint *startPillar);                                 // Считывание переменных параметров из лаунч файла при запуске. Там офсеты и режимы работы
 static void stopProgram(int signal);                                                   // Функция, которая срабатывает при нажатии Ctrl+C
 void calcDistDirect(SDistDirect *distDirect, CPillar pillar, PillarDetector detector); // Обьединение сопоставленных столбов в итоговую таблицу. Дальше по этой таблице все считается
+double complementAngle(double angle1, double angle2, double angle3, float weight1, float weight2, float weight3, float popravka_) ;                 // Функция для вычисления среднего угла
 
 // Главная функция программы
 int main(int argc, char **argv)
@@ -105,15 +106,25 @@ int main(int argc, char **argv)
             g_poseLidar.mode.y = g_poseLidar.mode1.y * 0.8 + g_poseLidar.mode2.y * 0.1 + g_poseLidar.mode3.y * 0.1;
             // g_poseLidar.mode.th = g_poseLidar.mode1.th * 0.4 + g_poseLidar.mode2.th * 0.3 + g_poseLidar.mode3.th * 0.3;
 
-            // Перед комплментацией углы нужно привести к 360 градусов чтобы правильно усреднять
-            float angle1, angle2, angle3, angleSum;
-            (g_poseLidar.mode1.th < 0) ? angle1 = g_poseLidar.mode1.th + 360 : angle1 = g_poseLidar.mode1.th;
-            (g_poseLidar.mode2.th < 0) ? angle2 = g_poseLidar.mode2.th + 360 : angle2 = g_poseLidar.mode2.th;
-            (g_poseLidar.mode3.th < 0) ? angle3 = g_poseLidar.mode3.th + 360 : angle3 = g_poseLidar.mode3.th;
+            // // Перед комплментацией углы нужно привести к 360 градусов чтобы правильно усреднять
 
-            angleSum = angle1 * 0.4 + angle2 * 0.3 + angle3 * 0.3;
-            (angleSum > 180) ? angleSum = angleSum - 360 : angleSum = angleSum; // Обратно после усреденения превращаем в +-180
-            g_poseLidar.mode.th = angleSum;
+            // float angle1, angle2, angle3, angleSum;
+            // (g_poseLidar.mode1.th < 0) ? angle1 = g_poseLidar.mode1.th + 360 : angle1 = g_poseLidar.mode1.th;
+            // (g_poseLidar.mode2.th < 0) ? angle2 = g_poseLidar.mode2.th + 360 : angle2 = g_poseLidar.mode2.th;
+            // (g_poseLidar.mode3.th < 0) ? angle3 = g_poseLidar.mode3.th + 360 : angle3 = g_poseLidar.mode3.th;
+
+            // ROS_INFO("    th1 = %.3f th2 = %.3f th3 = %.3f | angle1 = %.3f angle2 = %.3f angle3 = %.3f ",
+            //          g_poseLidar.mode1.th, g_poseLidar.mode2.th, g_poseLidar.mode3.th, angle1, angle2, angle3);
+
+            // angleSum = angle1 * 0.4 + angle2 * 0.3 + angle3 * 0.3;
+            // (angleSum > 180) ? angleSum = angleSum - 360 : angleSum = angleSum;           // Обратно после усреденения превращаем в +-180
+            // float angleSum2 = RAD2DEG(detector.normalizeAngle(DEG2RAD(angleSum + 0.66))); // Add offset angle lidar
+
+            // float angleSum4 = RAD2DEG(detector.normalizeAngle(DEG2RAD(angleSum3 + 0.66))); // Add offset angle lidar
+            // g_poseLidar.mode.th = angleSum3;
+            // ROS_INFO("    angleSum = %.3f angleSum2 = %.3f angleSum3 = %.3f ", angleSum, angleSum2, angleSum3);
+
+            g_poseLidar.mode.th = complementAngle(g_poseLidar.mode1.th, g_poseLidar.mode2.th, g_poseLidar.mode3.th, 0.4, 0.3, 0.3, 0.66);// Функйия комплементации 3 углов с разными весвми и добавление поправки offset по лидару
 
             ROS_WARN("    g_poseLidar.mode.x = %.3f th = %.3f th = %.3f ", g_poseLidar.mode.x, g_poseLidar.mode.y, g_poseLidar.mode.th);
 
@@ -147,6 +158,32 @@ void callback_Lidar(sensor_msgs::LaserScan::ConstPtr msg)
 {
     msg_lidar = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
     flag_msgLidar = true;
+}
+
+// Функция для вычисления среднего угла
+double complementAngle(double angle1, double angle2, double angle3, float weight1, float weight2, float weight3, float popravka_)
+{
+
+    double rad1 = DEG2RAD(angle1); // Переводим углы в радианы
+    double rad2 = DEG2RAD(angle2);
+    double rad3 = DEG2RAD(angle3);
+
+    double x = weight1 * cos(rad1) + weight2 * cos(rad2) + weight3 * cos(rad3); // Вычисляем сумму векторов (x, y)
+    double y = weight1 * sin(rad1) + weight2 * sin(rad2) + weight3 * sin(rad3);
+
+    double avgRadians = atan2(y, x);         // Находим средний угол через atan2
+    double avgDegrees = RAD2DEG(avgRadians); // Переводим результат обратно в градусы
+    avgDegrees += popravka_;                      // Добавляем поправку на угол лидара
+
+    if (avgDegrees > 180) // Приводим угол к диапазону [-180, 180]
+    {
+        avgDegrees -= 360;
+    }
+    else if (avgDegrees < -180)
+    {
+        avgDegrees += 360;
+    }
+    return avgDegrees;
 }
 
 // Выводим справочно время работы цикла

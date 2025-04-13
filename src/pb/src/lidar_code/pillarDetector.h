@@ -82,6 +82,17 @@ public:
         double azimuth_global;       // Азимут в глобальной системе
     };
 
+        // Функция для нормализации угла в диапазон [-π, π]
+        double normalizeAngle(double angle)
+        {
+            while (angle > M_PI)
+                angle -= 2 * M_PI;
+            while (angle <= -M_PI)
+                angle += 2 * M_PI;
+            return angle;
+        }
+
+        
     std::vector<Pillar> pillars;                // Список найденных столбов
     std::vector<ClusterInfo> cluster_info_list; // Список информации о кластерах
 
@@ -290,15 +301,6 @@ private:
         return sqrt(dx * dx + dy * dy);
     }
 
-    // Функция для нормализации угла в диапазон [-π, π]
-    double normalizeAngle(double angle)
-    {
-        while (angle > M_PI)
-            angle -= 2 * M_PI;
-        while (angle <= -M_PI)
-            angle += 2 * M_PI;
-        return angle;
-    }
 
     // Функция для поиска столбов среди кластеров (по ширине)
     void findPillars()

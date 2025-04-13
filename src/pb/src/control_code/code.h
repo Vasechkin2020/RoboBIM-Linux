@@ -60,7 +60,7 @@ void initCommandArray(int verCommand_)
 	if (verCommand_ == 1)
 	{
 		commandArray[0].mode = 3;
-		commandArray[0].len = 0.7;
+		commandArray[0].len = 0.5;
 		commandArray[0].velLen = 0.1;
 
 		commandArray[1].mode = 1;
@@ -69,7 +69,7 @@ void initCommandArray(int verCommand_)
 		commandArray[1].velR = 0.0;
 
 		commandArray[2].mode = 2;
-		commandArray[2].angle = 45;
+		commandArray[2].angle = 130;
 		commandArray[2].velAngle = 0.02;
 
 		commandArray[3].mode = 1;
@@ -78,7 +78,7 @@ void initCommandArray(int verCommand_)
 		commandArray[3].velR = 0.0;
 
 		commandArray[4].mode = 3;
-		commandArray[4].len = 0.7;
+		commandArray[4].len = 0.5;
 		commandArray[4].velLen = 0.1;
 
 		commandArray[5].mode = 1;
@@ -96,7 +96,7 @@ void initCommandArray(int verCommand_)
 		commandArray[7].velR = 0.0;
 
 		commandArray[8].mode = 3;
-		commandArray[8].len = 0.7;
+		commandArray[8].len = 0.5;
 		commandArray[8].velLen = 0.1;
 
 		commandArray[9].mode = 1;
@@ -105,7 +105,7 @@ void initCommandArray(int verCommand_)
 		commandArray[9].velR = 0.0;
 
 		commandArray[10].mode = 2;
-		commandArray[10].angle = -45;
+		commandArray[10].angle = -130;
 		commandArray[10].velAngle = 0.02;
 
 		commandArray[11].mode = 1;
@@ -114,7 +114,7 @@ void initCommandArray(int verCommand_)
 		commandArray[11].velR = 0.0;
 
 		commandArray[12].mode = 3;
-		commandArray[12].len = 0.7;
+		commandArray[12].len = 0.5;
 		commandArray[12].velLen = 0.1;
 
 		commandArray[13].mode = 1;
@@ -132,11 +132,11 @@ void initCommandArray(int verCommand_)
 		commandArray[15].velR = 0.0;
 
 		commandArray[16].mode = 3;
-		commandArray[16].len = 0.7;
+		commandArray[16].len = 0.5;
 		commandArray[16].velLen = 0.1;
 
 		commandArray[17].mode = 1;
-		commandArray[17].duration = 50000;
+		commandArray[17].duration = 500000;
 		commandArray[17].velL = 0.0;
 		commandArray[17].velR = 0.0;
 
@@ -381,7 +381,7 @@ void initCommandArray(int verCommand_)
 	if (verCommand_ == 5)
 	{
 		commandArray[0].mode = 2;
-		commandArray[0].angle = -175;
+		commandArray[0].angle = 175;
 		commandArray[0].velAngle = 0.03;
 
 		commandArray[1].mode = 1;
@@ -432,11 +432,11 @@ void initCommandArray(int verCommand_)
 	if (verCommand_ == 6)
 	{
 		commandArray[0].mode = 2; // Управление по углу
-		commandArray[0].angle = -40;
+		commandArray[0].angle = -90;
 		commandArray[0].velAngle = 0.02;
 
 		commandArray[1].mode = 1; // Управление по времени
-		commandArray[1].duration = 5000;
+		commandArray[1].duration = 10000;
 		commandArray[1].velL = 0.00;
 		commandArray[1].velR = 0.00;
 
@@ -445,16 +445,16 @@ void initCommandArray(int verCommand_)
 		commandArray[2].velAngle = 0.02;
 
 		commandArray[3].mode = 1;
-		commandArray[3].duration = 5000;
+		commandArray[3].duration = 10000;
 		commandArray[3].velL = 0.0;
 		commandArray[3].velR = 0.0;
 
 		commandArray[4].mode = 2;
-		commandArray[4].angle = 40;
+		commandArray[4].angle = 90;
 		commandArray[4].velAngle = 0.02;
 
 		commandArray[5].mode = 1;
-		commandArray[5].duration = 5000;
+		commandArray[5].duration = 10000;
 		commandArray[5].velL = 0.0;
 		commandArray[5].velR = 0.0;
 
