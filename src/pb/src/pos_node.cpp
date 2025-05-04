@@ -86,6 +86,7 @@ int main(int argc, char **argv)
             // calcAngleAccelGyr(); // Не стал пока делать. Расчет самостоятельно угла на основании данных гироскопа и аксельрометра
             calcLinAngVel(); // Расчет линейных и угловой скоростей на основаниие данных скоростей колес и скоростей с IMU 055 и их комплементация в united
 
+
             g_poseRotation.mode0 = calcNewOdom(g_poseRotation.mode0, g_linAngVel.wheel, "mode 0", 1);    // На основе линейных скоростей считаем новую позицию и угол по колесам
             g_poseRotation.mode10 = calcNewOdom(g_poseRotation.mode10, g_linAngVel.wheel, "mode 10", 1); // На основе линейных скоростей считаем новую позицию и угол по колесам
             // g_poseRotation.mode10 = calcNewOdom2(g_poseRotation.mode10, g_linAngVel.united, "mode10"); // На основе линейных скоростей считаем новую позицию и угол по колесам

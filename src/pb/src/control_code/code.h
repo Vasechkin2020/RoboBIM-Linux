@@ -381,7 +381,7 @@ void initCommandArray(int verCommand_)
 	if (verCommand_ == 5)
 	{
 		commandArray[0].mode = 2;
-		commandArray[0].angle = 175;
+		commandArray[0].angle = -30;
 		commandArray[0].velAngle = 0.03;
 
 		commandArray[1].mode = 1;
@@ -395,7 +395,7 @@ void initCommandArray(int verCommand_)
 		commandArray[3].duration = 5000;
 
 		commandArray[4].mode = 2;
-		commandArray[4].angle = 175;
+		commandArray[4].angle = 30;
 		commandArray[4].velAngle = 0.03;
 
 		commandArray[5].mode = 1;

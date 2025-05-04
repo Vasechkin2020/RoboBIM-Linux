@@ -2,6 +2,12 @@
 #include "control_code/config.h"
 #include "control_code/topic.h" // Файл для функций для формирования топиков в нужном виде и формате
 #include "control_code/code.h"
+#include "control_code/gCodeParser.h"
+
+
+
+
+
 
 float angleNow = 0; // Текущий угол из топика
 
@@ -39,6 +45,9 @@ int main(int argc, char **argv)
     std::list<int> numbers{1, 2, 3, 4, 5};
     std::list<SCommand> listok;
     // list int listok;
+
+    GCodeParser parser; // Создание объекта парсера
+    parser.run(); // Запуск обработки
 
     ROS_WARN("End Setup. Start loop.\n");
     while (ros::ok())
