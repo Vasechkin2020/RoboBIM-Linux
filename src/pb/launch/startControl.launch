@@ -3,8 +3,8 @@
    
     <!--param name="modeModul" type="int" value="3" /-->
     <param name="verComand" type="int" value="$(arg verComand)" />
-    <!-- Параметр для пути к файлу G-code -->
-    <param name="gcode_file" value="/control_code/my_custom_gcode.txt" />
+    <!-- Параметр для пути к файлу G-code (в приватном пространстве ~gcode_file, относительно пакета) -->
+    <param name="gcode_file" value="$(find pb)/gcode/my_custom_gcode.gcode" />
 
   </node>
 </launch> 

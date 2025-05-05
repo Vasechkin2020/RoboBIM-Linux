@@ -29,6 +29,40 @@
             ]
         },
         {
+            "name": "(gdb) Отладка через roslaunch",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "/usr/bin/gdb",  // сам gdb
+            "args": [
+                "-ex", "set confirm off",
+                "-ex", "set pagination off",
+                "-ex", "set width 0",
+                "-ex", "set height 0",
+                "-ex", "file /opt/ros/noetic/lib/roslaunch/roslaunch",  // путь к roslaunch
+                "-ex", "run",
+                "--args",
+                "roslaunch",
+                "pb startControl.launch verComand:=1"  // замените на ваш пакет и launch-файл
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Set disassembly flavor to Intel",
+                    "text": "-gdb-set disassembly-flavor intel",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
             "name": "C/C++: cpp сборка и отладка активного файла",
             "type": "cppdbg",
             "request": "launch",

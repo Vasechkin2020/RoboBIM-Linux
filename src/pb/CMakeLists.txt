@@ -1,4 +1,3 @@
-
 cmake_minimum_required(VERSION 3.0.2)
 project(pb)
 
@@ -12,8 +11,9 @@ find_package(catkin REQUIRED COMPONENTS
   message_generation
   roscpp
   rospy
-  tf
   std_msgs
+  rospack
+  tf
   sensor_msgs
   pb_msgs
   geometry_msgs
@@ -120,8 +120,8 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES head
-CATKIN_DEPENDS roscpp rospy std_msgs geometry_msgs message_runtime message_generation pb_msgs
-# CATKIN_DEPENDS message_generation
+CATKIN_DEPENDS roscpp rospy std_msgs geometry_msgs message_runtime message_generation pb_msgs 
+CATKIN_DEPENDS rospack
 # CATKIN_DEPENDS message_runtime
 # CATKIN_DEPENDS geometry_msgs
 #  DEPENDS system_lib

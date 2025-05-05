@@ -4,11 +4,6 @@
 #include "control_code/code.h"
 #include "control_code/gCodeParser.h"
 
-
-
-
-
-
 float angleNow = 0; // Текущий угол из топика
 
 int main(int argc, char **argv)
@@ -28,10 +23,15 @@ int main(int argc, char **argv)
     ros::Subscriber subscriber_Pose = nh.subscribe<pb_msgs::Struct_PoseRotation>("pbPos/PoseRotation", 1000, callback_Pose);
 
     ros::Rate r(200);         // Частота в Герцах - задержка
-    ros::Duration(3).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
+    ros::Duration(1).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
 
     readParam();                 // Считывание переменных параметров из лаунч файла при запуске. Там офсеты и режимы работы
     initCommandArray(verComand); // Заполнение маасива команд
+
+    GCodeParser parser; // Создание объекта парсера
+    parser.run();       // Запуск обработки
+
+
 
     // static ros::Time time = ros::Time::now();      // Захватываем начальный момент времени
     static ros::Time timeStart = ros::Time::now(); // Захватываем начальный момент времени
@@ -42,14 +42,13 @@ int main(int argc, char **argv)
     // u_int64_t timeMil = millis();
     int i = 0;
 
-    std::list<int> numbers{1, 2, 3, 4, 5};
-    std::list<SCommand> listok;
+    // std::list<int> numbers{1, 2, 3, 4, 5};
+    // std::list<SCommand> listok;
     // list int listok;
 
-    GCodeParser parser; // Создание объекта парсера
-    parser.run(); // Запуск обработки
-
     ROS_WARN("End Setup. Start loop.\n");
+    ros::Duration(300).sleep(); // Подождем пока
+
     while (ros::ok())
     {
         timeNow = ros::Time::now(); // Захватываем текущий момент времени начала цикла

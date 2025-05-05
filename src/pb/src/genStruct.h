@@ -4,6 +4,7 @@
 #include </opt/ros/melodic/include/ros/time.h>
 #include <log4cxx/mdc.h>
 #include <ros/ros.h>                   // Библиотека ROS для работы с узлами
+#include <ros/package.h>
 #include <sensor_msgs/LaserScan.h>     // Сообщения для данных лидара
 #include <visualization_msgs/Marker.h> // Сообщения для визуализации в RViz
 #include <vector>                      // Стандартный вектор C++
