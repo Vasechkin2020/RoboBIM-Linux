@@ -191,12 +191,12 @@ private:
         temp.velL = 0.0;
         temp.velR = 0.0;
         commandArray.push_back(temp);
-        ROS_INFO("executePause %u msec", temp.duration);         // Вывод лога
+        ROS_INFO("    executePause %u msec", temp.duration); // Вывод лога
     }
     // Выполнение G1 (линейное перемещение или поворот)
     void executeG1(const GCodeCommand &cmd)
     {
-        executePause(); // Добавляем паузу перед любой операцией для стабилизации робота в ключевых точках.
+        executePause();                              // Добавляем паузу перед любой операцией для стабилизации робота в ключевых точках.
         std::stringstream ss;                        // Для формирования лога
         float feed_rate = cmd.has_f ? cmd.f : 100.0; // Скорость подачи, по умолчанию 100
 
@@ -212,7 +212,7 @@ private:
             {
                 current_a_ += new_a; // Относительное смещение A
             }
-            ss << "G1: Rotate to A=" << current_a_ << " F=" << feed_rate << " deg/s";
+            ss << "G1: Rotate to A= " << current_a_ << " F= " << feed_rate << " deg/s";
             if (!cmd.comment.empty())
                 ss << " (" << cmd.comment << ")"; // Добавление комментария
             ROS_INFO("%s", ss.str().c_str());     // Вывод лога
@@ -237,8 +237,8 @@ private:
             current_a_ += cmd.has_a ? cmd.a : 0.0; // Относительное смещение A
         }
         float distance = calculateDistance(new_x, new_y); // Вычисление дистанции
-        ss << "G1: Linear move to X=" << current_x_ << " Y=" << current_y_ << " A=" << current_a_ << " F=" << feed_rate;
-        ss << ", distance=" << distance << " mm";
+        ss << "G1: Linear move to X= " << current_x_ << " Y= " << current_y_ << " A= " << current_a_ << " F= " << feed_rate;
+        ss << ", distance= " << distance << " mm";
         if (!cmd.comment.empty())
             ss << " (" << cmd.comment << ")"; // Добавление комментария
         ROS_INFO("%s", ss.str().c_str());     // Вывод лога
@@ -248,7 +248,7 @@ private:
     // Выполнение G2 (дуга по часовой стрелке)
     void executeG2(const GCodeCommand &cmd)
     {
-        executePause(); // Добавляем паузу перед любой операцией для стабилизации робота в ключевых точках.
+        executePause();                              // Добавляем паузу перед любой операцией для стабилизации робота в ключевых точках.
         std::stringstream ss;                        // Для формирования лога
         float center_i = cmd.has_i ? cmd.i : 0.0;    // Смещение центра по X
         float center_j = cmd.has_j ? cmd.j : 0.0;    // Смещение центра по Y
@@ -273,7 +273,7 @@ private:
     // Выполнение G3 (дуга против часовой стрелки)
     void executeG3(const GCodeCommand &cmd)
     {
-        executePause(); // Добавляем паузу перед любой операцией для стабилизации робота в ключевых точках.
+        executePause();                              // Добавляем паузу перед любой операцией для стабилизации робота в ключевых точках.
         std::stringstream ss;                        // Для формирования лога
         float center_i = cmd.has_i ? cmd.i : 0.0;    // Смещение центра по X
         float center_j = cmd.has_j ? cmd.j : 0.0;    // Смещение центра по Y
@@ -311,7 +311,7 @@ private:
     // Выполнение G28 (возврат домой)
     void executeG28(const GCodeCommand &cmd)
     {
-        executePause(); // Добавляем паузу перед любой операцией для стабилизации робота в ключевых точках.
+        executePause();       // Добавляем паузу перед любой операцией для стабилизации робота в ключевых точках.
         std::stringstream ss; // Для формирования лога
         current_x_ = 0.0;     // Сброс X
         current_y_ = 0.0;     // Сброс Y
@@ -350,7 +350,7 @@ private:
     // Выполнение M3 (включение модуля печати)
     void executeM3(const GCodeCommand &cmd)
     {
-        executePause(); // Добавляем паузу перед любой операцией для стабилизации робота в ключевых точках.
+        executePause();       // Добавляем паузу перед любой операцией для стабилизации робота в ключевых точках.
         std::stringstream ss; // Для формирования лога
         ss << "M3: Turn on print module";
         if (!cmd.comment.empty())
@@ -362,7 +362,7 @@ private:
     // Выполнение M5 (выключение модуля печати)
     void executeM5(const GCodeCommand &cmd)
     {
-        executePause(); // Добавляем паузу перед любой операцией для стабилизации робота в ключевых точках.
+        executePause();       // Добавляем паузу перед любой операцией для стабилизации робота в ключевых точках.
         std::stringstream ss; // Для формирования лога
         ss << "M5: Turn off print module";
         if (!cmd.comment.empty())
@@ -421,31 +421,31 @@ public:
         file.close(); // Закрытие файла
 
         // Вывод массива commands_ в консоль через ROS_INFO
-        ROS_INFO("Parsed G-code commands:");
+        ROS_INFO(" \n Parsed G-code commands:");
         for (size_t i = 0; i < commands_.size(); ++i)
         {
             const GCodeCommand &cmd = commands_[i];
             std::stringstream ss;
             ss << "Command " << i << ": " << cmd.command;
             if (cmd.has_x)
-                ss << " X=" << cmd.x;
+                ss << " X= " << cmd.x;
             if (cmd.has_y)
-                ss << " Y=" << cmd.y;
+                ss << " Y= " << cmd.y;
             if (cmd.has_a)
-                ss << " A=" << cmd.a;
+                ss << " A= " << cmd.a;
             if (cmd.has_i)
-                ss << " I=" << cmd.i;
+                ss << " I= " << cmd.i;
             if (cmd.has_j)
-                ss << " J=" << cmd.j;
+                ss << " J= " << cmd.j;
             if (cmd.has_f)
-                ss << " F=" << cmd.f;
+                ss << " F= " << cmd.f;
             if (cmd.has_p)
-                ss << " P=" << cmd.p;
+                ss << " P= " << cmd.p;
             if (!cmd.comment.empty())
                 ss << " ; " << cmd.comment;
             ROS_INFO("%s", ss.str().c_str()); // Вывод в одну строку
         }
-        ROS_INFO("Total commands: %zu", commands_.size()); // Общее количество команд
+        ROS_INFO("Total commands: %zu \n", commands_.size()); // Общее количество команд
 
         for (const auto &cmd : commands_)
         {
@@ -473,12 +473,31 @@ public:
                 ROS_WARN("Unknown command: %s (%s)", cmd.command.c_str(), cmd.comment.c_str()); // Предупреждение
             ros::spinOnce();                                                                    // Обработка сообщений
         }
-
         ROS_INFO("All commands executed"); // Сообщение об окончании
+
+        // Вывод массива commands_ в консоль через ROS_INFO
+        ROS_INFO(" \n commandArray commands:");
+        for (size_t i = 0; i < commandArray.size(); ++i)
+        {
+            const SCommand &cmd = commandArray[i];
+            std::stringstream ss;
+            ss << "Command " << i << "= ";
+            ss << " mode= " << cmd.mode;
+            ss << " angle= " << cmd.angle;
+            ss << " len= " << cmd.len;
+            ss << " velL= " << cmd.velL;
+            ss << " velR= " << cmd.velR;
+            ss << " velAngle= " << cmd.velAngle;
+            ss << " velLen= " << cmd.velLen;
+            ss << " duration= " << cmd.duration;
+            ROS_INFO("%s", ss.str().c_str()); // Вывод в одну строку
+        }
+        ROS_INFO("Total commandArray: %zu \n", commandArray.size()); // Общее количество команд
+
         if (commandArray.empty())
-            ROS_WARN("Вектор команд <commandArray> пуст!");
+            ROS_WARN(" <commandArray> NULL!");
         else
-            ROS_INFO("Всего команд <commandArray>: %zu", commandArray.size());
+            ROS_INFO("Count <commandArray>: %zu", commandArray.size());
     }
 };
 

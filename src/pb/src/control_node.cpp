@@ -25,8 +25,9 @@ int main(int argc, char **argv)
     ros::Rate r(200);         // Частота в Герцах - задержка
     ros::Duration(1).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
 
+    ROS_WARN("Start Setup.");
     readParam();                 // Считывание переменных параметров из лаунч файла при запуске. Там офсеты и режимы работы
-    initCommandArray(verComand); // Заполнение маасива команд
+    // initCommandArray(verComand); // Заполнение маасива команд
 
     GCodeParser parser; // Создание объекта парсера
     parser.run();       // Запуск обработки
