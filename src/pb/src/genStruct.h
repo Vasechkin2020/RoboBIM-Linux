@@ -3,7 +3,7 @@
 #include </opt/ros/melodic/include/ros/ros.h>
 #include </opt/ros/melodic/include/ros/time.h>
 #include <log4cxx/mdc.h>
-#include <ros/ros.h>                   // Библиотека ROS для работы с узлами
+#include <ros/ros.h> // Библиотека ROS для работы с узлами
 #include <ros/package.h>
 #include <sensor_msgs/LaserScan.h>     // Сообщения для данных лидара
 #include <visualization_msgs/Marker.h> // Сообщения для визуализации в RViz
@@ -11,11 +11,10 @@
 #include <cmath>                       // Математические функции (sin, cos, sqrt)
 #include <signal.h>                    // Для обработки Ctrl+C
 
-
-static const double THROTTLE_PERIOD_1 = 1.0; // секунды 
-static const double THROTTLE_PERIOD_3 = 0.33; // секунды 
-static const double THROTTLE_PERIOD_5 = 0.20; // секунды 
-static const double THROTTLE_PERIOD_10 = 0.1; // секунды 
+static const double THROTTLE_PERIOD_1 = 1.0;  // секунды
+static const double THROTTLE_PERIOD_3 = 0.33; // секунды
+static const double THROTTLE_PERIOD_5 = 0.20; // секунды
+static const double THROTTLE_PERIOD_10 = 0.1; // секунды
 
 //============================================================================================================================================================
 // Структура передаваемых данных из Data к Modul
@@ -106,6 +105,7 @@ struct Struct_Modul2Data
   struct SLaserSend laser[4]; // Структура по состоянию лазеров
   uint32_t micric[4];         // Структура по состоянию концевиков
   struct SMpu bno055;         // Данные с датчика BNO055
+  struct SMpu icm20948;       // Данные с датчика ICM20948
   struct SSpi spi;            // Структура по состоянию обмена по шине SPI
 
   uint32_t cheksum; // Контрольная сумма данных в структуре
