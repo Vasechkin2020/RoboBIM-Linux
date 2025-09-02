@@ -104,8 +104,8 @@ struct Struct_Modul2Data
   struct SMotorSend motor[4]; // Структура по состоянию моторов
   struct SLaserSend laser[4]; // Структура по состоянию лазеров
   uint32_t micric[4];         // Структура по состоянию концевиков
-  struct SMpu bno055;         // Данные с датчика BNO055
-  struct SMpu icm20948;       // Данные с датчика ICM20948
+  struct SMpu bno;         // Данные с датчика BNO055
+  struct SMpu icm;       // Данные с датчика ICM20948
   struct SSpi spi;            // Структура по состоянию обмена по шине SPI
 
   uint32_t cheksum; // Контрольная сумма данных в структуре

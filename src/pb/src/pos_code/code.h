@@ -102,17 +102,17 @@ void calcLinAngVel()
 void calcEuler()
 {
 	// ROS_INFO_THROTTLE(RATE_OUTPUT,"+++ calcEuler");
-	g_angleEuler.roll = msg_Modul2Data.mpu.angleEuler.roll;
-	g_angleEuler.pitch = msg_Modul2Data.mpu.angleEuler.pitch;
+	g_angleEuler.roll = msg_Modul2Data.bno.angleEuler.roll;
+	g_angleEuler.pitch = msg_Modul2Data.bno.angleEuler.pitch;
 	// Расчет угла куда смотрим но пришедшим данным
-	static float prev_yaw = msg_Modul2Data.mpu.angleEuler.yaw;								   // При первом запуске этой функции инициализируем тем значением что придет от Modul
-	g_angleEuler.yaw -= calculateAngleDifference(prev_yaw, msg_Modul2Data.mpu.angleEuler.yaw); // Считаем угол куда смотрим
+	static float prev_yaw = msg_Modul2Data.bno.angleEuler.yaw;								   // При первом запуске этой функции инициализируем тем значением что придет от Modul
+	g_angleEuler.yaw -= calculateAngleDifference(prev_yaw, msg_Modul2Data.bno.angleEuler.yaw); // Считаем угол куда смотрим
 	// if (g_angleEuler.yaw > 360)
 	// 	g_angleEuler.yaw = g_angleEuler.yaw - 360;
 	// if (g_angleEuler.yaw < 0)
 	// 	g_angleEuler.yaw = g_angleEuler.yaw + 360;
-	prev_yaw = msg_Modul2Data.mpu.angleEuler.yaw;
-	ROS_INFO_THROTTLE(RATE_OUTPUT, "    msg_Modul2Data.mpu.angleEuler.yaw = %.3f g_angleEuler.yaw = %.3f (gradus) %.3f rad", msg_Modul2Data.mpu.angleEuler.yaw, g_angleEuler.yaw, DEG2RAD(g_angleEuler.yaw));
+	prev_yaw = msg_Modul2Data.bno.angleEuler.yaw;
+	ROS_INFO_THROTTLE(RATE_OUTPUT, "    msg_Modul2Data.bno.angleEuler.yaw = %.3f g_angleEuler.yaw = %.3f (gradus) %.3f rad", msg_Modul2Data.bno.angleEuler.yaw, g_angleEuler.yaw, DEG2RAD(g_angleEuler.yaw));
 	// ROS_INFO("--- calcAngleThata");
 }
 
@@ -497,10 +497,10 @@ STwistDt calcTwistFromMpu(pb_msgs::Struct_Modul2Data msg_Modul2Data_)
 {
 	// ROS_INFO_THROTTLE(RATE_OUTPUT,"+++ calcTwistFromMpu");
 	SMpu mpu_;
-	mpu_.linear.x = msg_Modul2Data_.mpu.linear.x; // Копируем в локальную перемнную нужные параметры
-	mpu_.linear.y = msg_Modul2Data_.mpu.linear.y;
-	mpu_.linear.z = msg_Modul2Data_.mpu.linear.z;
-	mpu_.angleEuler.z = msg_Modul2Data_.mpu.angleEuler.yaw;
+	mpu_.linear.x = msg_Modul2Data_.bno.linear.x; // Копируем в локальную перемнную нужные параметры
+	mpu_.linear.y = msg_Modul2Data_.bno.linear.y;
+	mpu_.linear.z = msg_Modul2Data_.bno.linear.z;
+	mpu_.angleEuler.z = msg_Modul2Data_.bno.angleEuler.yaw;
 
 	float koef_ = 0.2;
 	static STwistDt ret;
@@ -667,18 +667,18 @@ float autoOffsetZ(float data_)
 void angleMPU()
 {
 	static float predAngleZ = 0;
-	static bool first = true;
+	static bool first = true;	
 	printf("flag_msgDriver in... ");
 	if (first) // Делаем в первый приход данных
 	{
-		predAngleZ = msg_Modul2Data.mpu.angleEuler.yaw; // Запоминаяем угол поворота Для следующего обсчета
+		predAngleZ = msg_Modul2Data.bno.angleEuler.yaw; // Запоминаяем угол поворота Для следующего обсчета
 		first = false;
 		printf("First start -> ");
 	}
 	else // Всегда кроме первого
 	{
-		g_angleMPU += (msg_Modul2Data.mpu.angleEuler.yaw - predAngleZ); // Меняем угол поворота увеличивая на разницу. Разобраться с 360 и переходом через 0
-		predAngleZ = msg_Modul2Data.mpu.angleEuler.yaw;					// Запоминаяем угол поворота Для следующего обсчета
+		g_angleMPU += (msg_Modul2Data.bno.angleEuler.yaw - predAngleZ); // Меняем угол поворота увеличивая на разницу. Разобраться с 360 и переходом через 0
+		predAngleZ = msg_Modul2Data.bno.angleEuler.yaw;					// Запоминаяем угол поворота Для следующего обсчета
 																		// dataNode.parsingDriver(msg_Driver2Data);
 	}
 	printf("g_angleMPU = % .3f \n", g_angleMPU);

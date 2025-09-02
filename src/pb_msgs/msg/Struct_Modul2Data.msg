@@ -4,4 +4,5 @@ uint32 pinMotorEn      # Стутус пина управления драйве
 SMotorSend[4] motor     # Структура мотора
 SLaserSend[4] laser     # Структура дальномеров
 uint32[4] micric       # Данные по концевикам
-SMpu mpu               # Данные с датчика MPU
+SMpu bno               # Данные с датчика MPU BNO
+SMpu icm               # Данные с датчика MPU ICM

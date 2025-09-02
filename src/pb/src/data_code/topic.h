@@ -124,29 +124,53 @@ void CTopic::processing_Modul2Data()
 	Modul2Data_msg.header.stamp = ros::Time::now();
 	Modul2Data_msg.id = Modul2Data.id;
 	Modul2Data_msg.pinMotorEn = Modul2Data.pinMotorEn; // Стутус пина управления драйвером моторов, включен драйвер или нет
+	//***************** BNO 055 *********************************
+	Modul2Data_msg.bno.status = Modul2Data.bno.status;
+	Modul2Data_msg.bno.rate = Modul2Data.bno.rate;
 	
-	Modul2Data_msg.mpu.status = Modul2Data.bno055.status;
-	Modul2Data_msg.mpu.rate = Modul2Data.bno055.rate;
+	Modul2Data_msg.bno.angleEuler.roll = Modul2Data.bno.angleEuler.x;
+	Modul2Data_msg.bno.angleEuler.pitch = Modul2Data.bno.angleEuler.y;
+	Modul2Data_msg.bno.angleEuler.yaw = Modul2Data.bno.angleEuler.z;
 	
-	Modul2Data_msg.mpu.angleEuler.roll = Modul2Data.bno055.angleEuler.x;
-	Modul2Data_msg.mpu.angleEuler.pitch = Modul2Data.bno055.angleEuler.y;
-	Modul2Data_msg.mpu.angleEuler.yaw = Modul2Data.bno055.angleEuler.z;
+	Modul2Data_msg.bno.linear.x = Modul2Data.bno.linear.x;
+	Modul2Data_msg.bno.linear.y = Modul2Data.bno.linear.y;
+	Modul2Data_msg.bno.linear.z = Modul2Data.bno.linear.z;
 	
-	Modul2Data_msg.mpu.linear.x = Modul2Data.bno055.linear.x;
-	Modul2Data_msg.mpu.linear.y = Modul2Data.bno055.linear.y;
-	Modul2Data_msg.mpu.linear.z = Modul2Data.bno055.linear.z;
+	Modul2Data_msg.bno.accel.x = Modul2Data.bno.accel.x;
+	Modul2Data_msg.bno.accel.y = Modul2Data.bno.accel.y;
+	Modul2Data_msg.bno.accel.z = Modul2Data.bno.accel.z;
 	
-	Modul2Data_msg.mpu.accel.x = Modul2Data.bno055.accel.x;
-	Modul2Data_msg.mpu.accel.y = Modul2Data.bno055.accel.y;
-	Modul2Data_msg.mpu.accel.z = Modul2Data.bno055.accel.z;
+	Modul2Data_msg.bno.gyro.x = Modul2Data.bno.gyro.x;
+	Modul2Data_msg.bno.gyro.y = Modul2Data.bno.gyro.y;
+	Modul2Data_msg.bno.gyro.z = Modul2Data.bno.gyro.z;
 	
-	Modul2Data_msg.mpu.gyro.x = Modul2Data.bno055.gyro.x;
-	Modul2Data_msg.mpu.gyro.y = Modul2Data.bno055.gyro.y;
-	Modul2Data_msg.mpu.gyro.z = Modul2Data.bno055.gyro.z;
+	Modul2Data_msg.bno.mag.x = Modul2Data.bno.mag.x;
+	Modul2Data_msg.bno.mag.y = Modul2Data.bno.mag.y;
+	Modul2Data_msg.bno.mag.z = Modul2Data.bno.mag.z;
+
+		//***************** ICM 20948 *********************************
+	Modul2Data_msg.icm.status = Modul2Data.icm.status;
+	Modul2Data_msg.icm.rate = Modul2Data.icm.rate;
 	
-	Modul2Data_msg.mpu.mag.x = Modul2Data.bno055.mag.x;
-	Modul2Data_msg.mpu.mag.y = Modul2Data.bno055.mag.y;
-	Modul2Data_msg.mpu.mag.z = Modul2Data.bno055.mag.z;
+	Modul2Data_msg.icm.angleEuler.roll = Modul2Data.icm.angleEuler.x;
+	Modul2Data_msg.icm.angleEuler.pitch = Modul2Data.icm.angleEuler.y;
+	Modul2Data_msg.icm.angleEuler.yaw = Modul2Data.icm.angleEuler.z;
+	
+	Modul2Data_msg.icm.linear.x = Modul2Data.icm.linear.x;
+	Modul2Data_msg.icm.linear.y = Modul2Data.icm.linear.y;
+	Modul2Data_msg.icm.linear.z = Modul2Data.icm.linear.z;
+	
+	Modul2Data_msg.icm.accel.x = Modul2Data.icm.accel.x;
+	Modul2Data_msg.icm.accel.y = Modul2Data.icm.accel.y;
+	Modul2Data_msg.icm.accel.z = Modul2Data.icm.accel.z;
+	
+	Modul2Data_msg.icm.gyro.x = Modul2Data.icm.gyro.x;
+	Modul2Data_msg.icm.gyro.y = Modul2Data.icm.gyro.y;
+	Modul2Data_msg.icm.gyro.z = Modul2Data.icm.gyro.z;
+	
+	Modul2Data_msg.icm.mag.x = Modul2Data.icm.mag.x;
+	Modul2Data_msg.icm.mag.y = Modul2Data.icm.mag.y;
+	Modul2Data_msg.icm.mag.z = Modul2Data.icm.mag.z;
 
 	for (int i = 0; i < 4; i++)
 	{
