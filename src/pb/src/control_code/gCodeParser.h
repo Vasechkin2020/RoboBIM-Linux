@@ -15,7 +15,8 @@
 struct GCodeCommand
 {
     std::string command;                                  // Название команды (G0, G1, M3 и т.д.)
-    float x, y, a;                                        // Координаты X, Y и угол A
+    float x, y;                                           // Координаты X, Y
+    float a;                                              // Угол A
     float i, j;                                           // Центр дуги для G2/G3
     float f;                                              // Скорость подачи (линейная или угловая)
     float p;                                              // Длительность паузы для G4
@@ -217,6 +218,14 @@ private:
                 ss << " (" << cmd.comment << ")"; // Добавление комментария
             ROS_INFO("%s", ss.str().c_str());     // Вывод лога
             publishMessage(ss.str());             // Публикация
+
+            SCommand temp;
+            temp.mode = 2;
+            temp.angle = cmd.a;
+            temp.velAngle = cmd.f;
+            commandArray.push_back(temp);
+            ROS_INFO("    executeG1 mode= %i angle= %f velAngle=%f ", temp.mode, temp.angle, temp.velAngle); // Вывод лога
+
             return;
         }
 
@@ -308,6 +317,61 @@ private:
         publishMessage(ss.str());                 // Публикация
     }
 
+    // Выполнение G5 (Вращение колесами  определенное время по часовой)
+    void executeG5(const GCodeCommand &cmd)
+    {
+        std::stringstream ss;                     // Для формирования лога
+        float pause_ms = cmd.has_p ? cmd.p : 0.0; // Длительность паузы в мс
+        ss << "G5: Rotate for " << cmd.f << " vel " << pause_ms << " ms";
+        if (!cmd.comment.empty())
+            ss << " (" << cmd.comment << ")";     // Добавление комментария
+        ROS_INFO("%s", ss.str().c_str());         // Вывод лога
+        // ros::Duration(pause_ms / 1000.0).sleep(); // Ожидание
+        // publishMessage(ss.str());                 // Публикация
+
+        SCommand temp;
+        temp.mode = 1;
+        temp.velL = cmd.f;
+        temp.velR = -cmd.f;
+        temp.duration = cmd.p;
+        commandArray.push_back(temp);
+        ROS_INFO("    executeG5 mode= %i velL= %f velR= %f duration=%f ", temp.mode, temp.velL, temp.velR, temp.duration); // Вывод лога
+    }
+    // Выполнение G6 (Вращение колесами  определенное время против часовой)
+    void executeG6(const GCodeCommand &cmd)
+    {
+        std::stringstream ss;                     // Для формирования лога
+        float pause_ms = cmd.has_p ? cmd.p : 0.0; // Длительность паузы в мс
+        ss << "G5: Rotate for " << cmd.f << " vel " << pause_ms << " ms";
+        if (!cmd.comment.empty())
+            ss << " (" << cmd.comment << ")";     // Добавление комментария
+        ROS_INFO("%s", ss.str().c_str());         // Вывод лога
+        // ros::Duration(pause_ms / 1000.0).sleep(); // Ожидание
+        // publishMessage(ss.str());                 // Публикация
+
+        SCommand temp;
+        temp.mode = 1;
+        temp.velL = -cmd.f;
+        temp.velR = cmd.f;
+        temp.duration = cmd.p;
+        commandArray.push_back(temp);
+        ROS_INFO("    executeG6 mode= %i velL= %f velR= %f duration=%f ", temp.mode, temp.velL, temp.velR, temp.duration); // Вывод лога
+    }
+    // Выполнение G9 (Переход в начало. Зацикливание программы)
+    void executeG9(const GCodeCommand &cmd)
+    {
+        std::stringstream ss;                     // Для формирования лога
+        float pause_ms = cmd.has_p ? cmd.p : 0.0; // Длительность паузы в мс
+        ss << "G9: Cicle...";
+        if (!cmd.comment.empty())
+            ss << " (" << cmd.comment << ")";     // Добавление комментария
+        ROS_INFO("%s", ss.str().c_str());         // Вывод лога
+
+        SCommand temp;
+        temp.mode = 9;
+        commandArray.push_back(temp);
+        ROS_INFO("    executeG9 mode= %i ", temp.mode); // Вывод лога
+    }
     // Выполнение G28 (возврат домой)
     void executeG28(const GCodeCommand &cmd)
     {
@@ -459,6 +523,12 @@ public:
                 executeG3(cmd); // Выполнение G3
             else if (cmd.command == "G4")
                 executeG4(cmd); // Выполнение G4
+            else if (cmd.command == "G5")
+                executeG5(cmd); // Выполнение G5
+            else if (cmd.command == "G6")
+                executeG6(cmd); // Выполнение G6
+            else if (cmd.command == "G9")
+                executeG9(cmd); // Выполнение G9
             else if (cmd.command == "G28")
                 executeG28(cmd); // Выполнение G28
             else if (cmd.command == "G90")

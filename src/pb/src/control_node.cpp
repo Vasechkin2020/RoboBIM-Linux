@@ -26,13 +26,11 @@ int main(int argc, char **argv)
     ros::Duration(1).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
 
     ROS_WARN("Start Setup.");
-    readParam();                 // Считывание переменных параметров из лаунч файла при запуске. Там офсеты и режимы работы
+    readParam(); // Считывание переменных параметров из лаунч файла при запуске. Там офсеты и режимы работы
     // initCommandArray(verComand); // Заполнение маасива команд
 
     GCodeParser parser; // Создание объекта парсера
     parser.run();       // Запуск обработки
-
-
 
     // static ros::Time time = ros::Time::now();      // Захватываем начальный момент времени
     static ros::Time timeStart = ros::Time::now(); // Захватываем начальный момент времени
@@ -48,7 +46,7 @@ int main(int argc, char **argv)
     // list int listok;
 
     ROS_WARN("End Setup. Start loop.\n");
-    ros::Duration(300).sleep(); // Подождем пока
+    ros::Duration(3).sleep(); // Подождем пока
 
     while (ros::ok())
     {
@@ -62,18 +60,18 @@ int main(int argc, char **argv)
             ROS_INFO("    command Array i= %i Mode = %i", i, commandArray[i].mode);
             switch (commandArray[i].mode)
             {
-            case 1:
-                controlSpeed.control.speedL = commandArray[i].velL;
+            case 1:                                                 // Режим где управляем только скоростями колес отдельно каждым и временем сколько выполняется
+                controlSpeed.control.speedL = commandArray[i].velL; //
                 controlSpeed.control.speedR = commandArray[i].velR;
-                time = commandArray[i].duration + millis();
+                time = millis() + commandArray[i].duration;
                 ROS_INFO("    Time Start");
                 break;
-            case 2:
+            case 2:                       // Режим где управляем только углом и добиваемся что в него повернули. Время не учитываем.
                 time = millis() + 999999; // Огромное время ставим
                 flagAngle = true;         // Флаг что теперь отслеживаем угол
                 ROS_INFO("    Angle Start");
                 break;
-            case 3:
+            case 3:                               // Режим где движемся по координатам. даигаемся по длинне вектора.
                 vectorStart.x = msg_Pose.x.mode0; // Запоминаем те координаты которые были в момент начала движения
                 vectorStart.y = msg_Pose.y.mode0;
                 time = millis() + 999999; // Огромное время ставим
