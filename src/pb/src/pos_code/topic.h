@@ -50,6 +50,7 @@ private:
 
     ros::Publisher pub_poseBase = _nh.advertise<pb_msgs::Struct_PoseBase>("pbPos/PoseBase", 8);          // Это мы публикуем итоговую информацию по позици лидара обобщенную
     ros::Publisher pub_poseRotation = _nh.advertise<pb_msgs::Struct_PoseRotation>("pbPos/PoseRotation", 8); // Это мы публикуем итоговую информацию по позици лидара обобщенную
+    
     ros::Publisher pub_linAngVel = _nh.advertise<pb_msgs::SLinAngVel>("pbPos/LinAngVel", 8);                // Это мы публикуем итоговую информацию линейной скорости угловой
 
     ros::Publisher pub_AngleLLAll = _nh.advertise<pb_msgs::SAngleLaserLidar>("pbPos/AngleLLAll", 16); // Это мы публикуем итоговую информацию по углам лазера для нижнего уровня

@@ -22,10 +22,9 @@ void startPosition(geometry_msgs::Pose2D &startPose2d_); // Разбираем �
 
 void testFunction(); // Тест математических ипрочих функций
 
-void angleMPU();		  // Расчет угла положения на сонове данных сдатчика MPU
-void calcEuler();		  // Расчет угла Эллера
-void calcLinAngVel();	  // Расчет линейных и угловой скоростей
-void calcAngleAccelGyr(); // Расчет угла на основании данных гироскопа и аксельрометра
+void angleMPU();	  // Расчет угла положения на сонове данных сдатчика MPU
+void calcEuler();	  // Расчет угла Эллера
+void calcLinAngVel(); // Расчет линейных и угловой скоростей
 
 SPose convertRotation2Base(SPose pose_, std::string stroka_); // Конвертация координат из Rotattion в Lidar систему
 SPose convertBase2Rotation(SPose pose_, std::string stroka_); // Конвертация координат из Lidar в Rotattion систему
@@ -93,9 +92,9 @@ void calcLinAngVel()
 {
 	// ROS_INFO("+++ calcLinAngVel");
 	g_linAngVel.wheel = calcTwistFromWheel(msg_Speed); // Обработка пришедших данных. По ним считаем линейные скорости по осям и угловую по углу. Запоминаем dt
-													   // g_linAngVel.mpu = calcTwistFromMpu(msg_Modul2Data);						  // Обработка пришедших данных для расчета линейных и угловых скоростей
-													   // g_linAngVel.united = calcTwistUnited(g_linAngVel.wheel, g_linAngVel.mpu); // тут написать функцию комплементации данных угловых скоростей с разными условиями когда и в каком соотношении скомплементировать скорсти с двух источников
+	g_linAngVel.mpu = calcTwistFromMpu(msg_Modul2Data);						  // Обработка пришедших данных для расчета линейных и угловых скоростей
 
+	// g_linAngVel.united = calcTwistUnited(g_linAngVel.wheel, g_linAngVel.mpu); // тут написать функцию комплементации данных угловых скоростей с разными условиями когда и в каком соотношении скомплементировать скорсти с двух источников
 	// g_linAngVel.united = g_linAngVel.wheel; // Пока нет расчет по IMU и комплментации используем только по колесам
 }
 // Расчет угла theta
@@ -104,16 +103,10 @@ void calcEuler()
 	// ROS_INFO_THROTTLE(RATE_OUTPUT,"+++ calcEuler");
 	g_angleEuler.roll = msg_Modul2Data.bno.angleEuler.roll;
 	g_angleEuler.pitch = msg_Modul2Data.bno.angleEuler.pitch;
-	// Расчет угла куда смотрим но пришедшим данным
 	static float prev_yaw = msg_Modul2Data.bno.angleEuler.yaw;								   // При первом запуске этой функции инициализируем тем значением что придет от Modul
-	g_angleEuler.yaw -= calculateAngleDifference(prev_yaw, msg_Modul2Data.bno.angleEuler.yaw); // Считаем угол куда смотрим
-	// if (g_angleEuler.yaw > 360)
-	// 	g_angleEuler.yaw = g_angleEuler.yaw - 360;
-	// if (g_angleEuler.yaw < 0)
-	// 	g_angleEuler.yaw = g_angleEuler.yaw + 360;
+	g_angleEuler.yaw -= calculateAngleDifference(prev_yaw, msg_Modul2Data.bno.angleEuler.yaw); // Считаем угол куда смотрим // Расчет угла куда смотрим но пришедшим данным
 	prev_yaw = msg_Modul2Data.bno.angleEuler.yaw;
 	ROS_INFO_THROTTLE(RATE_OUTPUT, "    msg_Modul2Data.bno.angleEuler.yaw = %.3f g_angleEuler.yaw = %.3f (gradus) %.3f rad", msg_Modul2Data.bno.angleEuler.yaw, g_angleEuler.yaw, DEG2RAD(g_angleEuler.yaw));
-	// ROS_INFO("--- calcAngleThata");
 }
 
 // Конвертация координат из Rotattion в Lidar систему
@@ -316,8 +309,7 @@ SPose calcNewOdom2(SPose odom_, STwistDt data_, std::string stroka_) // На в�
 	pointLoc.x = data_.vx * data_.dt; // Находим проекции скорости на оси за интервал времени это координаты нашей точки в локальной системе координат
 	pointLoc.y = data_.vy * data_.dt;
 
-	// Находим смещние по осям матрица координаты точки из локальной системы координат в глобальной
-	double delta_x = pointLoc.x * cos(odom_.th) + pointLoc.y * sin(odom_.th);
+	double delta_x = pointLoc.x * cos(odom_.th) + pointLoc.y * sin(odom_.th);// Находим смещение по осям матрица координаты точки из локальной системы координат в глобальной
 	double delta_y = -pointLoc.x * sin(odom_.th) + pointLoc.y * cos(odom_.th);
 
 	SPose pose;
@@ -667,7 +659,7 @@ float autoOffsetZ(float data_)
 void angleMPU()
 {
 	static float predAngleZ = 0;
-	static bool first = true;	
+	static bool first = true;
 	printf("flag_msgDriver in... ");
 	if (first) // Делаем в первый приход данных
 	{
@@ -1173,7 +1165,7 @@ ros::Time timeStopping(pb_msgs::SSetSpeed msgSpeed_)
 	static ros::Time timeRet = ros::Time::now();
 	static float speedPrevL = msgSpeed_.speedL;
 	static float speedPrevR = msgSpeed_.speedR;
-	// ROS_INFO("    SumSpeed  %f", speed); // 
+	// ROS_INFO("    SumSpeed  %f", speed); //
 
 	if (msgSpeed_.speedL != 0 || msgSpeed_.speedR != 0) // Если текущая скорость не ноль по люблму колесу то возвращаем текущее время
 	{
