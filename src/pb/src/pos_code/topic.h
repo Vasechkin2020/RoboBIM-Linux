@@ -50,7 +50,7 @@ private:
 
     ros::Publisher pub_poseBase = _nh.advertise<pb_msgs::Struct_PoseBase>("pbPos/PoseBase", 8);          // Это мы публикуем итоговую информацию по позици лидара обобщенную
     ros::Publisher pub_poseRotation = _nh.advertise<pb_msgs::Struct_PoseRotation>("pbPos/PoseRotation", 8); // Это мы публикуем итоговую информацию по позици лидара обобщенную
-    
+
     ros::Publisher pub_linAngVel = _nh.advertise<pb_msgs::SLinAngVel>("pbPos/LinAngVel", 8);                // Это мы публикуем итоговую информацию линейной скорости угловой
 
     ros::Publisher pub_AngleLLAll = _nh.advertise<pb_msgs::SAngleLaserLidar>("pbPos/AngleLLAll", 16); // Это мы публикуем итоговую информацию по углам лазера для нижнего уровня
@@ -307,42 +307,22 @@ void CTopic::publicationLinAngVel() // Вывод в топик данных с 
     msg.vx.mpu = g_linAngVel.mpu.vx;
     msg.vx.wheel = g_linAngVel.wheel.vx;
     msg.vx.united = g_linAngVel.united.vx;
-    msg.vx.filtr = g_linAngVel.filtr_mpu.vx;
+    // msg.vx.filtr = g_linAngVel.filtr_mpu.vx;
 
     msg.vy.mpu = g_linAngVel.mpu.vy;
     msg.vy.wheel = g_linAngVel.wheel.vy;
     msg.vy.united = g_linAngVel.united.vy;
-    msg.vy.filtr = g_linAngVel.filtr_mpu.vy;
+    // msg.vy.filtr = g_linAngVel.filtr_mpu.vy;
 
     msg.vth.mpu = g_linAngVel.mpu.vth;
     msg.vth.wheel = g_linAngVel.wheel.vth;
     msg.vth.united = g_linAngVel.united.vth;
-    msg.vth.filtr = g_linAngVel.filtr_mpu.vth;
+    // msg.vth.filtr = g_linAngVel.filtr_mpu.vth;
 
     msg.dt.mpu = g_linAngVel.mpu.dt;
     msg.dt.wheel = g_linAngVel.wheel.dt;
     msg.dt.united = g_linAngVel.united.dt;
-    msg.dt.filtr = g_linAngVel.filtr_mpu.dt;
-
-    // msg.mpu.twist.vx = g_linAngVel.mpu.twist.vx;
-    // msg.mpu.twist.vy = g_linAngVel.mpu.twist.vy;
-    // msg.mpu.twist.vth = g_linAngVel.mpu.twist.vth;
-    // msg.mpu.dt = g_linAngVel.mpu.dt;
-
-    // msg.wheel.twist.vx = g_linAngVel.wheel.twist.vx;
-    // msg.wheel.twist.vy = g_linAngVel.wheel.twist.vy;
-    // msg.wheel.twist.vth = g_linAngVel.wheel.twist.vth;
-    // msg.wheel.dt = g_linAngVel.wheel.dt;
-
-    // msg.united.twist.vx = g_linAngVel.united.twist.vx;
-    // msg.united.twist.vy = g_linAngVel.united.twist.vy;
-    // msg.united.twist.vth = g_linAngVel.united.twist.vth;
-    // msg.united.dt = g_linAngVel.united.dt;
-
-    // msg.filtr_mpu.twist.vx = g_linAngVel.filtr_mpu.twist.vx;
-    // msg.filtr_mpu.twist.vy = g_linAngVel.filtr_mpu.twist.vy;
-    // msg.filtr_mpu.twist.vth = g_linAngVel.filtr_mpu.twist.vth;
-    // msg.filtr_mpu.dt = g_linAngVel.filtr_mpu.dt;
+    // msg.dt.filtr = g_linAngVel.filtr_mpu.dt;
 
     pub_linAngVel.publish(msg); // Публикуем информацию по позиции лидара
 }

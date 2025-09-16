@@ -24,7 +24,6 @@ void testFunction(); // Тест математических ипрочих ф�
 
 void angleMPU();	  // Расчет угла положения на сонове данных сдатчика MPU
 void calcEuler();	  // Расчет угла Эллера
-void calcLinAngVel(); // Расчет линейных и угловой скоростей
 
 SPose convertRotation2Base(SPose pose_, std::string stroka_); // Конвертация координат из Rotattion в Lidar систему
 SPose convertBase2Rotation(SPose pose_, std::string stroka_); // Конвертация координат из Lidar в Rotattion систему
@@ -40,9 +39,9 @@ void initKalman(); // Задаем коэфициенты для Калмана
 // void collectCommand(); // //Функция формирования команды для нижнего уровня на основе всех полученных данных, датчиков и анализа ситуации
 
 // **********************************************************************************
-SPose calcNewOdom(SPose odom_, STwistDt data_, std::string stroka_, float koef_); // На вход подаются старая одометрия и новые угловая угловая скорость. Возвращается новая позиция по данным угловым скоростям // Обработка пришедших данных.Обсчитываем одометрию по энкодеру
-STwistDt calcTwistFromWheel(pb_msgs::SSetSpeed control_);						  // Обработка пришедших данных.Обсчитываем одометрию по энкодеру
-STwistDt calcTwistFromMpu(pb_msgs::Struct_Modul2Data msg_Modul2Data_);			  // Обработка пришедших данных.Обсчитываем угловые скорости по энкодеру
+SPose calcNewPose(SPose odom_, STwistDt data_, std::string stroka_, float koef_); // На вход подаются старая одометрия и новые угловая угловая скорость. Возвращается новая позиция по данным угловым скоростям
+STwistDt calcTwistFromWheel(pb_msgs::SSetSpeed msg_Speed_);						  // Обсчитываем линейные и угловую скорость по данным скоростей от энкодера с колес
+STwistDt calcTwistFromMpu(pb_msgs::Struct_Modul2Data msg_Modul2Data_);			  // Обсчитываем линейные и угловую скорость датчику IMU
 STwistDt calcTwistUnited(STwistDt wheelTwist_, STwistDt mpuTwist_);				  // Функция комплементации угловых скоростей полученных с колес и с датчика MPU и угла поворота
 float autoOffsetX(float data_);													  // Функция считаем скользящее среднее из 128 элементов как офсет значений при стоянии на месте
 float autoOffsetY(float data_);													  // Функция считаем скользящее среднее из 128 элементов как офсет значений при стоянии на месте
@@ -87,16 +86,6 @@ float minDistance(float laserL_, float laserR_, float uzi1_)
 	return min;
 }
 
-// Расчет линейных и угловой скоростей
-void calcLinAngVel()
-{
-	// ROS_INFO("+++ calcLinAngVel");
-	g_linAngVel.wheel = calcTwistFromWheel(msg_Speed); // Обработка пришедших данных. По ним считаем линейные скорости по осям и угловую по углу. Запоминаем dt
-	g_linAngVel.mpu = calcTwistFromMpu(msg_Modul2Data);						  // Обработка пришедших данных для расчета линейных и угловых скоростей
-
-	// g_linAngVel.united = calcTwistUnited(g_linAngVel.wheel, g_linAngVel.mpu); // тут написать функцию комплементации данных угловых скоростей с разными условиями когда и в каком соотношении скомплементировать скорсти с двух источников
-	// g_linAngVel.united = g_linAngVel.wheel; // Пока нет расчет по IMU и комплментации используем только по колесам
-}
 // Расчет угла theta
 void calcEuler()
 {
@@ -244,14 +233,14 @@ long map(long x, long in_min, long in_max, long out_min, long out_max)
 //     //-----------------------------------------------------------
 // }
 
-// Обработка пришедших данных.Обсчитываем одометрию по энкодеру
-SPose calcNewOdom(SPose odom_, STwistDt data_, std::string stroka_, float koef_) // На вход подаются старая одометрия и новые угловая угловая скорость. Возвращается новая позиция по данным угловым скоростям
+// Расчет новой позиции на основе старой позиции и текущих линейных по х и у и угловой скорости yaw
+SPose calcNewPose(SPose odom_, STwistDt data_, std::string stroka_, float koef_) // На вход подаются старая одометрия и новые угловая угловая скорость. Возвращается новая позиция по данным угловым скоростям
 {
-	// ROS_INFO_THROTTLE(RATE_OUTPUT,"+++ calcNewOdom %s", stroka_.c_str());
-	// ROS_INFO("IN calcNewOdom pose.x= % .3f y= % .3f th= % .3f ", odom_.pose.x, odom_.pose.y, RAD2DEG(odom_.pose.th));
+	// ROS_INFO_THROTTLE(RATE_OUTPUT,"+++ calcNewPose %s", stroka_.c_str());
+	// ROS_INFO("IN calcNewPose pose.x= % .3f y= % .3f th= % .3f ", odom_.pose.x, odom_.pose.y, RAD2DEG(odom_.pose.th));
 	if (data_.dt < 0.003) // Если пришли данные с нулевой дельтой то сразу выходим и ничего не считаем
 	{
-		ROS_INFO("    calcNewOdom dt< 0.003 !!!!  dt = %f", data_.dt);
+		ROS_INFO("    calcNewPose dt< 0.003 !!!!  dt = %f", data_.dt);
 		return odom_; // Возвращаем что и было
 	}
 
@@ -289,19 +278,19 @@ SPose calcNewOdom(SPose odom_, STwistDt data_, std::string stroka_, float koef_)
 	// 	(odom_.th -= (2 * M_PI));
 	// if (odom_.th < 0)
 	// 	(odom_.th += (2 * M_PI));
-	ROS_INFO_THROTTLE(RATE_OUTPUT, "    calcNewOdom Rotation %s pose.x= % .3f y= % .3f | th= % .3f gradus th= % .4f rad", stroka_.c_str(), odom_.x, odom_.y, RAD2DEG(odom_.th), odom_.th);
+	ROS_INFO_THROTTLE(RATE_OUTPUT, "    calcNewPose Rotation %s pose.x= % .3f y= % .3f | th= % .3f gradus th= % .4f rad", stroka_.c_str(), odom_.x, odom_.y, RAD2DEG(odom_.th), odom_.th);
 
-	// ROS_INFO("--- calcNewOdom");
+	// ROS_INFO("--- calcNewPose");
 	return odom_;
 }
 // Обработка пришедших данных.Обсчитываем одометрию по энкодеру
 SPose calcNewOdom2(SPose odom_, STwistDt data_, std::string stroka_) // На вход подаются старая одометрия и новые угловая угловая скорость. Возвращается новая позиция по данным угловым скоростям
 {
-	// ROS_INFO_THROTTLE(RATE_OUTPUT,"+++ calcNewOdom %s", stroka_.c_str());
-	// ROS_INFO("IN calcNewOdom pose.x= % .3f y= % .3f th= % .3f ", odom_.pose.x, odom_.pose.y, RAD2DEG(odom_.pose.th));
+	// ROS_INFO_THROTTLE(RATE_OUTPUT,"+++ calcNewPose %s", stroka_.c_str());
+	// ROS_INFO("IN calcNewPose pose.x= % .3f y= % .3f th= % .3f ", odom_.pose.x, odom_.pose.y, RAD2DEG(odom_.pose.th));
 	if (data_.dt < 0.003) // Если пришли данные с нулевой дельтой то сразу выходим и ничего не считаем
 	{
-		ROS_INFO("    calcNewOdom dt< 0.003 !!!!  dt = %f", data_.dt);
+		ROS_INFO("    calcNewPose dt< 0.003 !!!!  dt = %f", data_.dt);
 		return odom_; // Возвращаем что и было
 	}
 
@@ -330,8 +319,8 @@ SPose calcNewOdom2(SPose odom_, STwistDt data_, std::string stroka_) // На в�
 	return odom_;
 }
 
-// Обработка пришедших данных.Обсчитываем одометрию по энкодеру
-STwistDt calcTwistFromWheel(pb_msgs::SSetSpeed control_)
+// Обсчитываем линейные и угловую скорость по данным скоростей от энкодера с колес
+STwistDt calcTwistFromWheel(pb_msgs::SSetSpeed msg_Speed_)
 {
 	STwistDt ret;
 	double radius = 0;
@@ -361,10 +350,10 @@ STwistDt calcTwistFromWheel(pb_msgs::SSetSpeed control_)
 	}
 	// double speedL = PERIMETR * Driver2Data.motor.rpsEncodL; // По формуле периметр колеса на обороты это и есть пройденный путь за секунду Это и есть скорость за секунду
 	// double speedR = PERIMETR * Driver2Data.motor.rpsEncodR; // По формуле периметр колеса на обороты это и есть пройденный путь за секунду Это и есть скорость за секунду
-	// double speedL = PERIMETR * control_.speedL; // Тут скорость заданная в оборотах в секунду преврщаем в метри в секунду
-	// double speedR = PERIMETR * control_.speedR; // Тут скорость заданная в оборотах в секунду преврщаем в метри в секунду
-	double speedL = control_.speedL; // Скорость в метрах в секуду
-	double speedR = control_.speedR; // Скорость в метрах в секуду
+	// double speedL = PERIMETR * msg_Speed_.speedL; // Тут скорость заданная в оборотах в секунду преврщаем в метри в секунду
+	// double speedR = PERIMETR * msg_Speed_.speedR; // Тут скорость заданная в оборотах в секунду преврщаем в метри в секунду
+	double speedL = msg_Speed_.speedL; // Скорость в метрах в секуду
+	double speedR = msg_Speed_.speedR; // Скорость в метрах в секуду
 
 	double sumSpeed = speedL + speedR;
 	double deltaSpeed = speedL - speedR;
@@ -484,7 +473,7 @@ STwistDt calcTwistFromWheel(pb_msgs::SSetSpeed control_)
 }
 */
 
-// Обработка пришедших данных.Обсчитываем угловые скорости датчику IMU BNO055
+// Обсчитываем линейные и угловую скорость датчику IMU
 STwistDt calcTwistFromMpu(pb_msgs::Struct_Modul2Data msg_Modul2Data_)
 {
 	// ROS_INFO_THROTTLE(RATE_OUTPUT,"+++ calcTwistFromMpu");
@@ -559,9 +548,10 @@ STwistDt calcTwistFromMpu(pb_msgs::Struct_Modul2Data msg_Modul2Data_)
 	if (delta_th < -180)
 		(delta_th = delta_th + 360);  // Если
 	ret.vth = DEG2RAD(delta_th) / dt; // превращаем в радианы в секунды Угловая скорость вращения
-	float kk = 0.05;
-	g_linAngVel.filtr_mpu.vth = g_linAngVel.filtr_mpu.vth * (1 - kk) + ret.vth * kk; // Фильтр
 	ret.dt = dt;
+
+	// float kk = 0.05;
+	// g_linAngVel.filtr_mpu.vth = g_linAngVel.filtr_mpu.vth * (1 - kk) + ret.vth * kk; // Фильтр
 
 	if (msg_Speed.speedL == 0 && msg_Speed.speedR == 0) // Если обе скорости равны нулю то обнуляем расчеты по mpu. Так как стоим на мете и никаких линейных скоростей быть не может. Стои на месте.
 	{
@@ -591,8 +581,95 @@ STwistDt calcTwistUnited(STwistDt wheelTwist_, STwistDt mpuTwist_)
 	ret.vx = wheelTwist_.vx * (1 - koef) + mpuTwist_.vx * koef;
 	ret.vy = wheelTwist_.vy * (1 - koef) + mpuTwist_.vy * koef;
 
-	float koefTh = 0.5; // Коефициант по умолчанию.Пополам.
-	ret.vth = g_linAngVel.filtr_mpu.vth * (1 - koefTh) + g_linAngVel.wheel.vth * koefTh;
+	// float koefTh = 0.5; // Коефициант по умолчанию.Пополам.
+	// ret.vth = g_linAngVel.filtr_mpu.vth * (1 - koefTh) + g_linAngVel.wheel.vth * koefTh;
+	ret.vth =  wheelTwist_.vth * (1 - koef) + mpuTwist_.vth * koef;
+
+	//fused = alpha * (fused_prev + gyro * dt) + (1 - alpha) * odom_yaw; //Простой комплементарный фильтр (рекомендую как старт)
+
+	/*
+
+	// пример вызова на каждом шаге (100 Гц)
+	double yaw = update(imu_delta, odom_delta, yaw_abs, have_abs);
+
+
+
+	#include <math.h>
+	#include <stdio.h>
+
+	double yaw_est = 0.0;  // текущее состояние фильтра (оценка угла)
+
+	// нормализация угла в диапазон [-pi, pi]
+	double normalize_angle(double a) 
+	{
+    	return atan2(sin(a), cos(a));
+	}
+
+	// обновление фильтра
+	double update(double imu_yaw_delta, double odom_yaw_delta,double yaw_abs, int use_abs) 
+	{
+		// 1. прогноз по IMU
+		double yaw_imu = yaw_est + imu_yaw_delta;
+
+		// 2. прогноз по одометрии
+		double yaw_odom = yaw_est + odom_yaw_delta;
+
+		// 3. инновация между IMU и одометрией
+		double innovation = normalize_angle(yaw_odom - yaw_imu);
+
+		// 4. адаптивный вес (IMU vs ODOM)
+		double base_alpha = 0.98;                     // базовый вес IMU
+		double max_innovation = 10.0 * M_PI / 180.0;  // предел разумного расхождения (10°)
+
+		double scale = 1.0 - fabs(innovation) / max_innovation;
+		if (scale < 0.0) scale = 0.0;
+		if (scale > 1.0) scale = 1.0;
+
+		double alpha = base_alpha + (1.0 - base_alpha) * scale;
+		if (alpha < 0.0) alpha = 0.0;
+		if (alpha > 1.0) alpha = 1.0;
+
+		// 5. объединение IMU и одометрии
+		yaw_est = alpha * yaw_imu + (1.0 - alpha) * yaw_odom;
+
+		// 6. если пришло абсолютное измерение
+		if (use_abs) 
+		{
+			double abs_innovation = normalize_angle(yaw_abs - yaw_est);
+
+			// вес абсолютного датчика (0.01..0.1)
+			double gamma = 0.05;
+			yaw_est = normalize_angle(yaw_est + gamma * abs_innovation);
+    	}
+
+    	// 7. нормализация
+    	yaw_est = normalize_angle(yaw_est);
+
+    	return yaw_est;
+	}
+
+	*/
+	/*
+		// Нормализация угла в диапазон [-π, π]
+		inline double normalize_angle(double a) {
+			while (a > M_PI)  a -= 2.0 * M_PI;
+			while (a <= -M_PI) a += 2.0 * M_PI;
+			return a;
+		}
+
+		// Разница углов (a - b) с учётом wrap-around, результат в [-π, π]
+		inline double angle_diff(double a, double b) {
+			return atan2(sin(a - b), cos(a - b));
+		}
+
+		// Среднее значение двух углов
+		inline double angle_average(double a, double b) {
+			double x = cos(a) + cos(b);
+			double y = sin(a) + sin(b);
+			return atan2(y, x);
+		}
+	*/
+
 
 	ret.dt = dt;
 
@@ -680,7 +757,7 @@ void calcMode0()
 {
 	ROS_INFO("+++ calcMode0");
 	// printf("1 RAD2DEG(odomMode0.pose.th) = % .3f \n", RAD2DEG(odomMode0.pose.th));
-	g_poseRotation.mode0 = calcNewOdom(g_poseRotation.mode0, g_linAngVel.wheel, "mode0", 1); // На основе линейных скоростей считаем новую позицию и угол по колесам
+	g_poseRotation.mode0 = calcNewPose(g_poseRotation.mode0, g_linAngVel.wheel, "mode0", 1); // На основе линейных скоростей считаем новую позицию и угол по колесам
 
 	// g_poseBase.mode0.x = odomMode0.pose.x;
 	// g_poseBase.mode0.y = odomMode0.pose.y;
