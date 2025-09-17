@@ -72,8 +72,8 @@ int main(int argc, char **argv)
                 ROS_INFO("    Angle Start");
                 break;
             case 3:                               // Режим где движемся по координатам. даигаемся по длинне вектора.
-                vectorStart.x = msg_Pose.x.mode0; // Запоминаем те координаты которые были в момент начала движения
-                vectorStart.y = msg_Pose.y.mode0;
+                vectorStart.x = msg_Pose.x.fused; // Запоминаем те координаты которые были в момент начала движения
+                vectorStart.y = msg_Pose.y.fused;
                 time = millis() + 999999; // Огромное время ставим
                 flagVector = true;        // Флаг что теперь отслеживаем длину вектора
                 ROS_INFO("    Vector Start. len = %f", commandArray[i].len);

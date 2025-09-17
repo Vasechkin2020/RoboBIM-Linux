@@ -82,7 +82,7 @@ private:
 
     // ros::Publisher publish_OdomWheel = _nh.advertise<nav_msgs::Odometry>("pbMain/odom/Wheel", 3); // Это мы создаем публикатор и определяем название топика в рос
     //  nav_msgs::Odometry odomUnited_msg;
-    //  ros::Publisher publish_OdomUnited = _nh.advertise<nav_msgs::Odometry>("pbData/odom/United", 3); // Это мы создаем публикатор и определяем название топика в рос
+    //  ros::Publisher publish_OdomUnited = _nh.advertise<nav_msgs::Odometry>("pbData/odom/fused", 3); // Это мы создаем публикатор и определяем название топика в рос
     //  nav_msgs::Odometry odomMpu_msg;
     //  ros::Publisher publish_OdomMpu = _nh.advertise<nav_msgs::Odometry>("pbData/odom/Mpu", 3); // Это мы создаем публикатор и определяем название топика в рос
 
@@ -262,17 +262,17 @@ void CTopic::publicationPoseBase() // Формируем перемнную с �
 {
     pb_msgs::Struct_PoseBase poseBase_msg; // Обобщенные данные в моем формате о всех вариантах расчета позиции
 
-    poseBase_msg.mode.x = g_poseBase.mode.x;
-    poseBase_msg.mode.y = g_poseBase.mode.y;
-    poseBase_msg.mode.th = g_poseBase.mode.th;
+    poseBase_msg.lidar.x = g_poseBase.lidar.x;
+    poseBase_msg.lidar.y = g_poseBase.lidar.y;
+    poseBase_msg.lidar.th = g_poseBase.lidar.th;
 
-    poseBase_msg.mode0.x = g_poseBase.mode0.x;
-    poseBase_msg.mode0.y = g_poseBase.mode0.y;
-    poseBase_msg.mode0.th = g_poseBase.mode0.th;
+    poseBase_msg.laser.x = g_poseBase.laser.x;
+    poseBase_msg.laser.y = g_poseBase.laser.y;
+    poseBase_msg.laser.th = g_poseBase.laser.th;
 
-    poseBase_msg.mode10.x = g_poseBase.mode10.x;
-    poseBase_msg.mode10.y = g_poseBase.mode10.y;
-    poseBase_msg.mode10.th = g_poseBase.mode10.th;
+    poseBase_msg.fused.x = g_poseBase.fused.x;
+    poseBase_msg.fused.y = g_poseBase.fused.y;
+    poseBase_msg.fused.th = g_poseBase.fused.th;
 
     poseBase_msg.azimut[0] =  g_poseBase.azimut[0];
     poseBase_msg.azimut[1] =  g_poseBase.azimut[1];
@@ -287,14 +287,14 @@ void CTopic::publicationPoseRotattion() // Вывод в топик данных
 
     // msg.theta = g_poseRotation.theta;
 
-    msg.x.mode0 = g_poseRotation.mode0.x;
-    msg.x.mode10 = g_poseRotation.mode10.x;
+    msg.x.odom = g_poseRotation.odom.x;
+    msg.x.fused = g_poseRotation.fused.x;
 
-    msg.y.mode0 = g_poseRotation.mode0.y;
-    msg.y.mode10 = g_poseRotation.mode10.y;
+    msg.y.odom = g_poseRotation.odom.y;
+    msg.y.fused = g_poseRotation.fused.y;
     
-    msg.th.mode0 = g_poseRotation.mode0.th;
-    msg.th.mode10 = g_poseRotation.mode10.th;
+    msg.th.odom = g_poseRotation.odom.th;
+    msg.th.fused = g_poseRotation.fused.th;
    
     msg.theta = DEG2RAD(g_angleEuler.yaw);
 
@@ -305,24 +305,20 @@ void CTopic::publicationLinAngVel() // Вывод в топик данных с 
     pb_msgs::SLinAngVel msg; // Обобщенные данные в моем формате о всех вариантах расчета позиции
 
     msg.vx.mpu = g_linAngVel.mpu.vx;
-    msg.vx.wheel = g_linAngVel.wheel.vx;
-    msg.vx.united = g_linAngVel.united.vx;
-    // msg.vx.filtr = g_linAngVel.filtr_mpu.vx;
+    msg.vx.wheel = g_linAngVel.odom.vx;
+    msg.vx.fused = g_linAngVel.fused.vx;
 
     msg.vy.mpu = g_linAngVel.mpu.vy;
-    msg.vy.wheel = g_linAngVel.wheel.vy;
-    msg.vy.united = g_linAngVel.united.vy;
-    // msg.vy.filtr = g_linAngVel.filtr_mpu.vy;
+    msg.vy.wheel = g_linAngVel.odom.vy;
+    msg.vy.fused = g_linAngVel.fused.vy;
 
     msg.vth.mpu = g_linAngVel.mpu.vth;
-    msg.vth.wheel = g_linAngVel.wheel.vth;
-    msg.vth.united = g_linAngVel.united.vth;
-    // msg.vth.filtr = g_linAngVel.filtr_mpu.vth;
+    msg.vth.wheel = g_linAngVel.odom.vth;
+    msg.vth.fused = g_linAngVel.fused.vth;
 
     msg.dt.mpu = g_linAngVel.mpu.dt;
-    msg.dt.wheel = g_linAngVel.wheel.dt;
-    msg.dt.united = g_linAngVel.united.dt;
-    // msg.dt.filtr = g_linAngVel.filtr_mpu.dt;
+    msg.dt.wheel = g_linAngVel.odom.dt;
+    msg.dt.fused = g_linAngVel.fused.dt;
 
     pub_linAngVel.publish(msg); // Публикуем информацию по позиции лидара
 }

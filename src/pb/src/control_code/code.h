@@ -505,7 +505,7 @@ void workAngle(float angle_, u_int64_t &time_, float velAngle_)
 	static float minAngleMistake = 0.02; // Минимальная ошибка по углу в Градусах
 	static float angleMistake = 0;		 // Текущая ошибка по углу в градусах
 
-	float angleFact = msg_Pose.th.mode0;		// Угол который отслеживаем
+	float angleFact = msg_Pose.th.fused;		// Угол который отслеживаем
 	angleMistake = angle_ - RAD2DEG(angleFact); // Смотрим какой угол.// Смотрим куда нам надо Считаем ошибку по углу и включаем колеса в нужную сторону с учетом ошибки по углу и максимально заданой скорости на колесах
 	ROS_INFO_THROTTLE(0.1, "    angle_ = %6.2f angleFact = %6.2f angleMistake = %6.2f", angle_, RAD2DEG(angleFact), angleMistake);
 	if (abs(angleMistake) <= minAngleMistake) // Когда ошибка по углу будет меньше заданной считаем что приехали и включаем время что-бы выйти из данного этапа алгоритма
@@ -546,8 +546,8 @@ void workVector(float len_, SPoint vectorStart_, u_int64_t &time_, float velLen_
 	static float vectorMistake = 0;		   // Текущая ошибка по длине в местрах
 	static SPoint vectorEnd;
 
-	vectorEnd.x = msg_Pose.x.mode0;
-	vectorEnd.y = msg_Pose.y.mode0;
+	vectorEnd.x = msg_Pose.x.fused;
+	vectorEnd.y = msg_Pose.y.fused;
 	float vectorFact = vectorLen(vectorStart_, vectorEnd); // Находим длину вектора который отслеживаем
 	vectorMistake = abs(len_) - vectorFact;				   // Смотрим какое растояние еще надо проехать  Считаем ошибку по длине и включаем колеса в нужную сторону с учетом ошибки максимально заданой скорости на колесах
 	ROS_INFO_THROTTLE(0.1, "    len_ = %7.3f vectorFact = %7.3f vectorMistake = %7.3f", abs(len_), vectorFact, vectorMistake);

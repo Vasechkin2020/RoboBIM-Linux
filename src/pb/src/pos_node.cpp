@@ -83,21 +83,23 @@ int main(int argc, char **argv)
             timeStop = timeStopping(msg_Speed); // Расчет времени когда остановились. ЕСли движемся то выдаем текущее время. Если стоим то время когда остановились
 
             calcEuler(); // Расчет угла yaw с датчика IMU
-            g_linAngVel.wheel = calcTwistFromWheel(msg_Speed);  // Обработка пришедших данных. По ним считаем линейные скорости по осям и угловую по углу. Запоминаем dt
-            g_linAngVel.mpu = calcTwistFromMpu(msg_Modul2Data); // Обработка пришедших данных для расчета линейных и угловых скоростей
+            g_linAngVel.odom = calcTwistFromWheel(msg_Speed);  // Обработка пришедших данных. По ним считаем линейные скорости по осям и угловую по углу. Запоминаем dt
+            g_linAngVel.mpu = calcTwistFromMpu(g_linAngVel.mpu, msg_Modul2Data); // Обработка пришедших данных для расчета линейных и угловых скоростей
 
-            // g_linAngVel.united = calcTwistUnited(g_linAngVel.wheel, g_linAngVel.mpu); // тут написать функцию комплементации данных угловых скоростей с разными условиями когда и в каком соотношении скомплементировать скорсти с двух источников
-            // g_linAngVel.united = g_linAngVel.wheel; // Пока нет расчет по IMU и комплментации используем только по колесам
+            g_linAngVel.fused = calcTwistFused(g_linAngVel.odom, g_linAngVel.mpu); // Комплементация данных используя фильтр (Комплементарный или Калмана) тут написать функцию комплементации данных угловых скоростей с разными условиями когда и в каком соотношении скомплементировать скорсти с двух источников
+            // g_linAngVel.fused = g_linAngVel.wheel; // Пока нет расчет по IMU и комплментации используем только по колесам
 
 
-            g_poseRotation.mode0 = calcNewPose(g_poseRotation.mode0, g_linAngVel.wheel, "mode 0", 1);    // На основе линейных скоростей считаем новую позицию и угол по колесам
-            g_poseRotation.mode10 = calcNewPose(g_poseRotation.mode10, g_linAngVel.wheel, "mode 10", 1); // На основе линейных скоростей считаем новую позицию и угол по колесам
-            // g_poseRotation.mode10 = calcNewOdom2(g_poseRotation.mode10, g_linAngVel.united, "mode10"); // На основе линейных скоростей считаем новую позицию и угол по колесам
+            g_poseRotation.odom = calcNewPose(g_poseRotation.odom, g_linAngVel.odom, "odom", 1);    // На основе линейных скоростей считаем новую позицию и угол по колесам
+            g_poseRotation.mpu = calcNewPose(g_poseRotation.mpu, g_linAngVel.mpu, "mpu", 1);    // На основе линейных скоростей считаем новую позицию и угол по mpu
+
+            g_poseRotation.fused = calcNewPose(g_poseRotation.fused, g_linAngVel.fused, "fused", 1); // На основе линейных скоростей считаем новую позицию и угол по колесам
+            // g_poseRotation.mode10 = calcNewOdom2(g_poseRotation.mode10, g_linAngVel.fused, "mode10"); // На основе линейных скоростей считаем новую позицию и угол по колесам
             // g_poseRotation.mode10.th = DEG2RAD(g_angleEuler.yaw); // Напрямую присваиваем угол. Заменяем тот угол что насчитали внутри
             // ROS_INFO("    g_poseRotation mode10 x = %.3f y = %.3f theta = %.3f (radian)", g_poseRotation.mode10.x, g_poseRotation.mode10.y, g_poseRotation.mode10.th);
 
-            g_poseBase.mode0 = convertRotation2Base(g_poseRotation.mode0, "mode 0");    // Эти данные mode10 используем как основную точку для расчета mode1.2.3
-            g_poseBase.mode10 = convertRotation2Base(g_poseRotation.mode10, "mode 10"); // Эти данные mode10 используем как основную точку для расчета mode1.2.3
+            // g_poseBase.mode0 = convertRotation2Base(g_poseRotation.odom, "odom");    // Эти данные mode10 используем как основную точку для расчета mode1.2.3
+            g_poseBase.fused = convertRotation2Base(g_poseRotation.fused, "fused"); // Эти данные mode10 используем как основную точку для расчета mode1.2.3
             // g_poseBase.mode10 = convertRotation2Base(g_poseRotation.mode10, "mode10"); // Эти данные mode10 используем как основную точку для расчета mode1.2.3
 
             // calcMode0();   // Расчет одометрии Mode0
@@ -107,7 +109,7 @@ int main(int argc, char **argv)
             // calcMode123(); // Комплементация Odom10// Комплементация положения и угла
 
             // РАСЧЕТ НАПРАВЛЕНИЯ УГЛОВ ЛАЗЕРОВ
-            laser.calcAnglePillarForLaser(pillar.pillar, g_poseBase.mode10); // Расчет углов в локальной системе лазеров на столбы для передачи на нижний уровень для исполнения
+            laser.calcAnglePillarForLaser(pillar.pillar, g_poseBase.fused); // Расчет углов в локальной системе лазеров на столбы для передачи на нижний уровень для исполнения
             topic.publicationControlModul();                                 // Формируем и Публикуем команды для управления Modul
 
             // topic.visualPublishOdomMode_3();                                  // Отобращение стрелкой где начало и куда смотрит в Mode3
@@ -154,12 +156,12 @@ int main(int argc, char **argv)
                     aver.th = aver.th - (aver.th / averCount);
                     averCount--;
                     // ROS_INFO("    --- complementation Pose Average to Mode ---");
-                    g_poseBase.mode10.x = aver.x / averCount;
-                    g_poseBase.mode10.y = aver.y / averCount;
-                    g_poseBase.mode10.th = aver.th / averCount;
-                    g_poseRotation.mode10 = convertBase2Rotation(g_poseBase.mode10, "mode10");
+                    g_poseBase.fused.x = aver.x / averCount;
+                    g_poseBase.fused.y = aver.y / averCount;
+                    g_poseBase.fused.th = aver.th / averCount;
+                    g_poseRotation.fused = convertBase2Rotation(g_poseBase.fused, "fused");
 
-                    g_poseBase.mode = g_poseBase.mode10;
+                    g_poseBase.mode = g_poseBase.fused;
                     ROS_INFO("    complementation g_poseBase.mode x= %.3f y= %.3f theta= %.3f grad", g_poseBase.mode.x, g_poseBase.mode.y, g_poseBase.mode.th);
 
                     // ROS_INFO("    complementation g_poseRotation.mode0 x= %.3f y= %.3f theta= %.3f grad", g_poseRotation.mode0.x, g_poseRotation.mode0.y, RAD2DEG(g_poseRotation.mode0.th));
@@ -222,7 +224,7 @@ int main(int argc, char **argv)
         if (timeRviz <= millis()) // 30 Hz
         {
             // Публикуем тут так как если один раз опубликовать то они исчезают через некоторое время.
-            topic.transformBase(g_poseBase.mode0); // Публикуем трансформации систем координат, задаем по какому расчету трансформировать
+            topic.transformBase(g_poseBase.fused); // Публикуем трансформации систем координат, задаем по какому расчету трансформировать
             topic.transformLaser(laser);           // Публикуем трансформации систем координат, задаем по какому расчету трансформировать
             topic.transformRotation();             // Публикуем трансформации систем координат
 

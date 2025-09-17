@@ -1,4 +1,4 @@
-SPose mode
-SPose mode0
-SPose mode10
+SPose lidar 
+SPose laser
+SPose fused
 float32[4] azimut           #; // Индивидуальные углы на столбы
