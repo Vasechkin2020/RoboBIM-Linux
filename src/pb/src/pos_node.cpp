@@ -90,10 +90,10 @@ int main(int argc, char **argv)
             // g_linAngVel.fused = g_linAngVel.wheel; // Пока нет расчет по IMU и комплментации используем только по колесам
 
 
-            g_poseRotation.odom = calcNewPose(g_poseRotation.odom, g_linAngVel.odom, "odom", 1);    // На основе линейных скоростей считаем новую позицию и угол по колесам
-            g_poseRotation.mpu = calcNewPose(g_poseRotation.mpu, g_linAngVel.mpu, "mpu", 1);    // На основе линейных скоростей считаем новую позицию и угол по mpu
+            g_poseRotation.odom = calcNewPose(g_poseRotation.odom, g_linAngVel.odom, "odom");    // На основе линейных скоростей считаем новую позицию и угол по колесам
+            g_poseRotation.mpu = calcNewPose(g_poseRotation.mpu, g_linAngVel.mpu, "mpu");    // На основе линейных скоростей считаем новую позицию и угол по mpu
 
-            g_poseRotation.fused = calcNewPose(g_poseRotation.fused, g_linAngVel.fused, "fused", 1); // На основе линейных скоростей считаем новую позицию и угол по колесам
+            g_poseRotation.fused = calcNewPose(g_poseRotation.fused, g_linAngVel.fused, "fused"); // На основе линейных скоростей считаем новую позицию и угол по колесам
             // g_poseRotation.mode10 = calcNewOdom2(g_poseRotation.mode10, g_linAngVel.fused, "mode10"); // На основе линейных скоростей считаем новую позицию и угол по колесам
             // g_poseRotation.mode10.th = DEG2RAD(g_angleEuler.yaw); // Напрямую присваиваем угол. Заменяем тот угол что насчитали внутри
             // ROS_INFO("    g_poseRotation mode10 x = %.3f y = %.3f theta = %.3f (radian)", g_poseRotation.mode10.x, g_poseRotation.mode10.y, g_poseRotation.mode10.th);
