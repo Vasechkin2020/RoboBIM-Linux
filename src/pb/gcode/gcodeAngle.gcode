@@ -1,5 +1,5 @@
-G5 F0.01 P10000 ; 
+G7 F0.20 P5000 ; 
 G4 P1000 ; Pause for 1000 ms before completion
-G6 F0.01 P10000 ; 
+G8 F0.20 P5000 ; 
 G4 P1000 ; Pause for 1000 ms before completion
 G9 ; 

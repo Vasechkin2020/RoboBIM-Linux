@@ -558,6 +558,9 @@ STwistDt calcTwistFromMpu(STwistDt mpu_, pb_msgs::Struct_Modul2Data msg_Modul2Da
 		return ret;
 	}
 
+	float linear_x_m_s2 = msg_Modul2Data_.icm.linear.x * G_TO_M_S2; // Преобразуем в м/с²
+	float linear_y_m_s2 = msg_Modul2Data_.icm.linear.y * G_TO_M_S2;
+
 	float angleDelta = DEG2RAD(msg_Modul2Data_.icm.angleEuler.yaw - pred_Angle); // Углы в градусах. Конвертируем в радианы
 	pred_Angle = msg_Modul2Data_.icm.angleEuler.yaw;							 // Сохраняем для следующего расчета
 	float norm_angleDelta = normalize_angle(angleDelta);
@@ -574,14 +577,14 @@ STwistDt calcTwistFromMpu(STwistDt mpu_, pb_msgs::Struct_Modul2Data msg_Modul2Da
 	static float complYaw = 0;
 
 	// Проверяем условие остановки (например, от одометрии)
-	if (dtStoping >= 0.1) // Если стоим уже больше 0,1 секунды то // Если стоим на месте, то считаем офсет. Как только тронемся, его и будем применять до следующей остановки
+	if (dtStoping >= 0.3) // Если стоим уже больше 0,1 секунды то // Если стоим на месте, то считаем офсет. Как только тронемся, его и будем применять до следующей остановки
 	{
-		offsetX = autoOffsetX(msg_Modul2Data_.icm.linear.x, 64); // Калибровка bias (во время остановки).
-		offsetY = autoOffsetY(msg_Modul2Data_.icm.linear.y, 64);
-		offsetYaw = autoOffsetYaw(norm_angleDelta, 64);
+		offsetX = autoOffsetX(linear_x_m_s2, 32); // Калибровка bias (во время остановки).
+		offsetY = autoOffsetY(linear_y_m_s2, 32);
+		offsetYaw = autoOffsetYaw(norm_angleDelta, 32);
 		ret.vx = ret.vy = ret.vth = 0; // ЖЕСТКО СБРАСЫВАЕМ ВСЕ СКОРОСТи В НОЛЬ Так как стоим на месте и никаких линейных скоростей быть не может. Стоим на месте.
 		complX = complY = complYaw = 0;
-		ROS_INFO("    dtStoping Offset x= %+8.6f y= %+8.6f yaw= %+8.6f ||| dtStoping = %f ||| x = %f y = %f yaw = %f", offsetX, offsetY, offsetYaw, dtStoping, msg_Modul2Data_.icm.linear.x, msg_Modul2Data_.icm.linear.y, norm_angleDelta);
+		ROS_INFO("    dtStoping Offset x= %+8.6f yaw= %+8.6f ||| dtStoping = %f ||| x = %f yaw = %f", offsetX, offsetYaw, dtStoping, linear_x_m_s2, norm_angleDelta);
 	}
 	// Примечание. Сигнал линейного ускорения обычно не может быть интегрирован для восстановления скорости или дважды интегрирован для восстановления положения.
 	//  Ошибка обычно становится больше сигнала менее чем за 1 секунду, если для компенсации этой ошибки интегрирования не используются другие источники датчиков.
@@ -589,15 +592,17 @@ STwistDt calcTwistFromMpu(STwistDt mpu_, pb_msgs::Struct_Modul2Data msg_Modul2Da
 	{
 		float koef = 0.2; // Коефициент для комплементарного фильтра
 
-		float temp_linX = msg_Modul2Data_.icm.linear.x - offsetX; // Вычитаем bias который посчитали когда стояли неподвижно
-		float temp_linY = msg_Modul2Data_.icm.linear.y - offsetY;
+		float temp_linX = linear_x_m_s2 - offsetX; // Вычитаем bias который посчитали когда стояли неподвижно
+		float temp_linY = linear_y_m_s2 - offsetY;
 		float temp_linYaw = norm_angleDelta - offsetYaw; // Коррекция (вычитание bias из сырого линейного ускорения).
 
-		complX = filtrComplem(koef, complX, temp_linX); // Низкочастотная фильтрация полученного ускорения (экспоненциальным фильтром).
+		complX = filtrComplem(0.05, complX, temp_linX); // Низкочастотная фильтрация полученного ускорения (экспоненциальным фильтром).
 		complY = filtrComplem(koef, complY, temp_linY);
-		complYaw = filtrComplem(koef, complYaw, temp_linYaw);
+		complYaw = filtrComplem(0.2, complYaw, temp_linYaw);
 		// ROS_INFO("    Compl x= % .3f y= % .3f  z= % .3f", complX, complY, complZ);
-		ret.vx = mpu_.vx + (complX)*dt; // Линейное ускорение по оси метры за секунуду умножаем на интервал, получаем ускорение за интервал и суммируем в скорость линейную по оси
+
+
+		ret.vx = mpu_.vx + (complX) * dt; // Линейное ускорение по оси метры за секунуду умножаем на интервал, получаем ускорение за интервал и суммируем в скорость линейную по оси
 		ret.vy = mpu_.vy + (complY)*dt;
 		ret.vth = (complYaw) / dt; // Вычисляем разницу углов в радианах/ делим на интервал получаем угловую скорость в радинах/секунду
 

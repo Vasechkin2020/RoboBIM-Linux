@@ -188,7 +188,7 @@ private:
     {
         SCommand temp;
         temp.mode = 1;
-        temp.duration = 1000;
+        temp.duration = 2000;
         temp.velL = 0.0;
         temp.velR = 0.0;
         commandArray.push_back(temp);
@@ -252,6 +252,7 @@ private:
             ss << " (" << cmd.comment << ")"; // Добавление комментария
         ROS_INFO("%s", ss.str().c_str());     // Вывод лога
         publishMessage(ss.str());             // Публикация
+        
     }
 
     // Выполнение G2 (дуга по часовой стрелке)
@@ -343,7 +344,7 @@ private:
     {
         std::stringstream ss;                     // Для формирования лога
         float pause_ms = cmd.has_p ? cmd.p : 0.0; // Длительность паузы в мс
-        ss << "G5: Rotate for " << cmd.f << " vel " << pause_ms << " ms";
+        ss << "G6: Rotate for " << cmd.f << " vel " << pause_ms << " ms";
         if (!cmd.comment.empty())
             ss << " (" << cmd.comment << ")";     // Добавление комментария
         ROS_INFO("%s", ss.str().c_str());         // Вывод лога
@@ -357,6 +358,46 @@ private:
         temp.duration = cmd.p;
         commandArray.push_back(temp);
         ROS_INFO("    executeG6 mode= %i velL= %f velR= %f duration=%f ", temp.mode, temp.velL, temp.velR, temp.duration); // Вывод лога
+    }
+        // Выполнение G7 (Движение вперед определенное время)
+    void executeG7(const GCodeCommand &cmd)
+    {
+        std::stringstream ss;                     // Для формирования лога
+        float pause_ms = cmd.has_p ? cmd.p : 0.0; // Длительность паузы в мс
+        ss << "G7: Drive for " << cmd.f << " vel " << pause_ms << " ms";
+        if (!cmd.comment.empty())
+            ss << " (" << cmd.comment << ")";     // Добавление комментария
+        ROS_INFO("%s", ss.str().c_str());         // Вывод лога
+        // ros::Duration(pause_ms / 1000.0).sleep(); // Ожидание
+        // publishMessage(ss.str());                 // Публикация
+
+        SCommand temp;
+        temp.mode = 1;
+        temp.velL = cmd.f;
+        temp.velR = cmd.f;
+        temp.duration = cmd.p;
+        commandArray.push_back(temp);
+        ROS_INFO("    executeG7 mode= %i velL= %f velR= %f duration=%f ", temp.mode, temp.velL, temp.velR, temp.duration); // Вывод лога
+    }       
+    // Выполнение G7 (Движение вперед определенное время)
+    void executeG8(const GCodeCommand &cmd)
+    {
+        std::stringstream ss;                     // Для формирования лога
+        float pause_ms = cmd.has_p ? cmd.p : 0.0; // Длительность паузы в мс
+        ss << "G8: Drive for " << cmd.f << " vel " << pause_ms << " ms";
+        if (!cmd.comment.empty())
+            ss << " (" << cmd.comment << ")";     // Добавление комментария
+        ROS_INFO("%s", ss.str().c_str());         // Вывод лога
+        // ros::Duration(pause_ms / 1000.0).sleep(); // Ожидание
+        // publishMessage(ss.str());                 // Публикация
+
+        SCommand temp;
+        temp.mode = 1;
+        temp.velL = -cmd.f;
+        temp.velR = -cmd.f;
+        temp.duration = cmd.p;
+        commandArray.push_back(temp);
+        ROS_INFO("    executeG8 mode= %i velL= %f velR= %f duration=%f ", temp.mode, temp.velL, temp.velR, temp.duration); // Вывод лога
     }
     // Выполнение G9 (Переход в начало. Зацикливание программы)
     void executeG9(const GCodeCommand &cmd)
@@ -528,6 +569,10 @@ public:
                 executeG5(cmd); // Выполнение G5
             else if (cmd.command == "G6")
                 executeG6(cmd); // Выполнение G6
+            else if (cmd.command == "G7")
+                executeG7(cmd); // Выполнение G7
+            else if (cmd.command == "G8")
+                executeG8(cmd); // Выполнение G8
             else if (cmd.command == "G9")
                 executeG9(cmd); // Выполнение G9
             else if (cmd.command == "G28")
