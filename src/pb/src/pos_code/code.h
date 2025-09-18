@@ -37,6 +37,8 @@ extern CKalman kalman12;
 extern CKalman kalman13;
 void initKalman(); // Задаем коэфициенты для Калмана
 
+double dtStoping; // Тут храним сколько секунд прошло с времени остановки
+
 // pb_msgs::SControlDriver speedCorrect(pb_msgs::SDriver2Data Driver2Data_msg_, pb_msgs::SControlDriver Data2Driver_); // Корректировка скорости движения в зависимости от датчиков растояния перед
 // void collectCommand(); // //Функция формирования команды для нижнего уровня на основе всех полученных данных, датчиков и анализа ситуации
 
@@ -50,7 +52,7 @@ STwistDt calcTwistFromMpu(STwistDt mpu_, pb_msgs::Struct_Modul2Data msg_Modul2Da
 STwistDt calcTwistFused(STwistDt odomTwist_, STwistDt mpuTwist_);					  // Функция комплементации угловых скоростей полученных с колес и с датчика MPU и угла поворота
 float autoOffsetX(float data_);														  // Функция считаем скользящее среднее из 128 элементов как офсет значений при стоянии на месте
 float autoOffsetY(float data_);														  // Функция считаем скользящее среднее из 128 элементов как офсет значений при стоянии на месте
-float autoOffsetZ(float data_);														  // Функция считаем скользящее среднее из 128 элементов как офсет значений при стоянии на месте
+float autoOffsetYaw(float data_);													  // Функция считаем скользящее среднее из 128 элементов как офсет значений при стоянии на месте
 float filtrComplem(float koef_, float oldData_, float newData_);					  // функция фильтрации, берем старое значение с некоторым весом
 // void calculateOdometryFromMpu(SMpu mpu_);					   // Обработка пришедших данных.Обсчитываем одометрию по энкодеру
 
@@ -350,10 +352,17 @@ SPose calcNewOdom2(SPose odom_, STwistDt data_, std::string stroka_) // На в�
 STwistDt calcTwistFromWheel(pb_msgs::SSetSpeed msg_Speed_)
 {
 	// ROS_INFO_THROTTLE(RATE_OUTPUT,"+++ calcTwistFromWheel");
+	static ros::Time start_time = ros::Time::now(); // Захватываем начальный момент времени
+	ros::Time end_time = ros::Time::now();			// Захватываем конечный момент времени
+	ros::Duration duration = end_time - start_time; // Находим разницу между началом и концом
+	double dt = duration.toSec();					// Получаем количество секунд и преобразуем в миллисекунды
+	start_time = end_time;
+
 	STwistDt t;
 	t.vx = 0.5 * (msg_Speed_.speedR + msg_Speed_.speedL);
 	t.vy = 0.0; // По оси у мы не смещаемся, поэтому ноль.
 	t.vth = (msg_Speed_.speedR - msg_Speed_.speedL) / DISTANCE_WHEELS;
+	t.dt = dt;
 
 	ROS_INFO_THROTTLE(RATE_OUTPUT, "    Twist Wheel vx= %.3f vy= %.3f vth= %.3f w= %.3f gradus/sec  %.3f rad/sec", t.vx, t.vy, RAD2DEG(t.vth), t.vth);
 
@@ -527,100 +536,78 @@ inline double normalize_angle(double a)
 // Обсчитываем линейные и угловую скорость датчику IMU
 STwistDt calcTwistFromMpu(STwistDt mpu_, pb_msgs::Struct_Modul2Data msg_Modul2Data_)
 {
-	static STwistDt ret;
 	// ROS_INFO_THROTTLE(RATE_OUTPUT,"+++ calcTwistFromMpu");
+	static STwistDt ret;
+	static float pred_Angle = 0;
+
 	static ros::Time start_time = ros::Time::now(); // Захватываем начальный момент времени
 	ros::Time end_time = ros::Time::now();			// Захватываем конечный момент времени
 	ros::Duration duration = end_time - start_time; // Находим разницу между началом и концом
 	double dt = duration.toSec();					// Получаем количество секунд и преобразуем в миллисекунды
 	start_time = end_time;
-	// ROS_INFO("    dt = %f sec", dt);
 	ret.dt = dt; // Сохраняем новое dt
+	// ROS_INFO("    dt = %f sec", dt);
 
 	if (dt < 0.003) // При первом запуске просто выходим из функции
 	{
-		ROS_INFO("    calcTwistFromMpu dt< 0.003 !!!! dt = %f", dt);
-		ret.vth = DEG2RAD(msg_Modul2Data_.icm.angleEuler.yaw); //
+		ROS_INFO("    First calcTwistFromMpu dt< 0.003 !!!! dt = %f", dt);
+		ret.vx = 0;										 //
+		ret.vy = 0;										 //
+		ret.vth = 0;									 //
+		pred_Angle = msg_Modul2Data_.icm.angleEuler.yaw; // Сохраняем для следующего расчета
 		return ret;
 	}
 
-	ret.vth = normalize_angle(DEG2RAD(msg_Modul2Data_.icm.angleEuler.yaw) - mpu_.vth) / dt; // Вычисляем разницу углов в радианах/ делим на интервал получаем угловую скорость в радинах/секунду
+	float angleDelta = DEG2RAD(msg_Modul2Data_.icm.angleEuler.yaw - pred_Angle); // Углы в градусах. Конвертируем в радианы
+	pred_Angle = msg_Modul2Data_.icm.angleEuler.yaw;							 // Сохраняем для следующего расчета
+	float norm_angleDelta = normalize_angle(angleDelta);
+	// ROS_INFO("   yaw= %f angleDelta = %f norm_angleDelta= %f vth= %f", msg_Modul2Data_.icm.angleEuler.yaw, angleDelta, norm_angleDelta, ret.vth);
+	// ret.vth = normalize_angle(angle) / dt; // Вычисляем разницу углов в радианах/ делим на интервал получаем угловую скорость в радинах/секунду
 
-	ret.vx = mpu_.vx + msg_Modul2Data_.bno.linear.x * dt; // Линейное ускорение по оси метры за секунуду умножаем на интервал, получаем ускорение за интервал и суммируем в скорость линейную по оси
-	ret.vy = mpu_.vy + msg_Modul2Data_.bno.linear.y * dt; // Линейное ускорение по оси метры за секунуду умножаем на интервал, получаем ускорение за интервал и суммируем в скорость линейную по оси
+	//------------------------------
+	static float offsetX = 0;
+	static float offsetY = 0;
+	static float offsetYaw = 0;
+	// static float complZ = 0; // Значение после комплементарного фильтра
+
+	// Проверяем условие остановки (например, от одометрии)
+	if (dtStoping >= 0.1) // Если стоим уже больше 0,1 секунды то // Если стоим на месте, то считаем офсет. Как только тронемся, его и будем применять до следующей остановки
+	// if (0) // Если стоим уже больше 0,1 секунды то // Если стоим на месте, то считаем офсет. Как только тронемся, его и будем применять до следующей остановки
+	{
+		offsetX = autoOffsetX(msg_Modul2Data_.icm.linear.x); // Калибровка bias (во время остановки).
+		offsetY = autoOffsetY(msg_Modul2Data_.icm.linear.x);
+		offsetYaw = autoOffsetYaw(norm_angleDelta);
+		ret.vx = ret.vy = ret.vth = 0; // ЖЕСТКО СБРАСЫВАЕМ ВСЕ СКОРОСТи В НОЛЬ Так как стоим на месте и никаких линейных скоростей быть не может. Стоим на месте.
+
+		ROS_INFO("    Offset x= %+8.4f y= %+8.4f yaw= %+8.4f ", offsetX, offsetY, offsetYaw);
+	}
+	// Примечание. Сигнал линейного ускорения обычно не может быть интегрирован для восстановления скорости или дважды интегрирован для восстановления положения.
+	//  Ошибка обычно становится больше сигнала менее чем за 1 секунду, если для компенсации этой ошибки интегрирования не используются другие источники датчиков.
+	else
+	{
+		float koef = 0.5;		 // Коефициент для комплементарного фильтра
+		static float complX = 0; // Значение после комплементарного фильтра
+		static float complY = 0;
+		static float complYaw = 0;
+
+		float temp_linX = msg_Modul2Data_.icm.linear.x - offsetX; // Вычитаем bias который посчитали когда стояли неподвижно
+		float temp_linY = msg_Modul2Data_.icm.linear.y - offsetY;
+		float temp_linYaw = norm_angleDelta - offsetYaw; // Коррекция (вычитание bias из сырого линейного ускорения).
+
+		complX = filtrComplem(koef, complX, temp_linX); // Низкочастотная фильтрация полученного ускорения (экспоненциальным фильтром).
+		complY = filtrComplem(koef, complY, temp_linY);
+		complYaw = filtrComplem(koef, complYaw, temp_linYaw);
+		// ROS_INFO("    Compl x= % .3f y= % .3f  z= % .3f", complX, complY, complZ);
+		ret.vx = mpu_.vx + (complX)*dt; // Линейное ускорение по оси метры за секунуду умножаем на интервал, получаем ускорение за интервал и суммируем в скорость линейную по оси
+		ret.vy = mpu_.vy + (complY)*dt;
+		ret.vth = (complYaw) / dt; // Вычисляем разницу углов в радианах/ делим на интервал получаем угловую скорость в радинах/секунду
+
+		// ROS_INFO("    Average  x = % .3f y = % .3f z = % .3f ", temp_mpu.linear.x, temp_mpu.linear.y, temp_mpu.linear.z);
+	}
 
 	ROS_INFO_THROTTLE(RATE_OUTPUT, "    Twist MPU   dt = %.3f | vx= %.3f vy= %.3f | vth= %.3f gradus/sec %.4f rad/sec |", dt, ret.vx, ret.vy, RAD2DEG(ret.vth), ret.vth);
 	// ROS_INFO("--- calcTwistFromMpu");
 	return ret;
-
-	/*
-	SMpu mpu_;
-	mpu_.linear.x = msg_Modul2Data_.bno.linear.x; // Копируем в локальную перемнную нужные параметры
-	mpu_.linear.y = msg_Modul2Data_.bno.linear.y;
-	mpu_.linear.z = msg_Modul2Data_.bno.linear.z;
-	mpu_.angleEuler.z = msg_Modul2Data_.bno.angleEuler.yaw;
-
-	float koef_ = 0.2;
-	static double predAngleZ = 0;
-
-	// static unsigned long time = micros();		 // Время предыдущего расчета// Функция из WiringPi.// Замеряем интервалы по времени между запросами данных
-	// unsigned long time_now = micros();			 // Время в которое делаем расчет
-	// double dt = ((time_now - time) / 1000000.0); // Интервал расчета переводим сразу в секунды Находим интревал между текущим и предыдущим расчетом в секундах
-	// time = time_now;
-
-	static float offsetX = 0;
-	static float offsetY = 0;
-	static float offsetZ = 0;
-	static float complX = 0; // Значение после комплементарного фильтра
-	static float complY = 0; // Значение после комплементарного фильтра
-	static float complZ = 0; // Значение после комплементарного фильтра
-
-	// ROS_INFO("    Mpu x = % .3f y = % .3f z = % .3f | dt = % .3f ", mpu_.linear.x, mpu_.linear.y, mpu_.linear.z, dt);
-
-	if (Data2Driver.control.speedL == 0 && Data2Driver.control.speedR == 0) // Если стоим на месте, то считаем офсет. Как только тронемся, его и будем применять до следующей остановки
-	{
-		offsetX = autoOffsetX(mpu_.linear.x);
-		offsetY = autoOffsetY(mpu_.linear.y);
-		offsetZ = autoOffsetZ(mpu_.linear.z);
-	}
-	// printf(" |offset % .4f % .4f | ", offsetX, offsetY);
-	// ROS_INFO("    Offset x= % .4f y= % .4f z= % .4f ", offsetX, offsetY, offsetZ);
-
-	mpu_.linear.x = mpu_.linear.x - offsetX;
-	mpu_.linear.y = mpu_.linear.y - offsetY;
-	mpu_.linear.z = mpu_.linear.z - offsetZ;
-
-	// ROS_INFO("    Average  x = % .3f y = % .3f z = % .3f ", mpu_.linear.x, mpu_.linear.y, mpu_.linear.z);
-	// printf(" |Average % .3f | ", mpu_.linear.y);
-
-	complX = filtrComplem(koef_, complX, mpu_.linear.x);
-	complY = filtrComplem(koef_, complY, mpu_.linear.y);
-	complZ = filtrComplem(koef_, complZ, mpu_.linear.z);
-	// ROS_INFO("    Compl x= % .3f y= % .3f  z= % .3f", complX, complY, complZ);
-
-	//Примечание. Сигнал линейного ускорения обычно не может быть интегрирован для восстановления скорости или дважды интегрирован для восстановления положения.
-	// Ошибка обычно становится больше сигнала менее чем за 1 секунду, если для компенсации этой ошибки интегрирования не используются другие источники датчиков.
-	ret.vx += complX * dt; // Линейное ускорение по оси метры за секунуду умножаем на интервал, получаем ускорение за интервал и суммируем в скорость линейную по оси
-	ret.vy += complY * dt; // Линейное ускорение по оси метры за секунуду
-
-	// double delta_th = -(mpu_.angleEuler.z - predAngleZ); // считаем величину изменения угла, тут она в градусах
-	// // ROS_INFO("    predAngleZ = % .3f mpu_.angleEuler.z= % .3f delta_th= % .3f", predAngleZ, mpu_.angleEuler.z, delta_th);
-	// predAngleZ = mpu_.angleEuler.z;
-	// if (delta_th > 180)
-	// 	(delta_th = delta_th - 360); // Если
-	// if (delta_th < -180)
-	// 	(delta_th = delta_th + 360);  // Если
-	// ret.vth = DEG2RAD(delta_th) / dt; // превращаем в радианы в секунды Угловая скорость вращения
-
-	// float kk = 0.05;
-	// g_linAngVel.filtr_mpu.vth = g_linAngVel.filtr_mpu.vth * (1 - kk) + ret.vth * kk; // Фильтр
-
-	// if (msg_Speed.speedL == 0 && msg_Speed.speedR == 0) // Если обе скорости равны нулю то обнуляем расчеты по mpu. Так как стоим на мете и никаких линейных скоростей быть не может. Стои на месте.
-	// {
-	// 	ret.vx = ret.vy = ret.vth = 0;
-	// 	// ROS_INFO("    msg_Speed.speedL = %.3f speedR = %.3f", msg_Speed.speedL, msg_Speed.speedR);
-	// }
-	*/
 	// printf(" ||| LinearSpeed vx= % .3f vy=  % .3f vth= % .6f | ", ret.twist.vx, ret.twist.vy, ret.twist.vth);
 	// printf(" |Vel= % .3f % .3f % .3f\n", ret.twist.vx, ret.twist.vy, ret.twist.vth);
 }
@@ -769,7 +756,7 @@ float autoOffsetY(float data_)
 	// printf(" sumX= % .3f ", sum);
 	return sum / k;
 }
-float autoOffsetZ(float data_)
+float autoOffsetYaw(float data_)
 {
 	static uint16_t i = 0;
 	static uint16_t k = 0;
@@ -1298,7 +1285,7 @@ ros::Time timeStopping(pb_msgs::SSetSpeed msgSpeed_)
 	static float speedPrevR = msgSpeed_.speedR;
 	// ROS_INFO("    SumSpeed  %f", speed); //
 
-	if (msgSpeed_.speedL != 0 || msgSpeed_.speedR != 0) // Если текущая скорость не ноль по люблму колесу то возвращаем текущее время
+	if (msgSpeed_.speedL != 0 || msgSpeed_.speedR != 0) // Если текущая скорость не ноль по любому колесу то возвращаем текущее время
 	{
 		timeRet = ros::Time::now();
 	}
