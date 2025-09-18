@@ -50,9 +50,9 @@ STwistDt calcTwistFromWheel(pb_msgs::SSetSpeed msg_Speed_);							  // --- Ки�
 STwistDt calcTwistFromWheel(pb_msgs::SSetSpeed msg_Speed_);							  // Обсчитываем линейные и угловую скорость по данным скоростей от энкодера с колес
 STwistDt calcTwistFromMpu(STwistDt mpu_, pb_msgs::Struct_Modul2Data msg_Modul2Data_); // Обсчитываем линейные и угловую скорость датчику IMU
 STwistDt calcTwistFused(STwistDt odomTwist_, STwistDt mpuTwist_);					  // Функция комплементации угловых скоростей полученных с колес и с датчика MPU и угла поворота
-float autoOffsetX(float data_);														  // Функция считаем скользящее среднее из 128 элементов как офсет значений при стоянии на месте
-float autoOffsetY(float data_);														  // Функция считаем скользящее среднее из 128 элементов как офсет значений при стоянии на месте
-float autoOffsetYaw(float data_);													  // Функция считаем скользящее среднее из 128 элементов как офсет значений при стоянии на месте
+float autoOffsetX(float data_, int k_);												  // Функция считаем скользящее среднее из 128 элементов как офсет значений при стоянии на месте
+float autoOffsetY(float data_, int k_);												  // Функция считаем скользящее среднее из 128 элементов как офсет значений при стоянии на месте
+float autoOffsetYaw(float data_, int k_);											  // Функция считаем скользящее среднее из 128 элементов как офсет значений при стоянии на месте
 float filtrComplem(float koef_, float oldData_, float newData_);					  // функция фильтрации, берем старое значение с некоторым весом
 // void calculateOdometryFromMpu(SMpu mpu_);					   // Обработка пришедших данных.Обсчитываем одометрию по энкодеру
 
@@ -569,26 +569,25 @@ STwistDt calcTwistFromMpu(STwistDt mpu_, pb_msgs::Struct_Modul2Data msg_Modul2Da
 	static float offsetY = 0;
 	static float offsetYaw = 0;
 	// static float complZ = 0; // Значение после комплементарного фильтра
+	static float complX = 0; // Значение после комплементарного фильтра
+	static float complY = 0;
+	static float complYaw = 0;
 
 	// Проверяем условие остановки (например, от одометрии)
 	if (dtStoping >= 0.1) // Если стоим уже больше 0,1 секунды то // Если стоим на месте, то считаем офсет. Как только тронемся, его и будем применять до следующей остановки
-	// if (0) // Если стоим уже больше 0,1 секунды то // Если стоим на месте, то считаем офсет. Как только тронемся, его и будем применять до следующей остановки
 	{
-		offsetX = autoOffsetX(msg_Modul2Data_.icm.linear.x); // Калибровка bias (во время остановки).
-		offsetY = autoOffsetY(msg_Modul2Data_.icm.linear.x);
-		offsetYaw = autoOffsetYaw(norm_angleDelta);
+		offsetX = autoOffsetX(msg_Modul2Data_.icm.linear.x, 64); // Калибровка bias (во время остановки).
+		offsetY = autoOffsetY(msg_Modul2Data_.icm.linear.y, 64);
+		offsetYaw = autoOffsetYaw(norm_angleDelta, 64);
 		ret.vx = ret.vy = ret.vth = 0; // ЖЕСТКО СБРАСЫВАЕМ ВСЕ СКОРОСТи В НОЛЬ Так как стоим на месте и никаких линейных скоростей быть не может. Стоим на месте.
-
-		ROS_INFO("    Offset x= %+8.4f y= %+8.4f yaw= %+8.4f ", offsetX, offsetY, offsetYaw);
+		complX = complY = complYaw = 0;
+		ROS_INFO("    dtStoping Offset x= %+8.6f y= %+8.6f yaw= %+8.6f ||| dtStoping = %f ||| x = %f y = %f yaw = %f", offsetX, offsetY, offsetYaw, dtStoping, msg_Modul2Data_.icm.linear.x, msg_Modul2Data_.icm.linear.y, norm_angleDelta);
 	}
 	// Примечание. Сигнал линейного ускорения обычно не может быть интегрирован для восстановления скорости или дважды интегрирован для восстановления положения.
 	//  Ошибка обычно становится больше сигнала менее чем за 1 секунду, если для компенсации этой ошибки интегрирования не используются другие источники датчиков.
 	else
 	{
-		float koef = 0.5;		 // Коефициент для комплементарного фильтра
-		static float complX = 0; // Значение после комплементарного фильтра
-		static float complY = 0;
-		static float complYaw = 0;
+		float koef = 0.2; // Коефициент для комплементарного фильтра
 
 		float temp_linX = msg_Modul2Data_.icm.linear.x - offsetX; // Вычитаем bias который посчитали когда стояли неподвижно
 		float temp_linY = msg_Modul2Data_.icm.linear.y - offsetY;
@@ -605,7 +604,7 @@ STwistDt calcTwistFromMpu(STwistDt mpu_, pb_msgs::Struct_Modul2Data msg_Modul2Da
 		// ROS_INFO("    Average  x = % .3f y = % .3f z = % .3f ", temp_mpu.linear.x, temp_mpu.linear.y, temp_mpu.linear.z);
 	}
 
-	ROS_INFO_THROTTLE(RATE_OUTPUT, "    Twist MPU   dt = %.3f | vx= %.3f vy= %.3f | vth= %.3f gradus/sec %.4f rad/sec |", dt, ret.vx, ret.vy, RAD2DEG(ret.vth), ret.vth);
+	ROS_INFO_THROTTLE(RATE_OUTPUT, "    Twist MPU   dt = %.3f | vx= %.3f vy= %.3f | vth= %.3f gradus/sec %.6f rad/sec | norm = %.6f", dt, ret.vx, ret.vy, RAD2DEG(ret.vth), ret.vth, norm_angleDelta / dt);
 	// ROS_INFO("--- calcTwistFromMpu");
 	return ret;
 	// printf(" ||| LinearSpeed vx= % .3f vy=  % .3f vth= % .6f | ", ret.twist.vx, ret.twist.vy, ret.twist.vth);
@@ -622,7 +621,7 @@ STwistDt calcTwistFused(STwistDt odomTwist_, STwistDt mpuTwist_)
 		ROS_INFO("    calcTwistFused dt< 0.003 !!!!  dt = %f", dt);
 		return ret;
 	}
-	float koef = 0.5; // Коефициант по умолчанию.Пополам.
+	float koef = 0.2; // Коефициант по умолчанию.Пополам.
 
 	ret.vx = odomTwist_.vx * (1 - koef) + mpuTwist_.vx * koef;
 	ret.vy = odomTwist_.vy * (1 - koef) + mpuTwist_.vy * koef;
@@ -722,53 +721,53 @@ STwistDt calcTwistFused(STwistDt odomTwist_, STwistDt mpuTwist_)
 	*/
 }
 
-float autoOffsetX(float data_) // УМНЫЙ РАСЧЕТ УБИРАЮЩИЙ ПЛАВАНИЕ УСКОРЕНИЯ С ДАТЧИКА BNO055
+float autoOffsetX(float data_, int k_) // УМНЫЙ РАСЧЕТ УБИРАЮЩИЙ ПЛАВАНИЕ УСКОРЕНИЯ С ДАТЧИКА BNO055
 {
 	static uint16_t i = 0;
 	static uint16_t k = 0;
 	static float sum = 0;
-	if (k < 128)
+	if (k < k_)
 		k++;
 	else
 		sum = sum - linearOffsetX[i]; // Убираем из среднего прежнее значение
 	linearOffsetX[i] = data_;		  // Меняем значение в массиве
 	sum = sum + linearOffsetX[i];	  // Добавляем в среднее новое значение
 	i++;
-	if (i >= 128)
+	if (i >= k_)
 		i = 0;
 	// printf(" sumX= % .3f ", sum);
 	return sum / k;
 }
-float autoOffsetY(float data_)
+float autoOffsetY(float data_, int k_)
 {
 	static uint16_t i = 0;
 	static uint16_t k = 0;
 	static float sum = 0;
-	if (k < 128)
+	if (k < k_)
 		k++;
 	else
 		sum = sum - linearOffsetY[i]; // Убираем из среднего прежнее значение
 	linearOffsetY[i] = data_;		  // Меняем значение в массиве
 	sum = sum + linearOffsetY[i];	  // Добавляем в среднее новое значение
 	i++;
-	if (i >= 128)
+	if (i >= k_)
 		i = 0;
 	// printf(" sumX= % .3f ", sum);
 	return sum / k;
 }
-float autoOffsetYaw(float data_)
+float autoOffsetYaw(float data_, int k_)
 {
 	static uint16_t i = 0;
 	static uint16_t k = 0;
 	static float sum = 0;
-	if (k < 128)
+	if (k < k_)
 		k++;
 	else
 		sum = sum - linearOffsetZ[i]; // Убираем из среднего прежнее значение
 	linearOffsetZ[i] = data_;		  // Меняем значение в массиве
 	sum = sum + linearOffsetZ[i];	  // Добавляем в среднее новое значение
 	i++;
-	if (i >= 128)
+	if (i >= k_)
 		i = 0;
 	// printf(" sumX= % .3f ", sum);
 	return sum / k;

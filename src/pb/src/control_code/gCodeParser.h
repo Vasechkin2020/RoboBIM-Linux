@@ -307,6 +307,7 @@ private:
     // Выполнение G4 (пауза)
     void executeG4(const GCodeCommand &cmd)
     {
+        executePause();                              // Добавляем паузу перед любой операцией для стабилизации робота в ключевых точках.
         std::stringstream ss;                     // Для формирования лога
         float pause_ms = cmd.has_p ? cmd.p : 0.0; // Длительность паузы в мс
         ss << "G4: Pause for " << pause_ms << " ms";
