@@ -104,6 +104,14 @@ float linearOffsetX[128] = {0};
 float linearOffsetY[128] = {0};
 float linearOffsetZ[128] = {0};
 
+float g_linRaw = 0;
+float g_linBias = 0;
+float g_linData = 0;
+float g_linFiltr = 0;
+float g_linFused = 0;
+float g_linAccOdom = 0;
+float g_linPorog = 0;
+
 bool modeColibrovka = false;
 SPose transformLidar2Rotation; // данные для трансформации из одной системы координат в другую из Lidar в Rotation
 std::string log_name = "pos_node";

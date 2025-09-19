@@ -308,10 +308,6 @@ void CTopic::publicationLinAngVel() // Вывод в топик данных с 
     msg.vx.wheel = g_linAngVel.odom.vx;
     msg.vx.fused = g_linAngVel.fused.vx;
 
-    msg.vy.mpu = g_linAngVel.mpu.vy;
-    msg.vy.wheel = g_linAngVel.odom.vy;
-    msg.vy.fused = g_linAngVel.fused.vy;
-
     msg.vth.mpu = g_linAngVel.mpu.vth;
     msg.vth.wheel = g_linAngVel.odom.vth;
     msg.vth.fused = g_linAngVel.fused.vth;
@@ -319,6 +315,14 @@ void CTopic::publicationLinAngVel() // Вывод в топик данных с 
     msg.dt.mpu = g_linAngVel.mpu.dt;
     msg.dt.wheel = g_linAngVel.odom.dt;
     msg.dt.fused = g_linAngVel.fused.dt;
+
+    msg.raw = g_linRaw;
+    msg.bias = g_linBias;
+    msg.data = g_linData;
+    msg.filtr = g_linFiltr;
+    msg.fused = g_linFused;
+    msg.accOdom = g_linAccOdom;
+    msg.porog = g_linPorog;
 
     pub_linAngVel.publish(msg); // Публикуем информацию по позиции лидара
 }

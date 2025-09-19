@@ -184,11 +184,11 @@ private:
         publishMessage(ss.str());             // Публикация
     }
     // Добавление паузы в массив исполнения
-    void executePause()
+    void executePause(float time_)
     {
         SCommand temp;
         temp.mode = 1;
-        temp.duration = 2000;
+        temp.duration = time_;
         temp.velL = 0.0;
         temp.velR = 0.0;
         commandArray.push_back(temp);
@@ -197,7 +197,7 @@ private:
     // Выполнение G1 (линейное перемещение или поворот)
     void executeG1(const GCodeCommand &cmd)
     {
-        executePause();                              // Добавляем паузу перед любой операцией для стабилизации робота в ключевых точках.
+        executePause(1000);                              // Добавляем паузу перед любой операцией для стабилизации робота в ключевых точках.
         std::stringstream ss;                        // Для формирования лога
         float feed_rate = cmd.has_f ? cmd.f : 100.0; // Скорость подачи, по умолчанию 100
 
@@ -258,7 +258,7 @@ private:
     // Выполнение G2 (дуга по часовой стрелке)
     void executeG2(const GCodeCommand &cmd)
     {
-        executePause();                              // Добавляем паузу перед любой операцией для стабилизации робота в ключевых точках.
+        executePause(1000);                              // Добавляем паузу перед любой операцией для стабилизации робота в ключевых точках.
         std::stringstream ss;                        // Для формирования лога
         float center_i = cmd.has_i ? cmd.i : 0.0;    // Смещение центра по X
         float center_j = cmd.has_j ? cmd.j : 0.0;    // Смещение центра по Y
@@ -283,7 +283,7 @@ private:
     // Выполнение G3 (дуга против часовой стрелки)
     void executeG3(const GCodeCommand &cmd)
     {
-        executePause();                              // Добавляем паузу перед любой операцией для стабилизации робота в ключевых точках.
+        executePause(1000);                              // Добавляем паузу перед любой операцией для стабилизации робота в ключевых точках.
         std::stringstream ss;                        // Для формирования лога
         float center_i = cmd.has_i ? cmd.i : 0.0;    // Смещение центра по X
         float center_j = cmd.has_j ? cmd.j : 0.0;    // Смещение центра по Y
@@ -308,7 +308,6 @@ private:
     // Выполнение G4 (пауза)
     void executeG4(const GCodeCommand &cmd)
     {
-        executePause();                              // Добавляем паузу перед любой операцией для стабилизации робота в ключевых точках.
         std::stringstream ss;                     // Для формирования лога
         float pause_ms = cmd.has_p ? cmd.p : 0.0; // Длительность паузы в мс
         ss << "G4: Pause for " << pause_ms << " ms";
@@ -317,6 +316,8 @@ private:
         ROS_INFO("%s", ss.str().c_str());         // Вывод лога
         ros::Duration(pause_ms / 1000.0).sleep(); // Ожидание
         publishMessage(ss.str());                 // Публикация
+
+        executePause(cmd.p);                              // Добавляем паузу перед любой операцией для стабилизации робота в ключевых точках.
     }
 
     // Выполнение G5 (Вращение колесами  определенное время по часовой)
@@ -417,7 +418,7 @@ private:
     // Выполнение G28 (возврат домой)
     void executeG28(const GCodeCommand &cmd)
     {
-        executePause();       // Добавляем паузу перед любой операцией для стабилизации робота в ключевых точках.
+        executePause(1000);       // Добавляем паузу перед любой операцией для стабилизации робота в ключевых точках.
         std::stringstream ss; // Для формирования лога
         current_x_ = 0.0;     // Сброс X
         current_y_ = 0.0;     // Сброс Y
@@ -456,7 +457,7 @@ private:
     // Выполнение M3 (включение модуля печати)
     void executeM3(const GCodeCommand &cmd)
     {
-        executePause();       // Добавляем паузу перед любой операцией для стабилизации робота в ключевых точках.
+        executePause(1000);       // Добавляем паузу перед любой операцией для стабилизации робота в ключевых точках.
         std::stringstream ss; // Для формирования лога
         ss << "M3: Turn on print module";
         if (!cmd.comment.empty())
@@ -468,7 +469,7 @@ private:
     // Выполнение M5 (выключение модуля печати)
     void executeM5(const GCodeCommand &cmd)
     {
-        executePause();       // Добавляем паузу перед любой операцией для стабилизации робота в ключевых точках.
+        executePause(1000);       // Добавляем паузу перед любой операцией для стабилизации робота в ключевых точках.
         std::stringstream ss; // Для формирования лога
         ss << "M5: Turn off print module";
         if (!cmd.comment.empty())
