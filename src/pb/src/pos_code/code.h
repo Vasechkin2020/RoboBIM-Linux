@@ -580,13 +580,6 @@ STwistDt calcTwistFromMpu(STwistDt mpu_, pb_msgs::Struct_Modul2Data msg_Modul2Da
 		return ret;
 	}
 
-	float angleDelta = DEG2RAD(msg_Modul2Data_.icm.angleEuler.yaw - pred_Angle); // Углы в градусах. Конвертируем в радианы
-	pred_Angle = msg_Modul2Data_.icm.angleEuler.yaw;							 // Сохраняем для следующего расчета
-	norm_angleDelta = normalize_angle(angleDelta);
-	// ROS_INFO("   yaw= %f angleDelta = %f norm_angleDelta= %f vth= %f", msg_Modul2Data_.icm.angleEuler.yaw, angleDelta, norm_angleDelta, ret.vth);
-	bias_linYaw = norm_angleDelta - offsetYaw;			 // Коррекция (вычитание bias из сырого линейного ускорения).
-	complYaw = filtrComplem(0.2, complYaw, bias_linYaw); // скорость изменения угла итоговая отфильтрованная
-
 	// Считаем линейное ускорение. Маджик при ускорениях показывает не правильно и углы roll pitch и ускорения.!!!!!!!!!!!!!
 	a_lin_odom = (odom_.vx - pred_Vel) / dt; // Находим ускорение по одометрии как разницу скоростей делить на время
 	pred_Vel = odom_.vx;					 // Сохраняем для следующего расчета
@@ -604,11 +597,11 @@ STwistDt calcTwistFromMpu(STwistDt mpu_, pb_msgs::Struct_Modul2Data msg_Modul2Da
 	if (flagAccel) // Если сейчас есть ускорение То фиксируем угол pitch и дальше его приращение считаем только по гироскопу. По этому углу находим вектор гравитации и его отнимаем от акселерометра
 	{
 		pitch = pitch + (-msg_Modul2Data_.icm.gyro.x * dt); // Интеграция гироскопа к углу pitch// Взяьть угол и его дальше интегрировать по гироскопу
-		g_x = -G_TO_M_S2 * sinf(DEG2RAD(pitch));			 // Проекция гравитации на X// Найти проекцию н аось Х и по ней почитать гравитацию
-		a_lin_X = msg_Modul2Data_.icm.accel.x - (g_x);	 // Линейное ускорение по X// Вычесть из текущего аксерометра эту гравитацию// Это и будет текущее линейное ускорение
+		g_x = -G_TO_M_S2 * sinf(DEG2RAD(pitch));			// Проекция гравитации на X// Найти проекцию н аось Х и по ней почитать гравитацию
+		a_lin_X = msg_Modul2Data_.icm.accel.x - (g_x);		// Линейное ускорение по X// Вычесть из текущего аксерометра эту гравитацию// Это и будет текущее линейное ускорение
 	}
-	else // то считаем что теперь линейное ускорение от Маджика правильное и используем его
-	{
+	else												  // то считаем что теперь линейное ускорение от Маджика правильное и используем его
+	{													  // ТУТ СДЕЛАТЬ ЧТО ЕЩЕ 100 МСЕКУНД СЧИТАЕМ ПО АКСЕЛЮ
 		a_lin_X = msg_Modul2Data_.icm.linear.x - offsetX; // Вычитаем bias который посчитали когда стояли неподвижно
 		pitch = msg_Modul2Data_.icm.angleEuler.pitch;	  // Pitch теперь тоже обычный
 	}
@@ -616,7 +609,7 @@ STwistDt calcTwistFromMpu(STwistDt mpu_, pb_msgs::Struct_Modul2Data msg_Modul2Da
 
 	//===
 	// Тут надо комплементацию с данными с одометрии делать Комплементировать и линейное ускорение и уголовую скорость
-	float ALFA_FUSED = 0.5;
+	float ALFA_FUSED = 0.8;											   // Насколько верим IMU
 	fused_accel = complX * ALFA_FUSED + (1 - ALFA_FUSED) * a_lin_odom; // Взвешенное среднее двух ускорений
 
 	float ALFA_VX = 0.95; // Насколько верим IMU
@@ -624,14 +617,26 @@ STwistDt calcTwistFromMpu(STwistDt mpu_, pb_msgs::Struct_Modul2Data msg_Modul2Da
 	ret.vx = ALFA_VX * (mpu_.vx + (fused_accel * dt)) + (1 - ALFA_VX) * odom_.vx; // Комплементарный фильтр
 
 	//===
+
+	float angleDelta = DEG2RAD(msg_Modul2Data_.icm.angleEuler.yaw - pred_Angle); // Углы в градусах. Конвертируем в радианы
+	pred_Angle = msg_Modul2Data_.icm.angleEuler.yaw;							 // Сохраняем для следующего расчета
+	norm_angleDelta = normalize_angle(angleDelta);								 // Вычисляем изменение угла и нормализуем
+	bias_linYaw = norm_angleDelta - offsetYaw;									 // Коррекция (вычитание bias из сырого линейного ускорения).// 2. Убираем смещение и фильтруем изменение угла
+	complYaw = filtrComplem(0.2, complYaw, bias_linYaw);						 // скорость изменения угла итоговая отфильтрованная
+
 	float ALFA_YAW = 0.5;
 	static float fused_yaw_pred = 0;
-	fused_yaw = (complYaw / dt) * ALFA_YAW + (1 - ALFA_YAW) * odom_.vth; // Взвешенное среднее двух угловых скоростей
-	float fused_yaw_acc = (fused_yaw_pred - fused_yaw) / dt;			 // Разница скоростей это ускорение?
-	fused_yaw_pred = fused_yaw;
 
-	float ALFA_VTH = 0.95; // Насколько верим IMU
-	ret.vth = ALFA_VTH * (mpu_.vth + (fused_yaw_acc * dt)) + (1 - ALFA_VTH) * odom_.vth; // Комплементарный фильтр
+	// fused_yaw = (complYaw / dt) * ALFA_YAW + (1 - ALFA_YAW) * odom_.vth; // Взвешенное среднее двух угловых скоростей
+	fused_yaw = complYaw / dt; // 3. Получаем текущую угловую скорость по IMU
+
+	float fused_yaw_acc = (fused_yaw - fused_yaw_pred) / dt; // Разница скоростей это ускорение?
+	fused_yaw_pred = fused_yaw;								 // обновляем для следующего шага
+
+	float predicted_vth = mpu_.vth + fused_yaw_acc * dt; // 5. Предсказываем скорость: v(t) = v(t-1) + a * dt
+
+	float ALFA_VTH = 0.95;											 // Насколько верим IMU
+	ret.vth = ALFA_VTH * predicted_vth + (1 - ALFA_VTH) * odom_.vth; //  Комплементарная коррекция по одометрии
 	//===
 
 	// Проверяем условие остановки (например, от одометрии). Если стоим то неважно что выше насчитали.Все обнуляем.
