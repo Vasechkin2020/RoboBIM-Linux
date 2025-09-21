@@ -304,25 +304,32 @@ void CTopic::publicationLinAngVel() // Вывод в топик данных с 
 {
     pb_msgs::SLinAngVel msg; // Обобщенные данные в моем формате о всех вариантах расчета позиции
 
-    msg.vx.mpu = g_linAngVel.mpu.vx;
     msg.vx.wheel = g_linAngVel.odom.vx;
     msg.vx.fused = g_linAngVel.fused.vx;
 
-    msg.vth.mpu = g_linAngVel.mpu.vth;
     msg.vth.wheel = g_linAngVel.odom.vth;
     msg.vth.fused = g_linAngVel.fused.vth;
 
-    msg.dt.mpu = g_linAngVel.mpu.dt;
     msg.dt.wheel = g_linAngVel.odom.dt;
     msg.dt.fused = g_linAngVel.fused.dt;
 
-    msg.raw = g_linRaw;
-    msg.bias = g_linBias;
-    msg.data = g_linData;
-    msg.filtr = g_linFiltr;
-    msg.fused = g_linFused;
-    msg.accOdom = g_linAccOdom;
-    msg.porog = g_linPorog;
+    msg.linRaw = g_linRaw;
+    msg.complX  = g_complX;
+
+   	msg.flagAccel = g_flagAccel;
+	msg.pitch = g_pitch;
+
+	msg.offsetX = g_offsetX;
+	msg.a_lin_X = g_a_lin_X;
+	msg.g_x = g_g_x;
+	msg.a_lin_odom = g_a_lin_odom;
+	msg.fused_accel = g_fused_accel;
+
+	msg.odomVth = g_odomVth;
+	msg.offsetYaw = g_offsetYaw;
+	msg.complYaw = g_complYaw;
+	msg.fused_yaw = g_fused_yaw;
+
 
     pub_linAngVel.publish(msg); // Публикуем информацию по позиции лидара
 }

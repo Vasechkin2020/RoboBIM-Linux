@@ -104,13 +104,21 @@ float linearOffsetX[128] = {0};
 float linearOffsetY[128] = {0};
 float linearOffsetZ[128] = {0};
 
-float g_linRaw = 0;
-float g_linBias = 0;
-float g_linData = 0;
-float g_linFiltr = 0;
-float g_linFused = 0;
-float g_linAccOdom = 0;
-float g_linPorog = 0;
+float g_linRaw = 0; // Все переменные для отладки
+float g_offsetX = 0;
+float g_offsetYaw = 0;
+
+float g_a_lin_X = 0;
+float g_a_lin_odom = 0;
+float g_complX = 0;
+float g_complYaw = 0;
+
+float g_fused_accel = 0;
+float g_fused_yaw = 0;
+float g_pitch = 0;
+float g_g_x = 0;
+float g_flagAccel = 0;
+float g_odomVth = 0;
 
 bool modeColibrovka = false;
 SPose transformLidar2Rotation; // данные для трансформации из одной системы координат в другую из Lidar в Rotation
@@ -166,7 +174,6 @@ struct STwistDt
 
 struct SLinAngVel
 {
-    STwistDt mpu;       // Скорости полученные по mpu и интревал который прошел с предыдущего измерения
     STwistDt odom;     // Скорости полученные по ecoder и интревал который прошел с предыдущего измерения
     STwistDt fused;    // Обьединенные комплементратный способом Скорости и интервал
 };
@@ -175,9 +182,7 @@ struct SLinAngVel
 struct SPoseRotation
 {
     SPose odom;  // Расчет чисто по одометрии колес без комплементации с чем-либо
-    SPose mpu;  // Расчет позиции по данным с IMU
     SPose fused; // Комплементация ИТОГОВАЯ ПОЗИЦИЯ ИСПОЛЬЗУЕМАЯ ДАЛЕЕ КАК ОСНОВНАЯ
-    SPose mode;   // Расчет чисто по одометрии колес без комплементации с чем-либо
     // float theta = 0; // Единый угол направления. Получается комплементаций угла с датчика BNO055 и поправками с других датчиков от уплывания с очень маленьким коефициентом. Так как с BNO055 очень точно все!!!
     // float angleAccelGyro = 0; // Угол посчитанный по аксельрометру и гироскопу отдельным алгоритмом
 };

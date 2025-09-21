@@ -149,10 +149,8 @@ void startPosition(geometry_msgs::Pose2D &startPose2d_)
 	g_poseBase.laser = g_poseBase.fused;
 
 	g_poseRotation.fused = convertBase2Rotation(g_poseBase.fused, "fused"); // Конвентируем координаты заданные для точки в системе Base в систему Rotation
+	g_poseRotation.odom = g_poseRotation.fused;								// Первоначальная установка позиции
 	ROS_INFO("    start g_poseRotation.fused x= %.3f y= %.3f theta= %.3f ", g_poseRotation.fused.x, g_poseRotation.fused.y, g_poseRotation.fused.th);
-
-	g_poseRotation.odom = g_poseRotation.fused; // Первоначальная установка позиции
-	g_poseRotation.mpu = g_poseRotation.fused;	// Первоначальная установка позиции
 
 	ROS_INFO("--- startPosition");
 }
@@ -539,14 +537,27 @@ STwistDt calcTwistFromMpu(STwistDt mpu_, pb_msgs::Struct_Modul2Data msg_Modul2Da
 	// ROS_INFO_THROTTLE(RATE_OUTPUT,"+++ calcTwistFromMpu");
 	static STwistDt ret;
 
+	float a_lin_X;				 //
+	float bias_linYaw;			 //
+	float a_lin_odom;			 //
 	static float pred_Angle = 0; // Предыдущий угол
-	static float pred_Vel = 0;	 // Предыдущее значение линейной скорости по очи Х
+	static float pred_Vel = 0;	 // Предыдущее значение линейной скорости по оси Х
+	static float pred_Accel = 0; // Предыдущее значение Ускорения по оси Х
 
 	static float offsetX = 0;
 	static float offsetYaw = 0;
 
 	static float complX = 0; // Значение после комплементарного фильтра
 	static float complYaw = 0;
+
+	static bool flagAccel = false; // Флаг есть ускорение или нет. Влияет на то как считаем
+	static float pitch = 0.0f;
+
+	float fused_accel = 0;
+	float fused_yaw = 0;
+	float g_x = 0;
+
+	float norm_angleDelta = 0;
 
 	static ros::Time start_time = ros::Time::now(); // Захватываем начальный момент времени
 	ros::Time end_time = ros::Time::now();			// Захватываем конечный момент времени
@@ -556,18 +567,6 @@ STwistDt calcTwistFromMpu(STwistDt mpu_, pb_msgs::Struct_Modul2Data msg_Modul2Da
 	ret.dt = dt; // Сохраняем новое dt
 	// ROS_INFO("    dt = %f sec", dt);
 
-	// float linear_x_m_s2 = msg_Modul2Data_.icm.linear.x * G_TO_M_S2; // Преобразуем в м/с²
-	float linear_x_m_s2 = msg_Modul2Data_.icm.linear.x; // Преобразуем в м/с²
-
-	float angleDelta = DEG2RAD(msg_Modul2Data_.icm.angleEuler.yaw - pred_Angle); // Углы в градусах. Конвертируем в радианы
-	pred_Angle = msg_Modul2Data_.icm.angleEuler.yaw;							 // Сохраняем для следующего расчета
-	float norm_angleDelta = normalize_angle(angleDelta);
-	// ROS_INFO("   yaw= %f angleDelta = %f norm_angleDelta= %f vth= %f", msg_Modul2Data_.icm.angleEuler.yaw, angleDelta, norm_angleDelta, ret.vth);
-
-	float bias_linX;
-	float accel_odom;
-	float accel_porog;
-
 	if (dt < 0.003) // При первом запуске просто выходим из функции
 	{
 		ROS_INFO("    First calcTwistFromMpu dt< 0.003 !!!! dt = %f", dt);
@@ -576,54 +575,89 @@ STwistDt calcTwistFromMpu(STwistDt mpu_, pb_msgs::Struct_Modul2Data msg_Modul2Da
 		ret.vth = 0;									 //
 		pred_Angle = msg_Modul2Data_.icm.angleEuler.yaw; // Сохраняем для следующего расчета
 		pred_Vel = odom_.vx;							 // Предыдущая скорость
-		complX = linear_x_m_s2;							 // Первое значение для фильтра
+		pred_Accel = a_lin_odom;						 // Сохраняем для следующего расчета
+		complX = msg_Modul2Data_.icm.linear.x;			 // Первое значение для фильтра
 		return ret;
 	}
 
-	// Проверяем условие остановки (например, от одометрии)
-	if (dtStoping >= 0.3) // Если стоим уже больше 0,1 секунды то // Если стоим на месте, то считаем офсет. Как только тронемся, его и будем применять до следующей остановки
+	float angleDelta = DEG2RAD(msg_Modul2Data_.icm.angleEuler.yaw - pred_Angle); // Углы в градусах. Конвертируем в радианы
+	pred_Angle = msg_Modul2Data_.icm.angleEuler.yaw;							 // Сохраняем для следующего расчета
+	norm_angleDelta = normalize_angle(angleDelta);
+	// ROS_INFO("   yaw= %f angleDelta = %f norm_angleDelta= %f vth= %f", msg_Modul2Data_.icm.angleEuler.yaw, angleDelta, norm_angleDelta, ret.vth);
+	bias_linYaw = norm_angleDelta - offsetYaw;			 // Коррекция (вычитание bias из сырого линейного ускорения).
+	complYaw = filtrComplem(0.2, complYaw, bias_linYaw); // скорость изменения угла итоговая отфильтрованная
+
+	// Считаем линейное ускорение. Маджик при ускорениях показывает не правильно и углы roll pitch и ускорения.!!!!!!!!!!!!!
+	a_lin_odom = (odom_.vx - pred_Vel) / dt; // Находим ускорение по одометрии как разницу скоростей делить на время
+	pred_Vel = odom_.vx;					 // Сохраняем для следующего расчета
+	if (a_lin_odom != 0 && pred_Accel == 0)	 // Если ускорения есть, но не было.
 	{
-		offsetX = autoOffsetX(linear_x_m_s2, 64); // Калибровка bias (во время остановки).
-		offsetYaw = autoOffsetYaw(norm_angleDelta, 32);
+		flagAccel = true;
+		pitch = msg_Modul2Data_.icm.angleEuler.pitch; // Запоминаем угол который был в тот миг как начали двигаться с ускорением
+	}
+	if (a_lin_odom == 0 && pred_Accel != 0) // Если ускорения нет, но было,
+	{
+		flagAccel = false;
+	}
+	pred_Accel = a_lin_odom; // Сохраняем для следующего расчета
+
+	if (flagAccel) // Если сейчас есть ускорение То фиксируем угол pitch и дальше его приращение считаем только по гироскопу. По этому углу находим вектор гравитации и его отнимаем от акселерометра
+	{
+		pitch = pitch + (-msg_Modul2Data_.icm.gyro.x * dt); // Интеграция гироскопа к углу pitch// Взяьть угол и его дальше интегрировать по гироскопу
+		g_x = -G_TO_M_S2 * sinf(DEG2RAD(pitch));			 // Проекция гравитации на X// Найти проекцию н аось Х и по ней почитать гравитацию
+		a_lin_X = msg_Modul2Data_.icm.accel.x - (g_x);	 // Линейное ускорение по X// Вычесть из текущего аксерометра эту гравитацию// Это и будет текущее линейное ускорение
+	}
+	else // то считаем что теперь линейное ускорение от Маджика правильное и используем его
+	{
+		a_lin_X = msg_Modul2Data_.icm.linear.x - offsetX; // Вычитаем bias который посчитали когда стояли неподвижно
+		pitch = msg_Modul2Data_.icm.angleEuler.pitch;	  // Pitch теперь тоже обычный
+	}
+	complX = filtrComplem(0.2, complX, a_lin_X); // Низкочастотная фильтрация полученного ускорения (экспоненциальным фильтром).
+
+	//===
+	// Тут надо комплементацию с данными с одометрии делать Комплементировать и линейное ускорение и уголовую скорость
+	float ALFA_FUSED = 0.5;
+	fused_accel = complX * ALFA_FUSED + (1 - ALFA_FUSED) * a_lin_odom; // Взвешенное среднее двух ускорений
+
+	float ALFA_VX = 0.95; // Насколько верим IMU
+	// ret.vx = mpu_.vx + fused_accel * dt; // Линейное ускорение по оси метры за секунуду умножаем на интервал, получаем ускорение за интервал и суммируем в скорость линейную по оси
+	ret.vx = ALFA_VX * (mpu_.vx + (fused_accel * dt)) + (1 - ALFA_VX) * odom_.vx; // Комплементарный фильтр
+
+	//===
+	float ALFA_YAW = 0.5;
+	static float fused_yaw_pred = 0;
+	fused_yaw = (complYaw / dt) * ALFA_YAW + (1 - ALFA_YAW) * odom_.vth; // Взвешенное среднее двух угловых скоростей
+	float fused_yaw_acc = (fused_yaw_pred - fused_yaw) / dt;			 // Разница скоростей это ускорение?
+	fused_yaw_pred = fused_yaw;
+
+	float ALFA_VTH = 0.95; // Насколько верим IMU
+	ret.vth = ALFA_VTH * (mpu_.vth + (fused_yaw_acc * dt)) + (1 - ALFA_VTH) * odom_.vth; // Комплементарный фильтр
+	//===
+
+	// Проверяем условие остановки (например, от одометрии). Если стоим то неважно что выше насчитали.Все обнуляем.
+	if (dtStoping >= 0.3) // Если стоим уже больше 0,3 секунды то // Если стоим на месте, то считаем офсет. Как только тронемся, его и будем применять до следующей остановки
+	{
+		offsetX = autoOffsetX(msg_Modul2Data_.icm.linear.x, 64); // Калибровка bias (во время остановки).
+		offsetYaw = autoOffsetYaw(norm_angleDelta, 64);
 		ret.vx = ret.vth = 0; // ЖЕСТКО СБРАСЫВАЕМ ВСЕ СКОРОСТи В НОЛЬ Так как стоим на месте и никаких линейных скоростей быть не может. Стоим на месте.
-		ROS_INFO("    dtStoping offsetX= %+8.6f offsetYaw= %+8.6f ||| dtStoping = %f ||| linear_x_m_s2 = %f norm_angleDelta = %f", offsetX, offsetYaw, dtStoping, linear_x_m_s2, norm_angleDelta);
+		ROS_INFO("    dtStoping offsetX= %+8.6f offsetYaw= %+8.6f ||| dtStoping = %f ||| msg_Modul2Data_.icm.linear.x = %f norm_angleDelta = %f", offsetX, offsetYaw, dtStoping, msg_Modul2Data_.icm.linear.x, norm_angleDelta);
 	}
-	// Примечание. Сигнал линейного ускорения обычно не может быть интегрирован для восстановления скорости или дважды интегрирован для восстановления положения.
-	//  Ошибка обычно становится больше сигнала менее чем за 1 секунду, если для компенсации этой ошибки интегрирования не используются другие источники датчиков.
-	if (1)
-	{
-		float bias_linYaw = norm_angleDelta - offsetYaw;	 // Коррекция (вычитание bias из сырого линейного ускорения).
-		complYaw = filtrComplem(0.2, complYaw, bias_linYaw); //
-		ret.vth = (complYaw) / dt;							 // Вычисляем разницу углов в радианах/ делим на интервал получаем угловую скорость в радинах/секунду
 
-		bias_linX = linear_x_m_s2 - offsetX;		   // Вычитаем bias который посчитали когда стояли неподвижно
-		complX = filtrComplem(0.2, complX, bias_linX); // Низкочастотная фильтрация полученного ускорения (экспоненциальным фильтром).
-		// ROS_INFO("    Compl x= % .3f y= % .3f  z= % .3f", complX, complY, complZ);
-
-		accel_odom = (odom_.vx - pred_Vel) / dt; // Находим ускорение по одометрии как разницу скоростей делить на время
-		pred_Vel = odom_.vx;					 // Сохраняем для следующего расчета
-
-		accel_porog = complX;
-		// ПОДУМАТЬ А ЕСЛИ НАЗАД ЕДЕМ ТО УСКОРЕНИЕ С МИНУСОМ ИЗ_ЗА СКОРОСТИ С МИНУСОМ ИЛИ КАК ТУТ СЧИТАТЬ
-		if (accel_odom > 0)
-		{
-			if (accel_porog > accel_odom) // Ускорение с IMU не может превышать то ускорение какое получаем с одометрии.
-				accel_porog = accel_odom; //
-			if (accel_porog < 0)		  // Если ускорение в обратную показывает после стабилизации в минус то просто принимаем равное 0
-				accel_porog = 0;
-		}
-
-		ret.vx = mpu_.vx + (accel_porog)*dt; // Линейное ускорение по оси метры за секунуду умножаем на интервал, получаем ускорение за интервал и суммируем в скорость линейную по оси
-
-		// ROS_INFO("    Average  x = % .3f y = % .3f z = % .3f ", temp_mpu.linear.x, temp_mpu.linear.y, temp_mpu.linear.z);
-	}
+	g_flagAccel = flagAccel;
+	g_pitch = pitch;
 
 	g_linRaw = msg_Modul2Data_.icm.linear.x;
-	g_linBias = offsetX;
-	g_linData = bias_linX;
-	g_linFiltr = complX;
-	g_linAccOdom = accel_odom;
-	g_linPorog = accel_porog;
+	g_offsetX = offsetX;
+	g_a_lin_X = a_lin_X;
+	g_g_x = g_x;
+	g_complX = complX;
+	g_a_lin_odom = a_lin_odom;
+	g_fused_accel = fused_accel;
+
+	g_odomVth = odom_.vth;
+	g_offsetYaw = offsetYaw;
+	g_complYaw = complYaw;
+	g_fused_yaw = fused_yaw;
 
 	ROS_INFO_THROTTLE(RATE_OUTPUT, "    Twist MPU   dt = %.3f | vx= %.3f vy= %.3f | vth= %.3f gradus/sec %.6f rad/sec | norm = %.6f", dt, ret.vx, ret.vy, RAD2DEG(ret.vth), ret.vth, norm_angleDelta / dt);
 	// ROS_INFO("--- calcTwistFromMpu");

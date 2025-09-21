@@ -88,13 +88,12 @@ int main(int argc, char **argv)
             // calcEuler(); // Расчет угла yaw с датчика IMU
 
             g_linAngVel.odom = calcTwistFromWheel(msg_Speed);                    // Обработка пришедших данных. По ним считаем линейные скорости по осям и угловую по углу. Запоминаем dt
-            g_linAngVel.mpu = calcTwistFromMpu(g_linAngVel.mpu, msg_Modul2Data, g_linAngVel.odom); // Обработка пришедших данных для расчета линейных и угловых скоростей
-            g_linAngVel.fused = calcTwistFused(g_linAngVel.odom, g_linAngVel.mpu); // Комплементация данных используя фильтр (Комплементарный или Калмана) тут написать функцию комплементации данных угловых скоростей с разными условиями когда и в каком соотношении скомплементировать скорсти с двух источников
+            g_linAngVel.fused = calcTwistFromMpu(g_linAngVel.fused, msg_Modul2Data, g_linAngVel.odom); // Обработка пришедших данных для расчета линейных и угловых скоростей
+            // g_linAngVel.fused = calcTwistFused(g_linAngVel.odom, g_linAngVel.mpu); // Комплементация данных используя фильтр (Комплементарный или Калмана) тут написать функцию комплементации данных угловых скоростей с разными условиями когда и в каком соотношении скомплементировать скорсти с двух источников
 
             // g_linAngVel.fused = g_linAngVel.wheel; // Пока нет расчет по IMU и комплментации используем только по колесам
 
             g_poseRotation.odom = calcNewPose(g_poseRotation.odom, g_linAngVel.odom, "odom");     // На основе линейных скоростей считаем новую позицию и угол по колесам
-            g_poseRotation.mpu = calcNewPose(g_poseRotation.mpu, g_linAngVel.mpu, "mpu");         // На основе линейных скоростей считаем новую позицию и угол по mpu
             g_poseRotation.fused = calcNewPose(g_poseRotation.fused, g_linAngVel.fused, "fused"); // На основе линейных скоростей считаем новую позицию и угол по колесам
 
             // g_poseRotation.mode10 = calcNewOdom2(g_poseRotation.mode10, g_linAngVel.fused, "mode10"); // На основе линейных скоростей считаем новую позицию и угол по колесам
