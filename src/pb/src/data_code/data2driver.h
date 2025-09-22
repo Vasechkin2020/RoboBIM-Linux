@@ -69,8 +69,8 @@ void collect_Data2Driver(int data_)
 		}
 		*/
 
-		g_dreamSpeed.speedL = msg_ControlDriver.control.speedL;
-		g_dreamSpeed.speedR = msg_ControlDriver.control.speedR;
+		g_desiredSpeed.speedL = msg_ControlDriver.control.speedL;
+		g_desiredSpeed.speedR = msg_ControlDriver.control.speedR;
 		// Data2Driver.control.speedL = 0.1;
 		// Data2Driver.control.speedR = 0.1;
 
@@ -78,8 +78,8 @@ void collect_Data2Driver(int data_)
 	}
 	else // Двнные если нет топика сколько-то времени
 	{
-		g_dreamSpeed.speedL = 0;
-		g_dreamSpeed.speedR = 0;
+		g_desiredSpeed.speedL = 0;
+		g_desiredSpeed.speedR = 0;
 
 	}
 }

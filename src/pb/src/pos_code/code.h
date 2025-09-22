@@ -541,6 +541,7 @@ STwistDt calcTwistFromMpu(STwistDt mpu_, pb_msgs::Struct_Modul2Data msg_Modul2Da
 	float bias_linYaw;			 //
 	float a_lin_odom;			 //
 	static float pred_Angle = 0; // Предыдущий угол
+	static float fused_yaw_pred = 0;
 	static float pred_Vel = 0;	 // Предыдущее значение линейной скорости по оси Х
 	static float pred_Accel = 0; // Предыдущее значение Ускорения по оси Х
 
@@ -559,12 +560,14 @@ STwistDt calcTwistFromMpu(STwistDt mpu_, pb_msgs::Struct_Modul2Data msg_Modul2Da
 
 	float norm_angleDelta = 0;
 
+	static ros::Time flag_time = ros::Time::now(); // Начальная инициализация
+
 	static ros::Time start_time = ros::Time::now(); // Захватываем начальный момент времени
-	ros::Time end_time = ros::Time::now();			// Захватываем конечный момент времени
-	ros::Duration duration = end_time - start_time; // Находим разницу между началом и концом
-	double dt = duration.toSec();					// Получаем количество секунд и преобразуем в миллисекунды
-	start_time = end_time;
-	ret.dt = dt; // Сохраняем новое dt
+	ros::Time now_time = ros::Time::now();			// Захватываем текущий момент времени
+	ros::Duration duration = now_time - start_time; // Находим разницу между началом и концом
+	start_time = now_time;							// Запоминаем на будущий расчет
+	double dt = duration.toSec();					// Получаем количество секунд
+	ret.dt = dt;									// Сохраняем новое dt
 	// ROS_INFO("    dt = %f sec", dt);
 
 	if (dt < 0.003) // При первом запуске просто выходим из функции
@@ -572,11 +575,12 @@ STwistDt calcTwistFromMpu(STwistDt mpu_, pb_msgs::Struct_Modul2Data msg_Modul2Da
 		ROS_INFO("    First calcTwistFromMpu dt< 0.003 !!!! dt = %f", dt);
 		ret.vx = 0;										 //
 		ret.vy = 0;										 //
-		ret.vth = 0;									 //
+		ret.vth = odom_.vth;							 // хорошая инициализация состояния
 		pred_Angle = msg_Modul2Data_.icm.angleEuler.yaw; // Сохраняем для следующего расчета
-		pred_Vel = odom_.vx;							 // Предыдущая скорость
-		pred_Accel = a_lin_odom;						 // Сохраняем для следующего расчета
-		complX = msg_Modul2Data_.icm.linear.x;			 // Первое значение для фильтра
+		fused_yaw_pred = odom_.vth;
+		pred_Vel = odom_.vx;				   // Предыдущая скорость
+		pred_Accel = a_lin_odom;			   // Сохраняем для следующего расчета
+		complX = msg_Modul2Data_.icm.linear.x; // Первое значение для фильтра
 		return ret;
 	}
 
@@ -590,11 +594,15 @@ STwistDt calcTwistFromMpu(STwistDt mpu_, pb_msgs::Struct_Modul2Data msg_Modul2Da
 	}
 	if (a_lin_odom == 0 && pred_Accel != 0) // Если ускорения нет, но было,
 	{
+		flag_time = ros::Time::now(); // Запоминаем время когда ускорение закончилось
 		flagAccel = false;
 	}
 	pred_Accel = a_lin_odom; // Сохраняем для следующего расчета
 
-	if (flagAccel) // Если сейчас есть ускорение То фиксируем угол pitch и дальше его приращение считаем только по гироскопу. По этому углу находим вектор гравитации и его отнимаем от акселерометра
+	duration = now_time - flag_time;   // Находим разницу междумоментом когда ускорение закончилось и текущий временем
+	double dt_flag = duration.toSec(); // Получаем количество секунд
+
+	if (flagAccel || dt_flag <= 0.4) // Если сейчас есть ускорение То фиксируем угол pitch и дальше его приращение считаем только по гироскопу. По этому углу находим вектор гравитации и его отнимаем от акселерометра
 	{
 		pitch = pitch + (-msg_Modul2Data_.icm.gyro.x * dt); // Интеграция гироскопа к углу pitch// Взяьть угол и его дальше интегрировать по гироскопу
 		g_x = -G_TO_M_S2 * sinf(DEG2RAD(pitch));			// Проекция гравитации на X// Найти проекцию н аось Х и по ней почитать гравитацию
@@ -621,16 +629,15 @@ STwistDt calcTwistFromMpu(STwistDt mpu_, pb_msgs::Struct_Modul2Data msg_Modul2Da
 	float angleDelta = DEG2RAD(msg_Modul2Data_.icm.angleEuler.yaw - pred_Angle); // Углы в градусах. Конвертируем в радианы
 	pred_Angle = msg_Modul2Data_.icm.angleEuler.yaw;							 // Сохраняем для следующего расчета
 	norm_angleDelta = normalize_angle(angleDelta);								 // Вычисляем изменение угла и нормализуем
-	bias_linYaw = norm_angleDelta - offsetYaw;									 // Коррекция (вычитание bias из сырого линейного ускорения).// 2. Убираем смещение и фильтруем изменение угла
+	bias_linYaw = norm_angleDelta - offsetYaw;									 // Коррекция (вычитание bias из сырого углового ускорения). Убираем смещение и потом фильтруем изменение угла
 	complYaw = filtrComplem(0.2, complYaw, bias_linYaw);						 // скорость изменения угла итоговая отфильтрованная
 
-	float ALFA_YAW = 0.5;
-	static float fused_yaw_pred = 0;
-
-	// fused_yaw = (complYaw / dt) * ALFA_YAW + (1 - ALFA_YAW) * odom_.vth; // Взвешенное среднее двух угловых скоростей
 	fused_yaw = complYaw / dt; // 3. Получаем текущую угловую скорость по IMU
 
-	float fused_yaw_acc = (fused_yaw - fused_yaw_pred) / dt; // Разница скоростей это ускорение?
+	float ALFA_YAW = 0.8;
+	fused_yaw = ALFA_YAW * fused_yaw + (1 - ALFA_YAW) * odom_.vth; // Взвешенное среднее двух угловых скоростей
+
+	float fused_yaw_acc = (fused_yaw - fused_yaw_pred) / dt; // Угловое ускорение
 	fused_yaw_pred = fused_yaw;								 // обновляем для следующего шага
 
 	float predicted_vth = mpu_.vth + fused_yaw_acc * dt; // 5. Предсказываем скорость: v(t) = v(t-1) + a * dt

@@ -8,6 +8,7 @@ CJoy joy(0.5, 0.5); // Обьявляем экземпляр класса в н�
 #include "data_code/data2driver.h"
 #include "data_code/data2modul.h"
 #include "data_code/data2print.h"
+#include "data_code/jerk.h"
 #include "data_code/topic.h" // Файл для функций для формирования топиков в нужном виде и формате
 #include "data_code/code.h"
 
@@ -15,7 +16,7 @@ int main(int argc, char **argv)
 {
 
     // ROS_WARN("%s --------------------------------------------------------", NN);
-    ROS_FATAL("%s *** Data_Node *** ver. 1.5 11-08-25 *** printBIM.ru *** 2025 ***", NN);
+    ROS_FATAL("%s *** Data_Node *** ver. 1.5 22-09-25 *** printBIM.ru *** 2025 ***", NN);
     // ROS_WARN("%s --------------------------------------------------------", NN);
 
     ros::init(argc, argv, "data_node");
@@ -28,6 +29,21 @@ int main(int argc, char **argv)
     ros::Subscriber sub_ControlPrint = nh.subscribe("pbWrite/Write2Print", 16, callback_ControlPrint, ros::TransportHints().tcpNoDelay(true));       // Это мы подписываемся на то что публигует Main для Print
     ros::Subscriber sub_ControlDriver = nh.subscribe("pbControl/ControlDriver", 16, callback_ControlDriver, ros::TransportHints().tcpNoDelay(true)); // Это мы подписываемся на то что публигует Main для Data
     ros::Subscriber subscriber_Joy = nh.subscribe("joy", 16, callback_Joy);                                                                          // Это мы подписываемся на то что публикует нода джойстика
+
+    JerkLimitedProfile left_wheel;  // Профиль для левого колеса
+    JerkLimitedProfile right_wheel; // Профиль для правого колеса
+
+    jlp_init(&left_wheel, "left", 0.0, 2.0, 1.0, 1.0);   // Инициализируем: начальная скорость 0 м/с, j_max=0.01, a_max=0.5, v_max = 1.0
+    jlp_init(&right_wheel, "right", 0.0, 2.0, 1.0, 1.0); // Инициализируем: начальная скорость 0 м/с, j_max=0.01, a_max=0.5, v_max = 1.0
+
+    left_wheel.enable_diagnostics = 1;  // Включаем диагностику для теста
+    right_wheel.enable_diagnostics = 1; // Включаем диагностику для теста
+
+    ROS_INFO("p->enable_diagnostics L %i ", left_wheel.enable_diagnostics);
+    ROS_INFO("p->enable_diagnostics R %i ", right_wheel.enable_diagnostics);
+
+    // jlp_start_profile(&left_wheel, 0.0); // Запускаем первый профиль — в начальный момент скорость 0 м/с
+    // jlp_start_profile(&right_wheel, 0.0); // Запускаем первый профиль — в начальный момент скорость 0 м/с
 
     // sub_low_state = _nh.subscribe("/low_state", 1, &IOInterface::_lowStateCallback, this, ros::TransportHints().tcpNoDelay(true)); // От Максима пример
     //*****************
@@ -76,6 +92,12 @@ int main(int argc, char **argv)
         led_status = 1 - led_status; // Мигаем с частотой работы цикла
         digitalWrite(PIN_LED_BLUE, led_status);
 
+        static ros::Time start_time = ros::Time::now(); // Захватываем начальный момент времени
+        ros::Time now_time = ros::Time::now();          // Захватываем текущий момент времени
+        ros::Duration duration = now_time - start_time; // Находим разницу между началом и концом
+        double dt = duration.toSec();                   // Получаем количество секунд
+        start_time = now_time;                          // Запоминаем на будущий расчет
+
         ros::spinOnce(); // Обновление в данных в ядре ROS, по этой команде происходит вызов функции обратного вызова
         ROS_INFO_THROTTLE(THROTTLE_PERIOD_1, "%u msec. SPI Modul %u/%u %u/%u | Driver %u/%u %u/%u | Print %u/%u %u/%u |", millis(),
                           Modul2Data.spi.all, Modul2Data.spi.bed, data_modul_all, data_modul_bed,
@@ -110,11 +132,11 @@ int main(int argc, char **argv)
 
         if (flag_msgJoy) // Если пришло новое сообшение и сработал колбек то разбираем что там пришло
         {
-            flag_msgJoy = false;                                     // Флаг сбратываем .Приоритет джойстику
-            joy.parsingJoy(msg_joy);                                 // Разбираем и формируем команды из полученного сообщения
-            joy.transform();                                         // Преобразование кнопок джойстика в реальные команды
-            g_dreamSpeed.speedL = joy._ControlDriver.control.speedL; // Можно упростить и сделать без переменной g_dreamSpeed
-            g_dreamSpeed.speedR = joy._ControlDriver.control.speedR;
+            flag_msgJoy = false;                                       // Флаг сбратываем .Приоритет джойстику
+            joy.parsingJoy(msg_joy);                                   // Разбираем и формируем команды из полученного сообщения
+            joy.transform();                                           // Преобразование кнопок джойстика в реальные команды
+            g_desiredSpeed.speedL = joy._ControlDriver.control.speedL; // Можно упростить и сделать без переменной g_desiredSpeed
+            g_desiredSpeed.speedR = joy._ControlDriver.control.speedR;
 
             // Data2Print.controlPrint.status = joy._controlPrint.status; // Было раньше печать по джойстику
             // Data2Print.controlPrint.mode = joy._controlPrint.mode;
@@ -125,9 +147,39 @@ int main(int argc, char **argv)
 
         //---------------- Тут какие-то постоянные данные вносятся в ручном режиме или алгоритмы корректировки данных перед передачей --------------------------------------------------------------------------------------
 
-        // printf("g_dreamSpeed.L = %f g_dreamSpeed.R= %f \n",g_dreamSpeed.speedL,g_dreamSpeed.speedR);
-        controlAcc(g_dreamSpeed); // Функция контроля ускорения На вход скорость с которой хотим ехать. После будет скорость с которой поедем фактически с учетом возможностей по ускорению
-        // printf("g_factSpeed.L = %f g_factSpeed.R= %f \n",g_factSpeed.speedL,g_factSpeed.speedR);
+        // printf("g_desiredSpeed.L = %f g_desiredSpeed.R= %f \n",g_desiredSpeed.speedL,g_desiredSpeed.speedR);
+        // controlAcc(g_desiredSpeed); // Функция контроля ускорения На вход скорость с которой хотим ехать. После будет скорость с которой поедем фактически с учетом возможностей по ускорению
+
+        // printf("g_desiredSpeed.L = %f g_desiredSpeed.R= %f \n ", g_desiredSpeed.speedL, g_desiredSpeed.speedR);
+
+        // Предыдущие целевые скорости — для сравнения
+        static double last_desired_speedL = 0.0;
+        static double last_desired_speedR = 0.0;
+
+        // Порог для сравнения — чтобы не дергать профиль при мелких флуктуациях
+        const double EPSILON = 1e-3; // 0.001 м/с — настрой под свою систему
+
+        if (fabs(g_desiredSpeed.speedL - last_desired_speedL) > EPSILON) // Проверяем левое колесо
+        {
+            jlp_request_replan(&left_wheel, g_desiredSpeed.speedL);
+            last_desired_speedL = g_desiredSpeed.speedL; // Обновляем предыдущее значение
+        }
+
+        // if (fabs(g_desiredSpeed.speedR - last_desired_speedR) > EPSILON)// Проверяем правое колесо
+        // {
+        //     jlp_request_replan(&right_wheel, g_desiredSpeed.speedR);
+        //     last_desired_speedR = g_desiredSpeed.speedR; // Обновляем предыдущее значение
+        // }
+
+        // printf("dt = %f | ", dt);
+        jlp_step(&left_wheel, dt); // 4. Выполняем ОДИН шаг для каждого колеса
+        // jlp_step(&right_wheel, dt);
+
+        g_factSpeed.speedL = left_wheel.v_current;  // ← ПРАВИЛЬНО — это желаемая скорость для PID!
+        g_factSpeed.speedR = right_wheel.v_current; // ← ПРАВИЛЬНО — это желаемая скорость для PID!
+
+        // printf("g_factSpeed.L = %f g_factSpeed.R= %f \n", g_factSpeed.speedL, g_factSpeed.speedR);
+
         Data2Driver.control = speedToRps(g_factSpeed); // Конвертация скорости из метров в секунду в обороты в секунду для передачи на нижний уровень
         // printf("Data2Driver.controlL = %f Data2Driver.controlR= %f \n \n",Data2Driver.control.speedL,Data2Driver.control.speedR);
         controlLed();   // Функция управления несколькими светодиодами которые отведены для прямого управления нодой data
@@ -143,7 +195,7 @@ int main(int argc, char **argv)
         rezModul = sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
 
         // uint8_t test[4]{0x01, 0x04, 0xFF, 0xAA};
-        // uint8_t test[2]{0x01, 0x02};   
+        // uint8_t test[2]{0x01, 0x02};
         // digitalWrite(PIN_SPI_MODUL, 0);
         // delayMicroseconds(1);
         // printf("out- %#x %#x %#x %#x\n", test[0], test[1], test[2], test[3]);
