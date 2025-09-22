@@ -165,15 +165,15 @@ int main(int argc, char **argv)
             last_desired_speedL = g_desiredSpeed.speedL; // Обновляем предыдущее значение
         }
 
-        // if (fabs(g_desiredSpeed.speedR - last_desired_speedR) > EPSILON)// Проверяем правое колесо
-        // {
-        //     jlp_request_replan(&right_wheel, g_desiredSpeed.speedR);
-        //     last_desired_speedR = g_desiredSpeed.speedR; // Обновляем предыдущее значение
-        // }
+        if (fabs(g_desiredSpeed.speedR - last_desired_speedR) > EPSILON)// Проверяем правое колесо
+        {
+            jlp_request_replan(&right_wheel, g_desiredSpeed.speedR);
+            last_desired_speedR = g_desiredSpeed.speedR; // Обновляем предыдущее значение
+        }
 
         // printf("dt = %f | ", dt);
         jlp_step(&left_wheel, dt); // 4. Выполняем ОДИН шаг для каждого колеса
-        // jlp_step(&right_wheel, dt);
+        jlp_step(&right_wheel, dt);
 
         g_factSpeed.speedL = left_wheel.v_current;  // ← ПРАВИЛЬНО — это желаемая скорость для PID!
         g_factSpeed.speedR = right_wheel.v_current; // ← ПРАВИЛЬНО — это желаемая скорость для PID!
