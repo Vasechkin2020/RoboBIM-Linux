@@ -150,14 +150,10 @@ int main(int argc, char **argv)
         // printf("g_desiredSpeed.L = %f g_desiredSpeed.R= %f \n",g_desiredSpeed.speedL,g_desiredSpeed.speedR);
         // controlAcc(g_desiredSpeed); // Функция контроля ускорения На вход скорость с которой хотим ехать. После будет скорость с которой поедем фактически с учетом возможностей по ускорению
 
-        // printf("g_desiredSpeed.L = %f g_desiredSpeed.R= %f \n ", g_desiredSpeed.speedL, g_desiredSpeed.speedR);
-
-        // Предыдущие целевые скорости — для сравнения
-        static double last_desired_speedL = 0.0;
+        static double last_desired_speedL = 0.0; // Предыдущие целевые скорости — для сравнения
         static double last_desired_speedR = 0.0;
 
-        // Порог для сравнения — чтобы не дергать профиль при мелких флуктуациях
-        const double EPSILON = 1e-3; // 0.001 м/с — настрой под свою систему
+        const double EPSILON = 1e-3; // 0.001 м/с — настрой под свою систему// Порог для сравнения — чтобы не дергать профиль при мелких флуктуациях
 
         if (fabs(g_desiredSpeed.speedL - last_desired_speedL) > EPSILON) // Проверяем левое колесо
         {
@@ -171,7 +167,6 @@ int main(int argc, char **argv)
             last_desired_speedR = g_desiredSpeed.speedR; // Обновляем предыдущее значение
         }
 
-        // printf("dt = %f | ", dt);
         jlp_step(&left_wheel, dt); // 4. Выполняем ОДИН шаг для каждого колеса
         jlp_step(&right_wheel, dt);
 
