@@ -630,19 +630,20 @@ STwistDt calcTwistFromMpu(STwistDt mpu_, pb_msgs::Struct_Modul2Data msg_Modul2Da
 	pred_Angle = msg_Modul2Data_.icm.angleEuler.yaw;							 // Сохраняем для следующего расчета
 	norm_angleDelta = normalize_angle(angleDelta);								 // Вычисляем изменение угла и нормализуем
 	bias_linYaw = norm_angleDelta - offsetYaw;									 // Коррекция (вычитание bias из сырого углового ускорения). Убираем смещение и потом фильтруем изменение угла
-	complYaw = filtrComplem(0.2, complYaw, bias_linYaw);						 // скорость изменения угла итоговая отфильтрованная
+	// complYaw = filtrComplem(0.1, complYaw, bias_linYaw);						 // скорость изменения угла итоговая отфильтрованная
+	float ALFA_COMP = 0.1;
+	complYaw = ALFA_COMP * bias_linYaw + (1 - ALFA_COMP) * complYaw; // Взвешенное среднее двух угловых скоростей
+	float complYaw2= complYaw / dt; // 3. Получаем текущую угловую скорость по IMU
 
-	fused_yaw = complYaw / dt; // 3. Получаем текущую угловую скорость по IMU
-
-	float ALFA_YAW = 0.8;
-	fused_yaw = ALFA_YAW * fused_yaw + (1 - ALFA_YAW) * odom_.vth; // Взвешенное среднее двух угловых скоростей
+	float ALFA_YAW = 0.7;
+	fused_yaw = ALFA_YAW * complYaw2 + (1 - ALFA_YAW) * odom_.vth; // Взвешенное среднее двух угловых скоростей
 
 	float fused_yaw_acc = (fused_yaw - fused_yaw_pred) / dt; // Угловое ускорение
 	fused_yaw_pred = fused_yaw;								 // обновляем для следующего шага
 
 	float predicted_vth = mpu_.vth + fused_yaw_acc * dt; // 5. Предсказываем скорость: v(t) = v(t-1) + a * dt
 
-	float ALFA_VTH = 0.95;											 // Насколько верим IMU
+	float ALFA_VTH = 0.9;											 // Насколько верим IMU
 	ret.vth = ALFA_VTH * predicted_vth + (1 - ALFA_VTH) * odom_.vth; //  Комплементарная коррекция по одометрии
 	//===
 
@@ -668,7 +669,7 @@ STwistDt calcTwistFromMpu(STwistDt mpu_, pb_msgs::Struct_Modul2Data msg_Modul2Da
 
 	g_odomVth = odom_.vth;
 	g_offsetYaw = offsetYaw;
-	g_complYaw = complYaw;
+	g_complYaw = complYaw2;
 	g_fused_yaw = fused_yaw;
 
 	ROS_INFO_THROTTLE(RATE_OUTPUT, "    Twist MPU   dt = %.3f | vx= %.3f vy= %.3f | vth= %.3f gradus/sec %.6f rad/sec | norm = %.6f", dt, ret.vx, ret.vy, RAD2DEG(ret.vth), ret.vth, norm_angleDelta / dt);
