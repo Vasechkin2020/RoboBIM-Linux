@@ -76,7 +76,7 @@ int main(int argc, char **argv)
 
         timeStop = timeStopping(msg_Speed);                           // Расчет времени когда остановились. ЕСли движемся то выдаем текущее время. Если стоим то время когда остановились
         ros::Duration durationStopping = ros::Time::now() - timeStop; // Находим разницу между началом и концом
-        dtStoping = durationStopping.toSec();                  // Получаем количество секунд
+        dtStoping = durationStopping.toSec();                         // Получаем количество секунд
 
         // 100 Hz ************************************************************ ОБРАБОТКА ДАННЫХ ИЗ ТОПИКОВ ЧТО ПОДПИСАНЫ  СРАБАТЫВАЕТ КАК ОТПРАВЛЯЕТ DATA_NODE  ********************************************
         if (flag_msgSpeed) // Флаг что пришло сообщение от ноды Data по Speed. Расчитываем линейную и угловую скорость и потом на нее основе расчитываем остальное
@@ -87,7 +87,7 @@ int main(int argc, char **argv)
 
             // calcEuler(); // Расчет угла yaw с датчика IMU
 
-            g_linAngVel.odom = calcTwistFromWheel(msg_Speed);                    // Обработка пришедших данных. По ним считаем линейные скорости по осям и угловую по углу. Запоминаем dt
+            g_linAngVel.odom = calcTwistFromWheel(msg_Speed);                                          // Обработка пришедших данных. По ним считаем линейные скорости по осям и угловую по углу. Запоминаем dt
             g_linAngVel.fused = calcTwistFromMpu(g_linAngVel.fused, msg_Modul2Data, g_linAngVel.odom); // Обработка пришедших данных для расчета линейных и угловых скоростей
             // g_linAngVel.fused = calcTwistFused(g_linAngVel.odom, g_linAngVel.mpu); // Комплементация данных используя фильтр (Комплементарный или Калмана) тут написать функцию комплементации данных угловых скоростей с разными условиями когда и в каком соотношении скомплементировать скорсти с двух источников
 
@@ -100,8 +100,8 @@ int main(int argc, char **argv)
             // g_poseRotation.mode10.th = DEG2RAD(g_angleEuler.yaw); // Напрямую присваиваем угол. Заменяем тот угол что насчитали внутри
             // ROS_INFO("    g_poseRotation mode10 x = %.3f y = %.3f theta = %.3f (radian)", g_poseRotation.mode10.x, g_poseRotation.mode10.y, g_poseRotation.mode10.th);
 
-            // g_poseBase.mode0 = convertRotation2Base(g_poseRotation.odom, "odom");    // Эти данные mode10 используем как основную точку для расчета mode1.2.3
-            // g_poseBase.fused = convertRotation2Base(g_poseRotation.fused, "fused"); // Эти данные mode10 используем как основную точку для расчета mode1.2.3
+            g_poseBase.odom = convertRotation2Base(g_poseRotation.odom, "odom");    // Эти данные mode10 используем как основную точку для расчета mode1.2.3
+            g_poseBase.fused = convertRotation2Base(g_poseRotation.fused, "fused"); // Эти данные mode10 используем как основную точку для расчета mode1.2.3
             // g_poseBase.mode10 = convertRotation2Base(g_poseRotation.mode10, "mode10"); // Эти данные mode10 используем как основную точку для расчета mode1.2.3
 
             // calcMode0();   // Расчет одометрии Mode0
@@ -111,8 +111,8 @@ int main(int argc, char **argv)
             // calcMode123(); // Комплементация Odom10// Комплементация положения и угла
 
             // РАСЧЕТ НАПРАВЛЕНИЯ УГЛОВ ЛАЗЕРОВ
-            laser.calcAnglePillarForLaser(pillar.pillar, g_poseBase.fused); // Расчет углов в локальной системе лазеров на столбы для передачи на нижний уровень для исполнения
-            topic.publicationControlModul();                                 // Формируем и Публикуем команды для управления Modul
+            laser.calcAnglePillarForLaser(pillar.pillar, g_poseBase.odom); // Расчет углов в локальной системе лазеров на столбы для передачи на нижний уровень для исполнения
+            topic.publicationControlModul();                               // Формируем и Публикуем команды для управления Modul
 
             // topic.visualPublishOdomMode_3();                                  // Отобращение стрелкой где начало и куда смотрит в Mode3
             // topic.publicationAngleLaser(laser);                               // Формируем перемнную с собщением для публикации

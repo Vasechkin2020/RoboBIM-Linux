@@ -46,7 +46,7 @@ int main(int argc, char **argv)
     // list int listok;
 
     ROS_WARN("End Setup. Start loop.\n");
-    ros::Duration(3).sleep(); // Подождем пока
+    ros::Duration(1).sleep(); // Подождем пока
 
     while (ros::ok())
     {

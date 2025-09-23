@@ -378,15 +378,16 @@ void jlp_step(JerkLimitedProfile *p, double dt)
         // ✅ ✅ ✅ ДОПОЛНИТЕЛЬНО: если очень близко — тоже останавливаем
         if (fabs(p->v_current - p->v_target) < 1e-4)
         {
-            p->a_current = 0.0;
-            p->j_current = 0.0;
-            p->is_finished = 1;
-            p->state = JLP_IDLE;
             if (p->enable_diagnostics)
             {
-                printf("[%s][DIAG] Профиль завершён — ОЧЕНЬ БЛИЗКО цель: v=%.8f == target=%.8f\n",
+                printf("[%s][DIAG] Профиль завершён — ОЧЕНЬ БЛИЗКО цель: v=%.8f == target=%.8f \n",
                        p->wheel_name, p->v_current, p->v_target);
             }
+            p->a_current = 0.0;
+            p->j_current = 0.0;
+            p->v_current = p->v_target; // Фиксируем на цели
+            p->is_finished = 1;
+            p->state = JLP_IDLE;
             return;
         }
 

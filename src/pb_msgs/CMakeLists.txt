@@ -61,6 +61,7 @@ add_message_files(
   STwist.msg    
   SMwu.msg   
   SMode.msg   
+  SModePoseBase.msg   
   STwistDt.msg    
   SOdom.msg
   SEuler.msg    # roll pitch yaw
