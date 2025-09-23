@@ -8,447 +8,521 @@
 #include "config.h"
 #include <unistd.h> // Подключаем для usleep — реальная задержка в симуляции
 
-// Определяем состояния профиля — УПРОЩЕНАЯ ВЕРСИЯ
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+#include <unistd.h> // для usleep (только для симуляции в реальном времени)
+
+// ========================
+// Состояния профиля
+// ========================
 typedef enum
 {
-    JLP_IDLE = 0,    // Профиль не активен — робот стоит
-    JLP_RUNNING = 1, // Профиль выполняется — разгон/торможение по плану
-    JLP_COASTING = 2 // ЕДИНСТВЕННОЕ состояние сброса — плавно сбрасываем ускорение до 0 (без разделения на J и A)
+    JLP_IDLE = 0,   // Профиль не активен — робот стоит или ждёт команды
+    JLP_RUNNING = 1 // Профиль выполняется — активное управление по плану
 } JLP_State;
 
-// Структура состояния профиля — ВСЁ хранится здесь
+// ========================
+// Структура профиля — ВСЁ хранится здесь
+// ========================
 typedef struct
 {
-    const char *wheel_name; // Указатель на строку с именем колеса — для логов (например, "left", "right")
+    const char *wheel_name; // Имя колеса для логов ("left", "right")
 
-    // Текущее состояние движения — обновляется на каждом шаге
-    double v_current; // Текущая скорость (м/с) — вход и выход алгоритма
-    double a_current; // Текущее ускорение (м/с²) — вход и выход алгоритма
-    double j_current; // Текущий рывок (м/с³) — вход и выход алгоритма
-    double t_current; // Текущее время профиля (с) — увеличивается на dt на каждом шаге
-    int phase;        // Текущая фаза профиля: 1=нарастание, 2=крейсер, 3=сброс
+    // Текущее состояние (вход/выход алгоритма)
+    double v_current; // Текущая скорость (м/с)
+    double a_current; // Текущее ускорение (м/с²)
+    double j_current; // Текущий рывок (м/с³)
+    double t_current; // Время, прошедшее с начала текущего профиля (с)
 
-    // Параметры текущего активного профиля — рассчитываются при старте или пересчёте
-    double v_target;      // Целевая скорость (м/с) — к чему стремимся в текущем профиле
-    double v_start;       // Начальная скорость профиля — сохраняется при вызове jlp_start_profile (для аналитического расчёта)
-    double t1_end;        // Время окончания фазы 1 — когда заканчивается нарастание ускорения
-    double t2_end;        // Время окончания фазы 2 — когда заканчивается постоянное ускорение (если есть)
-    double t_total;       // Общее время профиля — сколько длится весь профиль от начала до конца
-    int has_cruise_phase; // 1 — есть фаза постоянного ускорения (трапеция), 0 — нет (треугольник)
-    double a_peak_used;   // Пиковое ускорение (по модулю) — реальное значение, которое будет использовано
-    int direction;        // Направление движения: +1 = разгон, -1 = торможение
+    // Параметры текущего профиля — пересчитываются при replan
+    double v_target;      // Целевая скорость (м/с)
+    double v_start;       // ✅ НАЧАЛЬНАЯ СКОРОСТЬ ПРОФИЛЯ (на момент запуска) — КРИТИЧНО!
+    double t1_end;        // Время окончания фазы 1 (нарастание ускорения)
+    double t2_end;        // Время окончания фазы 2 (постоянное ускорение)
+    double t_total;       // Общее время профиля
+    int has_cruise_phase; // 1 — трапеция, 0 — треугольник
+    double a_peak_used;   // Реально используемое пиковое ускорение
+    int direction;        // +1 = разгон, -1 = торможение
 
-    // Состояние конечного автомата — управляет логикой выполнения
-    JLP_State state; // Текущее состояние автомата: IDLE, RUNNING, COASTING
-    int is_finished; // Флаг завершения: 1 — профиль завершён, 0 — ещё выполняется
+    // ✅ ДОБАВЛЕНО: ТЕКУЩАЯ ФАЗА ПРОФИЛЯ — 1, 2, 3 или 0 (не определена)
+    // Используется только в JLP_RUNNING, всегда инициализируется при запуске
+    int phase; // ✅ Фаза: 1=нарастание, 2=крейсер, 3=сброс
+
+    // Состояние автомата
+    JLP_State state; // JLP_IDLE или JLP_RUNNING
+    int is_finished; // 1 — профиль завершён (скорость достигнута)
 
     // Параметры системы — задаются один раз при инициализации
-    double j_max; // Максимальный рывок (м/с³) — ограничение на скорость изменения ускорения (всегда положительный)
-    double a_max; // Максимальное ускорение (м/с²) — ограничение на ускорение/торможение (всегда положительный)
-    double v_max; // Максимальная физическая скорость колеса (м/с) — ограничение на целевую скорость
+    double j_max; // Максимальный рывок (м/с³) — всегда > 0
+    double a_max; // Максимальное ускорение (м/с²) — всегда > 0
+    double v_max; // Максимальная физическая скорость (м/с)
 
-    // Параметры для пересчёта профиля "на лету"
-    int replan_requested; // Флаг: 1 — запрошен пересчёт профиля, 0 — нет
-    double v_target_new;  // Новая целевая скорость — на которую нужно пересчитать профиль
+    // Параметры для перепланирования "на лету"
+    int replan_requested; // 1 — запрошено перепланирование
+    double v_target_new;  // Новая целевая скорость — для replan
 
-    // Для состояния COASTING — счётчик времени (опционально, для защиты от зависания)
-    double t_coast_elapsed; // Сколько времени уже прошло в состоянии сброса
+    // Диагностика
+    int enable_diagnostics; // 1 — выводить логи, 0 — молчать
 
-    // Флаг для включения/выключения диагностики
-    int enable_diagnostics; // 1 — выводить диагностические сообщения, 0 — не выводить
 } JerkLimitedProfile;
 
-// Инициализация структуры профиля — вызывается один раз при старте системы
+// ========================
+// ИНИЦИАЛИЗАЦИЯ — вызывается один раз при старте системы
+// ========================
+// ✅ ВСЕ ПОЛЯ ИНИЦИАЛИЗИРУЮТСЯ ЯВНО — НИКАКОГО МУСОРА!
 void jlp_init(JerkLimitedProfile *p, const char *name, double v_start, double j_max, double a_max, double v_max)
 {
-    p->wheel_name = name;      // Сохраняем имя колеса для логов
-    p->v_current = v_start;    // Устанавливаем начальную скорость из параметра
-    p->a_current = 0.0;        // Начальное ускорение — 0
-    p->j_current = 0.0;        // Начальный рывок — 0
-    p->t_current = 0.0;        // Текущее время профиля — 0
-    p->phase = 1;              // Начинаем всегда с фазы 1 — нарастание рывка
-    p->v_target = v_start;     // По умолчанию — целевая скорость = начальной
-    p->state = JLP_IDLE;       // Начальное состояние — бездействие
-    p->is_finished = 1;        // Профиль считается завершённым
-    p->j_max = j_max;          // Сохраняем макс. рывок
-    p->a_max = a_max;          // Сохраняем макс. ускорение
-    p->v_max = v_max;          // Сохраняем макс. скорость колеса
-    p->replan_requested = 0;   // Сбрасываем флаг пересчёта
-    p->t_coast_elapsed = 0.0;  // Обнуляем счётчик времени сброса
-    p->enable_diagnostics = 0; // По умолчанию диагностика отключена
+    p->wheel_name = name;
+
+    // Текущие состояния
+    p->v_current = v_start;
+    p->a_current = 0.0;
+    p->j_current = 0.0;
+    p->t_current = 0.0;
+
+    // Параметры профиля — инициализированы безопасными значениями
+    p->v_target = v_start; // ✅ По умолчанию — цель = начальной скорости
+    p->v_start = v_start;  // ✅ Начальная скорость профиля
+    p->t1_end = 0.0;
+    p->t2_end = 0.0;
+    p->t_total = 0.0;
+    p->has_cruise_phase = 0;
+    p->a_peak_used = 0.0;
+    p->direction = 0; // ✅ Неопределённое направление
+    p->phase = 0;     // ✅ Фаза не задана — не используется до старта
+    p->state = JLP_IDLE;
+    p->is_finished = 1;
+
+    // Физические ограничения системы
+    p->j_max = j_max;
+    p->a_max = a_max;
+    p->v_max = v_max;
+
+    // Параметры перепланирования
+    p->replan_requested = 0;
+    p->v_target_new = 0.0;
+
+    // Диагностика
+    p->enable_diagnostics = 0;
+
+    // ✅ Проверка: j_max, a_max, v_max должны быть положительными
+    if (p->j_max <= 0 || p->a_max <= 0 || p->v_max < 0)
+    {
+        if (p->enable_diagnostics)
+        {
+            printf("[%s][FATAL] Недопустимые параметры: j_max=%.3f, a_max=%.3f, v_max=%.3f\n",
+                   p->wheel_name, p->j_max, p->a_max, p->v_max);
+        }
+    }
 }
 
-// Запуск нового профиля — вызывается при старте или после пересчёта
+// ========================
+// ЗАПУСК ПРОФИЛЯ — вызывается при первом задании цели или при старте
+// ========================
+// Используется только при старте — когда профиль ещё не запущен (state == IDLE)
 void jlp_start_profile(JerkLimitedProfile *p, double v_target)
 {
-    // Ограничиваем целевую скорость физическим лимитом колеса
-    double v_target_limited = v_target; // Копируем целевую скорость
-    if (p->v_max > 0)
-    {                                                                 // Если лимит скорости задан
-        v_target_limited = fmax(-p->v_max, fmin(v_target, p->v_max)); // Ограничиваем в диапазоне [-v_max, v_max]
+    // Ограничиваем целевую скорость по физическим лимитам
+    double v_target_limited = fmax(-p->v_max, fmin(v_target, p->v_max));
+
+    // Если цель почти равна текущей — ничего не делаем
+    if (fabs(v_target_limited - p->v_current) < 1e-9)
+    {
+        p->a_current = 0.0;
+        p->j_current = 0.0;
+        p->state = JLP_IDLE;
+        p->is_finished = 1;
+        if (p->enable_diagnostics)
+            printf("[%s][DIAG] Цель равна текущей скорости — профиль не запущен\n", p->wheel_name);
+        return;
     }
 
-    p->v_target = v_target_limited; // Устанавливаем новую целевую скорость (ограниченную)
-    p->v_start = p->v_current;      // Сохраняем начальную скорость для аналитического расчёта
-    p->t_current = 0.0;             // Сбрасываем таймер профиля
-    p->phase = 1;                   // Всегда начинаем с фазы 1
-    p->is_finished = 0;             // Сбрасываем флаг завершения
+    p->v_target = v_target_limited;
+    p->v_start = p->v_current; // ✅ КРИТИЧНО: запоминаем начальную скорость профиля!
+    p->direction = (v_target_limited >= p->v_current) ? 1 : -1;
+    double dv = p->v_target - p->v_current;
+    double dv_abs = fabs(dv);
 
-    double dv = v_target_limited - p->v_current; // Вычисляем разницу между целевой и текущей скоростью
-    p->direction = (dv >= 0.0) ? 1 : -1;         // Определяем направление: +1 = разгон, -1 = торможение
-    double dv_abs = fabs(dv);                    // Берём модуль — для одинаковых расчётов в обоих направлениях
+    // Рассчитываем времена фаз
+    double t_j_full = p->a_max / p->j_max;          // Время выхода на макс. ускорение
+    double v_ramp_full = 0.5 * p->a_max * t_j_full; // Прирост скорости за одну фазу (разгон/тормож)
+    double v_ramp_total = 2.0 * v_ramp_full;        // Полный прирост в треугольнике
 
-    if (dv_abs < 1e-9) // Если разница скоростей почти нулевая
+    p->t_current = 0.0;
+    p->phase = 1; // ✅ Фаза 1: нарастание рывка — всегда начинаем с неё
+    p->is_finished = 0;
+
+    if (dv_abs > v_ramp_total)
     {
-        p->t1_end = p->t2_end = p->t_total = 0.0;                              // Обнуляем все времена
-        p->has_cruise_phase = 0;                                               // Фаза постоянного ускорения отсутствует
-        p->a_peak_used = 0.0;                                                  // Пиковое ускорение — 0
-        p->state = JLP_IDLE;                                                   // Переключаемся в состояние бездействия
-        p->is_finished = 1;                                                    // Помечаем профиль как завершённый
-        if (p->enable_diagnostics)                                             // Если включена диагностика
-            printf("[%s][DIAG] Профиль не требуется — dv=0\n", p->wheel_name); // Выводим сообщение
-        return;                                                                // Выходим — расчёты не нужны
+        // Трапеция: есть фаза постоянного ускорения
+        double v_cruise = dv_abs - v_ramp_total;
+        double t_cruise = v_cruise / p->a_max;
+        p->t1_end = t_j_full;
+        p->t2_end = t_j_full + t_cruise;
+        p->t_total = t_j_full + t_cruise + t_j_full;
+        p->has_cruise_phase = 1;
+        p->a_peak_used = p->a_max;
+    }
+    else
+    {
+        // Треугольник: нет фазы крейсера
+        double a_peak = sqrt(dv_abs * p->j_max); // Пиковое ускорение
+        double t_j = a_peak / p->j_max;          // Время до пика
+        p->t1_end = t_j;
+        p->t2_end = 2.0 * t_j;
+        p->t_total = 2.0 * t_j;
+        p->has_cruise_phase = 0;
+        p->a_peak_used = a_peak;
     }
 
-    double t_j_full = p->a_max / p->j_max;          // Время выхода на макс. ускорение с макс. рывком
-    double v_ramp_full = 0.5 * p->a_max * t_j_full; // Прирост скорости за одну фазу нарастания/сброса
-    double v_ramp_total = 2.0 * v_ramp_full;        // Суммарный прирост на фазах 1+3
-
-    // ИСПРАВЛЕНО: было >=, теперь > — при равенстве выбираем треугольный профиль
-    if (dv_abs > v_ramp_total) // Если нужно БОЛЬШЕ скорости, чем дают фазы 1+3 — нужна фаза 2
+    p->state = JLP_RUNNING;
+    if (p->enable_diagnostics)
     {
-        double v_cruise = dv_abs - v_ramp_total;     // Остаток скорости для фазы постоянного ускорения
-        double t_cruise = v_cruise / p->a_max;       // Время фазы 2 — сколько держать макс. ускорение
-        p->t1_end = t_j_full;                        // Записываем время окончания фазы 1
-        p->t2_end = t_j_full + t_cruise;             // Записываем время окончания фазы 2
-        p->t_total = t_j_full + t_cruise + t_j_full; // Общее время профиля = фаза1 + фаза2 + фаза3
-        p->has_cruise_phase = 1;                     // Указываем, что фаза 2 есть
-        p->a_peak_used = p->a_max;                   // Используем макс. ускорение
-    }
-    else // Если нужно МЕНЬШЕ или РАВНО — треугольный профиль
-    {
-        double a_peak = sqrt(dv_abs * p->j_max); // Рассчитываем пиковое ускорение для треугольного профиля
-        double t_j = a_peak / p->j_max;          // Время выхода на это пиковое ускорение
-        p->t1_end = t_j;                         // Время окончания фазы 1
-        p->t2_end = 2.0 * t_j;                   // Время окончания фазы 2 = концу профиля
-        p->t_total = 2.0 * t_j;                  // Общее время — две симметричные фазы
-        p->has_cruise_phase = 0;                 // Фаза 2 отсутствует — треугольный профиль
-        p->a_peak_used = a_peak;                 // Записываем реальное пиковое ускорение
-    }
-
-    p->state = JLP_RUNNING; // Переключаемся в состояние выполнения профиля
-
-    // Отладочный лог — какой профиль выбран
-    if (p->enable_diagnostics) // Если включена диагностика
-    {
-        printf("[%s][DEBUG] dv_abs=%.3f, v_ramp_total=%.3f → выбор: %s\n", // Выводим параметры выбора
-               p->wheel_name, dv_abs, v_ramp_total,
-               (dv_abs > v_ramp_total) ? "трапеция" : "треугольник");
-        printf("[%s][DIAG] Старт профиля: v_target=%.3f, %s, %s\n", // Выводим информацию о профиле
-               p->wheel_name, v_target_limited, p->direction > 0 ? "разгон" : "тормож",
+        printf("[%s][DEBUG] Профиль запущен: v_target=%.6f, %s, %s\n",
+               p->wheel_name, v_target_limited,
+               p->direction > 0 ? "разгон" : "тормож",
                p->has_cruise_phase ? "трапец" : "треуг");
     }
 }
 
-// Запрос пересчёта профиля "на лету" — можно вызывать В ЛЮБОМ СОСТОЯНИИ
-void jlp_request_replan(JerkLimitedProfile *p, double v_target_new)
+// ========================
+// ПЕРЕПЛАНИРОВАНИЕ НА ЛЕТУ — КЛЮЧЕВАЯ ФУНКЦИЯ ДЛЯ 100 ГЦ
+// ========================
+// Вызывается при смене цели — НЕ СБРАСЫВАЕТ ускорение!
+// Пересчитывает профиль от текущих v, a, j — без остановок!
+void jlp_replan_profile(JerkLimitedProfile *p)
 {
-    p->v_target_new = v_target_new; // Сохраняем новую целевую скорость
-    p->replan_requested = 1;        // Устанавливаем флаг запроса пересчёта
-    p->t_coast_elapsed = 0.0;       // Обнуляем счётчик времени сброса
+    // Ограничиваем новую цель
+    double v_target_limited = fmax(-p->v_max, fmin(p->v_target_new, p->v_max));
 
-    // p->v_target = v_target_new; // ✅ Обновляем текущую цель — чтобы в COASTING и везде использовалась актуальная
+    // Если новая цель почти равна текущей — ничего не делаем
+    if (fabs(v_target_limited - p->v_current) < 1e-9)
+    {
+        p->a_current = 0.0;
+        p->j_current = 0.0;
+        p->is_finished = 1;
+        p->state = JLP_IDLE;
+        if (p->enable_diagnostics)
+            printf("[%s][REPLAN] Новая цель равна текущей — профиль завершён\n", p->wheel_name);
+        return;
+    }
 
-    if (p->enable_diagnostics)                                                                                    // Если включена диагностика
-        printf("[%s][EVENT] Запрошен пересчёт на v=%.3f (текущее состояние: v=%.3f, a=%.3f, j=%.3f, state=%d)\n", // Выводим новую цель и текущее состояние
-               p->wheel_name, v_target_new, p->v_current, p->a_current, p->j_current, p->state);
+    // Вычисляем разницу скорости
+    double dv = v_target_limited - p->v_current;
+    p->direction = (dv >= 0) ? 1 : -1;
+    double dv_abs = fabs(dv);
+
+    // Пересчитываем профиль — от текущего состояния!
+    double t_j_full = p->a_max / p->j_max;
+    double v_ramp_full = 0.5 * p->a_max * t_j_full;
+    double v_ramp_total = 2.0 * v_ramp_full;
+
+    p->t_current = 0.0; // Время профиля сбрасывается — это "время внутри нового профиля"
+    p->phase = 1;       // ✅ Всегда начинаем с фазы 1
+    p->is_finished = 0;
+
+    if (dv_abs > v_ramp_total)
+    {
+        // Трапеция
+        double v_cruise = dv_abs - v_ramp_total;
+        double t_cruise = v_cruise / p->a_max;
+        p->t1_end = t_j_full;
+        p->t2_end = t_j_full + t_cruise;
+        p->t_total = t_j_full + t_cruise + t_j_full;
+        p->has_cruise_phase = 1;
+        p->a_peak_used = p->a_max;
+    }
+    else
+    {
+        // Треугольник
+        double a_peak = sqrt(dv_abs * p->j_max);
+        double t_j = a_peak / p->j_max;
+        p->t1_end = t_j;
+        p->t2_end = 2.0 * t_j;
+        p->t_total = 2.0 * t_j;
+        p->has_cruise_phase = 0;
+        p->a_peak_used = a_peak;
+    }
+
+    p->v_target = v_target_limited; // Обновляем цель
+    p->v_start = p->v_current;      // ✅ КРИТИЧНО: запоминаем текущую скорость как v_start!
+    p->state = JLP_RUNNING;         // Остаёмся в RUNNING — НИКАКОГО COASTING!
+
+    if (p->enable_diagnostics)
+    {
+        printf("[%s][REPLAN] Пересчёт на v=%.6f (текущая v=%.6f, a=%.6f, j=%.6f) → %s\n",
+               p->wheel_name, v_target_limited, p->v_current, p->a_current, p->j_current,
+               p->has_cruise_phase ? "трапец" : "треуг");
+    }
 }
 
-// Один шаг управления — вызывать строго каждые dt секунд
+// ========================
+// ЗАПРОС ПЕРЕПЛАНИРОВАНИЯ — вызывается извне (например, из планировщика)
+// ========================
+void jlp_request_replan(JerkLimitedProfile *p, double v_target_new)
+{
+    p->v_target_new = v_target_new;
+    p->replan_requested = 1;
+
+    if (p->enable_diagnostics)
+    {
+        printf("[%s][EVENT] Запрос перепланирования: v=%.6f (было: v=%.6f, a=%.6f)\n",
+               p->wheel_name, v_target_new, p->v_current, p->a_current);
+    }
+}
+
+// ========================
+// ОДИН ШАГ УПРАВЛЕНИЯ — вызывается каждые dt (например, 0.01 с = 100 Гц)
+// ========================
 void jlp_step(JerkLimitedProfile *p, double dt)
 {
-    // Защита от некорректного dt — если dt <= 0 — ничего не делаем
+    // Защита от некорректного dt
     if (dt <= 0.0)
-    { // Если шаг времени некорректный
-        if (p->enable_diagnostics)
-        {                                                                                           // Если включена диагностика
-            printf("[%s][ERROR] dt=%.6f — недопустимо! Шаг должен быть > 0.\n", p->wheel_name, dt); // Выводим ошибку
-        }
-        return; // Выходим — не выполняем шаг
-    }
-
-    // Обработка запроса на пересчёт — ДО проверки IDLE (чтобы работало даже из IDLE)
-    if (p->replan_requested) // Если есть запрос на пересчёт
     {
-        p->state = JLP_COASTING;  // ← УПРОЩЕНО: сразу переходим в состояние сброса ускорения (без COASTING_J/COASTING_A)
-        p->replan_requested = 0;  // Сбрасываем флаг запроса
-        p->t_coast_elapsed = 0.0; // Обнуляем счётчик времени
-
-        if (p->enable_diagnostics)                                                             // Если включена диагностика
-            printf("[%s][REPLAN] Переход в COASTING (сброс ускорения до 0)\n", p->wheel_name); // Выводим сообщение
+        if (p->enable_diagnostics)
+        {
+            printf("[%s][ERROR] dt=%.6f — недопустимо! Шаг должен быть > 0.\n", p->wheel_name, dt);
+        }
+        return;
     }
 
-    // Если профиль в состоянии IDLE — ничего не делаем (но логируем, если включено)
+    // ✅ 1. ПЕРЕПЛАНИРОВАНИЕ НА ЛЕТУ — ЕСЛИ ЗАПРОШЕНО
+    if (p->replan_requested)
+    {
+        p->replan_requested = 0;
+        jlp_replan_profile(p); // ← ПЕРЕСЧИТЫВАЕМ ПРОФИЛЬ — НЕ СБРАСЫВАЕМ УСКОРЕНИЕ!
+    }
+
+    // ✅ 2. IDLE — ничего не делаем
     if (p->state == JLP_IDLE)
-    { // Если состояние IDLE
+    {
         if (p->enable_diagnostics)
-        { // Если включена диагностика
-          // printf("[%s] IDLE: v=%.3f, a=%.3f, j=%.3f, t=%.3f, target=%.3f\n", // Выводим состояние
-          //        p->wheel_name, p->v_current, p->a_current, p->j_current, p->t_current, p->v_target);
+        {
+            // printf("[%s] IDLE: v=%.6f, a=%.6f, j=%.6f, target=%.6f\n",
+            //        p->wheel_name, p->v_current, p->a_current, p->j_current, p->v_target);
         }
-        return; // Выходим — расчёты не нужны
+        return;
     }
 
-    // Обработка состояния: плавный сброс ускорения до 0 (единое состояние COASTING)
-    if (p->state == JLP_COASTING) // Если в состоянии сброса ускорения
+    // ✅ 3. RUNNING — выполняем профиль
+    if (p->state == JLP_RUNNING)
     {
-        double j_coast = 0.0; // Инициализируем рывок для сброса
-
-        // Определяем направление рывка для сброса ускорения до 0
-        if (p->a_current > 1e-6)
-        {                        // Если ускорение положительное
-            j_coast = -p->j_max; // Применяем отрицательный рывок
-        }
-        else if (p->a_current < -1e-6)
-        {                       // Если ускорение отрицательное
-            j_coast = p->j_max; // Применяем положительный рывок
-        }
-        // Если ускорение ~0 — j_coast остаётся 0
-
-        p->j_current = j_coast;            // Устанавливаем рывок
-        p->v_current += p->a_current * dt; // Обновляем скорость: v = v_old + a_old * dt (можно заменить на аналитический)
-        p->a_current += p->j_current * dt; // Обновляем ускорение: a = a_old + j * dt
-        
-        if (p->direction > 0 && p->v_current > p->v_target)// ✅ ✅ ✅ ОГРАНИЧЕНИЕ СКОРОСТИ — ТАК ЖЕ, КАК В RUNNING!
+        // Проверка: профиль уже завершён? (скорость достигнута)
+        if (fabs(p->v_current - p->v_target) < 1e-6)
         {
-            p->v_current = p->v_target;
-        }
-        else if (p->direction < 0 && p->v_current < p->v_target)
-        {
-            p->v_current = p->v_target;
-        }
-
-        p->t_coast_elapsed += dt; // Увеличиваем счётчик времени сброса
-
-        // Проверка: если ускорение близко к 0 ИЛИ прошло слишком много времени (защита от зависания)
-        if (fabs(p->a_current) < 0.01 || p->t_coast_elapsed > 10.0)
-        {
-            p->a_current = 0.0;                                                                         // Явно обнуляем ускорение
-            p->j_current = 0.0;                                                                         // Явно обнуляем рывок
-            jlp_start_profile(p, p->v_target_new);                                                      // Запускаем новый профиль с новой целевой скоростью
-            if (p->enable_diagnostics)                                                                  // Если включена диагностика
-                printf("[%s][REPLAN] Новый профиль стартовал с v=%.3f\n", p->wheel_name, p->v_current); // Выводим стартовую скорость
-            p->t_current += dt;                                                                         // Увеличиваем время на этом шаге
-            return;                                                                                     // Выходим — не выполняем дальше
-        }
-
-        p->t_current += dt; // Увеличиваем общее время профиля
-    }
-    // Обработка состояния: выполнение основного профиля
-    else if (p->state == JLP_RUNNING) // Если в состоянии выполнения профиля
-    {
-        // Проверка: если профиль завершён по времени или достигнута цель
-        if (p->t_current >= p->t_total || fabs(p->v_current - p->v_target) < 1e-6) // Если время вышло или скорость достигла цели
-        {
-            p->a_current = 0.0;  // Обнуляем ускорение
-            p->j_current = 0.0;  // Обнуляем рывок
-            p->is_finished = 1;  // Помечаем профиль как завершённый
-            p->state = JLP_IDLE; // Переключаемся в состояние бездействия
+            p->a_current = 0.0;
+            p->j_current = 0.0;
+            p->is_finished = 1;
+            p->state = JLP_IDLE;
             if (p->enable_diagnostics)
-                printf("[%s][DIAG] Профиль завершён\n", p->wheel_name); // Выводим диагностику
-            if (p->enable_diagnostics)
-            {                                                                      // Если включена диагностика
-                printf("[%s] IDLE: v=%.3f, a=%.3f, j=%.3f, t=%.3f, target=%.3f\n", // Выводим финальное состояние
-                       p->wheel_name, p->v_current, p->a_current, p->j_current, p->t_current, p->v_target);
-            }
-            return; // Выходим — на этом шаге больше ничего не делаем
-        }
-
-        double j = 0.0; // Инициализируем рывок нулём
-
-        if (p->phase == 1) // Фаза 1: нарастание рывка
-        {
-            j = p->direction * p->j_max;   // Применяем рывок: +j_max при разгоне, -j_max при торможении
-            if (p->t_current >= p->t1_end) // Если достигли конца фазы 1
             {
-                if (p->has_cruise_phase) // Если есть фаза 2 (трапеция)
+                printf("[%s][DIAG] Профиль завершён — скорость достигнута\n", p->wheel_name);
+            }
+            return;
+        }
+
+        // Если время профиля истекло — тоже завершаем
+        if (p->t_current >= p->t_total)
+        {
+            p->a_current = 0.0;
+            p->j_current = 0.0;
+            p->is_finished = 1;
+            p->state = JLP_IDLE;
+            if (p->enable_diagnostics) {
+                printf("[%s][DIAG] Профиль завершён по времени\n", p->wheel_name);
+            }
+            return;
+        }
+
+        // Расчёт рывка в зависимости от фазы
+        double j = 0.0;
+
+        if (p->phase == 1)
+        {
+            j = p->direction * p->j_max; // Наращиваем ускорение
+            if (p->t_current >= p->t1_end)
+            {
+                if (p->has_cruise_phase)
                 {
-                    p->phase = 2; // Переходим в фазу 2
+                    p->phase = 2; // Переход на фазу 2 — постоянное ускорение
                     if (p->enable_diagnostics)
-                        printf("[%s][DIAG] Переход на фазу 2\n", p->wheel_name);
+                        printf("[%s][DIAG] Фаза 1 → Фаза 2\n", p->wheel_name);
                 }
                 else
                 {
                     p->phase = 3; // Для треугольника — сразу в фазу 3
                     if (p->enable_diagnostics)
-                        printf("[%s][DIAG] Переход на фазу 3\n", p->wheel_name);
+                        printf("[%s][DIAG] Фаза 1 → Фаза 3\n", p->wheel_name);
                 }
             }
         }
-        else if (p->phase == 2) // Фаза 2: постоянное ускорение (для трапеции)
+        else if (p->phase == 2)
         {
-            j = 0.0;                       // Рывок = 0 — ускорение постоянно
-            if (p->t_current >= p->t2_end) // Если достигли конца фазы 2
+            j = 0.0; // Ускорение постоянно — рывок = 0
+            if (p->t_current >= p->t2_end)
             {
-                p->phase = 3; // Переходим в фазу 3
+                p->phase = 3;
                 if (p->enable_diagnostics)
-                    printf("[%s][DIAG] Переход на фазу 3\n", p->wheel_name);
+                    printf("[%s][DIAG] Фаза 2 → Фаза 3\n", p->wheel_name);
             }
         }
-        else if (p->phase == 3) // Фаза 3: сброс ускорения
+        else if (p->phase == 3)
         {
-            j = -p->direction * p->j_max; // Применяем противоположный рывок для сброса ускорения
+            j = -p->direction * p->j_max; // Сбрасываем ускорение
         }
 
-        double a_new = p->a_current + j * dt;           // Вычисляем новое ускорение: a = a_old + j * dt
-        double a_limit = p->direction * p->a_peak_used; // Рассчитываем лимит ускорения с учётом направления
-        if (p->direction > 0 && a_new > a_limit)
-            a_new = a_limit; // Ограничиваем сверху при разгоне
-        if (p->direction < 0 && a_new < a_limit)
-            a_new = a_limit; // Ограничиваем снизу при торможении
+        // ✅ ✅ ✅ АНАЛИТИЧЕСКИЙ расчёт — ВСЕГДА ОТ v_start!
+        // Используем аналитические формулы для точного расчёта без накопления ошибки
+        double a_new = 0.0;
+        double v_new = 0.0;
 
-        // АНАЛИТИЧЕСКИЙ расчёт скорости — точный, без накопления ошибки
-        double v_new;
         if (p->t_current <= p->t1_end)
         {
-            // Фаза 1: разгон ускорения — v(t) = v_start + 0.5 * j * t² * direction
+            // Фаза 1: j = const → a(t) = j * t → v(t) = v_start + 0.5 * j * t²
+            a_new = p->direction * p->j_max * p->t_current;
             v_new = p->v_start + p->direction * 0.5 * p->j_max * p->t_current * p->t_current;
         }
         else if (p->has_cruise_phase && p->t_current <= p->t2_end)
         {
-            // Фаза 2: постоянное ускорение — ТОЛЬКО для трапециевидного профиля
-            double t_cruise = p->t_current - p->t1_end;                                  // Время в фазе 2
-            double v_mid = p->v_start + p->direction * 0.5 * p->a_peak_used * p->t1_end; // Скорость в конце фазы 1
-            v_new = v_mid + p->direction * p->a_peak_used * t_cruise;                    // Линейный рост скорости
+            // Фаза 2: a = const → v(t) = v_start + v_ramp1 + a * (t - t1_end)
+            double t_cruise = p->t_current - p->t1_end;
+            double v_at_t1 = p->v_start + p->direction * 0.5 * p->a_peak_used * p->t1_end;
+            a_new = p->direction * p->a_peak_used;
+            v_new = v_at_t1 + p->direction * p->a_peak_used * t_cruise;
         }
         else
         {
-            // Фаза 3: сброс ускорения
+            // Фаза 3: j = -const → a(t) = a_peak - j_max * (t - t_start)
             double t_down;
-            double v_mid;
+            double v_at_t1, v_at_t2;
 
             if (p->has_cruise_phase)
             {
-                // Для трапеции — начало фазы 3 = конец фазы 2
+                // Трапеция: начало фазы 3 = конец фазы 2
                 t_down = p->t_current - p->t2_end;
-                v_mid = p->v_start + p->direction * 0.5 * p->a_peak_used * p->t1_end +
-                        p->direction * p->a_peak_used * (p->t2_end - p->t1_end); // Скорость в конце фазы 2
+                v_at_t1 = p->v_start + p->direction * 0.5 * p->a_peak_used * p->t1_end;
+                v_at_t2 = v_at_t1 + p->direction * p->a_peak_used * (p->t2_end - p->t1_end);
             }
             else
             {
-                // Для треугольника — начало фазы 3 = конец фазы 1
+                // Треугольник: начало фазы 3 = конец фазы 1
                 t_down = p->t_current - p->t1_end;
-                v_mid = p->v_start + p->direction * 0.5 * p->a_peak_used * p->t1_end; // Скорость в конце фазы 1
+                v_at_t1 = p->v_start + p->direction * 0.5 * p->a_peak_used * p->t1_end;
+                v_at_t2 = v_at_t1; // в треугольнике v в конце фазы 1 = v в начале фазы 3
             }
 
-            v_new = v_mid + p->direction * (p->a_peak_used * t_down - 0.5 * p->j_max * t_down * t_down);
+            a_new = p->direction * (p->a_peak_used - p->j_max * t_down);
+            v_new = v_at_t2 + p->direction * (p->a_peak_used * t_down - 0.5 * p->j_max * t_down * t_down);
         }
 
-        // Плавное ограничение скорости — без резкого обнуления ускорения
-        if (p->direction > 0 && v_new > p->v_target) // Если разгон и превысили цель
+        // ✅ ✅ ✅ КРИТИЧНО: ОГРАНИЧИВАЕМ УСКОРЕНИЕ ПО ФИЗИЧЕСКОМУ ЛИМИТУ a_max
+        // Аналитическая формула может дать a_new > a_max из-за дискретности dt!
+        // Это нарушит физику привода — поэтому жёстко ограничиваем!
+        a_new = fmax(-p->a_max, fmin(a_new, p->a_max));
+
+        // ✅ ✅ ✅ ОГРАНИЧЕНИЕ СКОРОСТИ — КРИТИЧНО!
+        // Никогда не позволяем превысить цель — даже если аналитика дала больше
+        if (p->direction > 0 && v_new > p->v_target)
         {
-            v_new = p->v_target; // Фиксируем скорость на цели
+            v_new = p->v_target;
         }
-        else if (p->direction < 0 && v_new < p->v_target) // Если торможение и проскочили цель
+        else if (p->direction < 0 && v_new < p->v_target)
         {
-            v_new = p->v_target; // Фиксируем скорость на цели
+            v_new = p->v_target;
         }
 
-        p->j_current = j;     // Сохраняем текущий рывок
-        p->a_current = a_new; // Обновляем текущее ускорение
-        p->v_current = v_new; // Обновляем текущую скорость
-        p->t_current += dt;   // Увеличиваем текущее время профиля
-    }
+        // ✅ Обновляем состояния — ТОЛЬКО ПОСЛЕ ВСЕХ ОГРАНИЧЕНИЙ!
+        p->j_current = j;
+        p->a_current = a_new; // ✅ Теперь ускорение всегда в пределах a_max!
+        p->v_current = v_new; // ✅ Скорость всегда в пределах v_target
+        p->t_current += dt;
 
-    // Детальный лог на каждом шаге — если включена диагностика
-    if (p->enable_diagnostics) // Если включена диагностика
-    {
-        const char *phase_str[] = {"-", "Ф1", "Ф2", "Ф3"};                  // Массив строк для фаз — Ф2 добавлена!
-        const char *state_str[] = {"IDLE", "RUN", "COAST"};                 // ← УПРОЩЕНО: только 3 состояния
-        const char *dir_str = (p->direction > 0) ? "разгон" : "тормож";     // Строка для направления
-        const char *profile_str = p->has_cruise_phase ? "трапец" : "треуг"; // Строка для типа профиля
+        // ✅ Диагностика на каждом шаге
+        if (p->enable_diagnostics)
+        {
+            const char *phase_str[] = {"-", "Ф1", "Ф2", "Ф3"};
+            const char *state_str[] = {"IDLE", "RUN"};
+            const char *dir_str = (p->direction > 0) ? "разгон" : "тормож";
+            const char *profile_str = p->has_cruise_phase ? "трапец" : "треуг";
 
-        printf("[%s] t=%.3f | v=%.3f | a=%.3f | j=%.3f | фаза=%s | сост=%s | цель=%.3f | dir=%s | проф=%s | coast_t=%.3f\n", // Форматированный вывод
-               p->wheel_name,                                                                                                // Имя колеса
-               p->t_current,                                                                                                 // Текущее время
-               p->v_current,                                                                                                 // Текущая скорость
-               p->a_current,                                                                                                 // Текущее ускорение
-               p->j_current,                                                                                                 // Текущий рывок
-               phase_str[p->phase],                                                                                          // Текущая фаза
-               state_str[p->state],                                                                                          // Текущее состояние
-               p->v_target,                                                                                                  // Целевая скорость
-               dir_str,                                                                                                      // Направление
-               profile_str,                                                                                                  // Тип профиля
-               p->t_coast_elapsed);                                                                                          // Время в фазе сброса
+            printf("[%s] t= %.3f | v= %.6f | a= %.6f | j= %.6f | фаза=%s | сост=%s | цель= %.6f | dir=%s | проф=%s\n",
+                   p->wheel_name,
+                   p->t_current,
+                   p->v_current,
+                   p->a_current,
+                   p->j_current,
+                   phase_str[p->phase],
+                   state_str[p->state],
+                   p->v_target,
+                   dir_str,
+                   profile_str);
+        }
     }
 }
 /*
-// Основная программа — для теста
+// ========================
+// ОСНОВНАЯ ПРОГРАММА — ТЕСТ
+// ========================
 int main()
 {
-    JerkLimitedProfile left_wheel;                                 // Профиль для левого колеса
-    JerkLimitedProfile right_wheel;                                // Профиль для правого колеса
+    JerkLimitedProfile left_wheel;
+    JerkLimitedProfile right_wheel;
 
-    // Инициализируем профили — БЕЗ начального вызова jlp_start_profile
-    jlp_init(&left_wheel,  "left",  0.0, 2.0, 1.0, 0.5);          // Имя, нач. скорость, j_max, a_max, v_max
-    jlp_init(&right_wheel, "right", 0.0, 2.0, 1.0, 0.5);          // Аналогично для правого
+    // Инициализация — начальная скорость 0, j_max=2.0, a_max=1.0, v_max=0.5
+    jlp_init(&left_wheel,  "left",  0.0, 2.0, 1.0, 0.5);
+    jlp_init(&right_wheel, "right", 0.0, 2.0, 1.0, 0.5);
 
-    left_wheel.enable_diagnostics = 1;                             // Включаем диагностику для левого
-    right_wheel.enable_diagnostics = 1;                            // Включаем диагностику для правого
+    left_wheel.enable_diagnostics = 1;
+    right_wheel.enable_diagnostics = 1;
 
-    double dt = 0.01;                                              // Шаг времени — 10 мс
-    int steps = 0;                                                 // Счётчик шагов
+    double dt = 0.01;  // 100 Гц — идеально для реального робота
+    int steps = 0;
 
-    double last_desired_speedL = 0.0;                              // Предыдущая цель для левого колеса
-    double last_desired_speedR = 0.0;                              // Предыдущая цель для правого колеса
-    const double EPSILON = 1e-3;                                   // Порог изменения цели
+    // Симуляция команд — меняем цель на 0.3 м/с на шаге 10, потом на 0.1, потом на 0.4
+    double desired_speedL = 0.0;
+    double desired_speedR = 0.0;
 
-    // Структура для хранения желаемых скоростей
-    typedef struct {
-        double speedL;
-        double speedR;
-    } DesiredSpeeds;
+    printf("Лог включён. dt=%.3f с (100 Гц)\n", dt);
+    printf("================================================================================\n");
 
-    DesiredSpeeds g_desiredSpeed = {0.0, 0.0};                     // Глобальная структура с желаемыми скоростями
-
-    printf("Лог включён. dt=%.3f с\n", dt);                        // Заголовок лога
-    printf("================================================================================\n"); // Разделитель
-
-    // Основной цикл симуляции — 110 шагов (1.1 секунды)
-    while (steps < 110)
+    while (steps < 200)  // 2 секунды симуляции
     {
-        // Эмуляция команды — на 10-м шаге (0.1 с) задаём новую цель
-        if (steps == 10) {                                         // Если шаг 10
-            g_desiredSpeed.speedL = 0.5;                           // Новая цель для левого
-            g_desiredSpeed.speedR = 0.5;                           // Новая цель для правого
+        // Эмуляция изменения цели — на 0.1 с, 0.5 с, 1.2 с
+        if (steps == 10) {    // 0.1 с
+            desired_speedL = 0.3;
+            desired_speedR = 0.3;
+        }
+        else if (steps == 50) {  // 0.5 с
+            desired_speedL = 0.1;
+            desired_speedR = 0.1;
+        }
+        else if (steps == 120) { // 1.2 с
+            desired_speedL = 0.4;
+            desired_speedR = 0.4;
         }
 
-        // Проверка левого колеса — вызываем replan ТОЛЬКО если цель изменилась значимо
-        if (fabs(g_desiredSpeed.speedL - last_desired_speedL) > EPSILON) // Если изменение больше порога
-        {
-            jlp_request_replan(&left_wheel, g_desiredSpeed.speedL); // Запрашиваем пересчёт
-            last_desired_speedL = g_desiredSpeed.speedL;            // Обновляем предыдущее значение
+        // Запрос перепланирования — вызывается при смене цели
+        if (fabs(desired_speedL - left_wheel.v_target) > 1e-6) {
+            jlp_request_replan(&left_wheel, desired_speedL);
+        }
+        if (fabs(desired_speedR - right_wheel.v_target) > 1e-6) {
+            jlp_request_replan(&right_wheel, desired_speedR);
         }
 
-        // Проверка правого колеса — аналогично
-        if (fabs(g_desiredSpeed.speedR - last_desired_speedR) > EPSILON) // Если изменение больше порога
-        {
-            jlp_request_replan(&right_wheel, g_desiredSpeed.speedR); // Запрашиваем пересчёт
-            last_desired_speedR = g_desiredSpeed.speedR;             // Обновляем предыдущее значение
-        }
+        // Запускаем один шаг управления — ключевой!
+        jlp_step(&left_wheel,  dt);
+        jlp_step(&right_wheel, dt);
 
-        // Выполняем ОДИН ШАГ управления для каждого колеса
-        jlp_step(&left_wheel,  dt);                                // Шаг для левого колеса
-        jlp_step(&right_wheel, dt);                                // Шаг для правого колеса
+        // Реальная задержка — только для симуляции в реальном времени
+        usleep((unsigned int)(dt * 1000000));
 
-        // Реальная задержка — для симуляции в реальном времени (в embedded не нужно)
-        usleep((unsigned int)(dt * 1000000));                      // Ждём dt секунд
-
-        steps++;                                                   // Увеличиваем счётчик шагов
+        steps++;
     }
 
-    printf("\n>>> СИМУЛЯЦИЯ ЗАВЕРШЕНА <<<\n");                     // Финальное сообщение
-    return 0;                                                      // Завершаем программу
+    printf("\n>>> СИМУЛЯЦИЯ ЗАВЕРШЕНА <<<\n");
+    return 0;
 }
+
 */
 #endif
