@@ -111,8 +111,8 @@ int main(int argc, char **argv)
             // calcMode123(); // Комплементация Odom10// Комплементация положения и угла
 
             // РАСЧЕТ НАПРАВЛЕНИЯ УГЛОВ ЛАЗЕРОВ
-            // laser.calcAnglePillarForLaser(pillar.pillar, g_poseBase.fused); // Расчет углов в локальной системе лазеров на столбы для передачи на нижний уровень для исполнения
-            // topic.publicationControlModul();                                 // Формируем и Публикуем команды для управления Modul
+            laser.calcAnglePillarForLaser(pillar.pillar, g_poseBase.fused); // Расчет углов в локальной системе лазеров на столбы для передачи на нижний уровень для исполнения
+            topic.publicationControlModul();                                 // Формируем и Публикуем команды для управления Modul
 
             // topic.visualPublishOdomMode_3();                                  // Отобращение стрелкой где начало и куда смотрит в Mode3
             // topic.publicationAngleLaser(laser);                               // Формируем перемнную с собщением для публикации

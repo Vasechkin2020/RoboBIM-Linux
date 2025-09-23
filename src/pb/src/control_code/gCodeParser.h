@@ -380,7 +380,7 @@ private:
         commandArray.push_back(temp);
         ROS_INFO("    executeG7 mode= %i velL= %f velR= %f duration=%f ", temp.mode, temp.velL, temp.velR, temp.duration); // Вывод лога
     }       
-    // Выполнение G7 (Движение вперед определенное время)
+    // Выполнение G8 (Движение назад определенное время)
     void executeG8(const GCodeCommand &cmd)
     {
         std::stringstream ss;                     // Для формирования лога

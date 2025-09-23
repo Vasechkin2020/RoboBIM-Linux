@@ -33,8 +33,8 @@ int main(int argc, char **argv)
     JerkLimitedProfile left_wheel;  // Профиль для левого колеса
     JerkLimitedProfile right_wheel; // Профиль для правого колеса
 
-    jlp_init(&left_wheel, "left", 0.0, 0.5, 0.5, 1.0);   // Инициализируем: начальная скорость 0 м/с, j_max=1.0, a_max=1.0, v_max = 1.0
-    jlp_init(&right_wheel, "right", 0.0, 0.5, 0.5, 1.0); // Инициализируем: начальная скорость 0 м/с, j_max=1.0, a_max=1.0, v_max = 1.0
+    jlp_init(&left_wheel, "left", 0.0, 1.0, 1.0, 1.0);   // Инициализируем: начальная скорость 0 м/с, j_max=1.0, a_max=1.0, v_max = 1.0
+    jlp_init(&right_wheel, "right", 0.0, 1.0, 1.0, 1.0); // Инициализируем: начальная скорость 0 м/с, j_max=1.0, a_max=1.0, v_max = 1.0
 
     left_wheel.enable_diagnostics = 1;  // Включаем диагностику для теста
     // right_wheel.enable_diagnostics = 1; // Включаем диагностику для теста

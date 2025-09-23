@@ -617,10 +617,10 @@ STwistDt calcTwistFromMpu(STwistDt mpu_, pb_msgs::Struct_Modul2Data msg_Modul2Da
 
 	//===
 	// Тут надо комплементацию с данными с одометрии делать Комплементировать и линейное ускорение и уголовую скорость
-	float ALFA_FUSED = 0.8;											   // Насколько верим IMU
+	float ALFA_FUSED = 0.7;											   // Насколько верим IMU
 	fused_accel = complX * ALFA_FUSED + (1 - ALFA_FUSED) * a_lin_odom; // Взвешенное среднее двух ускорений
 
-	float ALFA_VX = 0.95; // Насколько верим IMU
+	float ALFA_VX = 0.9; // Насколько верим IMU
 	// ret.vx = mpu_.vx + fused_accel * dt; // Линейное ускорение по оси метры за секунуду умножаем на интервал, получаем ускорение за интервал и суммируем в скорость линейную по оси
 	ret.vx = ALFA_VX * (mpu_.vx + (fused_accel * dt)) + (1 - ALFA_VX) * odom_.vx; // Комплементарный фильтр
 

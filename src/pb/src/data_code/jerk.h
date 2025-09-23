@@ -157,6 +157,8 @@ void jlp_request_replan(JerkLimitedProfile *p, double v_target_new)
     p->replan_requested = 1;        // Устанавливаем флаг запроса пересчёта
     p->t_coast_elapsed = 0.0;       // Обнуляем счётчик времени сброса
 
+    // p->v_target = v_target_new; // ✅ Обновляем текущую цель — чтобы в COASTING и везде использовалась актуальная
+
     if (p->enable_diagnostics)                                                                                    // Если включена диагностика
         printf("[%s][EVENT] Запрошен пересчёт на v=%.3f (текущее состояние: v=%.3f, a=%.3f, j=%.3f, state=%d)\n", // Выводим новую цель и текущее состояние
                p->wheel_name, v_target_new, p->v_current, p->a_current, p->j_current, p->state);
@@ -190,9 +192,9 @@ void jlp_step(JerkLimitedProfile *p, double dt)
     if (p->state == JLP_IDLE)
     { // Если состояние IDLE
         if (p->enable_diagnostics)
-        {                                                                      // Если включена диагностика
-            printf("[%s] IDLE: v=%.3f, a=%.3f, j=%.3f, t=%.3f, target=%.3f\n", // Выводим состояние
-                   p->wheel_name, p->v_current, p->a_current, p->j_current, p->t_current, p->v_target);
+        { // Если включена диагностика
+          // printf("[%s] IDLE: v=%.3f, a=%.3f, j=%.3f, t=%.3f, target=%.3f\n", // Выводим состояние
+          //        p->wheel_name, p->v_current, p->a_current, p->j_current, p->t_current, p->v_target);
         }
         return; // Выходим — расчёты не нужны
     }
@@ -216,10 +218,20 @@ void jlp_step(JerkLimitedProfile *p, double dt)
         p->j_current = j_coast;            // Устанавливаем рывок
         p->v_current += p->a_current * dt; // Обновляем скорость: v = v_old + a_old * dt (можно заменить на аналитический)
         p->a_current += p->j_current * dt; // Обновляем ускорение: a = a_old + j * dt
-        p->t_coast_elapsed += dt;          // Увеличиваем счётчик времени сброса
+        
+        if (p->direction > 0 && p->v_current > p->v_target)// ✅ ✅ ✅ ОГРАНИЧЕНИЕ СКОРОСТИ — ТАК ЖЕ, КАК В RUNNING!
+        {
+            p->v_current = p->v_target;
+        }
+        else if (p->direction < 0 && p->v_current < p->v_target)
+        {
+            p->v_current = p->v_target;
+        }
+
+        p->t_coast_elapsed += dt; // Увеличиваем счётчик времени сброса
 
         // Проверка: если ускорение близко к 0 ИЛИ прошло слишком много времени (защита от зависания)
-        if (fabs(p->a_current) < 1e-3 || p->t_coast_elapsed > 10.0)
+        if (fabs(p->a_current) < 0.01 || p->t_coast_elapsed > 10.0)
         {
             p->a_current = 0.0;                                                                         // Явно обнуляем ускорение
             p->j_current = 0.0;                                                                         // Явно обнуляем рывок
