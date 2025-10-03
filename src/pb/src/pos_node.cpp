@@ -36,7 +36,7 @@ int main(int argc, char **argv)
     log4cxx::MDC::put("node", "|pos_node|"); // Установка дополнительных данных в контекст
 
     ROS_FATAL("\n");
-    ROS_FATAL("***  pos_node *** ver. 1.55 *** printBIM.ru *** 2025 ***");
+    ROS_FATAL("***  pos_node *** ver. 1.56 *** printBIM.ru *** 2025 ***"); 
     ROS_FATAL("--------------------------------------------------------\n");
 
     ros::init(argc, argv, "pos_node");

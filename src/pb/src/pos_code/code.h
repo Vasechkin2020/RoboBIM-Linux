@@ -13,6 +13,7 @@ void readParam(); // Считывание переменных параметр�
 void calcMode0(); // Расчет одометрии и применения ее для всех режимов
 
 void calcMode123(); // Комплеиентация Mode123
+double convert_angle_360_to_pm180(double angle); // Преобразование угла из 0..360 (по часовой) в ±180 (положительное против часовой)
 
 double normalize_angle(double a); // Нормализация угла в диапазон [-π, π]
 
@@ -576,7 +577,7 @@ STwistDt calcTwistFromMpu(STwistDt mpu_, pb_msgs::Struct_Modul2Data msg_Modul2Da
 		ret.vx = 0;										 //
 		ret.vy = 0;										 //
 		ret.vth = odom_.vth;							 // хорошая инициализация состояния
-		pred_Angle = msg_Modul2Data_.icm.angleEuler.yaw; // Сохраняем для следующего расчета
+		pred_Angle = convert_angle_360_to_pm180(msg_Modul2Data_.icm.angleEuler.yaw); // Сохраняем для следующего расчета
 		fused_yaw_pred = odom_.vth;
 		pred_Vel = odom_.vx;				   // Предыдущая скорость
 		pred_Accel = a_lin_odom;			   // Сохраняем для следующего расчета
@@ -625,15 +626,16 @@ STwistDt calcTwistFromMpu(STwistDt mpu_, pb_msgs::Struct_Modul2Data msg_Modul2Da
 	ret.vx = ALFA_VX * (mpu_.vx + (fused_accel * dt)) + (1 - ALFA_VX) * odom_.vx; // Комплементарный фильтр
 
 	//===
-
-	float angleDelta = DEG2RAD(msg_Modul2Data_.icm.angleEuler.yaw - pred_Angle); // Углы в градусах. Конвертируем в радианы
-	pred_Angle = msg_Modul2Data_.icm.angleEuler.yaw;							 // Сохраняем для следующего расчета
+	
+	double angle180 = convert_angle_360_to_pm180(msg_Modul2Data_.icm.angleEuler.yaw);
+	float angleDelta = DEG2RAD(angle180 - pred_Angle); // Углы в градусах. Конвертируем в радианы
+	pred_Angle = angle180;							 // Сохраняем для следующего расчета
 	norm_angleDelta = normalize_angle(angleDelta);								 // Вычисляем изменение угла и нормализуем
 	bias_linYaw = norm_angleDelta - offsetYaw;									 // Коррекция (вычитание bias из сырого углового ускорения). Убираем смещение и потом фильтруем изменение угла
 	// complYaw = filtrComplem(0.1, complYaw, bias_linYaw);						 // скорость изменения угла итоговая отфильтрованная
 	float ALFA_COMP = 0.1;
 	complYaw = ALFA_COMP * bias_linYaw + (1 - ALFA_COMP) * complYaw; // Взвешенное среднее двух угловых скоростей
-	float complYaw2= complYaw / dt; // 3. Получаем текущую угловую скорость по IMU
+	float complYaw2 = complYaw / dt;								 // 3. Получаем текущую угловую скорость по IMU
 
 	float ALFA_YAW = 0.7;
 	fused_yaw = ALFA_YAW * complYaw2 + (1 - ALFA_YAW) * odom_.vth; // Взвешенное среднее двух угловых скоростей
@@ -1363,6 +1365,17 @@ ros::Time timeStopping(pb_msgs::SSetSpeed msgSpeed_)
 	speedPrevL = msgSpeed_.speedL;
 	speedPrevR = msgSpeed_.speedR;
 	return timeRet;
+}
+
+// Преобразование угла из 0..360 (по часовой) в ±180 (положительное против часовой)
+double convert_angle_360_to_pm180(double angle)
+{
+	angle = -angle;// Инвертируем направление (по часовой → против часовой)
+	// Нормализуем в диапазон [-180, 180)
+	angle = fmod(angle + 180.0, 360.0); // теперь в [0,360)
+	if (angle < 0.0)
+		angle += 360.0;
+	return angle - 180.0;
 }
 
 #endif

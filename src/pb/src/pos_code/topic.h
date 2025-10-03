@@ -107,7 +107,7 @@ void CTopic::publicationControlModul()
 {
     static pb_msgs::Struct_Data2Modul dataControlModul2;
     dataControlModul2.controlMotor.mode = 1;
-    dataControlModul2.controlLaser.mode = 2; // Тут указываем режи. С какой частотой будут работать датчик. Если 1 то с маленькой, если 2 то быстрее
+    dataControlModul2.controlLaser.mode = 1; // Тут указываем режи. С какой частотой будут работать датчик. Если 1 то с маленькой, если 2 то быстрее
     // Поворачиваем на этот угол
     dataControlModul2.controlMotor.angle[0] = g_angleLaser[0];
     dataControlModul2.controlMotor.numPillar[0] = g_numPillar[0];
