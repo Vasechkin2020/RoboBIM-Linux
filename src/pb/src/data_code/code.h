@@ -247,6 +247,19 @@ void setModeModul()
 		Data2Modul.controlMotor.numPillar[2] = 2;
 		Data2Modul.controlMotor.numPillar[3] = 3;
 		break;
+	case 5: // ВСЕ ОТКЛЮЧЕНО
+		// printf("modeModul = 5 \n");
+		Data2Modul.controlMotor.mode = 0;		  // Ручной вариант проверка
+		Data2Modul.controlLaser.mode = 0;		  // Ручной вариант проверка
+		Data2Modul.controlMotor.angle[0] = 0.0;  //
+		Data2Modul.controlMotor.angle[1] = 0.0;  //
+		Data2Modul.controlMotor.angle[2] = 0.0; //
+		Data2Modul.controlMotor.angle[3] = 0.0; //
+		Data2Modul.controlMotor.numPillar[0] = 0;
+		Data2Modul.controlMotor.numPillar[1] = 1;
+		Data2Modul.controlMotor.numPillar[2] = 2;
+		Data2Modul.controlMotor.numPillar[3] = 3;
+		break;
 	}
 
 	// Data2Modul.controlMotor.mode = 1; // Ручной вариант проверка

@@ -60,43 +60,25 @@ int main(int argc, char **argv)
             ROS_INFO("    command Array i= %i Mode = %i", i, commandArray[i].mode);
             switch (commandArray[i].mode)
             {
-            case 1:                                                 // Режим где управляем только скоростями колес отдельно каждым и временем сколько выполняется
+            case 0:                                                 // Режим где управляем только скоростями колес отдельно каждым и временем сколько выполняется
                 controlSpeed.control.speedL = commandArray[i].velL; //
                 controlSpeed.control.speedR = commandArray[i].velR;
                 time = millis() + commandArray[i].duration;
                 ROS_INFO("    Time Start");
                 break;
-            case 2:                       // Режим где управляем только углом и добиваемся что в него повернули. Время не учитываем.
+            case 1:                       // Режим где управляем только углом и добиваемся что в него повернули. Время не учитываем.
                 time = millis() + 999999; // Огромное время ставим
                 flagAngle = true;         // Флаг что теперь отслеживаем угол
                 ROS_INFO("    Angle Start");
                 break;
-            case 3:                               // Режим где движемся по координатам. даигаемся по длинне вектора.
-                vectorStart.x = msg_Pose.x.fused; // Запоминаем те координаты которые были в момент начала движения
-                vectorStart.y = msg_Pose.y.fused;
+            case 2:                               // Режим где движемся по координатам. даигаемся по длинне вектора.
+                vectorStart.x = msg_Pose.x.odom; // Запоминаем те координаты которые были в момент начала движения
+                vectorStart.y = msg_Pose.y.odom;
                 time = millis() + 999999; // Огромное время ставим
                 flagVector = true;        // Флаг что теперь отслеживаем длину вектора
                 ROS_INFO("    Vector Start. len = %f", commandArray[i].len);
                 break;
             }
-            // if (commandArray[i].mode == 1) // Если режим ездить по времени
-            // {
-            //     controlSpeed.control.speedL = commandArray[i].velL;
-            //     controlSpeed.control.speedR = commandArray[i].velR;
-            //     time = commandArray[i].duration + millis();
-            // }
-            // else if (commandArray[i].mode == 2) // Ездить не обращая внимание на время до результата по углу
-            // {
-            //     time = millis() + 999999; // Огромное время ставим
-            //     flagAngle = true;         // Флаг что теперь отслеживаем угол
-            //     ROS_INFO("    Angle Start");
-            // }
-            // else if (commandArray[i].mode == 3) // Ездить не обращая внимание на время до результата по Координатам
-            // {
-            //     time = millis() + 999999; // Огромное время ставим
-            //     flagVector = true;         // Флаг что теперь отслеживаем длину вектора
-            //     ROS_INFO("    Vector Start");
-            // }
         }
 
         if (flagAngle) // Отслеживание угла
@@ -151,7 +133,7 @@ int main(int argc, char **argv)
         timeCycle(timeStart, timeNow); // Выводим справочно время работы цикла и время с начала работы программы
         r.sleep();                     // Интеллектуальная задержка на указанную частоту
     }
-    controlSpeed.control.speedL = 0;
+    controlSpeed.control.speedL = 0; // 
     controlSpeed.control.speedR = 0;
     topic.publicationControlDriver(); // Формируем и Публикуем команды для управления Driver
     printf("Control node STOP \n");
