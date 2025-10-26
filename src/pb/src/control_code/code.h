@@ -543,15 +543,17 @@ void workAngle(float angle_, u_int64_t &time_, float velAngle_)
 	double dt = ((time_now - time) / 1000000.0); // Интервал расчета переводим сразу в секунды Находим интревал между текущим и предыдущим расчетом в секундах
 	time = time_now;
 	float accel = max_deceleration * dt; // Ускорение/замедление
-	if (flagAngleFirst)
-	{
-		accel = 0; // Первый запуск
-		flagAngleFirst = false;
-	}
 
 	float angleFact = msg_Pose.th.odom;			// Угол который отслеживаем
 	angleMistake = angle_ - RAD2DEG(angleFact); // Смотрим какой угол.// Смотрим куда нам надо Считаем ошибку по углу и включаем колеса в нужную сторону с учетом ошибки по углу и максимально заданой скорости на колесах
 	ROS_INFO_THROTTLE(0.1, "    angle_ = %6.3f angleFact = %6.3f angleMistake = %6.3f", angle_, RAD2DEG(angleFact), angleMistake);
+
+	if (flagAngleFirst)
+	{
+		accel = 0; // Первый запуск
+		flagAngleFirst = false;
+		ROS_INFO("    Angle Start angleMistake = %f metr", angleMistake);
+	}
 
 	if (abs(angleMistake) <= minAngleMistake) // Когда ошибка по углу будет меньше заданной считаем что приехали и включаем время что-бы выйти из данного этапа алгоритма
 	{
@@ -645,20 +647,22 @@ void workVector(float len_, SPoint vectorStart_, u_int64_t &time_, float velLen_
 	vectorEnd.x = msg_Pose.x.odom;
 	vectorEnd.y = msg_Pose.y.odom;
 	float vectorFact = vectorLen(vectorStart_, vectorEnd); // Находим длину вектора который отслеживаем
-	if (vectorFact == 0) // Если первый запуск
-	{
-		accel = 0;
-		ROS_INFO("    Vector Start vectorMistake = %f metr", vectorMistake);
-	}
 	vectorMistake = abs(len_) - vectorFact;				   // Смотрим какое растояние еще надо проехать  Считаем ошибку по длине и включаем колеса в нужную сторону с учетом ошибки максимально заданой скорости на колесах
 	ROS_INFO_THROTTLE(0.1, "    len_ = %7.3f vectorFact = %7.3f vectorMistake = %7.3f", abs(len_), vectorFact, vectorMistake);
 
+	if (flagVectorFirst)
+	{
+		accel = 0; // Первый запуск
+		flagVectorFirst = false;
+		ROS_INFO("    Vector Start vectorMistake = %f metr", vectorMistake);
+	}
 	if (abs(vectorMistake) <= minVectorMistake) // Когда ошибка по длине будет меньше заданной считаем что приехали и включаем время что-бы выйти из данного этапа алгоритма
 	{
 		speedCurrent = 0; // Все скорости обнуляем
 		controlSpeed.control.speedL = 0;
 		controlSpeed.control.speedR = 0;
 		flagVector = false;
+		flagVectorFirst = true;
 		time_ = millis();
 		ROS_INFO("    Vector Final vectorMistake = %f metr", vectorMistake);
 	}
