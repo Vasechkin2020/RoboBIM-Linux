@@ -59,7 +59,9 @@ int verComand = 0; // Параметр какой массив команд за
 
 bool flagCommand = true; // Флаг можно исполнять каманду
 bool flagAngle = false;  // Флаг отслеживания угла из топика
+bool flagAngleFirst = true;  // Флаг отслеживания первого запуска алгоритма отслеживания
 bool flagVector = false; // Флаг отслеживания длины вектора точки из топика
+bool flagVectorFirst = true; // Флаг отслеживания первого запуска алгоритма отслеживания
 static SPoint vectorStart;
 
 pb_msgs::Struct_Data2Driver Data2Driver;      // Структура с командами которую публикуем и которую потом Driver исполняет

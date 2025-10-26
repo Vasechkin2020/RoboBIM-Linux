@@ -95,7 +95,12 @@ int main(int argc, char **argv)
         {
             flagCommand = true;
             i++;
-            if (commandArray[i].mode == 5)
+            if (  i >= commandArray.size())
+            {
+                ros::shutdown();
+            }
+
+            if (commandArray[i].mode == 9)
             {
                 ROS_INFO("New loop");
                 i = 0;
@@ -136,7 +141,7 @@ int main(int argc, char **argv)
     controlSpeed.control.speedL = 0; // 
     controlSpeed.control.speedR = 0;
     topic.publicationControlDriver(); // Формируем и Публикуем команды для управления Driver
-    printf("Control node STOP \n");
+    printf("сontrol_node STOP \n");
     return 0;
 }
 
