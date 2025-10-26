@@ -478,7 +478,7 @@ private:
         if (!cmd.comment.empty())
             ss << " (" << cmd.comment << ")";     // Добавление комментария
         ROS_INFO("%s", ss.str().c_str());         // Вывод лога
-        ros::Duration(pause_ms / 1000.0).sleep(); // Ожидание
+        // ros::Duration(pause_ms / 1000.0).sleep(); // Ожидание
         publishMessage(ss.str());                 // Публикация
 
         executePause(cmd.p); // Добавляем паузу перед любой операцией для стабилизации робота в ключевых точках.

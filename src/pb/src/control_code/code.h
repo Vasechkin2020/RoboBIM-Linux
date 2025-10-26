@@ -8,8 +8,9 @@ void readParam(); // Считывание переменных параметр�
 
 void initCommandArray(int verCommand_); // Заполнение маасива команд
 
-void workAngle(float angle_, u_int64_t &time_, float velAngle_); // Тут отрабатываем алгоритм отслеживания угла при повороте
+void workAngle(float angle_, u_int64_t &time_, float velAngle_);				   // Тут отрабатываем алгоритм отслеживания угла при повороте
 void workVector(float len_, SPoint vectorStart_, u_int64_t &time_, float velLen_); // Тут отрабатываем алгоритм отслеживания длины вектора при движении прямо
+double calculate_max_safe_speed(double distance_to_stop, double max_deceleration); // Вычисляет максимально допустимую скорость для остановки.
 
 // pb_msgs::SControlDriver speedCorrect(pb_msgs::SDriver2Data Driver2Data_msg_, pb_msgs::SControlDriver Data2Driver_); // Корректировка скорости движения в зависимости от датчиков растояния перед
 // void collectCommand(); // //Функция формирования команды для нижнего уровня на основе всех полученных данных, датчиков и анализа ситуации
@@ -170,7 +171,7 @@ void initCommandArray(int verCommand_)
 		commandArray[5].duration = 10000;
 		commandArray[5].velL = 0.0;
 		commandArray[5].velR = 0.0;
-//***************************************************
+		//***************************************************
 
 		commandArray[6].mode = 3;
 		commandArray[6].len = -1.0;
@@ -189,7 +190,7 @@ void initCommandArray(int verCommand_)
 		commandArray[9].duration = 5000;
 		commandArray[9].velL = 0.0;
 		commandArray[9].velR = 0.0;
-		
+
 		commandArray[10].mode = 3;
 		commandArray[10].len = -1.0;
 		commandArray[10].velLen = 0.1;
@@ -505,7 +506,7 @@ void workAngle(float angle_, u_int64_t &time_, float velAngle_)
 	static float minAngleMistake = 0.02; // Минимальная ошибка по углу в Градусах
 	static float angleMistake = 0;		 // Текущая ошибка по углу в градусах
 
-	float angleFact = msg_Pose.th.odom;		// Угол который отслеживаем
+	float angleFact = msg_Pose.th.odom;			// Угол который отслеживаем
 	angleMistake = angle_ - RAD2DEG(angleFact); // Смотрим какой угол.// Смотрим куда нам надо Считаем ошибку по углу и включаем колеса в нужную сторону с учетом ошибки по углу и максимально заданой скорости на колесах
 	ROS_INFO_THROTTLE(0.1, "    angle_ = %6.2f angleFact = %6.2f angleMistake = %6.2f", angle_, RAD2DEG(angleFact), angleMistake);
 	if (abs(angleMistake) <= minAngleMistake) // Когда ошибка по углу будет меньше заданной считаем что приехали и включаем время что-бы выйти из данного этапа алгоритма
@@ -538,46 +539,100 @@ void workAngle(float angle_, u_int64_t &time_, float velAngle_)
 	}
 }
 
+/* @brief Вычисляет максимально допустимую скорость для остановки.
+ * Рассчитывает максимальную скорость, которую должно иметь тело, чтобы успеть остановиться на расстоянии 'distance_to_stop' при условии немедленного применения максимального замедления 'max_deceleration'.
+ * @param distance_to_stop Расстояние до точки остановки (метры).
+ * @param max_deceleration Максимально возможное ускорение/замедление (м/с^2).  Должно быть положительным.
+ * @return Максимально допустимая скорость (м/с). Возвращает 0.0, если расстояние < 0.
+ */
+float calculate_max_safe_speed(float distance_to_stop, float max_deceleration)
+{
+
+	if (distance_to_stop <= 0.0) // Защита от отрицательного расстояния или нулевого ускорения
+		return 0.0;
+
+	if (max_deceleration <= 0.0) // Если ускорение равно 0, то безопасная скорость также 0,  так как мы не сможем остановиться, если уже движемся.
+		return 0.0;
+
+	// Формула: v = sqrt(2 * a * S)
+	// Где:
+	// v - максимально допустимая скорость (м/с)
+	// a - максимальное замедление (м/с^2)
+	// S - расстояние до остановки (метры)
+
+	return std::sqrt(2.0 * max_deceleration * distance_to_stop);
+}
+
 // Тут отрабатываем алгоритм отслеживания длины вектора при движении прямо
 void workVector(float len_, SPoint vectorStart_, u_int64_t &time_, float velLen_)
 {
-	static float vectorKoef = 3.0;		   // P коефициент пид регулятора
-	static float minVectorMistake = 0.001; // Минимальная ошибка по вектору в метрах 1 мм
+	static float minVectorMistake = 0.001; // Минимальная ошибка по вектору в метрах 1 cм
 	static float vectorMistake = 0;		   // Текущая ошибка по длине в местрах
+	static float max_deceleration = 0.2;   // Ускорение/замедление метры в секунду
 	static SPoint vectorEnd;
+	static float speedCurrent; // Текущая скорость
+
+	static unsigned long time = micros();		 // Время предыдущего расчета// Функция из WiringPi.// Замеряем интервалы по времени между запросами данных
+	unsigned long time_now = micros();			 // Время в которое делаем расчет
+	double dt = ((time_now - time) / 1000000.0); // Интервал расчета переводим сразу в секунды Находим интревал между текущим и предыдущим расчетом в секундах
+	time = time_now;
+	float accel = max_deceleration * dt; // Ускорение
 
 	vectorEnd.x = msg_Pose.x.odom;
 	vectorEnd.y = msg_Pose.y.odom;
 	float vectorFact = vectorLen(vectorStart_, vectorEnd); // Находим длину вектора который отслеживаем
+	if (vectorFact == 0) // Если первый запуск
+	{
+		accel = 0;
+		ROS_INFO("    Vector Start vectorMistake = %f metr", vectorMistake);
+	}
 	vectorMistake = abs(len_) - vectorFact;				   // Смотрим какое растояние еще надо проехать  Считаем ошибку по длине и включаем колеса в нужную сторону с учетом ошибки максимально заданой скорости на колесах
 	ROS_INFO_THROTTLE(0.1, "    len_ = %7.3f vectorFact = %7.3f vectorMistake = %7.3f", abs(len_), vectorFact, vectorMistake);
+
 	if (abs(vectorMistake) <= minVectorMistake) // Когда ошибка по длине будет меньше заданной считаем что приехали и включаем время что-бы выйти из данного этапа алгоритма
 	{
+		speedCurrent = 0; // Все скорости обнуляем
 		controlSpeed.control.speedL = 0;
 		controlSpeed.control.speedR = 0;
 		flagVector = false;
 		time_ = millis();
-		ROS_INFO("    Vector OK. Final vectorMistake = %f metr", vectorMistake);
+		ROS_INFO("    Vector Final vectorMistake = %f metr", vectorMistake);
 	}
 	else
 	{
-		float vectorSpeed = abs(vectorMistake * vectorKoef);
-		ROS_INFO_THROTTLE(0.1, "    vectorSpeed vectorKoef = %f", vectorSpeed);
-		if (vectorSpeed > velLen_) // Максимальная скорость
-			vectorSpeed = velLen_;
-		if (vectorSpeed < 0.0051) // Минимальная скорость
-			vectorSpeed = 0.0051;
-		ROS_INFO_THROTTLE(0.1, "    vectorSpeed real = %f", vectorSpeed);
+		float V_max = calculate_max_safe_speed(vectorMistake, max_deceleration); // Считаем максимальную скорость с которой успеем остановиться
+		// ROS_INFO_THROTTLE(0.1, "    workVector V_max = %f", V_max);
+
+		if (V_max <= speedCurrent) // Если наша скорость больше чем допустимо то снижаем до допустимой  ЭТО ТОРМОЖЕНИЕ
+			speedCurrent = V_max;
+		else // ЭТО УСКОРЕНИЕ
+		{
+			speedCurrent = speedCurrent + accel; // Ускорение.Увеличиваем скорость
+			if (speedCurrent > velLen_)		   // Максимальная скорость
+			{
+				// ROS_INFO("   MAX speedCurrent = %f velLen_ = %f ", speedCurrent, velLen_);
+				speedCurrent = velLen_;		   // Если стала больше то ровняем
+			}
+		}
+
+		// static float vectorKoef = 3.0;		   // P коефициент пид регулятора
+		// float speedCurrent = abs(vectorMistake * vectorKoef); // Это простейший вариант с ПИД регулировнаием по Р
+		// ROS_INFO_THROTTLE(0.1, "    speedCurrent vectorKoef = %f", speedCurrent);
+
+		if (speedCurrent < 0.005) // Минимальная скорость
+			speedCurrent = 0.005;
+
 		if (len_ > 0) // Если длина положительная то вращается в одну сторону или в другую
 		{
-			controlSpeed.control.speedL = vectorSpeed; // Скороть должна увеличивать до заданой или максимальной с учетом алогритма в data_node  а уменьшать будет по коефициету по ошибке
-			controlSpeed.control.speedR = vectorSpeed;
+			controlSpeed.control.speedL = speedCurrent; // Скороть должна увеличивать до заданой или максимальной с учетом алогритма в data_node  а уменьшать будет по коефициету по ошибке
+			controlSpeed.control.speedR = speedCurrent;
 		}
 		else
 		{
-			controlSpeed.control.speedL = -vectorSpeed;
-			controlSpeed.control.speedR = -vectorSpeed;
+			controlSpeed.control.speedL = -speedCurrent;
+			controlSpeed.control.speedR = -speedCurrent;
 		}
+		ROS_INFO_THROTTLE(0.1, "    workVector V_max = %f | fact speedL = %f speedR = %f | dt = %f  accel = %f", V_max, controlSpeed.control.speedL, controlSpeed.control.speedR, dt, accel);
 	}
 }
 // Корректировка скорости движения в зависимости от датчиков растояния перед

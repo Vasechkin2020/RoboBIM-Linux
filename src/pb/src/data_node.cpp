@@ -8,7 +8,7 @@ CJoy joy(0.5, 0.5); // Обьявляем экземпляр класса в н�
 #include "data_code/data2driver.h"
 #include "data_code/data2modul.h"
 #include "data_code/data2print.h"
-#include "data_code/jerk.h"
+
 #include "data_code/topic.h" // Файл для функций для формирования топиков в нужном виде и формате
 #include "data_code/code.h"
 
@@ -29,21 +29,6 @@ int main(int argc, char **argv)
     ros::Subscriber sub_ControlPrint = nh.subscribe("pbWrite/Write2Print", 16, callback_ControlPrint, ros::TransportHints().tcpNoDelay(true));       // Это мы подписываемся на то что публигует Main для Print
     ros::Subscriber sub_ControlDriver = nh.subscribe("pbControl/ControlDriver", 16, callback_ControlDriver, ros::TransportHints().tcpNoDelay(true)); // Это мы подписываемся на то что публигует Main для Data
     ros::Subscriber subscriber_Joy = nh.subscribe("joy", 16, callback_Joy);                                                                          // Это мы подписываемся на то что публикует нода джойстика
-
-    JerkLimitedProfile left_wheel;  // Профиль для левого колеса
-    JerkLimitedProfile right_wheel; // Профиль для правого колеса
-
-    jlp_init(&left_wheel, "left", 0.0, 1.0, 1.0, 1.0);   // Инициализируем: начальная скорость 0 м/с, j_max=1.0, a_max=1.0, v_max = 1.0
-    jlp_init(&right_wheel, "right", 0.0, 1.0, 1.0, 1.0); // Инициализируем: начальная скорость 0 м/с, j_max=1.0, a_max=1.0, v_max = 1.0
-
-    left_wheel.enable_diagnostics = 1;  // Включаем диагностику для теста
-    // right_wheel.enable_diagnostics = 1; // Включаем диагностику для теста
-
-    ROS_INFO("p->enable_diagnostics L %i ", left_wheel.enable_diagnostics);
-    ROS_INFO("p->enable_diagnostics R %i ", right_wheel.enable_diagnostics);
-
-    // jlp_start_profile(&left_wheel, 0.0); // Запускаем первый профиль — в начальный момент скорость 0 м/с
-    // jlp_start_profile(&right_wheel, 0.0); // Запускаем первый профиль — в начальный момент скорость 0 м/с
 
     // sub_low_state = _nh.subscribe("/low_state", 1, &IOInterface::_lowStateCallback, this, ros::TransportHints().tcpNoDelay(true)); // От Максима пример
     //*****************
@@ -145,35 +130,11 @@ int main(int argc, char **argv)
             // topic.publicationControlDriver(joy._ControlDriver); // Публикация данных по управлению Driver (для отладки)
         }
 
-        //---------------- Тут какие-то постоянные данные вносятся в ручном режиме или алгоритмы корректировки данных перед передачей --------------------------------------------------------------------------------------
+        g_factSpeed.speedL = g_desiredSpeed.speedL;  // 
+        g_factSpeed.speedR = g_desiredSpeed.speedR; // 
 
-        // printf("g_desiredSpeed.L = %f g_desiredSpeed.R= %f \n",g_desiredSpeed.speedL,g_desiredSpeed.speedR);
-        // controlAcc(g_desiredSpeed); // Функция контроля ускорения На вход скорость с которой хотим ехать. После будет скорость с которой поедем фактически с учетом возможностей по ускорению
-
-        static double last_desired_speedL = 0.0; // Предыдущие целевые скорости — для сравнения
-        static double last_desired_speedR = 0.0;
-
-        const double EPSILON = 1e-3; // 0.001 м/с — настрой под свою систему// Порог для сравнения — чтобы не дергать профиль при мелких флуктуациях
-
-        if (fabs(g_desiredSpeed.speedL - last_desired_speedL) > EPSILON) // Проверяем левое колесо
-        {
-            jlp_request_replan(&left_wheel, g_desiredSpeed.speedL);
-            last_desired_speedL = g_desiredSpeed.speedL; // Обновляем предыдущее значение
-        }
-
-        if (fabs(g_desiredSpeed.speedR - last_desired_speedR) > EPSILON)// Проверяем правое колесо
-        {
-            jlp_request_replan(&right_wheel, g_desiredSpeed.speedR);
-            last_desired_speedR = g_desiredSpeed.speedR; // Обновляем предыдущее значение
-        }
-
-        jlp_step(&left_wheel, dt); // 4. Выполняем ОДИН шаг для каждого колеса
-        jlp_step(&right_wheel, dt);
-
-        g_factSpeed.speedL = left_wheel.v_current;  // ← ПРАВИЛЬНО — это желаемая скорость для PID!
-        g_factSpeed.speedR = right_wheel.v_current; // ← ПРАВИЛЬНО — это желаемая скорость для PID!
-
-        // printf("g_factSpeed.L = %f g_factSpeed.R= %f \n", g_factSpeed.speedL, g_factSpeed.speedR);
+        if (g_factSpeed.speedL != 0 || g_factSpeed.speedR != 0)
+            ROS_INFO_THROTTLE(0.01,"g_factSpeed.L = %f g_factSpeed.R= %f", g_factSpeed.speedL, g_factSpeed.speedR);
 
         Data2Driver.control = speedToRps(g_factSpeed); // Конвертация скорости из метров в секунду в обороты в секунду для передачи на нижний уровень
         // printf("Data2Driver.controlL = %f Data2Driver.controlR= %f \n \n",Data2Driver.control.speedL,Data2Driver.control.speedR);
