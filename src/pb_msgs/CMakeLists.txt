@@ -102,6 +102,7 @@ add_message_files(
   #-------------------------------------------------------
   SMotor.msg
   SMpu.msg
+  SIcm.msg
   SSensor.msg
   Struct_Driver2Data.msg
   #-------------------------------------------------------

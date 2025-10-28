@@ -78,21 +78,30 @@ struct SSpi
   uint32_t all = 0;
   uint32_t bed = 0;
 };
-struct SXyz //
+typedef struct // Структура для хранения 3-х координат
 {
-  float x = 0;
-  float y = 0;
-  float z = 0;
-};
+  float x;
+  float y;
+  float z;
+} SXyz;
+
 struct SMpu // Структура с данными со всех датчиков, отправляем наверх
 {
   int32_t status; // статус состояния
   float rate;     // частота работы датчика
-  struct SXyz angleEuler;
-  struct SXyz linear;
-  struct SXyz accel;
-  struct SXyz gyro;
-  struct SXyz mag;
+  SXyz angleEuler;
+  SXyz linear;
+  SXyz accel;
+  SXyz gyro;
+  SXyz mag;
+};
+
+struct SIcm // Структура с данными со всех датчиков, отправляем наверх
+{
+  int32_t status = 0; // статус состояния
+  float rate;         // частота работы датчика
+  SXyz accel;         // акселерометр
+  SXyz gyro;          // гиороскоп
 };
 
 // Структура в которой все главные переменные передаюся на высокий уровень от Modul к Data
@@ -132,7 +141,7 @@ struct Struct_Driver2Data
 {
   uint32_t id = 0; // id команды
   SMotor motor;
-  // SMpu bno055; // Данные с датчика BNO055
+  SIcm icm; // Данные с датчика ICM20948
   SSensor laserL;
   SSensor laserR;
   SSensor uzi;

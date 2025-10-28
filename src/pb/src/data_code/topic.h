@@ -106,6 +106,17 @@ void CTopic::processing_Driver2Data()
 	Driver2Data_msg.motor.rpsEncodL = Driver2Data.motor.rpsEncodL;
 	Driver2Data_msg.motor.rpsEncodR = Driver2Data.motor.rpsEncodR;
 
+	Driver2Data_msg.icm.status = Driver2Data.icm.status;
+	Driver2Data_msg.icm.rate = Driver2Data.icm.rate;
+
+	Driver2Data_msg.icm.accel.x = Driver2Data.icm.accel.x;
+	Driver2Data_msg.icm.accel.y = Driver2Data.icm.accel.y;
+	Driver2Data_msg.icm.accel.z = Driver2Data.icm.accel.z;
+
+	Driver2Data_msg.icm.gyro.x = Driver2Data.icm.gyro.x;
+	Driver2Data_msg.icm.gyro.y = Driver2Data.icm.gyro.y;
+	Driver2Data_msg.icm.gyro.z = Driver2Data.icm.gyro.z;
+
 	Driver2Data_msg.laserL.status = Driver2Data.laserL.status;
 	Driver2Data_msg.laserL.distance = Driver2Data.laserL.distance;
 
