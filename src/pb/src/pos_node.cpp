@@ -36,7 +36,7 @@ int main(int argc, char **argv)
     log4cxx::MDC::put("node", "|pos_node|"); // Установка дополнительных данных в контекст
 
     ROS_FATAL("\n");
-    ROS_FATAL("***  pos_node *** ver. 1.56 *** printBIM.ru *** 2025 ***"); 
+    ROS_FATAL("***  pos_node *** ver. 1.56 *** printBIM.ru *** 2025 ***");
     ROS_FATAL("--------------------------------------------------------\n");
 
     ros::init(argc, argv, "pos_node");
@@ -49,9 +49,10 @@ int main(int argc, char **argv)
     CTopic topic; // Экземпляр класса для всех публикуемых топиков
 
     //----------------------------- ПОДПИСКИ НА ТОПИКИ -------НЕ УБИРАЮ В КЛАСС ТАК КАК НУЖНЫ ГЛОБАЛЬНЫЕ КОЛБЕКИ И ПРОЧАЯ ХЕРНЯ --------
-    ros::Subscriber subscriber_Lidar = nh.subscribe<pb_msgs::Struct_PoseLidar>("pbLidar/PoseLidar", 1000, callback_Lidar);
-    ros::Subscriber subscriber_Modul = nh.subscribe<pb_msgs::Struct_Modul2Data>("pbData/Modul", 1000, callback_Modul);
-    ros::Subscriber subscriber_Speed = nh.subscribe<pb_msgs::SSetSpeed>("pbData/Speed", 1000, callback_Speed);
+    ros::Subscriber subscriber_Lidar = nh.subscribe<pb_msgs::Struct_PoseLidar>("pbLidar/PoseLidar", 1, callback_Lidar);
+    ros::Subscriber subscriber_Modul = nh.subscribe<pb_msgs::Struct_Modul2Data>("pbData/Modul", 1, callback_Modul);
+    ros::Subscriber subscriber_Driver = nh.subscribe<pb_msgs::Struct_Driver2Data>("pbData/Driver", 1, callback_Driver);
+    ros::Subscriber subscriber_Speed = nh.subscribe<pb_msgs::SSetSpeed>("pbData/Speed", 1, callback_Speed);
     //---------------------------------------------------------------------------------------------------------------------------
 
     initKalman(); // Задаем коэфициенты для Калмана
@@ -62,9 +63,16 @@ int main(int argc, char **argv)
 
     pillar.parsingPillar(msg_pillar); // Разбираем пришедшие данные Заполняем массив правильных координат.
 
-    ros::Rate r(100);         // Частота в Герцах
-    ros::Duration(2).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
+    ros::Rate rate(100);      // Частота в Герцах основного цикла
+    ros::Duration(1).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
     static bool flagPublish = false;
+
+    
+    ROS_INFO("Waiting for the /startup_signal topic to become active..."); // БЛОКИРУЮЩЕЕ ОЖИДАНИЕ ЗАПУСКА ДРУГОЙ НОДЫ // Ожидаем, пока топик сигнала запуска не станет активным
+    ros::topic::waitForMessage<pb_msgs::Struct_Driver2Data>("pbData/Driver", ros::Duration(30));// Блокирующий вызов: ждет первое сообщение из топика "/startup_signal" с таймаутом 30 секунд. Замените String на нужный тип сообщения.
+    ROS_INFO("Topic received. Starting the calibration phase."); // Топик получен. Начинаем фазу калибровки.
+
+    calibr_accel_gyro(); // Калибровка гироскопа и акселерометра в момент запуска ноды
 
     ROS_WARN("++++ End Setup. Start loop.");
     while (ros::ok())
@@ -247,7 +255,7 @@ int main(int argc, char **argv)
             timeMil = ros::Time::now(); // Захватываем момент времени
         }
         timeCycle(timeStart, timeNow); // Выводим справочно время работы цикла и время с начала работы программы
-        r.sleep();                     // Интеллектуальная задержка на указанную частоту
+        rate.sleep();                  // Интеллектуальная задержка на указанную частоту
         // ros::spinOnce();            // Опрашиваем ядро ROS и по этой команде наши срабатывают колбеки. Нужно только для подписки на топики
     }
 

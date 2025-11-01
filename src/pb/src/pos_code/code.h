@@ -8,11 +8,12 @@
 void callback_Lidar(sensor_msgs::LaserScan::ConstPtr msg); //
 void callback_Modul(pb_msgs::Struct_Modul2Data msg);
 void callback_Speed(pb_msgs::SSetSpeed msg);
+void callback_Driver(pb_msgs::Struct_Driver2Data msg); //
 
 void readParam(); // Считывание переменных параметров из лаунч файла при запуске. Там офсеты и режимы работы
 void calcMode0(); // Расчет одометрии и применения ее для всех режимов
 
-void calcMode123(); // Комплеиентация Mode123
+void calcMode123();								 // Комплеиентация Mode123
 double convert_angle_360_to_pm180(double angle); // Преобразование угла из 0..360 (по часовой) в ±180 (положительное против часовой)
 
 double normalize_angle(double a); // Нормализация угла в диапазон [-π, π]
@@ -55,6 +56,8 @@ float autoOffsetX(float data_, int k_);																  // Функция сч�
 float autoOffsetY(float data_, int k_);																  // Функция считаем скользящее среднее из 128 элементов как офсет значений при стоянии на месте
 float autoOffsetYaw(float data_, int k_);															  // Функция считаем скользящее среднее из 128 элементов как офсет значений при стоянии на месте
 float filtrComplem(float koef_, float oldData_, float newData_);									  // функция фильтрации, берем старое значение с некоторым весом
+void calibr_accel_gyro();																			  // Калибровка широскопа и акселерометра в момент запуска ноды
+
 // void calculateOdometryFromMpu(SMpu mpu_);					   // Обработка пришедших данных.Обсчитываем одометрию по энкодеру
 
 // функция фильтрации, берем старое значение с некоторым весом
@@ -78,7 +81,59 @@ void callback_Speed(pb_msgs::SSetSpeed msg)
 	msg_Speed = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
 	flag_msgSpeed = true;
 }
+void callback_Driver(pb_msgs::Struct_Driver2Data msg)
+{
+	g_readings_count++;							// Счетчик
+	// ROS_INFO("= count = %lu",g_readings_count);
+	msg_Driver2Data = msg;						// Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
+	msg_Driver2Data.icm.accel.x -= biasAccel.x; // Применяем смещения посчитанные при запуске ноды. Недостаточно того смещения которое посчитали когда драйвер запускаем так как есть тепловое влияни и он меняется со временем.
+	msg_Driver2Data.icm.accel.y -= biasAccel.y;
+	msg_Driver2Data.icm.accel.z -= biasAccel.z;
 
+	msg_Driver2Data.icm.gyro.x -= biasGyro.x;
+	msg_Driver2Data.icm.gyro.y -= biasGyro.y;
+	msg_Driver2Data.icm.gyro.z -= biasGyro.z;
+
+	flag_msgDriver = true;
+}
+
+// Калибровка широскопа и акселерометра в момент запуска ноды
+void calibr_accel_gyro()
+{
+	ROS_INFO("+++ calibr_accel_gyro");
+	float accel_x, accel_y, accel_z;
+	float gyro_x, gyro_y, gyro_z;
+	ros::Rate rateCal(100); // Частота в Герцах
+	uint16_t samples = 100;	// ЧИсло измерений
+	int i = 0;
+	g_readings_count = 0;
+	ROS_INFO("    Start  i= %i count = %lu",i, g_readings_count);
+	while (ros::ok() && g_readings_count < samples) // Блокирующий цикл калибровки
+	{
+		i++;
+		ros::spinOnce(); // Опрашиваем ROS, чтобы сработали колбеки (наше условие g_readings_count < 100)
+		accel_x += msg_Driver2Data.icm.accel.x;
+		accel_y += msg_Driver2Data.icm.accel.y;
+		accel_z += msg_Driver2Data.icm.accel.z;
+		gyro_x += msg_Driver2Data.icm.gyro.x;
+		gyro_y += msg_Driver2Data.icm.gyro.y;
+		gyro_z += msg_Driver2Data.icm.gyro.z;
+		// ROS_INFO("i= %i count = %lu | accel.z: %+6.4f sum: %+6.4f", i, g_readings_count, msg_Driver2Data.icm.accel.z, accel_z);
+		rateCal.sleep(); // Ждем, чтобы дать время на приход нового сообщения
+	}
+
+	ROS_INFO("    OUT i= %i count = %lu",i, g_readings_count);
+
+	biasAccel.x = accel_x / i; // Вычисление и сохранение результата
+	biasAccel.y = accel_y / i;
+	biasAccel.z = g - (accel_z / i); // Калибруем к g 9,8
+	biasGyro.x = gyro_x / i;
+	biasGyro.y = gyro_y / i;
+	biasGyro.z = gyro_z / i;
+
+	ROS_INFO("    Offset Accel: %+6.4f %+6.4f %+6.4f | Gyro: %+6.4f %+6.4f %+6.4f", biasAccel.x, biasAccel.y, biasAccel.z, biasGyro.x, biasGyro.y, biasGyro.z);
+	ROS_INFO("--- calibr_accel_gyro");
+}
 // Находим минимальную дистанцию из 3 датчиков
 float minDistance(float laserL_, float laserR_, float uzi1_)
 {
@@ -574,9 +629,9 @@ STwistDt calcTwistFromMpu(STwistDt mpu_, pb_msgs::Struct_Modul2Data msg_Modul2Da
 	if (dt < 0.003) // При первом запуске просто выходим из функции
 	{
 		ROS_INFO("    First calcTwistFromMpu dt< 0.003 !!!! dt = %f", dt);
-		ret.vx = 0;										 //
-		ret.vy = 0;										 //
-		ret.vth = odom_.vth;							 // хорошая инициализация состояния
+		ret.vx = 0;																	 //
+		ret.vy = 0;																	 //
+		ret.vth = odom_.vth;														 // хорошая инициализация состояния
 		pred_Angle = convert_angle_360_to_pm180(msg_Modul2Data_.icm.angleEuler.yaw); // Сохраняем для следующего расчета
 		fused_yaw_pred = odom_.vth;
 		pred_Vel = odom_.vx;				   // Предыдущая скорость
@@ -626,12 +681,12 @@ STwistDt calcTwistFromMpu(STwistDt mpu_, pb_msgs::Struct_Modul2Data msg_Modul2Da
 	ret.vx = ALFA_VX * (mpu_.vx + (fused_accel * dt)) + (1 - ALFA_VX) * odom_.vx; // Комплементарный фильтр
 
 	//===
-	
+
 	double angle180 = convert_angle_360_to_pm180(msg_Modul2Data_.icm.angleEuler.yaw);
 	float angleDelta = DEG2RAD(angle180 - pred_Angle); // Углы в градусах. Конвертируем в радианы
-	pred_Angle = angle180;							 // Сохраняем для следующего расчета
-	norm_angleDelta = normalize_angle(angleDelta);								 // Вычисляем изменение угла и нормализуем
-	bias_linYaw = norm_angleDelta - offsetYaw;									 // Коррекция (вычитание bias из сырого углового ускорения). Убираем смещение и потом фильтруем изменение угла
+	pred_Angle = angle180;							   // Сохраняем для следующего расчета
+	norm_angleDelta = normalize_angle(angleDelta);	   // Вычисляем изменение угла и нормализуем
+	bias_linYaw = norm_angleDelta - offsetYaw;		   // Коррекция (вычитание bias из сырого углового ускорения). Убираем смещение и потом фильтруем изменение угла
 	// complYaw = filtrComplem(0.1, complYaw, bias_linYaw);						 // скорость изменения угла итоговая отфильтрованная
 	float ALFA_COMP = 0.1;
 	complYaw = ALFA_COMP * bias_linYaw + (1 - ALFA_COMP) * complYaw; // Взвешенное среднее двух угловых скоростей
@@ -1370,7 +1425,7 @@ ros::Time timeStopping(pb_msgs::SSetSpeed msgSpeed_)
 // Преобразование угла из 0..360 (по часовой) в ±180 (положительное против часовой)
 double convert_angle_360_to_pm180(double angle)
 {
-	angle = -angle;// Инвертируем направление (по часовой → против часовой)
+	angle = -angle; // Инвертируем направление (по часовой → против часовой)
 	// Нормализуем в диапазон [-180, 180)
 	angle = fmod(angle + 180.0, 360.0); // теперь в [0,360)
 	if (angle < 0.0)

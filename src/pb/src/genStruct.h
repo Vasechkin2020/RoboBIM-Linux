@@ -15,6 +15,8 @@ static const double THROTTLE_PERIOD_1 = 1.0;  // секунды
 static const double THROTTLE_PERIOD_3 = 0.33; // секунды
 static const double THROTTLE_PERIOD_5 = 0.20; // секунды
 static const double THROTTLE_PERIOD_10 = 0.1; // секунды
+static float g = 9.80665;  // Ускорение свободного падения в м/с²
+
 
 //============================================================================================================================================================
 // Структура передаваемых данных из Data к Modul
