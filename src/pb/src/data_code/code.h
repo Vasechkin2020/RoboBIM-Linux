@@ -13,7 +13,7 @@ void readParam(); // Считывание переменных параметр�
 void callback_ControlDriver(const pb_msgs::Struct_Data2Driver &msg); // Обратный вызов при опросе топика Driver
 void callback_ControlModul(const pb_msgs::Struct_Data2Modul &msg);	 // Обратный вызов при опросе топика Modul
 void callback_ControlPrint(const pb_msgs::Struct_Data2Print &msg);	 // Обратный вызов при опросе топика Print
-void callback_Joy(sensor_msgs::Joy msg);							 // Функция обраьтного вызова по подпичке на топик джойстика nh.subscribe("joy", 16, callback_Joy);
+
 
 SControl speedToRps(SControl speed_); // Конвертация скорости из метров в секунду в обороты в секунду для передачи на нижний уровень
 
@@ -90,12 +90,7 @@ void init_SPI(int channel_, int speed_)
 		ROS_INFO("SPI ok!");
 	}
 }
-// Функция обраьтного вызова по подписке на топик джойстика nh.subscribe("joy", 16, callback_Joy);
-void callback_Joy(sensor_msgs::Joy msg)
-{
-	flag_msgJoy = true;
-	msg_joy = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
-}
+
 // Обратный вызов при опросе топика
 void callback_ControlDriver(const pb_msgs::Struct_Data2Driver &msg)
 {

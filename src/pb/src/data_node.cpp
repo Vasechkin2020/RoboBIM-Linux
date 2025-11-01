@@ -3,8 +3,6 @@
 
 #include "genStruct.h" // Тут все общие структуры. Истользуются и Data и Main и Head
 #include "data_code/config.h"
-#include "data_code/c_joy.h"
-CJoy joy(0.5, 0.5); // Обьявляем экземпляр класса в нем вся обработка джойстика
 #include "data_code/data2driver.h"
 #include "data_code/data2modul.h"
 #include "data_code/data2print.h"
@@ -28,7 +26,6 @@ int main(int argc, char **argv)
     ros::Subscriber sub_ControlModul = nh.subscribe("pbPos/ControlModul", 16, callback_ControlModul, ros::TransportHints().tcpNoDelay(true));        // Это мы подписываемся на то что публигует Main для Modul
     ros::Subscriber sub_ControlPrint = nh.subscribe("pbWrite/Write2Print", 16, callback_ControlPrint, ros::TransportHints().tcpNoDelay(true));       // Это мы подписываемся на то что публигует Main для Print
     ros::Subscriber sub_ControlDriver = nh.subscribe("pbControl/ControlDriver", 16, callback_ControlDriver, ros::TransportHints().tcpNoDelay(true)); // Это мы подписываемся на то что публигует Main для Data
-    ros::Subscriber subscriber_Joy = nh.subscribe("joy", 16, callback_Joy);                                                                          // Это мы подписываемся на то что публикует нода джойстика
 
     // sub_low_state = _nh.subscribe("/low_state", 1, &IOInterface::_lowStateCallback, this, ros::TransportHints().tcpNoDelay(true)); // От Максима пример
     //*****************
@@ -112,23 +109,6 @@ int main(int argc, char **argv)
             collect_Data2Driver(0);
         if (millis() - timeSpiPrint > 3000) // Если по топикам не пришли данные больше 3 секунд то отправляем значения по умолчанию
             collect_Data2Print(0);
-
-        //----------------------------- ТУТ ВНОСИМ ИЗМЕНЕНИЕ В УПРАВЛЕНИЕ ЕСЛИ ВРУЧНУЮ УПРАВЛЯЕМ ЧЕРЕЗ ДЖОЙСТИК ------------------------------------------------------------------
-
-        if (flag_msgJoy) // Если пришло новое сообшение и сработал колбек то разбираем что там пришло
-        {
-            flag_msgJoy = false;                                       // Флаг сбратываем .Приоритет джойстику
-            joy.parsingJoy(msg_joy);                                   // Разбираем и формируем команды из полученного сообщения
-            joy.transform();                                           // Преобразование кнопок джойстика в реальные команды
-            g_desiredSpeed.speedL = joy._ControlDriver.control.speedL; // Можно упростить и сделать без переменной g_desiredSpeed
-            g_desiredSpeed.speedR = joy._ControlDriver.control.speedR;
-
-            // Data2Print.controlPrint.status = joy._controlPrint.status; // Было раньше печать по джойстику
-            // Data2Print.controlPrint.mode = joy._controlPrint.mode;
-
-            // pub_JoyData.publish(joy._joy2Head); // Публикация данных разобранных из джойстика
-            // topic.publicationControlDriver(joy._ControlDriver); // Публикация данных по управлению Driver (для отладки)
-        }
 
         g_factSpeed.speedL = g_desiredSpeed.speedL;  // 
         g_factSpeed.speedR = g_desiredSpeed.speedR; // 

@@ -7,9 +7,6 @@
 #include <tf/transform_broadcaster.h>
 #include <std_msgs/String.h>
 
-#include <sensor_msgs/Joy.h>
-#include <pb_msgs/SJoy.h>
-
 #include <wiringPi.h>
 #include <wiringPiSPI.h>
 
@@ -36,7 +33,7 @@ u_int64_t timeSpiPrint = 0;  // Время когда пришла команд�
 pb_msgs::Struct_Data2Driver msg_ControlDriver; // Полученное сообщение из топика Head в Data
 pb_msgs::Struct_Data2Modul msg_ControlModul;   // Полученное сообщение из топика
 pb_msgs::Struct_Data2Print msg_ControlPrint;   // Полученное сообщение из топика
-sensor_msgs::Joy msg_joy;                      // Переменная в которую записываем пришедшее сообщение а колбеке
+
 
 #define PRINTBIM23
 // #define PRINTBIM25
@@ -91,7 +88,7 @@ int data_modul_bed = 0;
 int data_print_all = 0;
 int data_print_bed = 0;
 
-bool flag_msgJoy = false;           // Флаг что пришло сообщение в топик и можно его парсить
+
 bool flag_msgControlDriver = false; // Флаг что пришло сообщение в топик и можно его парсить
 bool flag_msgControlModul = false;  // Флаг что пришло сообщение в топик и можно его парсить
 bool flag_msgControlPrint = false;  // Флаг что пришло сообщение в топик и можно его парсить

@@ -13,6 +13,7 @@ void workVector(float len_, SPoint vectorStart_, u_int64_t &time_, float velLen_
 float calculate_max_safe_speed(float distance_to_stop, float max_deceleration); // Вычисляет максимально допустимую скорость для остановки.
 float calculate_max_safe_angular_speed_degrees(    float angular_error_deg,     float max_angular_acceleration_degs2); //Вычисляет максимально допустимую угловую скорость для поворота на месте, используя ГРАДУСЫ.
 float convert_angular_speed_to_linear_wheel_speed(float angular_speed_degs, float wheel_base_m); //Преобразует угловую скорость робота (град/с) в линейную скорость колес (м/с). 
+void callback_Joy(sensor_msgs::Joy msg);							 // Функция обраьтного вызова по подпичке на топик джойстика nh.subscribe("joy", 16, callback_Joy);
 
 // pb_msgs::SControlDriver speedCorrect(pb_msgs::SDriver2Data Driver2Data_msg_, pb_msgs::SControlDriver Data2Driver_); // Корректировка скорости движения в зависимости от датчиков растояния перед
 // void collectCommand(); // //Функция формирования команды для нижнего уровня на основе всех полученных данных, датчиков и анализа ситуации
@@ -31,6 +32,13 @@ float convert_angular_speed_to_linear_wheel_speed(float angular_speed_degs, floa
 // 	msg_Driver2Data = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
 // 	flag_msgDriver = true;
 // }
+
+// Функция обраьтного вызова по подписке на топик джойстика nh.subscribe("joy", 16, callback_Joy);
+void callback_Joy(sensor_msgs::Joy msg)
+{
+	flag_msgJoy = true;
+	msg_joy = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
+}
 
 void callback_Speed(pb_msgs::SSetSpeed msg)
 {

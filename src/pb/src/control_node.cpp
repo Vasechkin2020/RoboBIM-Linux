@@ -3,6 +3,8 @@
 #include "control_code/topic.h" // Файл для функций для формирования топиков в нужном виде и формате
 #include "control_code/code.h"
 #include "control_code/gCodeParser.h"
+#include "control_code/c_joy.h"
+CJoy joy(0.5, 0.5); // Обьявляем экземпляр класса в нем вся обработка джойстика
 
 float angleNow = 0; // Текущий угол из топика
 
@@ -21,6 +23,7 @@ int main(int argc, char **argv)
     // ros::Subscriber subscriber_Driver = nh.subscribe<pb_msgs::Struct_Driver2Data>("pbData/Driver", 1000, callback_Driver);
     ros::Subscriber subscriber_Speed = nh.subscribe<pb_msgs::SSetSpeed>("pbData/Speed", 1000, callback_Speed);
     ros::Subscriber subscriber_Pose = nh.subscribe<pb_msgs::Struct_PoseRotation>("pbPos/PoseRotation", 1000, callback_Pose);
+    ros::Subscriber subscriber_Joy = nh.subscribe("joy", 16, callback_Joy);     // Это мы подписываемся на то что публикует нода джойстика
 
     ros::Rate r(100);         // Частота в Герцах - задержка
     ros::Duration(1).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
@@ -235,5 +238,25 @@ void controlAcc(SControl dreamSpeed_)
 	// printf("g_factSpeed % f : % f : acc= % f \n ", g_factSpeed.speedL, g_factSpeed.speedR);
 	// printf(" |g_factSpeed % .3f % .3f \n", g_factSpeed.speedL, g_factSpeed.speedR);
 }  
+
+
+
+        //----------------------------- ТУТ ВНОСИМ ИЗМЕНЕНИЕ В УПРАВЛЕНИЕ ЕСЛИ ВРУЧНУЮ УПРАВЛЯЕМ ЧЕРЕЗ ДЖОЙСТИК ------------------------------------------------------------------
+
+        if (flag_msgJoy) // Если пришло новое сообшение и сработал колбек то разбираем что там пришло
+        {
+            flag_msgJoy = false;                                       // Флаг сбратываем .Приоритет джойстику
+            joy.parsingJoy(msg_joy);                                   // Разбираем и формируем команды из полученного сообщения
+            joy.transform();                                           // Преобразование кнопок джойстика в реальные команды
+            g_desiredSpeed.speedL = joy._ControlDriver.control.speedL; // Можно упростить и сделать без переменной g_desiredSpeed
+            g_desiredSpeed.speedR = joy._ControlDriver.control.speedR;
+
+            // Data2Print.controlPrint.status = joy._controlPrint.status; // Было раньше печать по джойстику
+            // Data2Print.controlPrint.mode = joy._controlPrint.mode;
+
+            // pub_JoyData.publish(joy._joy2Head); // Публикация данных разобранных из джойстика
+            // topic.publicationControlDriver(joy._ControlDriver); // Публикация данных по управлению Driver (для отладки)
+        }
+
 
 */
