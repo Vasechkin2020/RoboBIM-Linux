@@ -48,15 +48,17 @@ double dtStoping; // Тут храним сколько секунд прошл�
 SPose calcNewPose(SPose odom_, STwistDt data_, std::string stroka_, float koef_); // На вход подаются старая одометрия и новые угловая угловая скорость. Возвращается новая позиция по данным угловым скоростям
 SPose calcNewPose(SPose pose_, STwistDt twist_, std::string stroka_);			  // --- Интеграция одометрии: метод средней точки (midpoint). На основании линейных и угловой скорости вычисляем новые координаты в глобальных координатах
 
-STwistDt calcTwistFromWheel(pb_msgs::SSetSpeed msg_Speed_); // --- Кинематика дифференциального привода. Расчет линейных и угловой скорости
+STwistDt calcTwistFromWheel(pb_msgs::SSetSpeed msg_Speed_);	 // --- Кинематика дифференциального привода. Расчет линейных и угловой скорости
+STwistDt calcTwistFromImu(pb_msgs::Struct_Driver2Data msg_); // Обсчитываем линейные и угловую скорость датчику IMU
 // STwistDt calcTwistFromWheel(pb_msgs::SSetSpeed msg_Speed_);							  // Обсчитываем линейные и угловую скорость по данным скоростей от энкодера с колес
 STwistDt calcTwistFromMpu(STwistDt mpu_, pb_msgs::Struct_Modul2Data msg_Modul2Data_, STwistDt odom_); // Обсчитываем линейные и угловую скорость датчику IMU
-STwistDt calcTwistFused(STwistDt odomTwist_, STwistDt mpuTwist_);									  // Функция комплементации угловых скоростей полученных с колес и с датчика MPU и угла поворота
-float autoOffsetX(float data_, int k_);																  // Функция считаем скользящее среднее из 128 элементов как офсет значений при стоянии на месте
-float autoOffsetY(float data_, int k_);																  // Функция считаем скользящее среднее из 128 элементов как офсет значений при стоянии на месте
-float autoOffsetYaw(float data_, int k_);															  // Функция считаем скользящее среднее из 128 элементов как офсет значений при стоянии на месте
-float filtrComplem(float koef_, float oldData_, float newData_);									  // функция фильтрации, берем старое значение с некоторым весом
-void calibr_accel_gyro();																			  // Калибровка широскопа и акселерометра в момент запуска ноды
+
+STwistDt calcTwistFused(STwistDt odomTwist_, STwistDt imuTwist_); // Функция комплементации угловых скоростей полученных с колес и с датчика MPU и угла поворота
+float autoOffsetX(float data_, int k_);							  // Функция считаем скользящее среднее из 128 элементов как офсет значений при стоянии на месте
+float autoOffsetY(float data_, int k_);							  // Функция считаем скользящее среднее из 128 элементов как офсет значений при стоянии на месте
+float autoOffsetYaw(float data_, int k_);						  // Функция считаем скользящее среднее из 128 элементов как офсет значений при стоянии на месте
+float filtrComplem(float koef_, float oldData_, float newData_);  // функция фильтрации, берем старое значение с некоторым весом
+void calibr_accel_gyro();										  // Калибровка широскопа и акселерометра в момент запуска ноды
 
 // void calculateOdometryFromMpu(SMpu mpu_);					   // Обработка пришедших данных.Обсчитываем одометрию по энкодеру
 
@@ -83,7 +85,7 @@ void callback_Speed(pb_msgs::SSetSpeed msg)
 }
 void callback_Driver(pb_msgs::Struct_Driver2Data msg)
 {
-	g_readings_count++;							// Счетчик
+	g_readings_count++; // Счетчик
 	// ROS_INFO("= count = %lu",g_readings_count);
 	msg_Driver2Data = msg;						// Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
 	msg_Driver2Data.icm.accel.x -= biasAccel.x; // Применяем смещения посчитанные при запуске ноды. Недостаточно того смещения которое посчитали когда драйвер запускаем так как есть тепловое влияни и он меняется со временем.
@@ -104,10 +106,10 @@ void calibr_accel_gyro()
 	float accel_x, accel_y, accel_z;
 	float gyro_x, gyro_y, gyro_z;
 	ros::Rate rateCal(100); // Частота в Герцах
-	uint16_t samples = 100;	// ЧИсло измерений
+	uint16_t samples = 333; // ЧИсло измерений
 	int i = 0;
 	g_readings_count = 0;
-	ROS_INFO("    Start  i= %i count = %lu",i, g_readings_count);
+	ROS_INFO("    Start  i= %i count = %lu", i, g_readings_count);
 	while (ros::ok() && g_readings_count < samples) // Блокирующий цикл калибровки
 	{
 		i++;
@@ -122,8 +124,6 @@ void calibr_accel_gyro()
 		rateCal.sleep(); // Ждем, чтобы дать время на приход нового сообщения
 	}
 
-	ROS_INFO("    OUT i= %i count = %lu",i, g_readings_count);
-
 	biasAccel.x = accel_x / i; // Вычисление и сохранение результата
 	biasAccel.y = accel_y / i;
 	biasAccel.z = g - (accel_z / i); // Калибруем к g 9,8
@@ -131,7 +131,7 @@ void calibr_accel_gyro()
 	biasGyro.y = gyro_y / i;
 	biasGyro.z = gyro_z / i;
 
-	ROS_INFO("    Offset Accel: %+6.4f %+6.4f %+6.4f | Gyro: %+6.4f %+6.4f %+6.4f", biasAccel.x, biasAccel.y, biasAccel.z, biasGyro.x, biasGyro.y, biasGyro.z);
+	ROS_INFO("    Offset i= %i Accel: %+6.4f %+6.4f %+6.4f | Gyro: %+6.4f %+6.4f %+6.4f", i, biasAccel.x, biasAccel.y, biasAccel.z, biasGyro.x, biasGyro.y, biasGyro.z);
 	ROS_INFO("--- calibr_accel_gyro");
 }
 // Находим минимальную дистанцию из 3 датчиков
@@ -588,6 +588,25 @@ inline double normalize_angle(double a)
 }
 
 // Обсчитываем линейные и угловую скорость датчику IMU
+STwistDt calcTwistFromImu(pb_msgs::Struct_Driver2Data msg_)
+{
+	static STwistDt ret;
+	static ros::Time start_time = ros::Time::now(); // Захватываем начальный момент времени
+	ros::Time now_time = ros::Time::now();			// Захватываем текущий момент времени
+	ros::Duration duration = now_time - start_time; // Находим разницу между началом и концом
+	start_time = now_time;							// Запоминаем на будущий расчет
+	double dt = duration.toSec();					// Получаем количество секунд
+	ret.dt = dt;									// Сохраняем новое dt
+
+	// Акселерометр выдает ускорение. Считаем как ускорение умножить на время плюс предыдущая скорость. Получаем текущую скорость
+	ret.vx = ret.vx + (msg_.icm.accel.y * dt); // Тут или ось Х или У. Смотря как установлен датчик Считаем линейную скорость. Берем упрощенно данные акселерометра, подразумевая что гравитация у нас всегда вниз, поскольку датчик закреплен горизонтально и жестко к корпусу.
+	ret.vth = msg_.icm.gyro.z;		// Берем угловую скорость готовую с показаний датчика
+
+	ROS_INFO_THROTTLE(RATE_OUTPUT, "    Twist IMU   dt = %.3f | vx= %.3f vy= %.3f | vth= %.3f gradus/sec %.6f rad/sec ", dt, ret.vx, ret.vy, RAD2DEG(ret.vth), ret.vth);
+	return ret;
+}
+
+// Обсчитываем линейные и угловую скорость датчику MPU
 STwistDt calcTwistFromMpu(STwistDt mpu_, pb_msgs::Struct_Modul2Data msg_Modul2Data_, STwistDt odom_)
 {
 	// ROS_INFO_THROTTLE(RATE_OUTPUT,"+++ calcTwistFromMpu");
@@ -690,7 +709,7 @@ STwistDt calcTwistFromMpu(STwistDt mpu_, pb_msgs::Struct_Modul2Data msg_Modul2Da
 	// complYaw = filtrComplem(0.1, complYaw, bias_linYaw);						 // скорость изменения угла итоговая отфильтрованная
 	float ALFA_COMP = 0.1;
 	complYaw = ALFA_COMP * bias_linYaw + (1 - ALFA_COMP) * complYaw; // Взвешенное среднее двух угловых скоростей
-	float complYaw2 = complYaw / dt;								 // 3. Получаем текущую угловую скорость по IMU
+	float complYaw2 = complYaw / dt;								 // Получаем текущую угловую скорость по IMU
 
 	float ALFA_YAW = 0.7;
 	fused_yaw = ALFA_YAW * complYaw2 + (1 - ALFA_YAW) * odom_.vth; // Взвешенное среднее двух угловых скоростей
@@ -698,7 +717,7 @@ STwistDt calcTwistFromMpu(STwistDt mpu_, pb_msgs::Struct_Modul2Data msg_Modul2Da
 	float fused_yaw_acc = (fused_yaw - fused_yaw_pred) / dt; // Угловое ускорение
 	fused_yaw_pred = fused_yaw;								 // обновляем для следующего шага
 
-	float predicted_vth = mpu_.vth + fused_yaw_acc * dt; // 5. Предсказываем скорость: v(t) = v(t-1) + a * dt
+	float predicted_vth = mpu_.vth + fused_yaw_acc * dt; // Предсказываем скорость: v(t) = v(t-1) + a * dt
 
 	float ALFA_VTH = 0.9;											 // Насколько верим IMU
 	ret.vth = ALFA_VTH * predicted_vth + (1 - ALFA_VTH) * odom_.vth; //  Комплементарная коррекция по одометрии
@@ -713,6 +732,7 @@ STwistDt calcTwistFromMpu(STwistDt mpu_, pb_msgs::Struct_Modul2Data msg_Modul2Da
 		ROS_INFO("    dtStoping offsetX= %+8.6f offsetYaw= %+8.6f ||| dtStoping = %f ||| msg_Modul2Data_.icm.linear.x = %f norm_angleDelta = %f", offsetX, offsetYaw, dtStoping, msg_Modul2Data_.icm.linear.x, norm_angleDelta);
 	}
 
+	// Разные переменные для вывода в топик для отладки
 	g_flagAccel = flagAccel;
 	g_pitch = pitch;
 
@@ -735,114 +755,54 @@ STwistDt calcTwistFromMpu(STwistDt mpu_, pb_msgs::Struct_Modul2Data msg_Modul2Da
 }
 
 // Функция комплементации угловых скоростей полученных с колес и с датчика MPU и угла поворота
-STwistDt calcTwistFused(STwistDt odomTwist_, STwistDt mpuTwist_)
+STwistDt calcTwistFused(STwistDt odomTwist_, STwistDt imuTwist_)
 {
-	// ROS_INFO_THROTTLE(RATE_OUTPUT,"+++ calcTwistUnited");
 	STwistDt ret;
-	float dt = odomTwist_.dt * 0.5 + mpuTwist_.dt * 0.5;
+	static float pred_Odom_Vel = 0;	 // Предыдущее значение линейной скорости по оси Х
+	static float pred_Imu_Vel = 0;	 // Предыдущее значение линейной скорости по оси Х
+	static float a_lin_filtred = 0; 
+
+	float dt = (odomTwist_.dt + imuTwist_.dt) * 0.5;
+	ret.dt = dt;
 	if (dt < 0.003) // При первом запуске просто выходим из функции
 	{
 		ROS_INFO("    calcTwistFused dt< 0.003 !!!!  dt = %f", dt);
+		pred_Odom_Vel = 0;
+		pred_Imu_Vel = 0;
 		return ret;
 	}
-	float koef = 0.2; // Коефициант по умолчанию.Пополам.
 
-	ret.vx = odomTwist_.vx * (1 - koef) + mpuTwist_.vx * koef;
-	ret.vy = odomTwist_.vy * (1 - koef) + mpuTwist_.vy * koef;
-	ret.vth = odomTwist_.vth * (1 - koef) + mpuTwist_.vth * koef;
-	ret.dt = odomTwist_.dt * (1 - koef) + mpuTwist_.dt * koef;
+//--------------------------------
+	//	Мы получаем от колес угловую скорость и от гироскопа угловую скорость. Поэтому сразу делаем слияния 
+	float k_fused_angle_vel = 0.5; // Коеффициент для слияния
+	float v_angl_fused = odomTwist_.vth * k_fused_angle_vel + imuTwist_.vth * (1 - k_fused_angle_vel); // Комплементация по весу
+	
+	float k_filtr_angle_vel = 0.5; // Коеффициент для фильтрации
+	ret.vth = ret.vth * k_filtr_angle_vel + v_angl_fused * (1 - k_filtr_angle_vel); // Фильтруем
+//--------------------------------
+	//Мы получаем от акселерометра линейное ускорение, а от колес линейнуую скорость. Поэтому для слияния нужно привести все к ускорению и в ускорении делать слияние.Потом уже после слияния снова преобразовать в скорость
 
+	float a_lin_odom = (odomTwist_.vx - pred_Odom_Vel) / odomTwist_.dt; // Находим ускорение по одометрии как разницу скоростей делить на время
+	pred_Odom_Vel = odomTwist_.vx;					 // Сохраняем для следующего расчета
+
+	float a_lin_imu = (imuTwist_.vx - pred_Imu_Vel) / imuTwist_.dt; // Получаем ускорение как разницу скоростей делить на время
+	pred_Imu_Vel = imuTwist_.vx;					 // Сохраняем для следующего расчета
+
+	float k_fused_lin_acceleration = 0.5; // Коеффициент для слияния
+	float a_lin_fused = a_lin_odom * k_fused_lin_acceleration + a_lin_imu * (1 - k_fused_lin_acceleration); // Комплементация по весу
+
+	float k_filtr_lin_acceleration = 0.5; // Коеффициент для фильтрации
+	a_lin_filtred = a_lin_filtred * k_filtr_lin_acceleration + a_lin_fused * (1 - k_filtr_lin_acceleration); // Фильтруем
+
+	ret.vx = ret.vx + (a_lin_filtred * dt); // Считаем теперь скорость на основе скомплементированного ускорения
+//--------------------------------
+		
 	ROS_INFO_THROTTLE(RATE_OUTPUT, "    fused Twist | %.3f %.3f %.3f |  %.3f %.3f %.3f | %.3f %.3f %.3f |  %.3f %.3f %.3f | ",
-					  odomTwist_.vx, mpuTwist_.vx, ret.vx,
-					  odomTwist_.vy, mpuTwist_.vy, ret.vy,
-					  odomTwist_.vth, mpuTwist_.vth, ret.vth,
-					  odomTwist_.dt, mpuTwist_.dt, ret.dt);
+					  odomTwist_.vx, imuTwist_.vx, ret.vx,
+					  odomTwist_.vy, imuTwist_.vy, ret.vy,
+					  odomTwist_.vth, imuTwist_.vth, ret.vth,
+					  odomTwist_.dt, imuTwist_.dt, ret.dt);
 	return ret;
-
-	// fused = alpha * (fused_prev + gyro * dt) + (1 - alpha) * odom_yaw; //Простой комплементарный фильтр (рекомендую как старт)
-
-	/*
-
-	// пример вызова на каждом шаге (100 Гц)
-	double yaw = update(imu_delta, odom_delta, yaw_abs, have_abs);
-
-
-
-	#include <math.h>
-	#include <stdio.h>
-
-	double yaw_est = 0.0;  // текущее состояние фильтра (оценка угла)
-
-	// нормализация угла в диапазон [-pi, pi]
-	double normalize_angle(double a)
-	{
-		return atan2(sin(a), cos(a));
-	}
-
-	// обновление фильтра
-	double update(double imu_yaw_delta, double odom_yaw_delta,double yaw_abs, int use_abs)
-	{
-		// 1. прогноз по IMU
-		double yaw_imu = yaw_est + imu_yaw_delta;
-
-		// 2. прогноз по одометрии
-		double yaw_odom = yaw_est + odom_yaw_delta;
-
-		// 3. инновация между IMU и одометрией
-		double innovation = normalize_angle(yaw_odom - yaw_imu);
-
-		// 4. адаптивный вес (IMU vs ODOM)
-		double base_alpha = 0.98;                     // базовый вес IMU
-		double max_innovation = 10.0 * M_PI / 180.0;  // предел разумного расхождения (10°)
-
-		double scale = 1.0 - fabs(innovation) / max_innovation;
-		if (scale < 0.0) scale = 0.0;
-		if (scale > 1.0) scale = 1.0;
-
-		double alpha = base_alpha + (1.0 - base_alpha) * scale;
-		if (alpha < 0.0) alpha = 0.0;
-		if (alpha > 1.0) alpha = 1.0;
-
-		// 5. объединение IMU и одометрии
-		yaw_est = alpha * yaw_imu + (1.0 - alpha) * yaw_odom;
-
-		// 6. если пришло абсолютное измерение
-		if (use_abs)
-		{
-			double abs_innovation = normalize_angle(yaw_abs - yaw_est);
-
-			// вес абсолютного датчика (0.01..0.1)
-			double gamma = 0.05;
-			yaw_est = normalize_angle(yaw_est + gamma * abs_innovation);
-		}
-
-		// 7. нормализация
-		yaw_est = normalize_angle(yaw_est);
-
-		return yaw_est;
-	}
-
-	*/
-	/*
-		// Нормализация угла в диапазон [-π, π]
-		inline double normalize_angle(double a) {
-			while (a > M_PI)  a -= 2.0 * M_PI;
-			while (a <= -M_PI) a += 2.0 * M_PI;
-			return a;
-		}
-
-		// Разница углов (a - b) с учётом wrap-around, результат в [-π, π]
-		inline double angle_diff(double a, double b) {
-			return atan2(sin(a - b), cos(a - b));
-		}
-
-		// Среднее значение двух углов
-		inline double angle_average(double a, double b) {
-			double x = cos(a) + cos(b);
-			double y = sin(a) + sin(b);
-			return atan2(y, x);
-		}
-	*/
 }
 
 float autoOffsetX(float data_, int k_) // УМНЫЙ РАСЧЕТ УБИРАЮЩИЙ ПЛАВАНИЕ УСКОРЕНИЯ С ДАТЧИКА BNO055

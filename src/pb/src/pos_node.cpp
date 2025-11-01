@@ -67,10 +67,9 @@ int main(int argc, char **argv)
     ros::Duration(1).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
     static bool flagPublish = false;
 
-    
-    ROS_INFO("Waiting for the /startup_signal topic to become active..."); // БЛОКИРУЮЩЕЕ ОЖИДАНИЕ ЗАПУСКА ДРУГОЙ НОДЫ // Ожидаем, пока топик сигнала запуска не станет активным
-    ros::topic::waitForMessage<pb_msgs::Struct_Driver2Data>("pbData/Driver", ros::Duration(30));// Блокирующий вызов: ждет первое сообщение из топика "/startup_signal" с таймаутом 30 секунд. Замените String на нужный тип сообщения.
-    ROS_INFO("Topic received. Starting the calibration phase."); // Топик получен. Начинаем фазу калибровки.
+    ROS_INFO("Waiting for the /startup_signal topic to become active...");                       // БЛОКИРУЮЩЕЕ ОЖИДАНИЕ ЗАПУСКА ДРУГОЙ НОДЫ // Ожидаем, пока топик сигнала запуска не станет активным
+    ros::topic::waitForMessage<pb_msgs::Struct_Driver2Data>("pbData/Driver", ros::Duration(30)); // Блокирующий вызов: ждет первое сообщение из топика "/startup_signal" с таймаутом 30 секунд. Замените String на нужный тип сообщения.
+    ROS_INFO("Topic received. Starting the calibration phase.");                                 // Топик получен. Начинаем фазу калибровки.
 
     calibr_accel_gyro(); // Калибровка гироскопа и акселерометра в момент запуска ноды
 
@@ -93,39 +92,29 @@ int main(int argc, char **argv)
             flag_msgSpeed = false;
             flagPublish = true;
 
-            // calcEuler(); // Расчет угла yaw с датчика IMU
-
-            g_linAngVel.odom = calcTwistFromWheel(msg_Speed);                                          // Обработка пришедших данных. По ним считаем линейные скорости по осям и угловую по углу. Запоминаем dt
-            g_linAngVel.fused = calcTwistFromMpu(g_linAngVel.fused, msg_Modul2Data, g_linAngVel.odom); // Обработка пришедших данных для расчета линейных и угловых скоростей
-            // g_linAngVel.fused = calcTwistFused(g_linAngVel.odom, g_linAngVel.mpu); // Комплементация данных используя фильтр (Комплементарный или Калмана) тут написать функцию комплементации данных угловых скоростей с разными условиями когда и в каком соотношении скомплементировать скорсти с двух источников
-
-            // g_linAngVel.fused = g_linAngVel.wheel; // Пока нет расчет по IMU и комплментации используем только по колесам
+            g_linAngVel.odom = calcTwistFromWheel(msg_Speed);                      // Обработка пришедших данных. По ним считаем линейные скорости по осям и угловую по углу. Запоминаем dt
+            g_linAngVel.imu = calcTwistFromImu(msg_Driver2Data);                   // Обработка пришедших данных. По ним считаем линейные скорости по осям и угловую по углу. Запоминаем dt
+            g_linAngVel.fused = calcTwistFused(g_linAngVel.odom, g_linAngVel.imu); // Комплементация данных используя фильтр (Комплементарный или Калмана) тут написать функцию комплементации данных угловых скоростей с разными условиями когда и в каком соотношении скомплементировать скорсти с двух источников
+            // g_linAngVel.fused = calcTwistFromMpu(g_linAngVel.fused, msg_Modul2Data, g_linAngVel.odom); // Обработка пришедших данных для расчета линейных и угловых скоростей
 
             g_poseRotation.odom = calcNewPose(g_poseRotation.odom, g_linAngVel.odom, "odom");     // На основе линейных скоростей считаем новую позицию и угол по колесам
             g_poseRotation.fused = calcNewPose(g_poseRotation.fused, g_linAngVel.fused, "fused"); // На основе линейных скоростей считаем новую позицию и угол по колесам
 
             // g_poseRotation.mode10 = calcNewOdom2(g_poseRotation.mode10, g_linAngVel.fused, "mode10"); // На основе линейных скоростей считаем новую позицию и угол по колесам
-            // g_poseRotation.mode10.th = DEG2RAD(g_angleEuler.yaw); // Напрямую присваиваем угол. Заменяем тот угол что насчитали внутри
-            // ROS_INFO("    g_poseRotation mode10 x = %.3f y = %.3f theta = %.3f (radian)", g_poseRotation.mode10.x, g_poseRotation.mode10.y, g_poseRotation.mode10.th);
 
             g_poseBase.odom = convertRotation2Base(g_poseRotation.odom, "odom");    // Эти данные mode10 используем как основную точку для расчета mode1.2.3
             g_poseBase.fused = convertRotation2Base(g_poseRotation.fused, "fused"); // Эти данные mode10 используем как основную точку для расчета mode1.2.3
             // g_poseBase.mode10 = convertRotation2Base(g_poseRotation.mode10, "mode10"); // Эти данные mode10 используем как основную точку для расчета mode1.2.3
 
-            // calcMode0();   // Расчет одометрии Mode0
-            // calcMode11();  // На основе линейных скоростей считаем новую позицию и угол для одометрии 100 Герц считаем и потом 10 Герц правим
-            // calcMode12();  // На основе линейных скоростей считаем новую позицию и угол для одометрии 100 Герц считаем и потом 10 Герц правим
-            // calcMode13();  // На основе линейных скоростей считаем новую позицию и угол для одометрии 100 Герц считаем и потом 10 Герц правим
-            // calcMode123(); // Комплементация Odom10// Комплементация положения и угла
-
             // РАСЧЕТ НАПРАВЛЕНИЯ УГЛОВ ЛАЗЕРОВ
             laser.calcAnglePillarForLaser(pillar.pillar, g_poseBase.odom); // Расчет углов в локальной системе лазеров на столбы для передачи на нижний уровень для исполнения
             topic.publicationControlModul();                               // Формируем и Публикуем команды для управления Modul
 
+            // angleMPU(); // Расчет угла положения на основе данных сдатчика MPU
+            // calcEuler(); // Расчет угла yaw с датчика IMU
+
             // topic.visualPublishOdomMode_3();                                  // Отобращение стрелкой где начало и куда смотрит в Mode3
             // topic.publicationAngleLaser(laser);                               // Формируем перемнную с собщением для публикации
-
-            // angleMPU(); // Расчет угла положения на основе данных сдатчика MPU
             // topic.publishOdomMpu();
         }
 
