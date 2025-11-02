@@ -292,12 +292,15 @@ void CTopic::publicationPoseRotattion() // Вывод в топик данных
     // msg.theta = g_poseRotation.theta;
 
     msg.x.odom = g_poseRotation.odom.x;
+    msg.x.imu = g_poseRotation.imu.x;
     msg.x.fused = g_poseRotation.fused.x;
 
     msg.y.odom = g_poseRotation.odom.y;
+    msg.y.imu = g_poseRotation.imu.y;
     msg.y.fused = g_poseRotation.fused.y;
     
     msg.th.odom = g_poseRotation.odom.th;
+    msg.th.imu = g_poseRotation.imu.th;
     msg.th.fused = g_poseRotation.fused.th;
    
     msg.theta = DEG2RAD(g_angleEuler.yaw);
@@ -309,12 +312,15 @@ void CTopic::publicationLinAngVel() // Вывод в топик данных с 
     pb_msgs::SLinAngVel msg; // Обобщенные данные в моем формате о всех вариантах расчета позиции
 
     msg.vx.wheel = g_linAngVel.odom.vx;
+    msg.vx.imu = g_linAngVel.imu.vx;
     msg.vx.fused = g_linAngVel.fused.vx;
 
     msg.vth.wheel = g_linAngVel.odom.vth;
+    msg.vth.imu = g_linAngVel.imu.vth;
     msg.vth.fused = g_linAngVel.fused.vth;
 
     msg.dt.wheel = g_linAngVel.odom.dt;
+    msg.dt.imu = g_linAngVel.imu.dt;
     msg.dt.fused = g_linAngVel.fused.dt;
 
     msg.linRaw = g_linRaw;
@@ -333,7 +339,6 @@ void CTopic::publicationLinAngVel() // Вывод в топик данных с 
 	msg.offsetYaw = g_offsetYaw;
 	msg.complYaw = g_complYaw;
 	msg.fused_yaw = g_fused_yaw;
-
 
     pub_linAngVel.publish(msg); // Публикуем информацию по позиции лидара
 }

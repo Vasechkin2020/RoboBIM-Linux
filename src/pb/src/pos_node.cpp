@@ -98,13 +98,13 @@ int main(int argc, char **argv)
             // g_linAngVel.fused = calcTwistFromMpu(g_linAngVel.fused, msg_Modul2Data, g_linAngVel.odom); // Обработка пришедших данных для расчета линейных и угловых скоростей
 
             g_poseRotation.odom = calcNewPose(g_poseRotation.odom, g_linAngVel.odom, "odom");     // На основе линейных скоростей считаем новую позицию и угол по колесам
+            g_poseRotation.imu = calcNewPose(g_poseRotation.imu, g_linAngVel.imu, "imu");        // На основе линейных скоростей считаем новую позицию и угол по колесам
             g_poseRotation.fused = calcNewPose(g_poseRotation.fused, g_linAngVel.fused, "fused"); // На основе линейных скоростей считаем новую позицию и угол по колесам
 
             // g_poseRotation.mode10 = calcNewOdom2(g_poseRotation.mode10, g_linAngVel.fused, "mode10"); // На основе линейных скоростей считаем новую позицию и угол по колесам
 
             g_poseBase.odom = convertRotation2Base(g_poseRotation.odom, "odom");    // Эти данные mode10 используем как основную точку для расчета mode1.2.3
             g_poseBase.fused = convertRotation2Base(g_poseRotation.fused, "fused"); // Эти данные mode10 используем как основную точку для расчета mode1.2.3
-            // g_poseBase.mode10 = convertRotation2Base(g_poseRotation.mode10, "mode10"); // Эти данные mode10 используем как основную точку для расчета mode1.2.3
 
             // РАСЧЕТ НАПРАВЛЕНИЯ УГЛОВ ЛАЗЕРОВ
             laser.calcAnglePillarForLaser(pillar.pillar, g_poseBase.odom); // Расчет углов в локальной системе лазеров на столбы для передачи на нижний уровень для исполнения
@@ -211,9 +211,9 @@ int main(int argc, char **argv)
         if (flagPublish) //
         {
             flagPublish = false;
-            topic.publicationPoseBase();      // Публикуем все варианты расчета позиций mode 0.1.2.3.4
-            topic.publicationPoseRotattion(); // Публикуем все варианты расчета позиций mode 0.1.2.3.4
             topic.publicationLinAngVel();     // Вывод в топик данных с данными угловой и линейной скоростью
+            topic.publicationPoseRotattion(); // Публикуем все варианты расчета позиций mode 0.1.2.3.4
+            topic.publicationPoseBase();      // Публикуем все варианты расчета позиций mode 0.1.2.3.4
             // topic.publishOdomUnited();              // Публикация одометрии по моторам с корректировкой с верхнего уровня
         }
 
