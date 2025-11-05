@@ -1,6 +1,197 @@
 #ifndef KALMAN_H
 #define KALMAN_H
 
+
+
+#include <stdio.h>   // Для printf
+#include <cmath>     // Для sin, cos, atan2, sqrt
+
+// --- 1. Вспомогательный класс: KalmanAngle ---
+/*
+ * KalmanAngle.h - Простой 1D фильтр Калмана
+ *
+ * Этот класс реализует 1D фильтр Калмана, который используется  * для слияния данных гироскопа и акселерометра для получения * одного угла (например, крена или тангажа).
+ *
+ * Он оценивает состояние из двух переменных:
+ * 1. Угол (angle)
+ * 2. Смещение гироскопа (bias)
+ */
+class KalmanAngle
+{
+public:
+    KalmanAngle()
+    {
+        // Настроечные параметры фильтра (ковариации шумов)
+        Q_angle = 0.1;   // Шум процесса (для угла) Q_angle: Начните с 0.001, увеличивайте если фильтр слишком "доверяет" гироскопу
+        Q_bias = 0.1;    // Шум процесса (для смещения гироскопа) Q_bias: Начните с 0.003, увеличивайте если смещение быстро меняется
+        R_measure = 0.001;  // Шум измерения (для акселерометра) _measure: Начните с 0.03, увеличивайте если данные с акселерометра зашумлены
+
+        angle = 0.0;       // Начальный угол (в радианах)
+        bias = 0.0;        // Начальное смещение гироскопа
+
+        // Инициализация ненулевой неопределенности для ускорения сходимости
+        P[0][0] = 1.0;     
+        P[0][1] = 0.0;
+        P[1][0] = 0.0;
+        P[1][1] = 1.0;     
+    }
+
+    // Метод обновления фильтра
+    // newRate - новое значение с гироскопа (град/с или рад/с)
+    // newAngle - новое значение с акселерометра (град или рад)
+    // dt - время, прошедшее с последнего обновления (в секундах)
+    double update(double newRate, double newAngle, double dt)
+    {
+        if (dt < 0.0001)   // Проверка dt на ноль
+        {
+            return angle;
+        }
+        // --- ЭТАП ПРЕДСКАЗАНИЯ (PREDICT) ---
+        // Основан на данных гироскопа (модель процесса)
+
+        // 1. Предсказываем новый угол:
+        // Угол = старый угол + (скорость - смещение) * dt
+        angle += (newRate - bias) * dt; // Рассчитываем новый угол
+        
+        // 2. Предсказываем новую ковариационную матрицу P
+        // P_k = F * P_{k-1} * F^T + Q
+        // (Здесь реализована упрощенная, но математически корректная форма)
+        P[0][0] += dt * (dt * P[1][1] - P[0][1] - P[1][0]) + Q_angle; // Обновление P[0][0]
+        
+        P[0][1] -= dt * P[1][1];        
+        P[1][0] = P[0][1];              
+        
+        P[1][1] += Q_bias * dt; // Обновляем P[1][1], учитывая дрейф смещения
+
+        // --- ЭТАП КОРРЕКЦИИ (UPDATE) ---
+        // Основан на данных акселерометра (измерение)
+
+        // 1. Инновация (ошибка)
+        // y = z - H * x (наше измерение - предсказанное значение)
+        double y = newAngle - angle;    // Разница между измеренным (acc) и предсказанным (gyro) углом
+        double S = P[0][0] + R_measure; // Ошибка измерения (ковариация инновации) // S = H * P * H^T + R
+
+        // 3. Коэффициент Калмана (Kalman Gain)        // K = P * H^T * S^{-1}
+        double K[2];                    // Вектор коэффициента Калмана (K[0] для угла, K[1] для смещения)
+        K[0] = P[0][0] / S;             // Расчет K[0]
+        K[1] = P[1][0] / S;             // Расчет K[1]
+
+        // 4. Коррекция состояния (наш новый, уточненный угол)// x = x + K * y
+        angle += K[0] * y;              // Корректируем угол
+        bias += K[1] * y;               // Корректируем смещение гироскопа
+
+        // 5. Коррекция ковариационной матрицы P // P = (I - K * H) * P
+        double P00_temp = P[0][0];      
+        double P01_temp = P[0][1];
+
+        P[0][0] -= K[0] * P00_temp;     // Обновление матрицы ковариации
+        P[0][1] -= K[0] * P01_temp;
+        
+        P[1][0] = P[0][1];              
+        
+        P[1][1] -= K[1] * P01_temp;
+
+        return angle;                   // Возвращаем отфильтрованный угол
+    }
+
+    void setAngle(double newAngle) { angle = newAngle; } // Установить угол
+
+private:
+    double Q_angle, Q_bias, R_measure;
+    double angle, bias;
+    double P[2][2];
+};
+
+// --- 2. Основной класс: IMUManager ---
+/*  * IMUManager.h - УПРОЩЕННЫЙ класс для обработки IMU  */
+class IMUManager
+{
+public:
+    IMUManager() // Конструктор
+    {
+        roll = 0.0;         
+        pitch = 0.0;        
+    }
+
+        // Главный метод обновления
+    void update(double gx, double gy, double ax, double ay, double az, double dt)
+    {
+        // --- 1. Нормализация акселерометра ---
+        double magnitude = sqrt(ax * ax + ay * ay + az * az);
+        if (magnitude < 0.0001) // Защита только от деления на ноль
+            return;
+
+        double n_ax = ax / magnitude;
+        double n_ay = ay / magnitude;
+        double n_az = az / magnitude;
+
+        // --- 2. Расчет углов по акселерометру ---
+        double roll_acc = atan2(n_ax, n_az);
+        double pitch_acc = atan2(-n_ay, sqrt(n_ax * n_ax + n_az * n_az)); // Тут меняем ось если датчик стоит по другому
+
+        // --- 3. Обновление фильтров Калмана ---
+        pitch = kalmanPitch.update(gx, pitch_acc, dt);
+        roll = kalmanRoll.update(gy, roll_acc, dt);   
+    }
+
+    // --- Методы доступа (Getters) ---
+    double getRoll() { return roll; } // Крен относительно нуля
+    double getPitch() { return pitch; } // Тангаж относительно нуля
+
+private:
+    KalmanAngle kalmanRoll;
+    KalmanAngle kalmanPitch;
+    double roll, pitch;
+};
+
+/*
+// --- 3. Пример использования (main.cpp) ---
+int main()
+{
+    IMUManager imu;
+
+    // --- 1. СИМУЛЯЦИЯ КАЛИБРОВКИ ---
+    double initial_pitch_rad = 1.2 * (3.1415926535 / 180.0);
+    
+    double ax_calib = -sin(initial_pitch_rad);
+    double ay_calib = 0.005;
+    double az_calib = cos(initial_pitch_rad);
+    
+    imu.calibrateOffsets(ax_calib, ay_calib, az_calib); 
+
+    // --- 2. СИМУЛЯЦИЯ ДВИЖЕНИЯ ---
+    double dt = 0.01;
+    double rad_to_deg = 180.0 / 3.1415926535;
+
+    for (int i = 0; i < 200; i++)
+    {
+        double pitch_target_rad = 6.2 * (3.1415926535 / 180.0); 
+
+        double ax_raw = -sin(pitch_target_rad); 
+        double ay_raw = ay_calib;
+        double az_raw = cos(pitch_target_rad);
+
+        double gx_raw = 0.0; 
+        double gy_raw = 0.0;
+
+        imu.update(gx_raw, gy_raw, ax_raw, ay_raw, az_raw, dt); 
+
+        // --- 4. Вывод результатов ---
+        if (i % 20 == 0) 
+        {
+            double rel_pitch = imu.getRelativePitch() * rad_to_deg;
+            double acc_x = imu.getLinAccX();
+
+            printf("Т:%.2fс | Rel Pitch=%.2f deg | Lin Ax=%.4f G\n", 
+                   (double)i * dt, rel_pitch, acc_x);
+        }
+    }
+
+    return 0;
+}
+
+*/
+
 class CKalman
 {
 // private:
@@ -138,5 +329,39 @@ public:
         return Statey;
     }
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #endif

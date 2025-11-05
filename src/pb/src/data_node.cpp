@@ -160,7 +160,7 @@ int main(int argc, char **argv)
         // ROS_INFO("id= %i speedL= %f speedR= %f cheksum = %i", Data2Driver.id, Data2Driver.control.speedL, Data2Driver.control.speedR, Data2Driver.cheksum);
         if (rezData) // Если пришли хорошие данные то обрабатываем их и публикуем данные в ROS
         {
-            topic.processing_Driver2Data();         // Обработанные данные записываем их в структуру для публикации в топике и публикуем
+            topic.processing_Driver2Data();         // Обработанные данные записываем их в структуру для публикации в топике и публикуем И знак смотря как установлен. Подбор. 
             topic.processing_SetSpeed(g_factSpeed); // Заполнение и публикация заданной скорости Публикуем после Driver2Data
         }
         //-----------------------------------------------------------------------------------------------------------------------------------

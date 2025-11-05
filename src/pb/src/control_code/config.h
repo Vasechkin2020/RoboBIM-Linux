@@ -66,7 +66,11 @@ bool flagAngle = false;  // Флаг отслеживания угла из то
 bool flagAngleFirst = true;  // Флаг отслеживания первого запуска алгоритма отслеживания
 bool flagVector = false; // Флаг отслеживания длины вектора точки из топика
 bool flagVectorFirst = true; // Флаг отслеживания первого запуска алгоритма отслеживания
-static SPoint vectorStart;
+// static SPoint vectorStart;
+static SPoint point_A;
+static SPoint point_B;
+static SPoint point_C;
+static SPoint point_D;
 
 pb_msgs::Struct_Data2Driver Data2Driver;      // Структура с командами которую публикуем и которую потом Driver исполняет
 pb_msgs::Struct_Data2Driver Data2Driver_prev; // Структура с командами которую публикуем и которую потом Driver исполняет предыдущее состоние

@@ -73,6 +73,7 @@
 #define RAD2DEG(x) ((x) * 180. / M_PI) // Первод из радиан в градусы
 #define DEG2RAD(x) ((x) * M_PI / 180.) // Первод из градусов в радианы
 #define G_TO_M_S2 9.80665f             // Преобразуем в м/с²
+double rad_to_deg = 180.0 / 3.1415926535;
 
 float offsetAngle = 0.7; // Ошибка для азимута. Прибавляем к углу что получилди с лидара
 
@@ -106,17 +107,26 @@ float linearOffsetX[128] = {0};
 float linearOffsetY[128] = {0};
 float linearOffsetZ[128] = {0};
 
-float g_linRaw = 0; // Все переменные для отладки
 float g_offsetX = 0;
 float g_offsetYaw = 0;
 
+float g_raw_accel = 0;
+float g_raw_gyro = 0;
+float g_real_accel = 0;
+float g_real_gyro = 0;
+
+
+
+
+float g_linRaw = 0; // Все переменные для отладки
 float g_a_lin_X = 0;
 float g_a_lin_odom = 0;
+
 float g_complX = 0;
 float g_complYaw = 0;
-
 float g_fused_accel = 0;
 float g_fused_yaw = 0;
+float g_roll = 0;
 float g_pitch = 0;
 float g_g_x = 0;
 float g_flagAccel = 0;

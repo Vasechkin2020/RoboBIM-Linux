@@ -110,7 +110,7 @@ void CTopic::processing_Driver2Data()
 	Driver2Data_msg.icm.rate = Driver2Data.icm.rate;
 
 	Driver2Data_msg.icm.accel.x = Driver2Data.icm.accel.x;
-	Driver2Data_msg.icm.accel.y = Driver2Data.icm.accel.y;
+	Driver2Data_msg.icm.accel.y = -Driver2Data.icm.accel.y; // Знак минус смотря как датчик установлен
 	Driver2Data_msg.icm.accel.z = Driver2Data.icm.accel.z;
 
 	Driver2Data_msg.icm.gyro.x = Driver2Data.icm.gyro.x;

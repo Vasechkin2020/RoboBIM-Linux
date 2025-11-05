@@ -23,7 +23,7 @@ int main(int argc, char **argv)
     // ros::Subscriber subscriber_Driver = nh.subscribe<pb_msgs::Struct_Driver2Data>("pbData/Driver", 1000, callback_Driver);
     ros::Subscriber subscriber_Speed = nh.subscribe<pb_msgs::SSetSpeed>("pbData/Speed", 1000, callback_Speed);
     ros::Subscriber subscriber_Pose = nh.subscribe<pb_msgs::Struct_PoseRotation>("pbPos/PoseRotation", 1000, callback_Pose);
-    ros::Subscriber subscriber_Joy = nh.subscribe("joy", 16, callback_Joy);     // Это мы подписываемся на то что публикует нода джойстика
+    ros::Subscriber subscriber_Joy = nh.subscribe("joy", 16, callback_Joy); // Это мы подписываемся на то что публикует нода джойстика
 
     ros::Rate r(100);         // Частота в Герцах - задержка
     ros::Duration(1).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
@@ -43,6 +43,8 @@ int main(int argc, char **argv)
     // u_int64_t timeStart = millis();
     // u_int64_t timeMil = millis();
     int i = 0;
+
+
 
     // std::list<int> numbers{1, 2, 3, 4, 5};
     // std::list<SCommand> listok;
@@ -74,9 +76,12 @@ int main(int argc, char **argv)
                 flagAngle = true;         // Флаг что теперь отслеживаем угол
                 ROS_INFO("    Angle Start");
                 break;
-            case 2:                               // Режим где движемся по координатам. даигаемся по длинне вектора.
-                vectorStart.x = msg_Pose.x.odom; // Запоминаем те координаты которые были в момент начала движения
-                vectorStart.y = msg_Pose.y.odom;
+            case 2:                          // Режим где движемся по координатам. даигаемся по длинне вектора.
+                point_A.x = msg_Pose.x.odom; // Запоминаем те координаты которые были в момент начала движения
+                point_A.y = msg_Pose.y.odom;
+                point_B = calculate_new_coordinates(point_A, msg_Pose.th.odom, commandArray[i].len); // Посчитали конечные координаты точки В
+
+
                 time = millis() + 999999; // Огромное время ставим
                 flagVector = true;        // Флаг что теперь отслеживаем длину вектора
                 ROS_INFO("    Vector Start. len = %f", commandArray[i].len);
@@ -91,14 +96,14 @@ int main(int argc, char **argv)
 
         if (flagVector) // Отслеживание длины вектора
         {
-            workVector(commandArray[i].len, vectorStart, time, commandArray[i].velLen); // Тут отрабатываем алгоритм отслеживания длины вектора при движении прямо
+            workVector(commandArray[i].len, point_A, point_B, time, commandArray[i].velLen); // Тут отрабатываем алгоритм отслеживания длины вектора при движении прямо
         }
 
         if (time < millis())
         {
             flagCommand = true;
             i++;
-            if (  i >= commandArray.size())
+            if (i >= commandArray.size())
             {
                 ros::shutdown();
             }
@@ -141,13 +146,12 @@ int main(int argc, char **argv)
         timeCycle(timeStart, timeNow); // Выводим справочно время работы цикла и время с начала работы программы
         r.sleep();                     // Интеллектуальная задержка на указанную частоту
     }
-    controlSpeed.control.speedL = 0; // 
+    controlSpeed.control.speedL = 0; //
     controlSpeed.control.speedR = 0;
     topic.publicationControlDriver(); // Формируем и Публикуем команды для управления Driver
     printf("сontrol_node STOP \n");
     return 0;
 }
-
 
 /*
     #include "data_code/jerk.h"
@@ -198,46 +202,46 @@ int main(int argc, char **argv)
       // Функция контроля ускорения
 void controlAcc(SControl dreamSpeed_)
 {
-	static unsigned long time = micros();		 // Время предыдущего расчета// Функция из WiringPi.// Замеряем интервалы по времени между запросами данных
-	unsigned long time_now = micros();			 // Время в которое делаем расчет
-	double dt = ((time_now - time) / 1000000.0); // Интервал расчета переводим сразу в секунды Находим интревал между текущим и предыдущим расчетом в секундах
-	time = time_now;
-	float accel = ACCELERATION * dt; // Ускорение
-	// printf("dreamSpeed_ % .3f % .3f accel= % .5f dt= % .5f", dreamSpeed_.speedL, dreamSpeed_.speedR, accel, dt);
-	if (dreamSpeed_.speedL != g_factSpeed.speedL) // Если скорость с которой хотим крутиться не равна тому что была ранее установлена, то меняем с учетом ускорения
-	{
-		// printf("dreamSpeed_ % f : % f : acc= % f | ", dreamSpeed_.speedL, dreamSpeed_.speedR, accel);
-		if (g_factSpeed.speedL < dreamSpeed_.speedL) // Если меньше чем надо то прибавим оборотов
-		{
-			g_factSpeed.speedL = g_factSpeed.speedL + accel; // К старой скорости прибавляем ускорение за этот промежуток
-			if (g_factSpeed.speedL > dreamSpeed_.speedL)	 // Если стала больше то ровняем
-				g_factSpeed.speedL = dreamSpeed_.speedL;
-		}
-		if (g_factSpeed.speedL > dreamSpeed_.speedL) // Если меньше чем надо то прибавим оборотов
-		{
-			g_factSpeed.speedL = g_factSpeed.speedL - accel; // К старой скорости прибавляем ускорение за этот промежуток
-			if (g_factSpeed.speedL < dreamSpeed_.speedL)	 // Если стала меньше нужной то далаем какая должна быть
-				g_factSpeed.speedL = dreamSpeed_.speedL;
-		}
-	}
-	if (dreamSpeed_.speedR != g_factSpeed.speedR) // Если скорость с которой хотим крутиться не равна тому что была ранее установлена, то меняем с учетом ускорения
-	{
-		if (g_factSpeed.speedR < dreamSpeed_.speedR) // Если меньше чем надо то прибавим оборотов
-		{
-			g_factSpeed.speedR = g_factSpeed.speedR + accel; // К старой скорости прибавляем ускорение за этот промежуток
-			if (g_factSpeed.speedR > dreamSpeed_.speedR)	 // Если стала больше то ровняем
-				g_factSpeed.speedR = dreamSpeed_.speedR;
-		}
-		if (g_factSpeed.speedR > dreamSpeed_.speedR) // Если меньше чем надо то прибавим оборотов
-		{
-			g_factSpeed.speedR = g_factSpeed.speedR - accel; // К старой скорости прибавляем ускорение за этот промежуток
-			if (g_factSpeed.speedR < dreamSpeed_.speedR)	 // Если стала меньше нужной то далаем какая должна быть
-				g_factSpeed.speedR = dreamSpeed_.speedR;
-		}
-	}
-	// printf("g_factSpeed % f : % f : acc= % f \n ", g_factSpeed.speedL, g_factSpeed.speedR);
-	// printf(" |g_factSpeed % .3f % .3f \n", g_factSpeed.speedL, g_factSpeed.speedR);
-}  
+    static unsigned long time = micros();		 // Время предыдущего расчета// Функция из WiringPi.// Замеряем интервалы по времени между запросами данных
+    unsigned long time_now = micros();			 // Время в которое делаем расчет
+    double dt = ((time_now - time) / 1000000.0); // Интервал расчета переводим сразу в секунды Находим интревал между текущим и предыдущим расчетом в секундах
+    time = time_now;
+    float accel = ACCELERATION * dt; // Ускорение
+    // printf("dreamSpeed_ % .3f % .3f accel= % .5f dt= % .5f", dreamSpeed_.speedL, dreamSpeed_.speedR, accel, dt);
+    if (dreamSpeed_.speedL != g_factSpeed.speedL) // Если скорость с которой хотим крутиться не равна тому что была ранее установлена, то меняем с учетом ускорения
+    {
+        // printf("dreamSpeed_ % f : % f : acc= % f | ", dreamSpeed_.speedL, dreamSpeed_.speedR, accel);
+        if (g_factSpeed.speedL < dreamSpeed_.speedL) // Если меньше чем надо то прибавим оборотов
+        {
+            g_factSpeed.speedL = g_factSpeed.speedL + accel; // К старой скорости прибавляем ускорение за этот промежуток
+            if (g_factSpeed.speedL > dreamSpeed_.speedL)	 // Если стала больше то ровняем
+                g_factSpeed.speedL = dreamSpeed_.speedL;
+        }
+        if (g_factSpeed.speedL > dreamSpeed_.speedL) // Если меньше чем надо то прибавим оборотов
+        {
+            g_factSpeed.speedL = g_factSpeed.speedL - accel; // К старой скорости прибавляем ускорение за этот промежуток
+            if (g_factSpeed.speedL < dreamSpeed_.speedL)	 // Если стала меньше нужной то далаем какая должна быть
+                g_factSpeed.speedL = dreamSpeed_.speedL;
+        }
+    }
+    if (dreamSpeed_.speedR != g_factSpeed.speedR) // Если скорость с которой хотим крутиться не равна тому что была ранее установлена, то меняем с учетом ускорения
+    {
+        if (g_factSpeed.speedR < dreamSpeed_.speedR) // Если меньше чем надо то прибавим оборотов
+        {
+            g_factSpeed.speedR = g_factSpeed.speedR + accel; // К старой скорости прибавляем ускорение за этот промежуток
+            if (g_factSpeed.speedR > dreamSpeed_.speedR)	 // Если стала больше то ровняем
+                g_factSpeed.speedR = dreamSpeed_.speedR;
+        }
+        if (g_factSpeed.speedR > dreamSpeed_.speedR) // Если меньше чем надо то прибавим оборотов
+        {
+            g_factSpeed.speedR = g_factSpeed.speedR - accel; // К старой скорости прибавляем ускорение за этот промежуток
+            if (g_factSpeed.speedR < dreamSpeed_.speedR)	 // Если стала меньше нужной то далаем какая должна быть
+                g_factSpeed.speedR = dreamSpeed_.speedR;
+        }
+    }
+    // printf("g_factSpeed % f : % f : acc= % f \n ", g_factSpeed.speedL, g_factSpeed.speedR);
+    // printf(" |g_factSpeed % .3f % .3f \n", g_factSpeed.speedL, g_factSpeed.speedR);
+}
 
 
 
