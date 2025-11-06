@@ -87,6 +87,7 @@ geometry_msgs::Pose2D msg_startPose2d; // Перемеенная в котору
 pb_msgs::Struct_Driver2Data msg_Driver2Data; // Сообщение которое считываем из топика
 pb_msgs::Struct_Modul2Data msg_Modul2Data;   // Сообщение которое считываем из топика
 pb_msgs::SSetSpeed msg_Speed;                // Сообщение которое считываем из топика
+
 //-------------------------------------------------------------------------------------------------------
 
 bool flag_msgPillar = false;    // Флаг что пришло сообщение в топик и можно его парсить
@@ -110,27 +111,24 @@ float linearOffsetZ[128] = {0};
 float g_offsetX = 0;
 float g_offsetYaw = 0;
 
-float g_raw_accel = 0;
-float g_raw_gyro = 0;
-float g_real_accel = 0;
-float g_real_gyro = 0;
+// float g_raw_accel = 0;
+// float g_raw_gyro = 0;
+// float g_real_accel = 0;
+// float g_real_gyro = 0;
 
+// float g_linRaw = 0; // Все переменные для отладки
+// float g_a_lin_X = 0;
+// float g_a_lin_odom = 0;
 
-
-
-float g_linRaw = 0; // Все переменные для отладки
-float g_a_lin_X = 0;
-float g_a_lin_odom = 0;
-
-float g_complX = 0;
-float g_complYaw = 0;
-float g_fused_accel = 0;
-float g_fused_yaw = 0;
-float g_roll = 0;
-float g_pitch = 0;
-float g_g_x = 0;
-float g_flagAccel = 0;
-float g_odomVth = 0;
+// float g_complX = 0;
+// float g_complYaw = 0;
+// float g_fused_accel = 0;
+// float g_fused_yaw = 0;
+// float g_roll = 0;
+// float g_pitch = 0;
+// float g_g_x = 0;
+// float g_flagAccel = 0;
+// float g_odomVth = 0;
 
 bool modeColibrovka = false;
 SPose transformLidar2Rotation; // данные для трансформации из одной системы координат в другую из Lidar в Rotation

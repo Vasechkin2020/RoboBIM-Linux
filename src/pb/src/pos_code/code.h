@@ -1,14 +1,19 @@
 #ifndef CODE_H
 #define CODE_H
 
+#include <pb_msgs/SLinAngVel.h>
+
 #include "kalman.h"
 #include "config.h"
+#include "topic.h"
 // #include "pillar.h"
 //**************************** ОБЬЯВЛЕНИЕ ПРОЦЕДУР **********************************
 void callback_Lidar(sensor_msgs::LaserScan::ConstPtr msg); //
 void callback_Modul(pb_msgs::Struct_Modul2Data msg);
 void callback_Speed(pb_msgs::SSetSpeed msg);
 void callback_Driver(pb_msgs::Struct_Driver2Data msg); //
+
+pb_msgs::SLinAngVel msg_LinAngVel; // Обобщенные данные в моем формате о всех вариантах расчета позиции
 
 void readParam(); // Считывание переменных параметров из лаунч файла при запуске. Там офсеты и режимы работы
 void calcMode0(); // Расчет одометрии и применения ее для всех режимов
@@ -415,15 +420,22 @@ STwistDt calcTwistFromWheel(pb_msgs::SSetSpeed msg_Speed_)
 	double dt = duration.toSec();					// Получаем количество секунд и преобразуем в миллисекунды
 	start_time = end_time;
 
-	STwistDt t;
-	t.vx = 0.5 * (msg_Speed_.speedR + msg_Speed_.speedL);
-	t.vy = 0.0; // По оси у мы не смещаемся, поэтому ноль.
-	t.vth = (msg_Speed_.speedR - msg_Speed_.speedL) / DISTANCE_WHEELS;
-	t.dt = dt;
+	STwistDt ret;
+	ret.vx = 0.5 * (msg_Speed_.speedR + msg_Speed_.speedL);
+	ret.vy = 0.0; // По оси у мы не смещаемся, поэтому ноль.
+	ret.vth = (msg_Speed_.speedR - msg_Speed_.speedL) / DISTANCE_WHEELS;
+	ret.dt = dt;
 
-	ROS_INFO_THROTTLE(RATE_OUTPUT, "    Twist Wheel vx= %.3f vy= %.3f vth= %.3f w= %.3f gradus/sec  %.3f rad/sec", t.vx, t.vy, RAD2DEG(t.vth), t.vth);
+	msg_LinAngVel.vx.wheel = ret.vx;
+	msg_LinAngVel.vth.wheel = ret.vth;
+	msg_LinAngVel.dt.wheel = dt;
+	static double track = 0; // Пройденный путь
+	msg_LinAngVel.track.wheel = track + (ret.vx * dt);
+	track = msg_LinAngVel.track.wheel;
 
-	return t;
+	ROS_INFO_THROTTLE(RATE_OUTPUT, "    Twist Wheel vx= %.3f vy= %.3f vth= %.3f w= %.3f gradus/sec  %.3f rad/sec", ret.vx, ret.vy, RAD2DEG(ret.vth), ret.vth);
+
+	return ret;
 }
 
 // Обсчитываем линейные и угловую скорость по данным скоростей от энкодера с колес
@@ -594,6 +606,9 @@ inline double normalize_angle(double a)
 STwistDt calcTwistFromImu(pb_msgs::Struct_Driver2Data msg_)
 {
 
+	static double real_accel = msg_.icm.accel.y; // Начальная инициализация
+	static double real_gyro = msg_.icm.gyro.z;
+
 	static STwistDt ret;
 	static ros::Time start_time = ros::Time::now(); // Захватываем начальный момент времени
 	ros::Time now_time = ros::Time::now();			// Захватываем текущий момент времени
@@ -604,37 +619,67 @@ STwistDt calcTwistFromImu(pb_msgs::Struct_Driver2Data msg_)
 
 	if (dt < 0.003) // При первом запуске просто выходим из функции
 	{
-		ROS_INFO("    First calcTwistFromMpu dt< 0.003 !!!! dt = %f", dt);
+		ROS_INFO("    First calcTwistFromImu dt< 0.003 !!!! dt = %f", dt);
 		ret.vx = 0; //
 		ret.vth = 0;
 		return ret;
 	}
 
-	g_raw_accel = msg_.icm.accel.y; // Откда беруться данные
-	g_raw_gyro = msg_.icm.gyro.z;
+	float ka = 0.5;
+	static double raw_accel = 0;
+	raw_accel = raw_accel * ka + (msg_.icm.accel.y * (1 - ka)); // Сырые данные с фильтрацией
+	msg_LinAngVel.raw_accel = raw_accel;						// 
 
-	g_real_accel = g_raw_accel - g_offsetX; // Применяем bias
-	g_real_gyro = g_raw_gyro - g_offsetYaw;
+	float kg = 0.5;
+	static double raw_gyro = 0;
+	raw_gyro = raw_gyro * kg + (msg_.icm.gyro.z * (1 - kg)); // Сырые данные с фильтрацией
+	msg_LinAngVel.raw_gyro = raw_gyro;
+
+	real_accel = raw_accel - g_offsetX;	   // Применяем bias
+	real_gyro = raw_gyro - g_offsetYaw;
+
+	msg_LinAngVel.real_accel = real_accel; // Пишем в переменную для опубликования в топик
+	msg_LinAngVel.real_gyro = real_gyro;
 
 	// Акселерометр выдает ускорение. Считаем как ускорение умножить на время плюс предыдущая скорость. Получаем текущую скорость
-	ret.vx = ret.vx + (g_real_accel * dt); // Тут или ось Х или У. Смотря как установлен датчик Считаем линейную скорость. Берем упрощенно данные акселерометра, подразумевая что гравитация у нас всегда вниз, поскольку датчик закреплен горизонтально и жестко к корпусу.
-	ret.vth = g_real_gyro;				   // Берем угловую скорость готовую с показаний датчика
+	ret.vx = ret.vx + (real_accel * dt); // Тут или ось Х или У. Смотря как установлен датчик Считаем линейную скорость. Берем упрощенно данные акселерометра, подразумевая что гравитация у нас всегда вниз, поскольку датчик закреплен горизонтально и жестко к корпусу.
+	ret.vth = real_gyro;				 // Берем угловую скорость готовую с показаний датчика
 
 	ROS_INFO_THROTTLE(RATE_OUTPUT, "    Twist IMU dt = %.3f | vx= %.3f vth= %.3f gradus/sec %.6f rad/sec | accel %.6f ", dt, ret.vx, RAD2DEG(ret.vth), ret.vth, msg_.icm.accel.y);
 
-	// Проверяем условие остановки (например, от одометрии). Если стоим то неважно что выше насчитали.Все обнуляем.
-	if (dtStoping >= 0.1) // Если стоим уже больше 0,1 секунды то 
+	static double speedPred = (msg_Speed.speedL + msg_Speed.speedR) * 0.5;
+	static double speedPredPred = (msg_Speed.speedL + msg_Speed.speedR) * 0.5;
+
+	double speedNow = (msg_Speed.speedL + msg_Speed.speedR) * 0.5; // Текущая скорость робота
+	double accelNow = (speedNow - speedPredPred) / (2 * dt);	   // Текущее ускорение робота
+	speedPredPred = speedPred;									   // Запоминаем предыдущую скорость
+	speedPred = speedNow;										   // Запоминаем предыдущую скорость
+
+	// msg_LinAngVel.a_lin_X = accelNow;
+
+	if (abs(accelNow) < 0.05) // Если текущее ускорение посчитанное с колес меньше заданного то можно считать офсет по оси Х. Значит или стоим или двигаемся достаточно равномерно
 	{
-		ret.vx = ret.vth = 0;						 // ЖЕСТКО СБРАСЫВАЕМ ВСЕ СКОРОСТи В НОЛЬ Так как стоим на месте и никаких линейных скоростей быть не может. Стоим на месте.
+		g_offsetX = autoOffsetX(raw_accel, 64);	   // Калибровка bias (во время остановки).
+		g_offsetYaw = autoOffsetYaw(raw_gyro, 64); // Калибровка bias (во время остановки).
+		ROS_INFO("    speedNow = %f accelNow = %f offsetX= %+8.6f offsetYaw= %+8.6f ", speedNow, accelNow, g_offsetX, g_offsetYaw);
+	}
+
+	// Проверяем условие остановки (например, от одометрии). Если стоим то неважно что выше насчитали.Все обнуляем.
+	if (dtStoping >= 0.05) // Если стоим уже больше 0,1 секунды то
+	{
+		ret.vx = ret.vth = 0; // ЖЕСТКО СБРАСЫВАЕМ ВСЕ СКОРОСТи В НОЛЬ Так как стоим на месте и никаких линейных скоростей быть не может. Стоим на месте.
 		ROS_INFO("    speed = 0");
 	}
-	// Проверяем условие остановки (например, от одометрии). Если стоим то неважно что выше насчитали.Все обнуляем.
-	if (dtStoping >= 0.3) // Если стоим уже больше 0,3 секунды то // Если стоим на месте, то считаем офсет. Как только тронемся, его и будем применять до следующей остановки
-	{
-		g_offsetX = autoOffsetX(g_raw_accel, 64);	 // Калибровка bias (во время остановки).
-		g_offsetYaw = autoOffsetYaw(g_raw_gyro, 64); // Калибровка bias (во время остановки).
-		ROS_INFO("    dtStoping = %f offsetX= %+8.6f offsetYaw= %+8.6f ", dtStoping, g_offsetX, g_offsetYaw);
-	}
+
+	msg_LinAngVel.vx.imu = ret.vx;
+	msg_LinAngVel.vth.imu = ret.vth;
+	msg_LinAngVel.dt.imu = dt;
+	static double track = 0; // Пройденный путь
+	msg_LinAngVel.track.imu = track + (ret.vx * dt);
+	track = msg_LinAngVel.track.imu;
+
+	msg_LinAngVel.offsetX = g_offsetX;
+	msg_LinAngVel.offsetYaw = g_offsetYaw;
 
 	return ret;
 }
@@ -766,23 +811,23 @@ STwistDt calcTwistFromMpu(STwistDt mpu_, pb_msgs::Struct_Modul2Data msg_Modul2Da
 	}
 
 	// Разные переменные для вывода в топик для отладки
-	g_flagAccel = flagAccel;
-	g_pitch = pitch;
+	// g_flagAccel = flagAccel;
+	// g_pitch = pitch;
 
-	g_linRaw = msg_Modul2Data_.icm.linear.x;
+	// g_linRaw = msg_Modul2Data_.icm.linear.x;
 
-	g_offsetX = offsetX;
-	g_offsetYaw = offsetYaw;
+	// g_offsetX = offsetX;
+	// g_offsetYaw = offsetYaw;
 
-	g_a_lin_X = a_lin_X;
-	g_g_x = g_x;
-	g_complX = complX;
-	g_a_lin_odom = a_lin_odom;
-	g_fused_accel = fused_accel;
+	// g_a_lin_X = a_lin_X;
+	// g_g_x = g_x;
+	// g_complX = complX;
+	// g_a_lin_odom = a_lin_odom;
+	// g_fused_accel = fused_accel;
 
-	g_odomVth = odom_.vth;
-	g_complYaw = complYaw2;
-	g_fused_yaw = fused_yaw;
+	// g_odomVth = odom_.vth;
+	// g_complYaw = complYaw2;
+	// g_fused_yaw = fused_yaw;
 
 	ROS_INFO_THROTTLE(RATE_OUTPUT, "    Twist MPU   dt = %.3f | vx= %.3f vy= %.3f | vth= %.3f gradus/sec %.6f rad/sec | norm = %.6f", dt, ret.vx, ret.vy, RAD2DEG(ret.vth), ret.vth, norm_angleDelta / dt);
 	// ROS_INFO("--- calcTwistFromMpu");
@@ -792,22 +837,8 @@ STwistDt calcTwistFromMpu(STwistDt mpu_, pb_msgs::Struct_Modul2Data msg_Modul2Da
 // Функция комплементации угловых скоростей полученных с колес и с датчика MPU и угла поворота
 STwistDt calcTwistFused(STwistDt odomTwist_, STwistDt imuTwist_)
 {
-	STwistDt ret;
-	static float pred_Odom_Vel = 0; // Предыдущее значение линейной скорости по оси Х
-	static float pred_Imu_Vel = 0;	// Предыдущее значение линейной скорости по оси Х
-	static float a_lin_filtred = 0;
+	static STwistDt ret;
 
-	float dt = (odomTwist_.dt + imuTwist_.dt) * 0.5;
-	ret.dt = dt;
-	if (dt < 0.003) // При первом запуске просто выходим из функции
-	{
-		ROS_INFO("    calcTwistFused dt< 0.003 !!!!  dt = %f", dt);
-		pred_Odom_Vel = odomTwist_.vx;
-		pred_Imu_Vel = imuTwist_.vx;
-		return ret;
-	}
-
-	//--------------------------------
 	//	Мы получаем от колес угловую скорость и от гироскопа угловую скорость. Поэтому сразу делаем слияния
 	float k_fused_angle_vel = 0.2;																	   // Коеффициент для слияния
 	float v_angl_fused = odomTwist_.vth * k_fused_angle_vel + imuTwist_.vth * (1 - k_fused_angle_vel); // Комплементация по весу
@@ -815,28 +846,27 @@ STwistDt calcTwistFused(STwistDt odomTwist_, STwistDt imuTwist_)
 	float k_filtr_angle_vel = 0.5;													// Коеффициент для фильтрации
 	ret.vth = ret.vth * k_filtr_angle_vel + v_angl_fused * (1 - k_filtr_angle_vel); // Фильтруем
 																					//--------------------------------
-	// Мы получаем от акселерометра линейное ускорение, а от колес линейнуую скорость. Поэтому для слияния нужно привести все к ускорению и в ускорении делать слияние.Потом уже после слияния снова преобразовать в скорость
+	//	Мы получаем линейную скорость. Поэтому сразу делаем слияния
+	float k_ = 0.95;												   // Коеффициент для слияния
+	double v_lin_fused = odomTwist_.vx * k_ + imuTwist_.vx * (1 - k_); // Комплементация по весу
 
-	float a_lin_odom = (odomTwist_.vx - pred_Odom_Vel) / odomTwist_.dt; // Находим ускорение по одометрии как разницу скоростей делить на время
-	pred_Odom_Vel = odomTwist_.vx;										// Сохраняем для следующего расчета
+	float k_filtr_lin_vel = 0.7;											 // Коеффициент для фильтрации
+	ret.vx = ret.vx * k_filtr_lin_vel + v_lin_fused * (1 - k_filtr_lin_vel); // Фильтруем
+																			 //--------------------------------
 
-	float a_lin_imu = (imuTwist_.vx - pred_Imu_Vel) / imuTwist_.dt; // Получаем ускорение как разницу скоростей делить на время
-	pred_Imu_Vel = imuTwist_.vx;									// Сохраняем для следующего расчета
-
-	float k_fused_lin_acceleration = 0.5;																	// Коеффициент для слияния
-	float a_lin_fused = a_lin_odom * k_fused_lin_acceleration + a_lin_imu * (1 - k_fused_lin_acceleration); // Комплементация по весу
-
-	float k_filtr_lin_acceleration = 0.5;																	 // Коеффициент для фильтрации
-	a_lin_filtred = a_lin_filtred * k_filtr_lin_acceleration + a_lin_fused * (1 - k_filtr_lin_acceleration); // Фильтруем
-
-	ret.vx = ret.vx + (a_lin_filtred * dt); // Считаем теперь скорость на основе скомплементированного ускорения
-											//--------------------------------
-
-	ROS_INFO_THROTTLE(RATE_OUTPUT, "    fused Twist | %.3f %.3f %.3f |  %.3f %.3f %.3f | %.3f %.3f %.3f |  %.3f %.3f %.3f | ",
+	ROS_INFO_THROTTLE(RATE_OUTPUT, "    fused Twist | %.3f %.3f %.3f | %.3f %.3f %.3f | ",
 					  odomTwist_.vx, imuTwist_.vx, ret.vx,
-					  odomTwist_.vy, imuTwist_.vy, ret.vy,
-					  odomTwist_.vth, imuTwist_.vth, ret.vth,
-					  odomTwist_.dt, imuTwist_.dt, ret.dt);
+					  odomTwist_.vth, imuTwist_.vth, ret.vth);
+
+	double dt = (odomTwist_.dt + imuTwist_.dt) * 0.5;
+
+	msg_LinAngVel.vx.fused = ret.vx;
+	msg_LinAngVel.vth.fused = ret.vth;
+	msg_LinAngVel.dt.fused = dt;
+	static double track = 0; // Пройденный путь
+	msg_LinAngVel.track.fused = track + (ret.vx * dt);
+	track = msg_LinAngVel.track.fused;
+
 	return ret;
 }
 

@@ -93,12 +93,6 @@ int main(int argc, char **argv)
             flag_msgSpeed = false;
             flagPublish = true;
 
-            static ros::Time start_time = ros::Time::now(); // Захватываем начальный момент времени
-            ros::Time now_time = ros::Time::now();          // Захватываем текущий момент времени
-            ros::Duration duration = now_time - start_time; // Находим разницу между началом и концом
-            start_time = now_time;                          // Запоминаем на будущий расчет
-            double dt = duration.toSec();                   // Получаем количество секунд
-
             g_linAngVel.odom = calcTwistFromWheel(msg_Speed);    // Обработка пришедших данных. По ним считаем линейные скорости по осям и угловую по углу. Запоминаем dt
             g_linAngVel.imu = calcTwistFromImu(msg_Driver2Data); // Обработка пришедших данных. По ним считаем линейные скорости по осям и угловую по углу. Запоминаем dt
             g_linAngVel.fused = calcTwistFused(g_linAngVel.odom, g_linAngVel.imu); // Комплементация данных используя фильтр (Комплементарный или Калмана) тут написать функцию комплементации данных угловых скоростей с разными условиями когда и в каком соотношении скомплементировать скорсти с двух источников

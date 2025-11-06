@@ -6,6 +6,7 @@
 */
 #include "config.h"
 #include "pillar.h"
+#include "code.h"
 
 class CTopic
 {
@@ -91,6 +92,8 @@ private:
 
     // nav_msgs::Odometry mpuOdom_msg;
     // ros::Publisher pub_mpuOdom = _nh.advertise<nav_msgs::Odometry>("pbinfo/mpuOdom", 16);
+
+
     //*******************
 };
 
@@ -309,45 +312,7 @@ void CTopic::publicationPoseRotattion() // Вывод в топик данных
 }
 void CTopic::publicationLinAngVel() // Вывод в топик данных с данными угловой и линейной скоростью
 {
-    pb_msgs::SLinAngVel msg; // Обобщенные данные в моем формате о всех вариантах расчета позиции
-
-    msg.vx.wheel = g_linAngVel.odom.vx;
-    msg.vx.imu = g_linAngVel.imu.vx;
-    msg.vx.fused = g_linAngVel.fused.vx;
-
-    msg.vth.wheel = g_linAngVel.odom.vth;
-    msg.vth.imu = g_linAngVel.imu.vth;
-    msg.vth.fused = g_linAngVel.fused.vth;
-
-    msg.dt.wheel = g_linAngVel.odom.dt;
-    msg.dt.imu = g_linAngVel.imu.dt;
-    msg.dt.fused = g_linAngVel.fused.dt;
-
-    msg.linRaw = g_linRaw;
-    msg.complX  = g_complX;
-   	msg.flagAccel = g_flagAccel;
-
-	msg.roll = g_roll;
-	msg.pitch = g_pitch;
-
-	msg.offsetX = g_offsetX;
-	msg.offsetYaw = g_offsetYaw;
-	msg.raw_accel = g_raw_accel;
-	msg.raw_gyro = g_raw_gyro;
-	msg.real_accel = g_real_accel;
-	msg.real_gyro = g_real_gyro;
-
-
-	msg.a_lin_X = g_a_lin_X;
-	msg.g_x = g_g_x;
-	msg.a_lin_odom = g_a_lin_odom;
-	msg.fused_accel = g_fused_accel;
-
-	msg.odomVth = g_odomVth;
-	msg.complYaw = g_complYaw;
-	msg.fused_yaw = g_fused_yaw;
-
-    pub_linAngVel.publish(msg); // Публикуем информацию по позиции лидара
+    pub_linAngVel.publish(msg_LinAngVel); // Публикуем информацию по позиции лидара
 }
 // Отобращение стрелкой где начало и куда смотрят лазеры
 void CTopic::visualPoseAngleLaser(CLaser &laser_)
