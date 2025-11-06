@@ -36,7 +36,6 @@ public:
     void visualPublishOdomMode_2();
     void visualPublishOdomMode_123();
 
-    // void publishOdomMpu();
     // void publishOdomUnited();
     //***********************
 

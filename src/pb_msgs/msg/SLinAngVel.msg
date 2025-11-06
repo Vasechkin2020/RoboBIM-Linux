@@ -2,6 +2,7 @@ SMwu vx          # Скорости линейная по х всех типов
 SMwu vth         # Скорости угловая всех типов
 SMwu dt          # Время между измерениями
 SMwu track       # Пройденное расстояние
+SMwu yaw         # Угол поворота, куда смотрим
 
 float32 offsetYaw    # 
 float32 offsetX    # 
