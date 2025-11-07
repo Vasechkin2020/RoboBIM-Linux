@@ -6,6 +6,7 @@
 #include "kalman.h"
 #include "config.h"
 #include "topic.h"
+#include "localizer.h"
 // #include "pillar.h"
 //**************************** ОБЬЯВЛЕНИЕ ПРОЦЕДУР **********************************
 void callback_Lidar(sensor_msgs::LaserScan::ConstPtr msg); //

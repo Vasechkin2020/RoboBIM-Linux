@@ -2,6 +2,9 @@
 #include "genStruct.h" // Тут все общие структуры. Истользуются и Data и Main и Head
 #include "pos_code/config.h"
 
+#include "pos_code/localizer.h"
+ComplementaryLocalizer comp_loc;
+
 float g_angleMPU = 0;  // Глобальная перемнная угла получаемого с MPU куда смотрим
 float g_angleLaser[4]; // Углы на столбы которые передаем на нижний угол для управления
 int g_numPillar[4];    // Номер столба до которого измеряем расстояние лазером
