@@ -634,20 +634,16 @@ STwistDt calcTwistFromImu(pb_msgs::Struct_Driver2Data msg_)
 	static double raw_accel = 0;
 	raw_accel = raw_accel * ka + (msg_.icm.accel.y * (1 - ka)); // Сырые данные с фильтрацией Тут или ось Х или У. Смотря как установлен датчик
 	msg_LinAngVel.raw_accel = raw_accel;						//
+	real_accel = raw_accel - g_offsetX; // Применяем bias
+	msg_LinAngVel.real_accel = real_accel; // Пишем в переменную для опубликования в топик
+	ret.vx = ret.vx + (real_accel * dt); // Считаем линейную скорость. Берем упрощенно данные акселерометра, подразумевая что гравитация у нас всегда вниз, поскольку датчик закреплен горизонтально и жестко к корпусу.
 
 	float kg = 0.5;
 	static double raw_gyro = 0;
-	raw_gyro = raw_gyro * kg + (msg_.icm.gyro.z * (1 - kg)); // Сырые данные с фильтрацией
+	raw_gyro = raw_gyro * kg + (DEG2RAD(msg_.icm.gyro.z) * (1 - kg)); // Сырые данные с фильтрацией  
 	msg_LinAngVel.raw_gyro = raw_gyro;
-
-	real_accel = raw_accel - g_offsetX; // Применяем bias
-	real_gyro = raw_gyro - g_offsetYaw;
-
-	msg_LinAngVel.real_accel = real_accel; // Пишем в переменную для опубликования в топик
+	real_gyro = raw_gyro - g_offsetYaw; 
 	msg_LinAngVel.real_gyro = real_gyro;
-
-	// Акселерометр выдает ускорение. Считаем как ускорение умножить на время плюс предыдущая скорость. Получаем текущую скорость
-	ret.vx = ret.vx + (real_accel * dt); // Считаем линейную скорость. Берем упрощенно данные акселерометра, подразумевая что гравитация у нас всегда вниз, поскольку датчик закреплен горизонтально и жестко к корпусу.
 	ret.vth = real_gyro;				 // Берем угловую скорость готовую с показаний датчика
 
 	ROS_INFO_THROTTLE(RATE_OUTPUT, "    Twist IMU dt = %.3f | vx= %.3f vth= %.3f gradus/sec %.6f rad/sec | accel %.6f ", dt, ret.vx, RAD2DEG(ret.vth), ret.vth, msg_.icm.accel.y);
@@ -665,7 +661,6 @@ STwistDt calcTwistFromImu(pb_msgs::Struct_Driver2Data msg_)
 	if (abs(accelNow) < 0.05) // Если текущее ускорение посчитанное с колес меньше заданного то можно считать офсет по оси Х. Значит или стоим или двигаемся достаточно равномерно
 	{
 		g_offsetX = autoOffsetX(raw_accel, 64);	   // Калибровка bias (во время остановки или равномерного движения).
-		g_offsetYaw = autoOffsetYaw(raw_gyro, 64); // Калибровка bias (во время остановки или равномерного движения).
 		ROS_INFO("    speedNow = %f accelNow = %f offsetX= %+8.6f offsetYaw= %+8.6f ", speedNow, accelNow, g_offsetX, g_offsetYaw);
 	}
 	msg_LinAngVel.offsetX = g_offsetX; // Вывод в топик что насчитали
@@ -676,6 +671,7 @@ STwistDt calcTwistFromImu(pb_msgs::Struct_Driver2Data msg_)
 	{
 		ret.vx = 0;	 // СБРАСЫВАЕМ ВСЕ СКОРОСТи В НОЛЬ Так как стоим на месте и никаких линейных скоростей быть не может. Стоим на месте.
 		ret.vth = 0; // СБРАСЫВАЕМ ВСЕ СКОРОСТи В НОЛЬ Так как стоим на месте и никаких линейных скоростей быть не может. Стоим на месте.
+		g_offsetYaw = autoOffsetYaw(raw_gyro, 64); // Калибровка bias (ТОЛЬКО во время остановки ).
 		ROS_INFO("    speed = 0");
 	}
 
@@ -859,7 +855,7 @@ STwistDt calcTwistFused(STwistDt odomTwist_, STwistDt imuTwist_)
 
 	//--------------------------------
 	//	Мы получаем от колес угловую скорость и от гироскопа угловую скорость. Поэтому сразу делаем слияния
-	float k_fused_angle_vel = 0.5;																	   // Коеффициент для слияния
+	float k_fused_angle_vel = 0.1;																	   // Коеффициент для слияния
 	float v_angl_fused = odomTwist_.vth * k_fused_angle_vel + imuTwist_.vth * (1 - k_fused_angle_vel); // Комплементация по весу
 
 	float k_filtr_angle_vel = 0.5;													// Коеффициент для фильтрации
