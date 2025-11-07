@@ -20,7 +20,7 @@ int main(int argc, char **argv)// Главная функция программ
     ros::init(argc, argv, "lidar_node"); // Инициализируем ROS с именем узла "lidar_node"
 
     ros::NodeHandle nh;
-    ros::Subscriber subscriber_Lidar = nh.subscribe<sensor_msgs::LaserScan>("/scan", 1000, callback_Lidar);
+    ros::Subscriber subscriber_Lidar = nh.subscribe<sensor_msgs::LaserScan>("/scan", 1000, callback_Lidar); // Подписка на данные лидара
     ros::Duration(1).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
 
     CPillar pillar;          // Обьявляем экземпляр класса в нем вся обработка и обсчет столбов
@@ -42,11 +42,11 @@ int main(int argc, char **argv)// Главная функция программ
     g_poseLidar.mode2 = startPose;
     pillar.parsingPillar(startPillar); // Разбираем пришедшие данные Заполняем массив правильных координат.
 
-    detector.changePoseLidar(startPose.x, startPose.y, startPose.th);
-    detector.changeKnownPillars(0, startPillar[0].x, startPillar[0].y); // Разбираем пришедшие данные Заполняем массив правильных координат.
-    detector.changeKnownPillars(1, startPillar[1].x, startPillar[1].y);
-    detector.changeKnownPillars(2, startPillar[2].x, startPillar[2].y);
-    detector.changeKnownPillars(3, startPillar[3].x, startPillar[3].y);
+    detector.setPoseLidar(startPose.x, startPose.y, startPose.th); // Установка начальной позиции
+    detector.setKnownPillars(0, startPillar[0].x, startPillar[0].y); // Разбираем пришедшие данные Заполняем массив правильных координат.
+    detector.setKnownPillars(1, startPillar[1].x, startPillar[1].y);
+    detector.setKnownPillars(2, startPillar[2].x, startPillar[2].y);
+    detector.setKnownPillars(3, startPillar[3].x, startPillar[3].y);
 
     ros::Time timeStart = ros::Time::now(); // Время начала программы
     ros::Time timeLoop = ros::Time::now();  // Время начала текущего цикла
@@ -61,15 +61,16 @@ int main(int argc, char **argv)// Главная функция программ
     while (ros::ok() && keep_running) // Пока ROS работает и не нажат Ctrl+C
     {
         timeLoop = ros::Time::now(); // Захватываем текущий момент времени начала цикла
-        ros::spinOnce();             // Обрабатываем входящие сообщения
+        ros::spinOnce();             // Вызываем колбеки
 
         // Выполняется 10 Hz как ЛИДАР ПРИШЛЕТ ***************************************************************************************************************************************************
         if (flag_msgLidar) // Если пришло сообщение в топик от лидара и мы уже разобрали данные по координатам машинки, а значит можем грубо посчитать где стоят столбы.  И знаем где истинные столбы
         {
+            ROS_INFO("");
             ROS_INFO("------------       flag_msgLidar    -------------");
             flag_msgLidar = false;
             // ROS_INFO("=== %.3f %.3f | %.3f %.3f | %.3f %.3f",g_poseLidar.mode1.x, g_poseLidar.mode.x, g_poseLidar.mode1.y, g_poseLidar.mode.y, g_poseLidar.mode1.th, g_poseLidar.mode.th);
-            pillar.parsingLidar(msg_lidar, g_poseLidar.mode); // Разбираем пришедшие данные и ищем там столбы.
+            pillar.searchPillars(msg_lidar, g_poseLidar.mode); // Разбираем пришедшие данные и ищем там столбы.
             pillar.comparisonPillar();                        // Сопоставляем столбы
             // topic.publicationPillarAll(pillar);                // Публикуем всю обобщенную информацию по столб
 

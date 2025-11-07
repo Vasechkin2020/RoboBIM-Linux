@@ -40,7 +40,7 @@ public:
     ~CPillar()
     {
     }
-    void parsingLidar(const sensor_msgs::LaserScan::ConstPtr &scan, SPose &poseLidarMode_); // Метод которую вызываем из колбека по расчету места столбов
+    void searchPillars(const sensor_msgs::LaserScan::ConstPtr &scan, SPose &poseLidarMode_); // Метод которую вызываем из колбека по расчету места столбов
     void parsingPillar(SPoint *pillar_);                                                    // Метод которую вызываем из колбека по расчету места столбов
     void comparisonPillar();                                                                // Метод где сопоставляю столбы
     SPose getLocationMode1(SDistDirect *distDirect, SPose pose_);                           // Метод возврщает положение центра лидара усредненного по всем столбам и расчетам по меоду расчета по "растояние до столбов по лидару"
@@ -515,9 +515,9 @@ void CPillar::comparisonPillar()
 // Функция которую вызываем из колбека по расчету места столбов. Поиск лидарных столбов.
 // Что-бы данные приходили по часовой стрелке в настройках установить   <param name="inverted"            type="bool"   value="true"/>
 // Ноль градусов у нее там где хвостик и поэтому +180 чтобы получить 360 оборот правильный вправо
-void CPillar::parsingLidar(const sensor_msgs::LaserScan::ConstPtr &scan, SPose &poseLidarMode_)
+void CPillar::searchPillars(const sensor_msgs::LaserScan::ConstPtr &scan, SPose &poseLidarMode_)
 {
-    ROS_INFO("+++ parsingLidar");
+    ROS_INFO("+++ searchPillars");
     float distance_pred = 0;    // Предыдущее значение дистанции
     int a = 0;                  // Начало группы точек
     int b = 0;                  // Конец группы точек
@@ -632,7 +632,7 @@ void CPillar::parsingLidar(const sensor_msgs::LaserScan::ConstPtr &scan, SPose &
         }
     }
     ROS_INFO("    Found Pillar from Lidar= %i ", countPillarLidar);
-    // ROS_INFO("--- parsingLidar");
+    // ROS_INFO("--- searchPillars");
 }
 
 void CPillar::poiskPillar(int a_, int b_, SLidar *lidarData, SPose &poseLidarMode_)
