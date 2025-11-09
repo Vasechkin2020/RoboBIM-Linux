@@ -9,7 +9,7 @@
 sensor_msgs::LaserScan::ConstPtr msg_lidar; // Перемеенная в которую сохраняем данные лидара из сообщения
 int keep_running = 1;                       // Переменная для остановки программы по Ctrl+C
 SPose g_transformGlobal2Local; // Система трансформации из одной позиции в другую
-#define COMPLEMENTARN 0.1
+
 
 //**************************** ОБЬЯВЛЕНИЕ ПРОЦЕДУР и ФУНКЦИЙ **********************************
 void callback_Lidar(sensor_msgs::LaserScan::ConstPtr msg);                             //
@@ -118,9 +118,10 @@ static void stopProgram(int signal)
     ros::shutdown();  // Завершаем работу ROS
 }
 
-// Обьединение сопоставленных столбов в итоговую таблицу. Дальше по этой таблице все считается
+// Обьединение сопоставленных столбов в итоговую таблицу. Дальше по этой таблице все считается. Вроде тут я усредняю расстояние до столбов
 void calcDistDirect(SDistDirect *distDirect, CPillar pillar, PillarDetector detector)
 {
+    #define COMPLEMENTARN 0.1
     int sum = 0;
     static int flagFirst = 0;
     for (size_t i = 0; i < 4; i++)
@@ -161,7 +162,7 @@ void calcDistDirect(SDistDirect *distDirect, CPillar pillar, PillarDetector dete
             g_poseLidar.azimut[i] = g_poseLidar.azimut[i] * COMPLEMENTARN + distDirect[i].direction * (1 - COMPLEMENTARN);
     }
     flagFirst = 1;
-    ROS_INFO("    sum = %i", sum);
+    ROS_INFO("    calcDistDirect -> sum = %i", sum);
     g_poseLidar.countMatchPillar = sum;
 }
 

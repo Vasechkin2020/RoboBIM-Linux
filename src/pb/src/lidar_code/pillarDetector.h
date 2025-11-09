@@ -99,6 +99,7 @@ public:
     // Функция обработки данных от лидара
     void scanCallback(const sensor_msgs::LaserScan::ConstPtr &scan, SPose poseLidar_)
     {
+        ROS_INFO("+++ pillarDetector scanCallback");
         start_time = ros::Time::now(); // Записываем начальное время
         // ROS_INFO("+++ scanCallback");
         std::vector<PointXY> points; // Создаём пустой список точек
@@ -127,7 +128,7 @@ public:
         lidar_y = poseLidar_.y;
         lidar_theta = DEG2RAD(poseLidar_.th) + M_PI;
         // ROS_INFO("    Lidar theta START = %.3f rad (%.3f deg)", lidar_theta, RAD2DEG(lidar_theta));
-        ROS_INFO("   PoseLidar x= %.3f y= %.3f  th= %.4f (rad)  th= %.3f (grad)", lidar_x, lidar_y, lidar_theta, RAD2DEG(lidar_theta));
+        ROS_INFO("    pillarDetector scanCallback -> IN PoseLidar x= %.3f y= %.3f  th= %.4f (rad)  th= %.3f (grad)", lidar_x, lidar_y, lidar_theta, RAD2DEG(lidar_theta));
 
         findPillars();  // Ищем столбы в этих кластерах
         matchPillars(); // // Сопоставляем столбы с известными координатами и вычисляем позицию и ориентацию лидара
@@ -371,7 +372,7 @@ private:
                 //          cluster_info_list[i].width);
             }
         }
-        ROS_INFO("    Found %d pillars total", (int)pillars.size()); // Выводим общее количество найденных столбов
+        ROS_INFO("    findPillars - > Found %d pillars total", (int)pillars.size()); // Выводим общее количество найденных столбов
     }
 
     // Функция для сопоставления обнаруженных столбов с известными координатами и вычисления позиции и ориентации лидара

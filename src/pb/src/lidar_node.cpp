@@ -67,7 +67,7 @@ int main(int argc, char **argv)// Главная функция программ
         if (flag_msgLidar) // Если пришло сообщение в топик от лидара и мы уже разобрали данные по координатам машинки, а значит можем грубо посчитать где стоят столбы.  И знаем где истинные столбы
         {
             ROS_INFO("");
-            ROS_INFO("------------       flag_msgLidar    -------------");
+            ROS_ERROR("------------       flag_msgLidar    -------------");
             flag_msgLidar = false;
             // ROS_INFO("=== %.3f %.3f | %.3f %.3f | %.3f %.3f",g_poseLidar.mode1.x, g_poseLidar.mode.x, g_poseLidar.mode1.y, g_poseLidar.mode.y, g_poseLidar.mode1.th, g_poseLidar.mode.th);
             pillar.searchPillars(msg_lidar, g_poseLidar.mode); // Разбираем пришедшие данные и ищем там столбы.
@@ -76,8 +76,8 @@ int main(int argc, char **argv)// Главная функция программ
 
             detector.scanCallback(msg_lidar, g_poseLidar.mode);
             // topic.visualizeClasters(detector.cluster_info_list); // Большой обьем данных. Лучше отключать
-            topic.visualizePillars(detector.pillars); // Визуализация найденых столбов
-            topic.visualizeLidar();
+            // topic.visualizePillars(detector.pillars); // Визуализация найденых столбов
+            // topic.visualizeLidar();
 
             calcDistDirect(distDirect, pillar, detector); // Обьединение сопоставленных столбов в итоговую таблицу. Дальше по этой таблице все считается
 
@@ -111,7 +111,7 @@ int main(int argc, char **argv)// Главная функция программ
             // g_poseLidar.mode.th = angleSum3;
             // ROS_INFO("    angleSum = %.3f angleSum2 = %.3f angleSum3 = %.3f ", angleSum, angleSum2, angleSum3);
 
-            g_poseLidar.mode.th = complementAngle(g_poseLidar.mode1.th, g_poseLidar.mode2.th, g_poseLidar.mode3.th, 0.4, 0.3, 0.3, 0.66);// Функйия комплементации 3 углов с разными весвми и добавление поправки offset по лидару
+            g_poseLidar.mode.th = complementAngle(g_poseLidar.mode1.th, g_poseLidar.mode2.th, g_poseLidar.mode3.th, 0.4, 0.3, 0.3, 0.0);// Функйия комплементации 3 углов с разными весвми и добавление поправки offset по лидару
 
             ROS_WARN("    g_poseLidar.mode.x = %.3f th = %.3f th = %.3f ", g_poseLidar.mode.x, g_poseLidar.mode.y, g_poseLidar.mode.th);
 
