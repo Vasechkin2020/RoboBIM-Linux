@@ -8,12 +8,11 @@ void Led_Blink(int led_, unsigned long time_);				   // Функция мига�
 void init_SPI(int channel_, int speed_);					   // Инициализация канала шины SPI
 void init_Gpio();											   // Настройка пинов
 void setModeModul();										   // Установка режима работы - колибровки модуля на основании переменной из лаунч файла
-void readParam(); // Считывание переменных параметров из лаунч файла при запуске. Там офсеты и режимы работы
+void readParam();											   // Считывание переменных параметров из лаунч файла при запуске. Там офсеты и режимы работы
 
 void callback_ControlDriver(const pb_msgs::Struct_Data2Driver &msg); // Обратный вызов при опросе топика Driver
 void callback_ControlModul(const pb_msgs::Struct_Data2Modul &msg);	 // Обратный вызов при опросе топика Modul
 void callback_ControlPrint(const pb_msgs::Struct_Data2Print &msg);	 // Обратный вызов при опросе топика Print
-
 
 SControl speedToRps(SControl speed_); // Конвертация скорости из метров в секунду в обороты в секунду для передачи на нижний уровень
 
@@ -188,11 +187,11 @@ void setModeModul()
 		break;
 	case 4:
 		// printf("modeModul = 4 \n");
-		Data2Modul.controlMotor.mode = 1;		  // Ручной вариант проверка
-		Data2Modul.controlLaser.mode = 1;		  // Ручной вариант проверка
+		Data2Modul.controlMotor.mode = 1;		   // Ручной вариант проверка
+		Data2Modul.controlLaser.mode = 1;		   // Ручной вариант проверка
 		Data2Modul.controlMotor.angle[0] = 74.13;  //
-		Data2Modul.controlMotor.angle[1] = 78.1;  //
-		Data2Modul.controlMotor.angle[2] = 122.3; //
+		Data2Modul.controlMotor.angle[1] = 78.1;   //
+		Data2Modul.controlMotor.angle[2] = 122.3;  //
 		Data2Modul.controlMotor.angle[3] = 108.81; //
 		Data2Modul.controlMotor.numPillar[0] = 0;
 		Data2Modul.controlMotor.numPillar[1] = 1;
@@ -201,10 +200,10 @@ void setModeModul()
 		break;
 	case 5: // ВСЕ ОТКЛЮЧЕНО
 		// printf("modeModul = 5 \n");
-		Data2Modul.controlMotor.mode = 0;		  // Ручной вариант проверка
-		Data2Modul.controlLaser.mode = 0;		  // Ручной вариант проверка
-		Data2Modul.controlMotor.angle[0] = 0.0;  //
-		Data2Modul.controlMotor.angle[1] = 0.0;  //
+		Data2Modul.controlMotor.mode = 0;		// Ручной вариант проверка
+		Data2Modul.controlLaser.mode = 0;		// Ручной вариант проверка
+		Data2Modul.controlMotor.angle[0] = 0.0; //
+		Data2Modul.controlMotor.angle[1] = 0.0; //
 		Data2Modul.controlMotor.angle[2] = 0.0; //
 		Data2Modul.controlMotor.angle[3] = 0.0; //
 		Data2Modul.controlMotor.numPillar[0] = 0;
@@ -237,24 +236,40 @@ void setModeModul()
 
 void readParam() // Считывание переменных параметров из лаунч файла при запуске. Там офсеты и режимы работы
 {
-	ros::NodeHandle nh_private("~");
-    // Имя можно с палкой или без, смотря как в лаунч файле параметры обявлены. связано с видимостью глобальной или локальной. относительным поиском переменной как сказал Максим
-    nh_private.getParam("laser0", offSetLaser[0]);
-    nh_private.getParam("laser1", offSetLaser[1]);
-    nh_private.getParam("laser2", offSetLaser[2]);
-    nh_private.getParam("laser3", offSetLaser[3]);
+	// ros::NodeHandle nh_private("~");
+	// Имя можно с палкой или без, смотря как в лаунч файле параметры обявлены. связано с видимостью глобальной или локальной. относительным поиском переменной как сказал Максим
 
-    nh_private.getParam("laserL", offSetLaserL);
-    nh_private.getParam("uzi", offSetUzi);
-    nh_private.getParam("laserR", offSetLaserR);
+	// nh_private.getParam("laser0", offSetLaser[0]);
+	// nh_private.getParam("laser1", offSetLaser[1]);
+	// nh_private.getParam("laser2", offSetLaser[2]);
+	// nh_private.getParam("laser3", offSetLaser[3]);
 
-    nh_private.getParam("modeModul", modeModul);
+	// nh_private.getParam("laserL", offSetLaserL);
+	// nh_private.getParam("uzi", offSetUzi);
+	// nh_private.getParam("laserR", offSetLaserR);
 
-    ROS_INFO("--- Start node with parametrs:");
-    ROS_INFO("offSetLaser0 = %.3f offSetLaser1 = %.3f offSetLaser2 = %.3f offSetLaser3 = %.3f",offSetLaser[0],offSetLaser[1],offSetLaser[2],offSetLaser[3]);
-    ROS_INFO("offSetLaserL = %.3f offSetLaserR = %.3f",offSetLaserL,offSetLaserR);
-    ROS_INFO("offSetUZI = %.3f",offSetUzi);
-    ROS_INFO("modeModul = %i",modeModul);
-    ROS_INFO("---");
+	// nh_private.getParam("modeModul", modeModul);
+
+	ros::NodeHandle nh_global; // <--- Используется для доступа к /pb_config/ // Создаем ГЛОБАЛЬНЫЙ обработчик, который ищет параметры, начиная с корня (/).
+
+	// printf("\n--- Считывание смещений датчиков ---\n"); // Разделитель секции...
+	nh_global.param<double>("/pb_config/uzi_bias", offSetUzi, -0.01);
+	nh_global.param<double>("/pb_config/laser_L_bias", offSetLaserL, -0.01);
+	nh_global.param<double>("/pb_config/laser_R_bias", offSetLaserR, -0.01);
+
+	// printf("\n--- Считывание смещений массива лазеров ---\n"); // Разделитель секции...
+	nh_global.param<double>("/pb_config/laser/bias_0", offSetLaser[0], -0.0001); // Если не найдено, laser_b0 = -0.0001
+	nh_global.param<double>("/pb_config/laser/bias_1", offSetLaser[1], -0.0001);
+	nh_global.param<double>("/pb_config/laser/bias_2", offSetLaser[2], -0.0001);
+	nh_global.param<double>("/pb_config/laser/bias_3", offSetLaser[3], -0.0001);
+	
+	nh_global.param<int>("/data_node/modeModul", modeModul, 5 );
+
+	ROS_INFO("--- Start node with parametrs:");
+	ROS_INFO("offSetLaser0 = %.3f offSetLaser1 = %.3f offSetLaser2 = %.3f offSetLaser3 = %.3f", offSetLaser[0], offSetLaser[1], offSetLaser[2], offSetLaser[3]);
+	ROS_INFO("offSetLaserL = %.3f offSetLaserR = %.3f", offSetLaserL, offSetLaserR);
+	ROS_INFO("offSetUZI = %.3f", offSetUzi);
+	ROS_INFO("modeModul = %i", modeModul);
+	ROS_INFO("---");
 }
 #endif

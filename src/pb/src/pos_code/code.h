@@ -1341,35 +1341,52 @@ void readParam()
 	ROS_INFO("+++ readParam");
 	ros::NodeHandle nh_private("~");
 	// Имя можно с палкой или без, смотря как в лаунч файле параметры обявлены. связано с видимостью глобальной или локальной. относительным поиском переменной как сказал Максим
+    ros::NodeHandle nh_global; // <--- Используется для доступа к /pb_config/ // Создаем ГЛОБАЛЬНЫЙ обработчик, который ищет параметры, начиная с корня (/).
 
 	//<!-- Указываем стартовую позицию робота. В какое место поставили и куда направили-->
-	if (!nh_private.getParam("x", msg_startPose2d.x))
-		msg_startPose2d.x = 0.11;
-	if (!nh_private.getParam("y", msg_startPose2d.y))
-		msg_startPose2d.y = 0.11;
-	if (!nh_private.getParam("theta", msg_startPose2d.theta))
-		msg_startPose2d.theta = 0.11;
+	// if (!nh_private.getParam("x", msg_startPose2d.x))
+	// 	msg_startPose2d.x = 0.11;
+	// if (!nh_private.getParam("y", msg_startPose2d.y))
+	// 	msg_startPose2d.y = 0.11;
+	// if (!nh_private.getParam("theta", msg_startPose2d.theta))
+	// 	msg_startPose2d.theta = 0.11;
+
+	nh_global.param<double>("/pb_config/start_pose/x", msg_startPose2d.x, 0.0);
+	nh_global.param<double>("/pb_config/start_pose/y", msg_startPose2d.y, 0.0);
+	nh_global.param<double>("/pb_config/start_pose/th", msg_startPose2d.theta, 0.0);
 
 	//<!-- Указываем места расположения столбов на локальной карте -->
-	if (!nh_private.getParam("x0", msg_pillar.pillar[0].x))
-		msg_pillar.pillar[0].x = 0.11;
-	if (!nh_private.getParam("y0", msg_pillar.pillar[0].y))
-		msg_pillar.pillar[0].y = 0.11;
+	// if (!nh_private.getParam("x0", msg_pillar.pillar[0].x))
+	// 	msg_pillar.pillar[0].x = 0.11;
+	// if (!nh_private.getParam("y0", msg_pillar.pillar[0].y))
+	// 	msg_pillar.pillar[0].y = 0.11;
 
-	if (!nh_private.getParam("x1", msg_pillar.pillar[1].x))
-		msg_pillar.pillar[1].x = 1.11;
-	if (!nh_private.getParam("y1", msg_pillar.pillar[1].y))
-		msg_pillar.pillar[1].y = 1.11;
+	// if (!nh_private.getParam("x1", msg_pillar.pillar[1].x))
+	// 	msg_pillar.pillar[1].x = 1.11;
+	// if (!nh_private.getParam("y1", msg_pillar.pillar[1].y))
+	// 	msg_pillar.pillar[1].y = 1.11;
 
-	if (!nh_private.getParam("x2", msg_pillar.pillar[2].x))
-		msg_pillar.pillar[2].x = 2.11;
-	if (!nh_private.getParam("y2", msg_pillar.pillar[2].y))
-		msg_pillar.pillar[2].y = 2.11;
+	// if (!nh_private.getParam("x2", msg_pillar.pillar[2].x))
+	// 	msg_pillar.pillar[2].x = 2.11;
+	// if (!nh_private.getParam("y2", msg_pillar.pillar[2].y))
+	// 	msg_pillar.pillar[2].y = 2.11;
 
-	if (!nh_private.getParam("x3", msg_pillar.pillar[3].x))
-		msg_pillar.pillar[3].x = 3.11;
-	if (!nh_private.getParam("y3", msg_pillar.pillar[3].y))
-		msg_pillar.pillar[3].y = 3.11;
+	// if (!nh_private.getParam("x3", msg_pillar.pillar[3].x))
+	// 	msg_pillar.pillar[3].x = 3.11;
+	// if (!nh_private.getParam("y3", msg_pillar.pillar[3].y))
+	// 	msg_pillar.pillar[3].y = 3.11;
+
+
+
+	// printf("\n--- Считывание смещений массива лазеров ---\n"); // Разделитель секции...
+	nh_global.param<float>("/pb_config/pillars/pillar_0_x", msg_pillar.pillar[0].x, 0.11); // Если не найдено, laser_b0 = -0.0001
+	nh_global.param<float>("/pb_config/pillars/pillar_0_y", msg_pillar.pillar[0].y, 0.11); // Если не найдено, laser_b0 = -0.0001
+	nh_global.param<float>("/pb_config/pillars/pillar_1_x", msg_pillar.pillar[1].x, 1.11); // Если не найдено, laser_b0 = -0.0001
+	nh_global.param<float>("/pb_config/pillars/pillar_1_y", msg_pillar.pillar[1].y, 1.11); // Если не найдено, laser_b0 = -0.0001
+	nh_global.param<float>("/pb_config/pillars/pillar_2_x", msg_pillar.pillar[2].x, 2.11); // Если не найдено, laser_b0 = -0.0001
+	nh_global.param<float>("/pb_config/pillars/pillar_2_y", msg_pillar.pillar[2].y, 2.11); // Если не найдено, laser_b0 = -0.0001
+	nh_global.param<float>("/pb_config/pillars/pillar_3_x", msg_pillar.pillar[3].x, 3.11); // Если не найдено, laser_b0 = -0.0001
+	nh_global.param<float>("/pb_config/pillars/pillar_3_y", msg_pillar.pillar[3].y, 3.11); // Если не найдено, laser_b0 = -0.0001
 
 	ROS_INFO("startPose x = %.3f y = %.3f theta = %.3f", msg_startPose2d.x, msg_startPose2d.y, msg_startPose2d.theta);
 	ROS_INFO("start PillarPose");

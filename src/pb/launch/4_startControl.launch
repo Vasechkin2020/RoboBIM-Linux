@@ -1,0 +1,11 @@
+<launch>
+  <node pkg="pb" type="control_node" name="control_node" output ="screen">
+   
+    <!--param name="modeModul" type="int" value="3" /-->
+    <param name="verComand" type="int" value="$(arg verComand)" />
+    <!-- Параметр для пути к файлу G-code (в приватном пространстве ~gcode_file, относительно пакета) -->
+    <!--param name="gcode_file" value="$(find pb)/gcode/my_custom_gcode.gcode" /-->
+    <param name="gcode_file" value="$(find pb)/gcode/gcodeAngle.gcode" />
+
+  </node>
+</launch> 

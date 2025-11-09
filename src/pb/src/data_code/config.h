@@ -126,10 +126,11 @@ unsigned char bufferPrint[SIZE_BUFF_PRINT]; // Буфер в 1 байт в ко�
 unsigned char bufferModul[SIZE_BUFF_MODUL]; // Буфер в 1 байт в который пишем передаваемый байт и в котором оказывется принятый байт
                                             //---------------------------------------------------------------------------------------
 
-float offSetLaser[4]{0, 0, 0, 0};
-float offSetLaserL = 0;
-float offSetLaserR = 0;
-float offSetUzi = 0;
+	double offSetUzi = 0;
+	double offSetLaserL = 0;
+	double offSetLaserR = 0;
+	double offSetLaser[4]{0, 0, 0, 0};
+
 
 int modeModul = 0;
 
