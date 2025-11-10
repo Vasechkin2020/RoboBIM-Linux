@@ -168,6 +168,10 @@ public:
         msg.mode3.y = g_poseLidar.mode3.y;
         msg.mode3.th = g_poseLidar.mode3.th;
 
+        msg.mnk.x = g_poseLidar.mnk.x;
+        msg.mnk.y = g_poseLidar.mnk.y;
+        msg.mnk.th = g_poseLidar.mnk.th;
+
         msg.countMatchPillar = g_poseLidar.countMatchPillar;
         msg.countCrossCircle = g_poseLidar.countCrossCircle;
 

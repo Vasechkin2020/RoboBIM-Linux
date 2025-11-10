@@ -13,16 +13,16 @@
 #include "lidar_code/trilaterationSolver.h"
 #include "lidar_code/topic.h" // Файл для функций для формирования топиков в нужном виде и формате
 
-SPoseLidar g_poseLidar;        // Позиции лидара по расчетам Центральная система координат
+SPoseLidar g_poseLidar; // Позиции лидара по расчетам Центральная система координат
 
-int main(int argc, char **argv)// Главная функция программы
+int main(int argc, char **argv) // Главная функция программы
 {
     signal(SIGINT, stopProgram);         // Настраиваем обработку Ctrl+C
     ros::init(argc, argv, "lidar_node"); // Инициализируем ROS с именем узла "lidar_node"
 
     ros::NodeHandle nh;
     ros::Subscriber subscriber_Lidar = nh.subscribe<sensor_msgs::LaserScan>("/scan", 1000, callback_Lidar); // Подписка на данные лидара
-    ros::Duration(1).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
+    ros::Duration(1).sleep();                                                                               // Подождем пока все обьявится и инициализируется внутри ROS
 
     CPillar pillar;          // Обьявляем экземпляр класса в нем вся обработка и обсчет столбов
     PillarDetector detector; // Создаём объект детектора столбов
@@ -43,7 +43,7 @@ int main(int argc, char **argv)// Главная функция программ
     g_poseLidar.mode2 = startPose;
     pillar.parsingPillar(startPillar); // Разбираем пришедшие данные Заполняем массив правильных координат.
 
-    detector.setPoseLidar(startPose.x, startPose.y, startPose.th); // Установка начальной позиции
+    detector.setPoseLidar(startPose.x, startPose.y, startPose.th);   // Установка начальной позиции
     detector.setKnownPillars(0, startPillar[0].x, startPillar[0].y); // Разбираем пришедшие данные Заполняем массив правильных координат.
     detector.setKnownPillars(1, startPillar[1].x, startPillar[1].y);
     detector.setKnownPillars(2, startPillar[2].x, startPillar[2].y);
@@ -63,7 +63,7 @@ int main(int argc, char **argv)// Главная функция программ
     std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", formattedTime);
     ROS_INFO("TIME START NODE current time: %s", buffer); // Выводим в консоль
 
-    ros::Rate loop_rate(20);          // Создаём цикл с частотой 10 Гц
+    ros::Rate loop_rate(10);          // Создаём цикл с частотой 10 Гц
     while (ros::ok() && keep_running) // Пока ROS работает и не нажат Ctrl+C
     {
         timeLoop = ros::Time::now(); // Захватываем текущий момент времени начала цикла
@@ -77,7 +77,7 @@ int main(int argc, char **argv)// Главная функция программ
             flag_msgLidar = false;
             // ROS_INFO("=== %.3f %.3f | %.3f %.3f | %.3f %.3f",g_poseLidar.mode1.x, g_poseLidar.mode.x, g_poseLidar.mode1.y, g_poseLidar.mode.y, g_poseLidar.mode1.th, g_poseLidar.mode.th);
             pillar.searchPillars(msg_lidar, g_poseLidar.mode); // Разбираем пришедшие данные и ищем там столбы.
-            pillar.comparisonPillar();                        // Сопоставляем столбы
+            pillar.comparisonPillar();                         // Сопоставляем столбы
             // topic.publicationPillarAll(pillar);                // Публикуем всю обобщенную информацию по столб
 
             detector.scanCallback(msg_lidar, g_poseLidar.mode);
@@ -99,6 +99,31 @@ int main(int argc, char **argv)// Главная функция программ
             g_poseLidar.mode.y = g_poseLidar.mode1.y * 0.8 + g_poseLidar.mode2.y * 0.1 + g_poseLidar.mode3.y * 0.1;
             // g_poseLidar.mode.th = g_poseLidar.mode1.th * 0.4 + g_poseLidar.mode2.th * 0.3 + g_poseLidar.mode3.th * 0.3;
 
+
+            solver.clear_circles(); // <<< НОВАЯ СТРОКА: Очистка данных перед расчетом!
+            for (size_t i = 0; i < 4; i++)
+            {
+                SPoint point;
+                point.x = pillar.pillar[i].x_true;
+                point.y = pillar.pillar[i].y_true;
+                double distance = pillar.pillar[i].distance_lidar + PILLAR_RADIUS;
+                double distance2 = detector.matchPillar[i].distance + PILLAR_RADIUS;
+
+                // 3. Сбор окружностей (4 по расстоянию, 4 по углу)
+                solver.add_circle_from_distance(point, distance); // Добавление окружности по дальности AB
+                // solver.add_circle_from_distance(point, distance2); // Добавление окружности по дальности AB
+            }
+            // 4. Расчет МНК для положения A
+            // printf("==================================\n");                   // Разделитель
+            // printf("LSQ FOR POSITION A (N=%i)\n", solver.get_circle_count()); // Заголовок
+
+            SPoint A_found = solver.find_A_by_mnk(); // Запуск расчета положения
+            g_poseLidar.mnk.x = A_found.x;
+            g_poseLidar.mnk.y = A_found.y;
+
+            // printf("\n--- POSITION CALCULATION SUMMARY ---\n");      // Сводка
+            // printf("Found A: (%.4f, %.4f)\n", A_found.x, A_found.y); // Найденное положение
+
             // // Перед комплментацией углы нужно привести к 360 градусов чтобы правильно усреднять
 
             // float angle1, angle2, angle3, angleSum;
@@ -117,7 +142,7 @@ int main(int argc, char **argv)// Главная функция программ
             // g_poseLidar.mode.th = angleSum3;
             // ROS_INFO("    angleSum = %.3f angleSum2 = %.3f angleSum3 = %.3f ", angleSum, angleSum2, angleSum3);
 
-            g_poseLidar.mode.th = complementAngle(g_poseLidar.mode1.th, g_poseLidar.mode2.th, g_poseLidar.mode3.th, 0.4, 0.3, 0.3, 0.0);// Функйия комплементации 3 углов с разными весвми и добавление поправки offset по лидару
+            g_poseLidar.mode.th = complementAngle(g_poseLidar.mode1.th, g_poseLidar.mode2.th, g_poseLidar.mode3.th, 0.4, 0.3, 0.3, 0.0); // Функйия комплементации 3 углов с разными весвми и добавление поправки offset по лидару
 
             ROS_WARN("    g_poseLidar.mode.x = %.3f th = %.3f th = %.3f ", g_poseLidar.mode.x, g_poseLidar.mode.y, g_poseLidar.mode.th);
 
