@@ -168,9 +168,15 @@ public:
         msg.mode3.y = g_poseLidar.mode3.y;
         msg.mode3.th = g_poseLidar.mode3.th;
 
-        msg.mnk.x = g_poseLidar.mnk.x;
-        msg.mnk.y = g_poseLidar.mnk.y;
-        msg.mnk.th = g_poseLidar.mnk.th;
+        msg.mnkDist.x = g_poseLidar.mnkDist.x;
+        msg.mnkDist.y = g_poseLidar.mnkDist.y;
+        msg.mnkDist.th = g_poseLidar.mnkDist.th;
+        msg.quality_mknDist = g_poseLidar.quality_mknDist;
+
+        msg.mnkFused.x = g_poseLidar.mnkFused.x;
+        msg.mnkFused.y = g_poseLidar.mnkFused.y;
+        msg.mnkFused.th = g_poseLidar.mnkFused.th;
+        msg.quality_mknFused = g_poseLidar.quality_mknFused;
 
         msg.countMatchPillar = g_poseLidar.countMatchPillar;
         msg.countCrossCircle = g_poseLidar.countCrossCircle;

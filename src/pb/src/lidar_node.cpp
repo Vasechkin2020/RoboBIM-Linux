@@ -52,7 +52,7 @@ int main(int argc, char **argv) // Главная функция програм�
     SPoint startPoint;
     startPoint.x = startPose.x;
     startPoint.y = startPose.y;
-    TrilaterationSolver solver(startPoint); // 2. Инициализация решателя
+    TrilaterationSolver solver(startPoint, 0.8); // Инициализация решателя/Задаем начальную точку и вес скоторым будем учитывать расчет по углу. По расстоянияю принято всегда за 1.
 
     ros::Time timeStart = ros::Time::now(); // Время начала программы
     ros::Time timeLoop = ros::Time::now();  // Время начала текущего цикла
@@ -102,6 +102,23 @@ int main(int argc, char **argv) // Главная функция програм�
             try
             {
                 solver.clear_circles(); // <<< Очистка данных перед расчетом!
+
+                // SPoint B = {4.0, 0.3}; // Маяк B
+                // SPoint C = {0.0, 0.5}; // Маяк C
+                // SPoint D = {0.5, 4.0}; // Маяк D
+                // SPoint E = {5.0, 4.0}; // Маяк E
+
+                // // Углы из трилатерации: МОДУЛИ УГЛОВ (Берем точные значения из Вашей отладки)
+                // double angle_BAC = 94.15;  // Угол <BAC
+                // double angle_CAD = 132.27; // Угол <CAD
+                // double angle_DAE = 77.47;  // Угол <DAE
+                // double angle_EAB = 56.10;  // Угол <EAB
+
+                // solver.add_filtered_circle_from_angle(B, C, angle_BAC);
+                // solver.add_filtered_circle_from_angle(C, D, angle_CAD);
+                // solver.add_filtered_circle_from_angle(D, E, angle_DAE);
+                // solver.add_filtered_circle_from_angle(E, B, angle_EAB);
+
                 for (size_t i = 0; i < 4; i++)
                 {
                     // Сбор окружностей 4 по расстоянию
@@ -114,6 +131,13 @@ int main(int argc, char **argv) // Главная функция програм�
                     solver.add_circle_from_distance(point, distance); // Добавление окружности по дальности AB
                     // solver.add_circle_from_distance(point, distance2); // Добавление окружности по дальности AB
                 }
+
+                SPoint_Q AQ_found = solver.find_A_by_mnk(); // Запуск расчета положения
+                solver.set_A_prev(AQ_found.A);
+                g_poseLidar.mnkDist.x = AQ_found.A.x;
+                g_poseLidar.mnkDist.y = AQ_found.A.y;
+                g_poseLidar.quality_mknDist = AQ_found.quality;
+
                 int j = 0;
                 for (size_t i = 0; i < 4; i++)
                 {
@@ -149,16 +173,12 @@ int main(int argc, char **argv) // Главная функция програм�
                 return 1;                                                    // Код ошибки
             }
 
-            // 4. Расчет МНК для положения A
-            // printf("==================================\n");                   // Разделитель
-            // printf("LSQ FOR POSITION A (N=%i)\n", solver.get_circle_count()); // Заголовок
+            SPoint_Q BQ_found = solver.find_A_by_mnk(); // Запуск расчета положения
+            g_poseLidar.mnkFused.x = BQ_found.A.x;
+            g_poseLidar.mnkFused.y = BQ_found.A.y;
+            g_poseLidar.quality_mknFused = BQ_found.quality;
 
-            SPoint A_found = solver.find_A_by_mnk(); // Запуск расчета положения
-            g_poseLidar.mnk.x = A_found.x;
-            g_poseLidar.mnk.y = A_found.y;
-
-            // printf("\n--- POSITION CALCULATION SUMMARY ---\n");      // Сводка
-            // printf("Found A: (%.4f, %.4f)\n", A_found.x, A_found.y); // Найденное положение
+            solver.set_A_prev(BQ_found.A);
 
             // // Перед комплментацией углы нужно привести к 360 градусов чтобы правильно усреднять
 
@@ -178,7 +198,7 @@ int main(int argc, char **argv) // Главная функция програм�
             // g_poseLidar.mode.th = angleSum3;
             // ROS_INFO("    angleSum = %.3f angleSum2 = %.3f angleSum3 = %.3f ", angleSum, angleSum2, angleSum3);
 
-            g_poseLidar.mode.th = complementAngle(g_poseLidar.mode1.th, g_poseLidar.mode2.th, g_poseLidar.mode3.th, 0.4, 0.3, 0.3, 0.0); // Функйия комплементации 3 углов с разными весвми и добавление поправки offset по лидару
+            g_poseLidar.mode.th = complementAngle(g_poseLidar.mode1.th, g_poseLidar.mode2.th, g_poseLidar.mode3.th, 0.8, 0.2, 0.0, 0.0); // Функйия комплементации 3 углов с разными весвми и добавление поправки offset по лидару
 
             ROS_WARN("    g_poseLidar.mode.x = %.3f th = %.3f th = %.3f ", g_poseLidar.mode.x, g_poseLidar.mode.y, g_poseLidar.mode.th);
 

@@ -78,7 +78,10 @@ struct SPoseLidar // Варианты расчетов координат лид
     SPose mode1;  // Для лидара по растоянию
     SPose mode2;  // Для лидара по углу
     SPose mode3;  // Для лидара по углу
-    SPose mnk;  // Для лидара по углу
+    SPose mnkDist;  // Для лидара по растоянию по трилатерации
+    SPose mnkFused;  // Для лидара по расстоянию и углу 80% по триалатерации
+    float quality_mknDist;
+    float quality_mknFused;
     int countMatchPillar; // Колличество сопоставленных столюов при расчете по растоянию
     int countCrossCircle; // Количество пересечений окружностей при расчете по углам
     float azimut[4]; // Индивидуальные углы на столбы
@@ -105,6 +108,11 @@ struct SDistDirect // Структура для данных по столбам
     int count; // Значение записано или нет
 };
 
+typedef struct  // Точка с качеством
+{
+  SPoint A; //
+  double quality; //
+} SPoint_Q;
 
 //************************************** ОБЬЯВЛЯЕМ ФУНКЦИИ **********************************
 void normalizeVector(double &x, double &y, double &z);                  // Нормализация вектора
