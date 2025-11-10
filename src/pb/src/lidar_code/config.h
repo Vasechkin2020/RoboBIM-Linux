@@ -83,9 +83,9 @@ struct SPoseLidar // Варианты расчетов координат лид
 
 struct SCircle // Окружность
 {
-    float x = 0; //
-    float y = 0; //
-    float r = 0; // Радиус окружности
+    double x = 0; //
+    double y = 0; //
+    double r = 0; // Радиус окружности
 };
 struct SCircle2 // Две окружности
 {

@@ -10,6 +10,7 @@
 #include "lidar_code/code.h"
 #include "lidar_code/pillar.h"
 #include "lidar_code/pillarDetector.h"
+#include "lidar_code/trilaterationSolver.h"
 #include "lidar_code/topic.h" // Файл для функций для формирования топиков в нужном виде и формате
 
 SPoseLidar g_poseLidar;        // Позиции лидара по расчетам Центральная система координат
@@ -47,6 +48,11 @@ int main(int argc, char **argv)// Главная функция программ
     detector.setKnownPillars(1, startPillar[1].x, startPillar[1].y);
     detector.setKnownPillars(2, startPillar[2].x, startPillar[2].y);
     detector.setKnownPillars(3, startPillar[3].x, startPillar[3].y);
+
+    SPoint startPoint;
+    startPoint.x = startPose.x;
+    startPoint.y = startPose.y;
+    TrilaterationSolver solver(startPoint); // 2. Инициализация решателя
 
     ros::Time timeStart = ros::Time::now(); // Время начала программы
     ros::Time timeLoop = ros::Time::now();  // Время начала текущего цикла

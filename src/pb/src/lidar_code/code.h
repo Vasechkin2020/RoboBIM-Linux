@@ -4,6 +4,7 @@
 #include "config.h"
 #include "pillar.h"
 #include "pillarDetector.h"
+#include "trilaterationSolver.h"
 #include "topic.h" // Файл для функций для формирования топиков в нужном виде и формате
 
 sensor_msgs::LaserScan::ConstPtr msg_lidar; // Перемеенная в которую сохраняем данные лидара из сообщения

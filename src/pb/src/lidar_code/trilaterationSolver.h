@@ -1,3 +1,6 @@
+#ifndef TRIALATERATIONSOLVER_H
+#define TRIALATERATIONSOLVER_H
+
 #include <stdio.h> 
 #include <math.h> 
 #include <vector> 
@@ -11,33 +14,33 @@
 #endif
 
 // --- Вспомогательные структуры и функции ---
-struct SPoint // Структура для хранения точки
-{
-    double x; // Координата x
-    double y; // Координата y
-}; 
+// SPoint // Структура для хранения точки
+// {
+//     double x; // Координата x
+//     double y; // Координата y
+// }; 
 
-struct SCircle // Структура для хранения окружности (Маяк)
-{
-    double x; // Координата x центра
-    double y; // Координата y центра
-    double r; // Радиус
-}; 
+// struct SCircle // Структура для хранения окружности (Маяк)
+// {
+//     double x; // Координата x центра
+//     double y; // Координата y центра
+//     double r; // Радиус
+// }; 
 
 double sqr(double val) 
 {
     return val * val; // Квадрат числа
 } 
 
-double DEG2RAD(double deg) 
-{
-    return deg * M_PI / 180.0; // Градусы в радианы
-} 
+// double DEG2RAD(double deg) 
+// {
+//     return deg * M_PI / 180.0; // Градусы в радианы
+// } 
 
-double RAD2DEG(double rad) 
-{
-    return rad * 180.0 / M_PI; // Радианы в градусы
-} 
+// double RAD2DEG(double rad) 
+// {
+//     return rad * 180.0 / M_PI; // Радианы в градусы
+// } 
 
 double ctan(double rad) 
 {
@@ -49,10 +52,10 @@ double ctan(double rad)
 class TrilaterationSolver
 {
 private:
-    struct SPoint A_prev; // Предыдущая (или начальная) точка для выбора дуги
+    SPoint A_prev; // Предыдущая (или начальная) точка для выбора дуги
     std::vector<SCircle> all_circles; // Список всех окружностей (из расстояний и углов)
 
-    double get_azimuth_deg(struct SPoint P_from, struct SPoint P_to) // Расчет азимута от P_from до P_to
+    double get_azimuth_deg(SPoint P_from, SPoint P_to) // Расчет азимута от P_from до P_to
     {
         // Используется стандартная математическая конвенция atan2
         double rad = atan2(P_to.y - P_from.y, P_to.x - P_from.x); // Азимут в радианах
@@ -73,7 +76,7 @@ private:
     } 
 
 public:
-    TrilaterationSolver(struct SPoint prev) : A_prev(prev) 
+    TrilaterationSolver(SPoint prev) : A_prev(prev) 
     {
     } // Конструктор с начальной точкой
 
@@ -82,15 +85,15 @@ public:
         return all_circles.size(); // Получить количество окружностей
     } 
 
-    void add_circle_from_distance(struct SPoint P_beacon, double distance) // Добавление окружности по расстоянию
+    void add_circle_from_distance(SPoint P_beacon, double distance) // Добавление окружности по расстоянию
     {
         all_circles.push_back({P_beacon.x, P_beacon.y, distance}); // Добавляем маяк как центр с измеренным радиусом
     } 
 
     void add_filtered_circle_from_angle // Добавление окружности, полученной из измеренного угла
     (
-        struct SPoint P1,         // Точка 1 (начало хорды)
-        struct SPoint P2,         // Точка 2 (конец хорды)
+        SPoint P1,         // Точка 1 (начало хорды)
+        SPoint P2,         // Точка 2 (конец хорды)
         double angle_deg          // Измеренный угол (АБСОЛЮТНОЕ значение)
     )
     {
@@ -120,13 +123,13 @@ public:
         
         double R = d / (2.0 * fabs(sin_alpha)); // Радиус окружности
 
-        struct SPoint M = {(P1.x + P2.x) / 2.0, (P1.y + P2.y) / 2.0}; // Середина хорды
+        SPoint M = {(P1.x + P2.x) / 2.0, (P1.y + P2.y) / 2.0}; // Середина хорды
         double vx = -dy / d; // Вектор, перпендикулярный хорде (x-компонента)
         double vy = dx / d; // Вектор, перпендикулярный хорде (y-компонента)
 
         // Два потенциальных центра окружности
-        struct SPoint O1 = {M.x + h * vx, M.y + h * vy}; 
-        struct SPoint O2 = {M.x - h * vx, M.y - h * vy}; 
+        SPoint O1 = {M.x + h * vx, M.y + h * vy}; 
+        SPoint O2 = {M.x - h * vx, M.y - h * vy}; 
         
         // --- ВОССТАНОВЛЕННАЯ ЛОГИКА ФИЛЬТРАЦИИ ПО A_prev ---
         double dist1 = sqrt(sqr(O1.x - A_prev.x) + sqr(O1.y - A_prev.y)); // Расстояние до центра O1
@@ -147,9 +150,9 @@ public:
     } 
 
     // --- МЕТОД 3: МНК-РЕШАТЕЛЬ ПОЛОЖЕНИЯ С RMSE ---
-    struct SPoint find_A_by_mnk()
+    SPoint find_A_by_mnk()
     {
-        struct SPoint A = {0.0, 0.0}; // Искомая точка A
+        SPoint A = {0.0, 0.0}; // Искомая точка A
         int N = all_circles.size(); // Общее количество окружностей
         
         printf("\n--- POS LSQ SOLVER: START (N=%d) ---\n", N); // Output start of LSQ solver
@@ -238,8 +241,8 @@ public:
 
     // --- МЕТОД 4: ОПРЕДЕЛЕНИЕ ОРИЕНТАЦИИ ЛИДАРА (ВЕКТОРНЫЙ МНК) ---
     double get_lidar_orientation(
-        const struct SPoint A_found,                          // Найденное положение
-        const std::vector<struct SPoint>& beacons,           // Координаты маяков
+        const SPoint A_found,                          // Найденное положение
+        const std::vector<SPoint>& beacons,           // Координаты маяков
         const std::vector<double>& lidar_angles_deg          // Углы, измеренные лидаром
     )
     {
@@ -282,24 +285,25 @@ public:
     } 
 };
 
+/*
 // --- Пример использования (С согласованными данными: PSI_TRUE = 0.0) ---
 
 int main()
 {
     // 1. Исходные данные
     
-    struct SPoint B = {4.0, 0.3}; // Маяк B
-    struct SPoint C = {0.0, 0.5}; // Маяк C
-    struct SPoint D = {0.5, 4.0}; // Маяк D
-    struct SPoint E = {5.0, 4.0}; // Маяк E
+    SPoint B = {4.0, 0.3}; // Маяк B
+    SPoint C = {0.0, 0.5}; // Маяк C
+    SPoint D = {0.5, 4.0}; // Маяк D
+    SPoint E = {5.0, 4.0}; // Маяк E
     
-    std::vector<struct SPoint> beacons = {B, C, D, E}; // Список маяков
+    std::vector<SPoint> beacons = {B, C, D, E}; // Список маяков
     
     // ИСТИННЫЕ ЗНАЧЕНИЯ 
     double PSI_TRUE = 0.0; // Истинный угол ориентации
-    struct SPoint A_true = {1.0, 2.0}; // Истинное положение A
+    SPoint A_true = {1.0, 2.0}; // Истинное положение A
     
-    struct SPoint A_prev = {1.05, 2.05}; // Предыдущее положение (ЗАДАНО)
+    SPoint A_prev = {1.05, 2.05}; // Предыдущее положение (ЗАДАНО)
 
     // Истинные расстояния (R_true) и заданный шум 
     double R_AB_true = 3.448; double noise_R_AB = 0.01; 
@@ -350,7 +354,7 @@ int main()
     printf("LSQ FOR POSITION A (N=%d)\n", solver.get_circle_count()); 
     printf("==================================\n"); 
 
-    struct SPoint A_found = solver.find_A_by_mnk(); 
+    SPoint A_found = solver.find_A_by_mnk(); 
 
     printf("\n--- POSITION CALCULATION SUMMARY ---\n"); 
     printf("True A: (%.4f, %.4f)\n", A_true.x, A_true.y); 
@@ -369,3 +373,7 @@ int main()
     
     return 0; 
 }
+
+*/
+
+#endif
