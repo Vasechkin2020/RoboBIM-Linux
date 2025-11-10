@@ -137,7 +137,7 @@ SPose CPillar::getLocationMode1(SDistDirect *distDirect, SPose pose_) // На в
 
         // poseLidar.th = 90 - getTheta(poseLidar, 1); // Получаем угол куда смотрит нос лидара в системе "odom" + 90 так как сиcтема координат повернута относительно /odom/
         poseLidar.th = - getTheta(poseLidar, 1); // Получаем угол куда смотрит нос лидара в системе "odom" + 90 так как сиcтема координат повернута относительно /odom/
-        ROS_WARN("    MODE1 pose.x= %.3f y= %.3f theta= %.3f ", poseLidar.x, poseLidar.y, poseLidar.th);
+        ROS_WARN("    MODE1 pose.x= %.3f y= %.3f theta= %.3f count_poseLidarMode1 = %i ", poseLidar.x, poseLidar.y, poseLidar.th,count_poseLidarMode1);
         // return poseLidar;
         poseReturn_ = poseLidar;
     }
@@ -245,14 +245,14 @@ SPose CPillar::getLocationMode2(SDistDirect *distDirect, SPose pose_) // На в
             if (a1 > 30 && a1 < 150)                // Проверка угла. Если вне диапазона то результаты не точные
             {
                 c = getCircle(p1, p2, a1); // Ищем 2 окружности по 2 точкам и углу между ними  https://lektsia.com/1x1ff.html https://studfile.net/preview/1853275/page:2/ https://vk.com/@theoryofsailing-navigaciya-glava-5-33-opredelenie-mesta-po-dvum-gorizontalny
-                // ROS_INFO("p1 x= %.3f y= %.3f | p2 x= %.3f y= %.3f | a1 = %.3f ", p1.x, p1.y, p2.x, p2.y, a1);
+                ROS_INFO("p1 x= %.3f y= %.3f | p2 x= %.3f y= %.3f | a1 = %.3f ", p1.x, p1.y, p2.x, p2.y, a1);
                 c.c1.r = c.c1.r + 0.0; // Гипотеза что если увеличить радиус чуть-чуть по будет больше пересечений и лучше результат )
                 c.c2.r = c.c2.r + 0.0;
                 circleAnglePillar[count_circleAnglePillar] = c.c1; // Записываем 2 окружности
                 count_circleAnglePillar++;
                 circleAnglePillar[count_circleAnglePillar] = c.c2;
                 count_circleAnglePillar++;
-                // ROS_INFO("getCircle => c1 x= %.3f y= %.3f c1 = %.3f | c2 x= %.3f y= %.3f c2 = %.3f \n", c.c1.x, c.c1.y, c.c1.r, c.c2.x, c.c2.y, c.c2.r);
+                ROS_INFO("getCircle => c1 x= %.3f y= %.3f c1 = %.3f | c2 x= %.3f y= %.3f c2 = %.3f \n", c.c1.x, c.c1.y, c.c1.r, c.c2.x, c.c2.y, c.c2.r);
             }
         }
     }

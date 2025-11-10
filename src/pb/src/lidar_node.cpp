@@ -90,13 +90,13 @@ int main(int argc, char **argv) // Главная функция програм�
             g_poseLidar.mode1 = pillar.getLocationMode1(distDirect, g_poseLidar.mode); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
             g_poseLidar.mode2 = pillar.getLocationMode2(distDirect, g_poseLidar.mode); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
 
-            if (isnan(g_poseLidar.mode2.x) || isnan(g_poseLidar.mode2.y) || isnan(g_poseLidar.mode2.th))
-            {
-                ROS_ERROR("STOP MODE 1-2");
-                exit(0);
-            }
-            g_poseLidar.mode.x = g_poseLidar.mode1.x * 0.8 + g_poseLidar.mode2.x * 0.1 + g_poseLidar.mode3.x * 0.1; // Легкая комплементация двух методов расчета. Второй сильно волатильный
-            g_poseLidar.mode.y = g_poseLidar.mode1.y * 0.8 + g_poseLidar.mode2.y * 0.1 + g_poseLidar.mode3.y * 0.1;
+            // if (isnan(g_poseLidar.mode2.x) || isnan(g_poseLidar.mode2.y) || isnan(g_poseLidar.mode2.th))
+            // {
+            //     ROS_ERROR("STOP MODE 1-2");
+            //     exit(0);
+            // }
+            g_poseLidar.mode.x = g_poseLidar.mode1.x * 0.8 + g_poseLidar.mode2.x * 0.2 + g_poseLidar.mode3.x * 0.0; // Легкая комплементация двух методов расчета. Второй сильно волатильный
+            g_poseLidar.mode.y = g_poseLidar.mode1.y * 0.8 + g_poseLidar.mode2.y * 0.2 + g_poseLidar.mode3.y * 0.0;
             // g_poseLidar.mode.th = g_poseLidar.mode1.th * 0.4 + g_poseLidar.mode2.th * 0.3 + g_poseLidar.mode3.th * 0.3;
 
             try
@@ -125,10 +125,11 @@ int main(int argc, char **argv) // Главная функция програм�
                     SPoint point;
                     point.x = pillar.pillar[i].x_true;
                     point.y = pillar.pillar[i].y_true;
-                    double distance = pillar.pillar[i].distance_lidar + PILLAR_RADIUS;
-                    double distance2 = detector.matchPillar[i].distance + PILLAR_RADIUS;
+                    // double distance = pillar.pillar[i].distance_lidar + PILLAR_RADIUS;
+                    // double distance2 = detector.matchPillar[i].distance + PILLAR_RADIUS;
+                    double distanceFused = distDirect[i].distance + PILLAR_RADIUS;
 
-                    solver.add_circle_from_distance(point, distance); // Добавление окружности по дальности AB
+                    solver.add_circle_from_distance(point, distanceFused); // Добавление окружности по дальности AB
                     // solver.add_circle_from_distance(point, distance2); // Добавление окружности по дальности AB
                 }
 
