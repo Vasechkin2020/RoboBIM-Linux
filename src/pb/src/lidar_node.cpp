@@ -99,20 +99,56 @@ int main(int argc, char **argv) // Главная функция програм�
             g_poseLidar.mode.y = g_poseLidar.mode1.y * 0.8 + g_poseLidar.mode2.y * 0.1 + g_poseLidar.mode3.y * 0.1;
             // g_poseLidar.mode.th = g_poseLidar.mode1.th * 0.4 + g_poseLidar.mode2.th * 0.3 + g_poseLidar.mode3.th * 0.3;
 
-
-            solver.clear_circles(); // <<< НОВАЯ СТРОКА: Очистка данных перед расчетом!
-            for (size_t i = 0; i < 4; i++)
+            try
             {
-                SPoint point;
-                point.x = pillar.pillar[i].x_true;
-                point.y = pillar.pillar[i].y_true;
-                double distance = pillar.pillar[i].distance_lidar + PILLAR_RADIUS;
-                double distance2 = detector.matchPillar[i].distance + PILLAR_RADIUS;
+                solver.clear_circles(); // <<< Очистка данных перед расчетом!
+                for (size_t i = 0; i < 4; i++)
+                {
+                    // Сбор окружностей 4 по расстоянию
+                    SPoint point;
+                    point.x = pillar.pillar[i].x_true;
+                    point.y = pillar.pillar[i].y_true;
+                    double distance = pillar.pillar[i].distance_lidar + PILLAR_RADIUS;
+                    double distance2 = detector.matchPillar[i].distance + PILLAR_RADIUS;
 
-                // 3. Сбор окружностей (4 по расстоянию, 4 по углу)
-                solver.add_circle_from_distance(point, distance); // Добавление окружности по дальности AB
-                // solver.add_circle_from_distance(point, distance2); // Добавление окружности по дальности AB
+                    solver.add_circle_from_distance(point, distance); // Добавление окружности по дальности AB
+                    // solver.add_circle_from_distance(point, distance2); // Добавление окружности по дальности AB
+                }
+                int j = 0;
+                for (size_t i = 0; i < 4; i++)
+                {
+                    j++;
+                    // Сбор окружностей 4 по углу
+                    if (j < 4)
+                    {
+                        SPoint point1;
+                        point1.x = pillar.pillar[i].x_true;
+                        point1.y = pillar.pillar[i].y_true;
+                        SPoint point2;
+                        point2.x = pillar.pillar[j].x_true;
+                        point2.y = pillar.pillar[j].y_true;
+                        double check_angle = solver.calculate_angle_from_azimuths(pillar.pillar[i].azimuth, pillar.pillar[j].azimuth); // Расчет угла BAC по азимутам
+                        solver.add_filtered_circle_from_angle(point1, point2, check_angle);                                            // Добавление окружности по углу BAC
+                    }
+                    else
+                    {
+                        SPoint point1;
+                        point1.x = pillar.pillar[i].x_true;
+                        point1.y = pillar.pillar[i].y_true;
+                        SPoint point2;
+                        point2.x = pillar.pillar[0].x_true;
+                        point2.y = pillar.pillar[0].y_true;
+                        double check_angle = solver.calculate_angle_from_azimuths(pillar.pillar[i].azimuth, pillar.pillar[0].azimuth); // Расчет угла BAC по азимутам
+                        solver.add_filtered_circle_from_angle(point1, point2, check_angle);                                            // Добавление окружности по углу BAC
+                    }
+                }
             }
+            catch (const std::invalid_argument &e)
+            {
+                fprintf(stderr, "Error collecting circles: %s\n", e.what()); // Вывод ошибки
+                return 1;                                                    // Код ошибки
+            }
+
             // 4. Расчет МНК для положения A
             // printf("==================================\n");                   // Разделитель
             // printf("LSQ FOR POSITION A (N=%i)\n", solver.get_circle_count()); // Заголовок
