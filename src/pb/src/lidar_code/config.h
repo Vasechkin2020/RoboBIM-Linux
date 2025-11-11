@@ -113,12 +113,6 @@ struct SDistDirect // Структура для данных по столбам
     int count; // Значение записано или нет
 };
 
-typedef struct  // Точка с качеством
-{
-  SPoint A; //
-  double quality; //
-} SPoint_Q;
-
 //************************************** ОБЬЯВЛЯЕМ ФУНКЦИИ **********************************
 void normalizeVector(double &x, double &y, double &z);                  // Нормализация вектора
 SPoint povorotSystemCoordinate(float xloc_, float yloc_, float theta_); // Формулы поворота системы координат. Угол задавать отрицательный если поворачиваем против часовой к нулю который вверх
