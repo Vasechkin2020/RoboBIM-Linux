@@ -135,7 +135,7 @@ void TrilaterationSolver::add_filtered_circle_from_angle
     double angle_deg          // Измеренный угол (АБСОЛЮТНОЕ значение)
 )
 {
-    printf("\n--- ANGLE CIRCLE CALCULATION (P1=(%.2f, %.2f), P2=(%.2f, %.2f), Angle=%.2f) ---\n", // Output start
+    printf(" --- ANGLE CIRCLE CALCULATION (P1=(%+7.3f, %+7.3f), P2=(%+7.3f, %+7.3f), Angle= %+8.3f) --- | ", // Output start
            P1.x, P1.y, P2.x, P2.y, angle_deg); 
     // printf("A_prev: (%.3f, %.3f), Angle Weight: %.4f\n", A_prev.x, A_prev.y, weight_angle_factor); // Output A_prev and weight
 
@@ -204,7 +204,7 @@ void TrilaterationSolver::add_filtered_circle_from_angle
     } 
     
     all_circles.push_back(chosen_circle); // Добавляем выбранную окружность
-    printf("Added Circle: Center (%.3f, %.3f), R=%.3f, W=%.4f\n", // Output final circle parameters
+    printf("Added Circle: Center (%+7.3f, %+7.3f), R=%+7.3f, W=%+7.4f\n", // Output final circle parameters
            chosen_circle.x, chosen_circle.y, chosen_circle.r, chosen_circle.weight_factor);
     // printf("------------------------------------------------------------------------\n"); // Output end
 } 

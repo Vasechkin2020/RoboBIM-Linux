@@ -38,9 +38,9 @@ int main(int argc, char **argv) // Главная функция програм�
     SPoint startPillar[4];
     readParam(startPose, startPillar); // Считывание переменных параметров из лаунч файла при запуске. Там офсеты и режимы работы
 
-    g_poseLidar.mode = startPose;
-    g_poseLidar.mode1 = startPose;
-    g_poseLidar.mode2 = startPose;
+    g_poseLidar.modeFused = startPose;
+    g_poseLidar.modeDist = startPose;
+    g_poseLidar.modeAngle = startPose;
     pillar.parsingPillar(startPillar); // Разбираем пришедшие данные Заполняем массив правильных координат.
 
     detector.setPoseLidar(startPose.x, startPose.y, startPose.th);   // Установка начальной позиции
@@ -75,33 +75,32 @@ int main(int argc, char **argv) // Главная функция програм�
             ROS_INFO("");
             ROS_ERROR("------------       flag_msgLidar    -------------");
             flag_msgLidar = false;
-            // ROS_INFO("=== %.3f %.3f | %.3f %.3f | %.3f %.3f",g_poseLidar.mode1.x, g_poseLidar.mode.x, g_poseLidar.mode1.y, g_poseLidar.mode.y, g_poseLidar.mode1.th, g_poseLidar.mode.th);
-            pillar.searchPillars(msg_lidar, g_poseLidar.mode); // Разбираем пришедшие данные и ищем там столбы.
+            // ROS_INFO("=== %.3f %.3f | %.3f %.3f | %.3f %.3f",g_poseLidar.modeDist.x, g_poseLidar.mode.x, g_poseLidar.modeDist.y, g_poseLidar.mode.y, g_poseLidar.modeDist.th, g_poseLidar.mode.th);
+            pillar.searchPillars(msg_lidar, g_poseLidar.modeFused); // Разбираем пришедшие данные и ищем там столбы.
             pillar.comparisonPillar();                         // Сопоставляем столбы
             // topic.publicationPillarAll(pillar);                // Публикуем всю обобщенную информацию по столб
 
-            detector.scanCallback(msg_lidar, g_poseLidar.mode);
+            detector.scanCallback(msg_lidar, g_poseLidar.modeFused);
             // topic.visualizeClasters(detector.cluster_info_list); // Большой обьем данных. Лучше отключать
             // topic.visualizePillars(detector.pillars); // Визуализация найденых столбов
             // topic.visualizeLidar();
 
             calcDistDirect(distDirect, pillar, detector); // Обьединение сопоставленных столбов в итоговую таблицу. Дальше по этой таблице все считается
 
-            g_poseLidar.mode1 = pillar.getLocationMode1(distDirect, g_poseLidar.mode); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
-            g_poseLidar.mode2 = pillar.getLocationMode2(distDirect, g_poseLidar.mode); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
+            g_poseLidar.modeDist = pillar.getLocationmodeDist(distDirect, g_poseLidar.modeFused); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
+            g_poseLidar.modeAngle = pillar.getLocationmodeAngle(distDirect, g_poseLidar.modeFused); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
 
-            // if (isnan(g_poseLidar.mode2.x) || isnan(g_poseLidar.mode2.y) || isnan(g_poseLidar.mode2.th))
+            // if (isnan(g_poseLidar.modeAngle.x) || isnan(g_poseLidar.modeAngle.y) || isnan(g_poseLidar.modeAngle.th))
             // {
             //     ROS_ERROR("STOP MODE 1-2");
             //     exit(0);
             // }
-            g_poseLidar.mode.x = g_poseLidar.mode1.x * 0.8 + g_poseLidar.mode2.x * 0.2 + g_poseLidar.mode3.x * 0.0; // Легкая комплементация двух методов расчета. Второй сильно волатильный
-            g_poseLidar.mode.y = g_poseLidar.mode1.y * 0.8 + g_poseLidar.mode2.y * 0.2 + g_poseLidar.mode3.y * 0.0;
-            // g_poseLidar.mode.th = g_poseLidar.mode1.th * 0.4 + g_poseLidar.mode2.th * 0.3 + g_poseLidar.mode3.th * 0.3;
+            g_poseLidar.modeFused.x = g_poseLidar.modeDist.x * 0.8 + g_poseLidar.modeAngle.x * 0.2 + g_poseLidar.modeClaster.x * 0.0; // Легкая комплементация двух методов расчета. Второй сильно волатильный
+            g_poseLidar.modeFused.y = g_poseLidar.modeDist.y * 0.8 + g_poseLidar.modeAngle.y * 0.2 + g_poseLidar.modeClaster.y * 0.0;
+            // g_poseLidar.mode.th = g_poseLidar.modeDist.th * 0.4 + g_poseLidar.modeAngle.th * 0.3 + g_poseLidar.modeClaster.th * 0.3;
 
             try
             {
-                solver.clear_circles(); // <<< Очистка данных перед расчетом!
 
                 // SPoint B = {4.0, 0.3}; // Маяк B
                 // SPoint C = {0.0, 0.5}; // Маяк C
@@ -119,6 +118,8 @@ int main(int argc, char **argv) // Главная функция програм�
                 // solver.add_filtered_circle_from_angle(D, E, angle_DAE);
                 // solver.add_filtered_circle_from_angle(E, B, angle_EAB);
 
+                //-----------------------------------------------------------------------------------------------------------------------------
+                solver.clear_circles(); // <<< Очистка данных перед расчетом!
                 for (size_t i = 0; i < 4; i++)
                 {
                     // Сбор окружностей 4 по расстоянию
@@ -134,39 +135,88 @@ int main(int argc, char **argv) // Главная функция програм�
                 }
 
                 SPoint_Q AQ_found = solver.find_A_by_mnk(); // Запуск расчета положения
-                solver.set_A_prev(AQ_found.A);
+                // solver.set_A_prev(AQ_found.A);
                 g_poseLidar.mnkDist.x = AQ_found.A.x;
                 g_poseLidar.mnkDist.y = AQ_found.A.y;
                 g_poseLidar.quality_mknDist = AQ_found.quality;
-
-                int j = 0;
-                for (size_t i = 0; i < 4; i++)
+                //-----------------------------------------------------------------------------------------------------------------------------
+                SPoint point1;
+                SPoint point2;
+                solver.clear_circles();     // <<< Очистка данных перед расчетом!
+                for (int i = 0; i < 3; i++) //        Перебираем столбы, и для каждой пары формируем окружность
                 {
-                    j++;
-                    // Сбор окружностей 4 по углу
-                    if (j < 4)
+                    for (int j = i + 1; j < 4; j++)
                     {
-                        SPoint point1;
-                        point1.x = pillar.pillar[i].x_true;
-                        point1.y = pillar.pillar[i].y_true;
-                        SPoint point2;
-                        point2.x = pillar.pillar[j].x_true;
-                        point2.y = pillar.pillar[j].y_true;
-                        double check_angle = solver.calculate_angle_from_azimuths(pillar.pillar[i].azimuth, pillar.pillar[j].azimuth); // Расчет угла BAC по азимутам
-                        solver.add_filtered_circle_from_angle(point1, point2, check_angle);                                            // Добавление окружности по углу BAC
-                    }
-                    else
-                    {
-                        SPoint point1;
-                        point1.x = pillar.pillar[i].x_true;
-                        point1.y = pillar.pillar[i].y_true;
-                        SPoint point2;
-                        point2.x = pillar.pillar[0].x_true;
-                        point2.y = pillar.pillar[0].y_true;
-                        double check_angle = solver.calculate_angle_from_azimuths(pillar.pillar[i].azimuth, pillar.pillar[0].azimuth); // Расчет угла BAC по азимутам
-                        solver.add_filtered_circle_from_angle(point1, point2, check_angle);                                            // Добавление окружности по углу BAC
+                        point1.x = distDirect[i].x_true; // Формируем пары столбов, получаем угол между ними и если он в пределах от 30 до 150 градусов то считаем окружность которую потом переберем
+                        point1.y = distDirect[i].y_true;
+                        point2.x = distDirect[j].x_true;
+                        point2.y = distDirect[j].y_true;
+                        float a1 = distDirect[j].direction - distDirect[i].direction;
+                        (a1 < 0) ? (a1 = a1 + 360) : a1 = a1;                                                                        // Проверка и приведение если через ноль столбы
+                        (a1 > 180) ? (a1 = 360 - a1) : a1 = a1;                                                                      // Проверка и приведение если через ноль столбы
+                        double check_angle = solver.calculate_angle_from_azimuths(distDirect[i].direction, distDirect[j].direction); // Расчет угла BAC по азимутам
+                        printf("check angle = %8.3f = %8.3f => ", check_angle, a1);
+                        double abs_angle = abs(check_angle);
+                        if (abs_angle > 30 && abs_angle < 150) // Проверка угла. Если вне диапазона то результаты не точные
+                        {
+                            solver.add_filtered_circle_from_angle(point1, point2, check_angle); // Добавление окружности по углу BAC
+                        }
+                        else
+                        {
+                            printf("=== Angle is not diapazon 30><180\n");
+                        }
                     }
                 }
+                SPoint_Q BQ_found = solver.find_A_by_mnk(); // Запуск расчета положения
+                g_poseLidar.mnkAngle.x = BQ_found.A.x;
+                g_poseLidar.mnkAngle.y = BQ_found.A.y;
+                g_poseLidar.quality_mknAngle = BQ_found.quality;
+                //-----------------------------------------------------------------------------------------------------------------------------
+                solver.clear_circles(); // <<< Очистка данных перед расчетом!
+                for (size_t i = 0; i < 4; i++)
+                {
+                    // Сбор окружностей 4 по расстоянию
+                    SPoint point;
+                    point.x = pillar.pillar[i].x_true;
+                    point.y = pillar.pillar[i].y_true;
+                    // double distance = pillar.pillar[i].distance_lidar + PILLAR_RADIUS;
+                    // double distance2 = detector.matchPillar[i].distance + PILLAR_RADIUS;
+                    double distanceFused = distDirect[i].distance + PILLAR_RADIUS;
+
+                    solver.add_circle_from_distance(point, distanceFused); // Добавление окружности по дальности AB
+                    // solver.add_circle_from_distance(point, distance2); // Добавление окружности по дальности AB
+                }
+                for (int i = 0; i < 3; i++) //        Перебираем столбы, и для каждой пары формируем окружность
+                {
+                    for (int j = i + 1; j < 4; j++)
+                    {
+                        point1.x = distDirect[i].x_true; // Формируем пары столбов, получаем угол между ними и если он в пределах от 30 до 150 градусов то считаем окружность которую потом переберем
+                        point1.y = distDirect[i].y_true;
+                        point2.x = distDirect[j].x_true;
+                        point2.y = distDirect[j].y_true;
+                        float a1 = distDirect[j].direction - distDirect[i].direction;
+                        (a1 < 0) ? (a1 = a1 + 360) : a1 = a1;                                                                        // Проверка и приведение если через ноль столбы
+                        (a1 > 180) ? (a1 = 360 - a1) : a1 = a1;                                                                      // Проверка и приведение если через ноль столбы
+                        double check_angle = solver.calculate_angle_from_azimuths(distDirect[i].direction, distDirect[j].direction); // Расчет угла BAC по азимутам
+                        printf("check angle = %8.3f = %8.3f => ", check_angle, a1);
+                        double abs_angle = abs(check_angle);
+                        if (abs_angle > 30 && abs_angle < 150) // Проверка угла. Если вне диапазона то результаты не точные
+                        {
+                            solver.add_filtered_circle_from_angle(point1, point2, check_angle); // Добавление окружности по углу BAC
+                        }
+                        else
+                        {
+                            printf("=== Angle is not diapazon 30><180\n");
+                        }
+                    }
+                }
+                SPoint_Q CQ_found = solver.find_A_by_mnk(); // Запуск расчета положения
+                g_poseLidar.mnkFused.x = CQ_found.A.x;
+                g_poseLidar.mnkFused.y = CQ_found.A.y;
+                g_poseLidar.quality_mknFused = CQ_found.quality;
+
+                solver.set_A_prev(AQ_found.A);
+                //-----------------------------------------------------------------------------------------------------------------------------
             }
             catch (const std::invalid_argument &e)
             {
@@ -174,22 +224,16 @@ int main(int argc, char **argv) // Главная функция програм�
                 return 1;                                                    // Код ошибки
             }
 
-            SPoint_Q BQ_found = solver.find_A_by_mnk(); // Запуск расчета положения
-            g_poseLidar.mnkFused.x = BQ_found.A.x;
-            g_poseLidar.mnkFused.y = BQ_found.A.y;
-            g_poseLidar.quality_mknFused = BQ_found.quality;
-
-            solver.set_A_prev(BQ_found.A);
 
             // // Перед комплментацией углы нужно привести к 360 градусов чтобы правильно усреднять
 
             // float angle1, angle2, angle3, angleSum;
-            // (g_poseLidar.mode1.th < 0) ? angle1 = g_poseLidar.mode1.th + 360 : angle1 = g_poseLidar.mode1.th;
-            // (g_poseLidar.mode2.th < 0) ? angle2 = g_poseLidar.mode2.th + 360 : angle2 = g_poseLidar.mode2.th;
-            // (g_poseLidar.mode3.th < 0) ? angle3 = g_poseLidar.mode3.th + 360 : angle3 = g_poseLidar.mode3.th;
+            // (g_poseLidar.modeDist.th < 0) ? angle1 = g_poseLidar.modeDist.th + 360 : angle1 = g_poseLidar.modeDist.th;
+            // (g_poseLidar.modeAngle.th < 0) ? angle2 = g_poseLidar.modeAngle.th + 360 : angle2 = g_poseLidar.modeAngle.th;
+            // (g_poseLidar.modeClaster.th < 0) ? angle3 = g_poseLidar.modeClaster.th + 360 : angle3 = g_poseLidar.modeClaster.th;
 
             // ROS_INFO("    th1 = %.3f th2 = %.3f th3 = %.3f | angle1 = %.3f angle2 = %.3f angle3 = %.3f ",
-            //          g_poseLidar.mode1.th, g_poseLidar.mode2.th, g_poseLidar.mode3.th, angle1, angle2, angle3);
+            //          g_poseLidar.modeDist.th, g_poseLidar.modeAngle.th, g_poseLidar.modeClaster.th, angle1, angle2, angle3);
 
             // angleSum = angle1 * 0.4 + angle2 * 0.3 + angle3 * 0.3;
             // (angleSum > 180) ? angleSum = angleSum - 360 : angleSum = angleSum;           // Обратно после усреденения превращаем в +-180
@@ -199,11 +243,11 @@ int main(int argc, char **argv) // Главная функция програм�
             // g_poseLidar.mode.th = angleSum3;
             // ROS_INFO("    angleSum = %.3f angleSum2 = %.3f angleSum3 = %.3f ", angleSum, angleSum2, angleSum3);
 
-            g_poseLidar.mode.th = complementAngle(g_poseLidar.mode1.th, g_poseLidar.mode2.th, g_poseLidar.mode3.th, 0.8, 0.2, 0.0, 0.0); // Функйия комплементации 3 углов с разными весвми и добавление поправки offset по лидару
+            g_poseLidar.modeFused.th = complementAngle(g_poseLidar.modeDist.th, g_poseLidar.modeAngle.th, g_poseLidar.modeClaster.th, 0.8, 0.2, 0.0, 0.0); // Функйия комплементации 3 углов с разными весвми и добавление поправки offset по лидару
 
-            ROS_WARN("    g_poseLidar.mode.x = %.3f th = %.3f th = %.3f ", g_poseLidar.mode.x, g_poseLidar.mode.y, g_poseLidar.mode.th);
+            ROS_WARN("    g_poseLidar.modeFused.x = %.3f th = %.3f th = %.3f ", g_poseLidar.modeFused.x, g_poseLidar.modeFused.y, g_poseLidar.modeFused.th);
 
-            // g_poseLidar.mode.th = g_poseLidar.mode.th * COMPLEMENTARN + ((g_poseLidar.mode1.th + g_poseLidar.mode2.th) / 2.0) * (1 - COMPLEMENTARN);
+            // g_poseLidar.mode.th = g_poseLidar.mode.th * COMPLEMENTARN + ((g_poseLidar.modeDist.th + g_poseLidar.modeAngle.th) / 2.0) * (1 - COMPLEMENTARN);
 
             // g_transformGlobal2Local.x = g_poseLidar.mode.x;
             // g_transformGlobal2Local.y = g_poseLidar.mode.y;

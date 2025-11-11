@@ -74,16 +74,21 @@ std::string log_name = "lidar_node";
 
 struct SPoseLidar // Варианты расчетов координат лидара
 {
-    SPose mode;  // Для лидара по растоянию
-    SPose mode1;  // Для лидара по растоянию
-    SPose mode2;  // Для лидара по углу
-    SPose mode3;  // Для лидара по углу
-    SPose mnkDist;  // Для лидара по растоянию по трилатерации
-    SPose mnkFused;  // Для лидара по расстоянию и углу 80% по триалатерации
-    float quality_mknDist;
-    float quality_mknFused;
+    SPose modeDist;  // Для лидара по растоянию
+    SPose modeAngle;  // Для лидара по углу
+    SPose modeFused;  // Для лидара по растоянию
     int countMatchPillar; // Колличество сопоставленных столюов при расчете по растоянию
     int countCrossCircle; // Количество пересечений окружностей при расчете по углам
+
+    SPose modeClaster;  // Для лидара по углу
+    
+    SPose mnkDist;  // Для лидара по растоянию по трилатерации
+    SPose mnkAngle;  // Для лидара по растоянию по трилатерации
+    SPose mnkFused;  // Для лидара по расстоянию и углу 80% по триалатерации
+    float quality_mknDist;
+    float quality_mknAngle;
+    float quality_mknFused;
+    
     float azimut[4]; // Индивидуальные углы на столбы
 };
 

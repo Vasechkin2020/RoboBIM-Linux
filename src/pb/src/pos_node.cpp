@@ -127,7 +127,7 @@ int main(int argc, char **argv)
             flag_msgLidar = false;
 
             ROS_INFO("---- IN Data PoseLidar x = %.3f y = %.3f th = %.3f | match = %i cross = %i | azimut %.3f %.3f %.3f %.3f | dtStoping = %f msec",
-                     msg_lidar.mode.x, msg_lidar.mode.y, msg_lidar.mode.th,
+                     msg_lidar.modeFused.x, msg_lidar.modeFused.y, msg_lidar.modeFused.th,
                      msg_lidar.countMatchPillar, msg_lidar.countCrossCircle,
                      msg_lidar.azimut[0], msg_lidar.azimut[1], msg_lidar.azimut[2], msg_lidar.azimut[3], dtStoping * 1000);
 
@@ -135,16 +135,16 @@ int main(int argc, char **argv)
 
             if (dtStoping < 0.1) // Если меньше 0,2 секунды то возвращаем что есть
             {
-                aver.x = msg_lidar.mode.x;
-                aver.y = msg_lidar.mode.y;
-                aver.th = msg_lidar.mode.th;
+                aver.x = msg_lidar.modeFused.x;
+                aver.y = msg_lidar.modeFused.y;
+                aver.th = msg_lidar.modeFused.th;
                 averCount = 1;
             }
             else // Если прошло больше 0,2 секунды с момента остановки начинаем усреднять позицию
             {
-                aver.x = aver.x + msg_lidar.mode.x;
-                aver.y = aver.y + msg_lidar.mode.y;
-                aver.th = aver.th + msg_lidar.mode.th;
+                aver.x = aver.x + msg_lidar.modeFused.x;
+                aver.y = aver.y + msg_lidar.modeFused.y;
+                aver.th = aver.th + msg_lidar.modeFused.th;
                 averCount++;
                 // ROS_INFO("    averCount = %i aver.x = %.3f aver.x / averCount = %.3f", averCount, aver.x, aver.x / averCount);
 
