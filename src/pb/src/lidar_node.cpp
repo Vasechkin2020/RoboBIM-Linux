@@ -201,13 +201,13 @@ int main(int argc, char **argv) // Главная функция програм�
                         (a1 < 0) ? (a1 = a1 + 360) : a1 = a1;                                                                        // Проверка и приведение если через ноль столбы
                         (a1 > 180) ? (a1 = 360 - a1) : a1 = a1;                                                                      // Проверка и приведение если через ноль столбы
                         double check_angle = solver.calculate_angle_from_azimuths(distDirect[i].direction, distDirect[j].direction); // Расчет угла BAC по азимутам
+                        solver.add_filtered_circle_from_angle(point1, point2, check_angle); // Добавление окружности по углу BAC
                         if (check_angle > 30 && check_angle < 150)                                                                   // Проверка угла. Если вне диапазона то результаты не точные
                         {
-                            solver.add_filtered_circle_from_angle(point1, point2, check_angle); // Добавление окружности по углу BAC
                         }
                         else
                         {
-                            printf("=== Angle is not diapazon 30><180\n");
+                            printf("=== Angle is not diapazon 30><150 check_angle = %f\n", check_angle);
                         }
                     }
                 }
@@ -216,7 +216,7 @@ int main(int argc, char **argv) // Главная функция програм�
                 g_poseLidar.mnkFused.y = CQ_found.A.y;
                 g_poseLidar.quality_mknFused = CQ_found.quality;
 
-                solver.set_A_prev(AQ_found.A);
+                solver.set_A_prev(CQ_found.A);
                 printf("======================================== END  ==========================================\n");
                 //-----------------------------------------------------------------------------------------------------------------------------
             }
