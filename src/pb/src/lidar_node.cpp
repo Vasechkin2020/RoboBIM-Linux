@@ -52,7 +52,7 @@ int main(int argc, char **argv) // Главная функция програм�
     SPoint startPoint;
     startPoint.x = startPose.x;
     startPoint.y = startPose.y;
-    TrilaterationSolver solver(startPoint, 0.8); // Инициализация решателя/Задаем начальную точку и вес скоторым будем учитывать расчет по углу. По расстоянияю принято всегда за 1.
+    TrilaterationSolver solver(startPoint); // Инициализация решателя/Задаем начальную точку и вес скоторым будем учитывать расчет по углу. По расстоянияю принято всегда за 1.
 
     ros::Time timeStart = ros::Time::now(); // Время начала программы
     ros::Time timeLoop = ros::Time::now();  // Время начала текущего цикла
@@ -77,7 +77,7 @@ int main(int argc, char **argv) // Главная функция програм�
             flag_msgLidar = false;
             // ROS_INFO("=== %.3f %.3f | %.3f %.3f | %.3f %.3f",g_poseLidar.modeDist.x, g_poseLidar.mode.x, g_poseLidar.modeDist.y, g_poseLidar.mode.y, g_poseLidar.modeDist.th, g_poseLidar.mode.th);
             pillar.searchPillars(msg_lidar, g_poseLidar.modeFused); // Разбираем пришедшие данные и ищем там столбы.
-            pillar.comparisonPillar();                         // Сопоставляем столбы
+            pillar.comparisonPillar();                              // Сопоставляем столбы
             // topic.publicationPillarAll(pillar);                // Публикуем всю обобщенную информацию по столб
 
             detector.scanCallback(msg_lidar, g_poseLidar.modeFused);
@@ -87,7 +87,7 @@ int main(int argc, char **argv) // Главная функция програм�
 
             calcDistDirect(distDirect, pillar, detector); // Обьединение сопоставленных столбов в итоговую таблицу. Дальше по этой таблице все считается
 
-            g_poseLidar.modeDist = pillar.getLocationmodeDist(distDirect, g_poseLidar.modeFused); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
+            g_poseLidar.modeDist = pillar.getLocationmodeDist(distDirect, g_poseLidar.modeFused);   // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
             g_poseLidar.modeAngle = pillar.getLocationmodeAngle(distDirect, g_poseLidar.modeFused); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
 
             // if (isnan(g_poseLidar.modeAngle.x) || isnan(g_poseLidar.modeAngle.y) || isnan(g_poseLidar.modeAngle.th))
@@ -119,6 +119,7 @@ int main(int argc, char **argv) // Главная функция програм�
                 // solver.add_filtered_circle_from_angle(E, B, angle_EAB);
 
                 //-----------------------------------------------------------------------------------------------------------------------------
+                printf("======================================== 1 ==========================================\n");
                 solver.clear_circles(); // <<< Очистка данных перед расчетом!
                 for (size_t i = 0; i < 4; i++)
                 {
@@ -134,11 +135,12 @@ int main(int argc, char **argv) // Главная функция програм�
                     // solver.add_circle_from_distance(point, distance2); // Добавление окружности по дальности AB
                 }
 
-                SPoint_Q AQ_found = solver.find_A_by_mnk(); // Запуск расчета положения
+                SPoint_Q AQ_found = solver.find_A_by_mnk_simple(); // Запуск расчета положения
                 // solver.set_A_prev(AQ_found.A);
                 g_poseLidar.mnkDist.x = AQ_found.A.x;
                 g_poseLidar.mnkDist.y = AQ_found.A.y;
                 g_poseLidar.quality_mknDist = AQ_found.quality;
+                printf("======================================== 2 ==========================================\n");
                 //-----------------------------------------------------------------------------------------------------------------------------
                 SPoint point1;
                 SPoint point2;
@@ -155,23 +157,24 @@ int main(int argc, char **argv) // Главная функция програм�
                         (a1 < 0) ? (a1 = a1 + 360) : a1 = a1;                                                                        // Проверка и приведение если через ноль столбы
                         (a1 > 180) ? (a1 = 360 - a1) : a1 = a1;                                                                      // Проверка и приведение если через ноль столбы
                         double check_angle = solver.calculate_angle_from_azimuths(distDirect[i].direction, distDirect[j].direction); // Расчет угла BAC по азимутам
-                        printf("check angle = %8.3f = %8.3f => ", check_angle, a1);
-                        double abs_angle = abs(check_angle);
-                        if (abs_angle > 30 && abs_angle < 150) // Проверка угла. Если вне диапазона то результаты не точные
-                        {
-                            solver.add_filtered_circle_from_angle(point1, point2, check_angle); // Добавление окружности по углу BAC
-                        }
-                        else
-                        {
-                            printf("=== Angle is not diapazon 30><180\n");
-                        }
+
+                        // printf("check angle = %8.3f = %8.3f => ", check_angle, a1);
+                        // if (check_angle > 30 && check_angle < 150) // Проверка угла. Если вне диапазона то результаты не точные
+                        // {
+                        solver.add_filtered_circle_from_angle(point1, point2, check_angle); // Добавление окружности по углу BAC
+                        // }
+                        // else
+                        // {
+                        //     printf("=== Angle is not diapazon 30><180\n");
+                        // }
                     }
                 }
-                SPoint_Q BQ_found = solver.find_A_by_mnk(); // Запуск расчета положения
+                SPoint_Q BQ_found = solver.find_A_by_mnk_simple(); // Запуск расчета положения
                 g_poseLidar.mnkAngle.x = BQ_found.A.x;
                 g_poseLidar.mnkAngle.y = BQ_found.A.y;
                 g_poseLidar.quality_mknAngle = BQ_found.quality;
                 //-----------------------------------------------------------------------------------------------------------------------------
+                printf("======================================== 3 ==========================================\n");
                 solver.clear_circles(); // <<< Очистка данных перед расчетом!
                 for (size_t i = 0; i < 4; i++)
                 {
@@ -198,9 +201,7 @@ int main(int argc, char **argv) // Главная функция програм�
                         (a1 < 0) ? (a1 = a1 + 360) : a1 = a1;                                                                        // Проверка и приведение если через ноль столбы
                         (a1 > 180) ? (a1 = 360 - a1) : a1 = a1;                                                                      // Проверка и приведение если через ноль столбы
                         double check_angle = solver.calculate_angle_from_azimuths(distDirect[i].direction, distDirect[j].direction); // Расчет угла BAC по азимутам
-                        printf("check angle = %8.3f = %8.3f => ", check_angle, a1);
-                        double abs_angle = abs(check_angle);
-                        if (abs_angle > 30 && abs_angle < 150) // Проверка угла. Если вне диапазона то результаты не точные
+                        if (check_angle > 30 && check_angle < 150)                                                                   // Проверка угла. Если вне диапазона то результаты не точные
                         {
                             solver.add_filtered_circle_from_angle(point1, point2, check_angle); // Добавление окружности по углу BAC
                         }
@@ -210,12 +211,13 @@ int main(int argc, char **argv) // Главная функция програм�
                         }
                     }
                 }
-                SPoint_Q CQ_found = solver.find_A_by_mnk(); // Запуск расчета положения
+                SPoint_Q CQ_found = solver.find_A_by_mnk_robust(); // Запуск расчета положения
                 g_poseLidar.mnkFused.x = CQ_found.A.x;
                 g_poseLidar.mnkFused.y = CQ_found.A.y;
                 g_poseLidar.quality_mknFused = CQ_found.quality;
 
                 solver.set_A_prev(AQ_found.A);
+                printf("======================================== END  ==========================================\n");
                 //-----------------------------------------------------------------------------------------------------------------------------
             }
             catch (const std::invalid_argument &e)
@@ -223,7 +225,6 @@ int main(int argc, char **argv) // Главная функция програм�
                 fprintf(stderr, "Error collecting circles: %s\n", e.what()); // Вывод ошибки
                 return 1;                                                    // Код ошибки
             }
-
 
             // // Перед комплментацией углы нужно привести к 360 градусов чтобы правильно усреднять
 
