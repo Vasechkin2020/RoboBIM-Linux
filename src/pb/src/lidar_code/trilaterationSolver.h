@@ -444,7 +444,7 @@ SPoint_Q TrilaterationSolver::find_A_by_mnk_simple()
         printf("Error: Simple WLS calculation failed.\n"); // Output error
     }
 
-    printf("\     Quality Assessment (SIMPLE, N=%d) ", N); // Output quality assessment
+    printf("    Quality Assessment (SIMPLE, N=%d) ", N); // Output quality assessment
     printf(" Geometric RMS: **%6.3f m** (Used: %d, Total: %d, Outliers: No)\n",
            AQ.quality, AQ.used_measurements, AQ.total_measurements);
     printf("--- SOLVER: END ---\n"); // Output solver end
@@ -556,7 +556,7 @@ SPoint_Q TrilaterationSolver::find_A_by_mnk_robust()
     AQ.quality = rms_final;
     AQ.used_measurements = used_count_final;
 
-    printf("\     Quality Assessment (ROBUST, N=%d, Rejected=%d) ", N, rejected_count); // Output final quality
+    printf("    Quality Assessment (ROBUST, N=%d, Rejected=%d) ", N, rejected_count); // Output final quality
     printf(" Geometric RMS: **%6.3f m** (Used: %d, Total: %d, Outliers: %s)\n",
            AQ.quality, AQ.used_measurements, AQ.total_measurements, AQ.has_outliers ? "Yes" : "No");
     printf("--- SOLVER: END ---\n"); // Output solver end

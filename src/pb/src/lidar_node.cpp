@@ -117,6 +117,7 @@ int main(int argc, char **argv) // Главная функция програм�
                 // solver.add_filtered_circle_from_angle(D, E, angle_DAE);
                 // solver.add_filtered_circle_from_angle(E, B, angle_EAB);
 
+                int count_circle = 0;
                 //-----------------------------------------------------------------------------------------------------------------------------
                 printf("======================================== 1 ==========================================\n");
                 solver.clear_circles(); // <<< Очистка данных перед расчетом!
@@ -124,96 +125,104 @@ int main(int argc, char **argv) // Главная функция програм�
                 {
                     // Сбор окружностей 4 по расстоянию
                     SPoint point;
-                    point.x = pillar.pillar[i].x_true;
-                    point.y = pillar.pillar[i].y_true;
-                    // double distance = pillar.pillar[i].distance_lidar + PILLAR_RADIUS;
-                    // double distance2 = detector.matchPillar[i].distance + PILLAR_RADIUS;
-                    double distanceFused = distDirect[i].distance + PILLAR_RADIUS;
-
-                    solver.add_circle_from_distance(point, distanceFused); // Добавление окружности по дальности AB
-                    // solver.add_circle_from_distance(point, distance2); // Добавление окружности по дальности AB
+                    if (distDirect[i].count != 0) // Только если столб сопоставленный то добавляем
+                    {
+                        point.x = distDirect[i].x_true;
+                        point.y = distDirect[i].y_true;
+                        double distanceFused = distDirect[i].distance + PILLAR_RADIUS;
+                        solver.add_circle_from_distance(point, distanceFused); // Добавление окружности по дальности AB
+                        count_circle++;                                        // Считаем сколько окружностей добавили
+                    }
                 }
-
-                SPoint_Q AQ_found = solver.find_A_by_mnk_simple(); // Запуск расчета положения
-                // solver.set_A_prev(AQ_found.A);
-                g_poseLidar.mnkDist.x = AQ_found.A.x;
-                g_poseLidar.mnkDist.y = AQ_found.A.y;
-                g_poseLidar.quality_mknDist = AQ_found.quality;
+                if (count_circle > 2) // Если больше 2 окружностей то считаем
+                {
+                    // SPoint_Q AQ_found = solver.find_A_by_mnk_simple(); // Запуск расчета положения
+                    SPoint_Q AQ_found = solver.find_A_by_mnk_robust(); // Запуск расчета положения
+                    g_poseLidar.mnkDist.x = AQ_found.A.x;
+                    g_poseLidar.mnkDist.y = AQ_found.A.y;
+                    g_poseLidar.quality_mknDist = AQ_found.quality;
+                }
                 printf("======================================== 2 ==========================================\n");
                 //-----------------------------------------------------------------------------------------------------------------------------
+                solver.clear_circles(); // <<< Очистка данных перед расчетом!
                 SPoint point1;
                 SPoint point2;
-                solver.clear_circles();     // <<< Очистка данных перед расчетом!
+                count_circle = 0;           // Обнуляем счетчик
                 for (int i = 0; i < 3; i++) //        Перебираем столбы, и для каждой пары формируем окружность
                 {
                     for (int j = i + 1; j < 4; j++)
                     {
-                        point1.x = distDirect[i].x_true; // Формируем пары столбов, получаем угол между ними и если он в пределах от 30 до 150 градусов то считаем окружность которую потом переберем
-                        point1.y = distDirect[i].y_true;
-                        point2.x = distDirect[j].x_true;
-                        point2.y = distDirect[j].y_true;
-                        float a1 = distDirect[j].direction - distDirect[i].direction;
-                        // (a1 < 0) ? (a1 = a1 + 360) : a1 = a1;                                                                        // Проверка и приведение если через ноль столбы
-                        // (a1 > 180) ? (a1 = 360 - a1) : a1 = a1;                                                                      // Проверка и приведение если через ноль столбы
-                        double check_angle = solver.calculate_angle_from_azimuths(distDirect[i].direction, distDirect[j].direction); // Расчет угла BAC по азимутам
+                        if (distDirect[i].count != 0 && distDirect[j].count != 0) // Только если оба столба хорошие (сопоставленные) то добавляем
+                        {
+                            point1.x = distDirect[i].x_true; // Формируем пары столбов, получаем угол между ними и если он в пределах от 30 до 150 градусов то считаем окружность которую потом переберем
+                            point1.y = distDirect[i].y_true;
+                            point2.x = distDirect[j].x_true;
+                            point2.y = distDirect[j].y_true;
+                            float a1 = distDirect[j].direction - distDirect[i].direction;
+                            // (a1 < 0) ? (a1 = a1 + 360) : a1 = a1;                                                                        // Проверка и приведение если через ноль столбы
+                            // (a1 > 180) ? (a1 = 360 - a1) : a1 = a1;                                                                      // Проверка и приведение если через ноль столбы
+                            double check_angle = solver.calculate_angle_from_azimuths(distDirect[i].direction, distDirect[j].direction); // Расчет угла BAC по азимутам
 
-                        // printf("check angle = %8.3f = %8.3f => ", check_angle, a1);
-                        // if (check_angle > 30 && check_angle < 150) // Проверка угла. Если вне диапазона то результаты не точные
-                        // {
-                        solver.add_filtered_circle_from_angle(point1, point2, check_angle); // Добавление окружности по углу BAC
-                        // }
-                        // else
-                        // {
-                        //     printf("=== Angle is not diapazon 30><180\n");
-                        // }
+                            // printf("check angle = %8.3f = %8.3f => ", check_angle, a1);
+                            // if (check_angle > 30 && check_angle < 150) // Проверка угла. Если вне диапазона то результаты не точные
+                            // {
+                            solver.add_filtered_circle_from_angle(point1, point2, check_angle); // Добавление окружности по углу BAC
+                            count_circle++;
+                            // }
+                            // else
+                            // {
+                            //     printf("=== Angle is not diapazon 30><180\n");
+                            // }
+                        }
                     }
                 }
-                SPoint_Q BQ_found = solver.find_A_by_mnk_simple(); // Запуск расчета положения
-                g_poseLidar.mnkAngle.x = BQ_found.A.x;
-                g_poseLidar.mnkAngle.y = BQ_found.A.y;
-                g_poseLidar.quality_mknAngle = BQ_found.quality;
+                if (count_circle > 2) // Если больше 2 окружностей то считаем
+                {
+                    // SPoint_Q BQ_found = solver.find_A_by_mnk_simple(); // Запуск расчета положения
+                    SPoint_Q BQ_found = solver.find_A_by_mnk_robust(); // Запуск расчета положения
+                    g_poseLidar.mnkAngle.x = BQ_found.A.x;
+                    g_poseLidar.mnkAngle.y = BQ_found.A.y;
+                    g_poseLidar.quality_mknAngle = BQ_found.quality;
+                }
                 //-----------------------------------------------------------------------------------------------------------------------------
                 printf("======================================== 3 ==========================================\n");
+                count_circle = 0;       // Обнуляем счетчик
                 solver.clear_circles(); // <<< Очистка данных перед расчетом!
                 for (size_t i = 0; i < 4; i++)
                 {
                     // Сбор окружностей 4 по расстоянию
-                    SPoint point;
-                    point.x = pillar.pillar[i].x_true;
-                    point.y = pillar.pillar[i].y_true;
-                    // double distance = pillar.pillar[i].distance_lidar + PILLAR_RADIUS;
-                    // double distance2 = detector.matchPillar[i].distance + PILLAR_RADIUS;
-                    double distanceFused = distDirect[i].distance + PILLAR_RADIUS;
-
-                    solver.add_circle_from_distance(point, distanceFused); // Добавление окружности по дальности AB
-                    // solver.add_circle_from_distance(point, distance2); // Добавление окружности по дальности AB
+                    if (distDirect[i].count != 0) // Только если столб сопоставленный то добавляем
+                    {
+                        SPoint point;
+                        point.x = distDirect[i].x_true;
+                        point.y = distDirect[i].y_true;
+                        double distanceFused = distDirect[i].distance + PILLAR_RADIUS;
+                        solver.add_circle_from_distance(point, distanceFused); // Добавление окружности по дальности AB
+                        // solver.add_circle_from_distance(point, distance2); // Добавление окружности по дальности AB
+                        count_circle++;
+                    }
                 }
                 for (int i = 0; i < 3; i++) //        Перебираем столбы, и для каждой пары формируем окружность
                 {
                     for (int j = i + 1; j < 4; j++)
                     {
-                        point1.x = distDirect[i].x_true; // Формируем пары столбов, получаем угол между ними и если он в пределах от 30 до 150 градусов то считаем окружность которую потом переберем
-                        point1.y = distDirect[i].y_true;
-                        point2.x = distDirect[j].x_true;
-                        point2.y = distDirect[j].y_true;
-                        float a1 = distDirect[j].direction - distDirect[i].direction;
-                        // (a1 < 0) ? (a1 = a1 + 360) : a1 = a1;                                                                        // Проверка и приведение если через ноль столбы
-                        // (a1 > 180) ? (a1 = 360 - a1) : a1 = a1;                                                                      // Проверка и приведение если через ноль столбы
-                        double check_angle = solver.calculate_angle_from_azimuths(distDirect[i].direction, distDirect[j].direction); // Расчет угла BAC по азимутам
-                        solver.add_filtered_circle_from_angle(point1, point2, check_angle);                                          // Добавление окружности по углу BAC
-                        // if (check_angle > 30 && check_angle < 150)                                                                   // Проверка угла. Если вне диапазона то результаты не точные
-                        // {
-                        // }
-                        // else
-                        // {
-                        //     printf("=== Angle is not diapazon 30><150 check_angle = %f\n", check_angle);
-                        // }
+                        if (distDirect[i].count != 0 && distDirect[j].count != 0) // Только если оба столба хорошие (сопоставленные) то добавляем
+                        {
+                            point1.x = distDirect[i].x_true; // Формируем пары столбов, получаем угол между ними и если он в пределах от 30 до 150 градусов то считаем окружность которую потом переберем
+                            point1.y = distDirect[i].y_true;
+                            point2.x = distDirect[j].x_true;
+                            point2.y = distDirect[j].y_true;
+                            float a1 = distDirect[j].direction - distDirect[i].direction;
+                            double check_angle = solver.calculate_angle_from_azimuths(distDirect[i].direction, distDirect[j].direction); // Расчет угла BAC по азимутам
+                            solver.add_filtered_circle_from_angle(point1, point2, check_angle);                                          // Добавление окружности по углу BAC
+                            count_circle++;
+                        }
                     }
                 }
-                SPoint_Q CQ_found = solver.find_A_by_mnk_robust(); // Запуск расчета положения
-                solver.set_A_prev(CQ_found.A); // ТОчка опорная для следующего расчета
-                printf("======================================== END  ==========================================\n");
 
+                SPoint_Q CQ_found = solver.find_A_by_mnk_robust(); // Запуск расчета положения
+                solver.set_A_prev(CQ_found.A);                     // ТОчка опорная для следующего расчета
+                printf("======================================== END  ==========================================\n");
 
                 //-----------------------------------------------------------------------------------------------------------------------------
                 static SPoint_Q mnk_filter;
