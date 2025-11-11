@@ -101,7 +101,6 @@ int main(int argc, char **argv) // Главная функция програм�
 
             try
             {
-
                 // SPoint B = {4.0, 0.3}; // Маяк B
                 // SPoint C = {0.0, 0.5}; // Маяк C
                 // SPoint D = {0.5, 4.0}; // Маяк D
@@ -154,8 +153,8 @@ int main(int argc, char **argv) // Главная функция програм�
                         point2.x = distDirect[j].x_true;
                         point2.y = distDirect[j].y_true;
                         float a1 = distDirect[j].direction - distDirect[i].direction;
-                        (a1 < 0) ? (a1 = a1 + 360) : a1 = a1;                                                                        // Проверка и приведение если через ноль столбы
-                        (a1 > 180) ? (a1 = 360 - a1) : a1 = a1;                                                                      // Проверка и приведение если через ноль столбы
+                        // (a1 < 0) ? (a1 = a1 + 360) : a1 = a1;                                                                        // Проверка и приведение если через ноль столбы
+                        // (a1 > 180) ? (a1 = 360 - a1) : a1 = a1;                                                                      // Проверка и приведение если через ноль столбы
                         double check_angle = solver.calculate_angle_from_azimuths(distDirect[i].direction, distDirect[j].direction); // Расчет угла BAC по азимутам
 
                         // printf("check angle = %8.3f = %8.3f => ", check_angle, a1);
@@ -198,27 +197,34 @@ int main(int argc, char **argv) // Главная функция програм�
                         point2.x = distDirect[j].x_true;
                         point2.y = distDirect[j].y_true;
                         float a1 = distDirect[j].direction - distDirect[i].direction;
-                        (a1 < 0) ? (a1 = a1 + 360) : a1 = a1;                                                                        // Проверка и приведение если через ноль столбы
-                        (a1 > 180) ? (a1 = 360 - a1) : a1 = a1;                                                                      // Проверка и приведение если через ноль столбы
+                        // (a1 < 0) ? (a1 = a1 + 360) : a1 = a1;                                                                        // Проверка и приведение если через ноль столбы
+                        // (a1 > 180) ? (a1 = 360 - a1) : a1 = a1;                                                                      // Проверка и приведение если через ноль столбы
                         double check_angle = solver.calculate_angle_from_azimuths(distDirect[i].direction, distDirect[j].direction); // Расчет угла BAC по азимутам
-                        solver.add_filtered_circle_from_angle(point1, point2, check_angle); // Добавление окружности по углу BAC
-                        if (check_angle > 30 && check_angle < 150)                                                                   // Проверка угла. Если вне диапазона то результаты не точные
-                        {
-                        }
-                        else
-                        {
-                            printf("=== Angle is not diapazon 30><150 check_angle = %f\n", check_angle);
-                        }
+                        solver.add_filtered_circle_from_angle(point1, point2, check_angle);                                          // Добавление окружности по углу BAC
+                        // if (check_angle > 30 && check_angle < 150)                                                                   // Проверка угла. Если вне диапазона то результаты не точные
+                        // {
+                        // }
+                        // else
+                        // {
+                        //     printf("=== Angle is not diapazon 30><150 check_angle = %f\n", check_angle);
+                        // }
                     }
                 }
                 SPoint_Q CQ_found = solver.find_A_by_mnk_robust(); // Запуск расчета положения
-                g_poseLidar.mnkFused.x = CQ_found.A.x;
-                g_poseLidar.mnkFused.y = CQ_found.A.y;
-                g_poseLidar.quality_mknFused = CQ_found.quality;
-
-                solver.set_A_prev(CQ_found.A);
+                solver.set_A_prev(CQ_found.A); // ТОчка опорная для следующего расчета
                 printf("======================================== END  ==========================================\n");
+
+
                 //-----------------------------------------------------------------------------------------------------------------------------
+                static SPoint_Q mnk_filter;
+                float k_mnk = 0.5; // Коефициент для фильтра
+                mnk_filter.A.x = mnk_filter.A.x * k_mnk + CQ_found.A.x * (1 - k_mnk);
+                mnk_filter.A.y = mnk_filter.A.y * k_mnk + CQ_found.A.y * (1 - k_mnk);
+                mnk_filter.quality = mnk_filter.quality * k_mnk + CQ_found.quality * (1 - k_mnk);
+
+                g_poseLidar.mnkFused.x = mnk_filter.A.x; // ДЛя вывода отфильтрованные значения
+                g_poseLidar.mnkFused.y = mnk_filter.A.y;
+                g_poseLidar.quality_mknFused = mnk_filter.quality;
             }
             catch (const std::invalid_argument &e)
             {

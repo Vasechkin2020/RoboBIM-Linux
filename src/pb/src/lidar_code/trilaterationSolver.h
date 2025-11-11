@@ -145,8 +145,9 @@ int TrilaterationSolver::get_circle_count() const
 
 void TrilaterationSolver::add_circle_from_distance(SPoint P_beacon, double distance)
 {
+    printf("+++ add_circle_from_distance \n");
     // Отладочный вывод: Добавление измерения дальности
-    printf("Add Dist: Beacon (%.3f, %.3f), R=%.3f, W=%.4f\n", // Output: Adding distance measurement
+    printf("    Add Dist: Beacon (%.3f, %.3f), R=%.3f, W=%.4f\n", // Output: Adding distance measurement
            P_beacon.x,                                        // X-coordinate of beacon
            P_beacon.y,                                        // Y-coordinate of beacon
            distance,                                          // Measured distance
@@ -159,7 +160,7 @@ void TrilaterationSolver::add_circle_from_distance(SPoint P_beacon, double dista
 
 void TrilaterationSolver::add_filtered_circle_from_angle(SPoint P1, SPoint P2, double angle_deg)
 {
-    printf(" --- ANGLE CIRCLE CALCULATION (P1=(%+7.3f, %+7.3f), P2=(%+7.3f, %+7.3f), Angle= %+8.3f) --- | ", P1.x, P1.y, P2.x, P2.y, angle_deg);
+    printf("+++ ANGLE CIRCLE CALCULATION (P1=(%+7.3f, %+7.3f), P2=(%+7.3f, %+7.3f), Angle= %+8.3f) --- | ", P1.x, P1.y, P2.x, P2.y, angle_deg);
 
     double alpha_rad = DEG2RAD(angle_deg); // Угол в радианах
     double sin_alpha = sin(alpha_rad);     // Синус угла
@@ -172,8 +173,8 @@ void TrilaterationSolver::add_filtered_circle_from_angle(SPoint P1, SPoint P2, d
 
     // --- БЛОК РАСЧЕТА ДИНАМИЧЕСКОГО НОРМИРОВАННОГО ВЕСА (ЭМПИРИЧЕСКАЯ МОДЕЛЬ) ---
     double dynamic_weight_norm = MIN_WEIGHT_CLAMP; // Итоговый нормированный вес (по умолчанию почти 0)
-    double W_angle = 1e-6;                         // Вес угла
-    double W_distance = 1e-6;                      // Вес дальности
+    double W_angle = 0.001;                         // Вес угла
+    double W_distance = 0.001;                      // Вес дальности
 
     if (angle_deg < BAD_ANGLE_LOW_DEG || angle_deg > BAD_ANGLE_HIGH_DEG) // 1. Проверка на "плохой" угол
     {
@@ -216,7 +217,7 @@ void TrilaterationSolver::add_filtered_circle_from_angle(SPoint P1, SPoint P2, d
         dynamic_weight_norm = std::max(dynamic_weight_norm, MIN_WEIGHT_CLAMP);     // Ограничение снизу (1e-6)
     }
 
-    printf("dynamic_weight_norm = %.6f (W_angle = %.6f, W_distance = %.6f)\n", dynamic_weight_norm, W_angle, W_distance); // Output calculated weight
+    printf("    dynamic_weight_norm = %.6f (W_angle = %.6f, W_distance = %.6f)\n", dynamic_weight_norm, W_angle, W_distance); // Output calculated weight
     // --- КОНЕЦ БЛОКА ---
 
     // 2. Расчет геометрии окружности
@@ -259,7 +260,7 @@ void TrilaterationSolver::add_filtered_circle_from_angle(SPoint P1, SPoint P2, d
     }
 
     all_circles.push_back(chosen_circle);                                 // Добавляем выбранную окружность
-    printf("Added Circle: Center (%+7.3f, %+7.3f), R=%+7.3f, W=%+7.4f\n", // Output final circle parameters
+    printf("    Added Circle: Center (%+7.3f, %+7.3f), R=%+7.3f, W=%+7.4f\n", // Output final circle parameters
            chosen_circle.x, chosen_circle.y, chosen_circle.r, chosen_circle.weight_factor);
 }
 
@@ -321,7 +322,7 @@ bool TrilaterationSolver::perform_wls_pass(SPoint &result_A, double &result_rms,
         double combined_variance = current_variance + base_variance;                            // sigma_k^2 = sigma_i^2 + sigma_0^2
         double Wi = 1.0 / combined_variance;                                                    // W_k = 1 / sigma_k^2
         // ---------------------------------------------------
-
+        // printf("  Eq %d vs Base %d : Circle current_weight W= %.3f, Eq Wi= %.3f \n", i, base_index, current_weight, Wi); // Output WLS weights (добавленный вывод)
         // Коэффициенты линеаризации (Ai*x + Bi*y = Ci)
         double Ai = 2.0 * (current.x - base.x);
         double Bi = 2.0 * (current.y - base.y);
@@ -379,7 +380,7 @@ bool TrilaterationSolver::perform_wls_pass(SPoint &result_A, double &result_rms,
 
         if (print_residuals) // Печатаем остатки, если это финальный проход
         {
-            printf("Beacon %d (W=%.2f, R=%.3f): Geom. Residual=%.3f m (ACTIVE)\n", i, current.weight_factor, current.r, residual_geom); // Output final residual
+            printf("    Beacon %d (W=%.2f, R=%.3f): Geom. Residual=%.3f m (ACTIVE)\n", i, current.weight_factor, current.r, residual_geom); // Output final residual
         }
     }
 
@@ -443,7 +444,7 @@ SPoint_Q TrilaterationSolver::find_A_by_mnk_simple()
         printf("Error: Simple WLS calculation failed.\n"); // Output error
     }
 
-    printf("\n--- Quality Assessment (SIMPLE, N=%d) ", N); // Output quality assessment
+    printf("\     Quality Assessment (SIMPLE, N=%d) ", N); // Output quality assessment
     printf(" Geometric RMS: **%6.3f m** (Used: %d, Total: %d, Outliers: No)\n",
            AQ.quality, AQ.used_measurements, AQ.total_measurements);
     printf("--- SOLVER: END ---\n"); // Output solver end
@@ -511,11 +512,11 @@ SPoint_Q TrilaterationSolver::find_A_by_mnk_robust()
         {
             all_circles[i].is_active = false; // Отбрасываем
             rejected_count++;
-            printf("Beacon %d (R=%.3f): Rejected! Residual=%.3f m\n", i, current.r, residual); // Output rejection
+            printf("   -Beacon %d (R=%.3f): Rejected! Residual=%.3f m\n", i, current.r, residual); // Output rejection
         }
         else
         {
-            printf("Beacon %d (R=%.3f): Accepted. Residual=%.3f m\n", i, current.r, residual); // Output acceptance
+            printf("   +Beacon %d (R=%.3f): Accepted. Residual=%.3f m\n", i, current.r, residual); // Output acceptance
         }
     }
 
@@ -555,7 +556,7 @@ SPoint_Q TrilaterationSolver::find_A_by_mnk_robust()
     AQ.quality = rms_final;
     AQ.used_measurements = used_count_final;
 
-    printf("\n--- Quality Assessment (ROBUST, N=%d, Rejected=%d) ", N, rejected_count); // Output final quality
+    printf("\     Quality Assessment (ROBUST, N=%d, Rejected=%d) ", N, rejected_count); // Output final quality
     printf(" Geometric RMS: **%6.3f m** (Used: %d, Total: %d, Outliers: %s)\n",
            AQ.quality, AQ.used_measurements, AQ.total_measurements, AQ.has_outliers ? "Yes" : "No");
     printf("--- SOLVER: END ---\n"); // Output solver end
