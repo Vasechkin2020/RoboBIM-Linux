@@ -73,7 +73,6 @@ double normalize_and_invert_sign_deg(double angle_deg)
 {
     // --- 1. Нормализация в стандартный диапазон (-180, 180] ---
     
-    // Используем ту же логику, что и в normalize_angle_deg
     double a = fmod(angle_deg + 180.0, 360.0); // Сдвигаем диапазон на 180
     
     if (a < 0.0) // Если результат fmod отрицателен (для некоторых компиляторов)
@@ -85,7 +84,6 @@ double normalize_and_invert_sign_deg(double angle_deg)
     double standard_normalized_angle = a - 180.0;
 
     // --- 2. Инверсия знака ---
-    
     // Инвертируем знак, чтобы ПЛЮС соответствовал вращению по часовой стрелке (CW, вправо)
     return -standard_normalized_angle; // Возвращаем инвертированный угол
 }
@@ -100,12 +98,13 @@ private:
 
     // Приватные вспомогательные методы
     double get_azimuth_deg(SPoint P_from, SPoint P_to); // Расчет азимута от одной точки к другой
-    double normalize_angle_deg(double angle_deg);       // Нормализация угла в диапазон (-180, 180]
 
     // Ядро WLS: выполняет ОДИН проход WLS по АКТИВНЫМ окружностям
     bool perform_wls_pass(SPoint &result_A, double &result_rms, int &used_count, bool print_residuals);
 
 public:
+    double normalize_angle_deg_abs(double angle_deg);       // Нормализация угла в диапазон (-180, 180] Возвращает всегда плюс по модулю
+    double normalize_angle_deg(double angle_deg);       // Нормализация угла в диапазон (-180, 180]
     TrilaterationSolver(SPoint prev); // Конструктор, инициализирующий A_prev
 
     // Методы управления состоянием
@@ -141,7 +140,7 @@ double TrilaterationSolver::get_azimuth_deg(SPoint P_from, SPoint P_to)
     return RAD2DEG(rad);                                      // Азимут в градусах (требуется макрос RAD2DEG)
 }
 
-double TrilaterationSolver::normalize_angle_deg(double angle_deg)
+double TrilaterationSolver::normalize_angle_deg_abs(double angle_deg)
 {
     while (angle_deg > 180.0) // Пока угол больше 180 градусов
     {
@@ -152,6 +151,18 @@ double TrilaterationSolver::normalize_angle_deg(double angle_deg)
         angle_deg += 360.0; // Прибавляем 360 градусов
     }
     return std::abs(angle_deg); // Возвращаем абсолютное значение
+}
+double TrilaterationSolver::normalize_angle_deg(double angle_deg)
+{
+    while (angle_deg > 180.0) // Пока угол больше 180 градусов
+    {
+        angle_deg -= 360.0; // Вычитаем 360 градусов
+    }
+    while (angle_deg <= -180.0) // Пока угол меньше или равен -180 градусов
+    {
+        angle_deg += 360.0; // Прибавляем 360 градусов
+    }
+    return angle_deg; // Возвращаем
 }
 
 void TrilaterationSolver::set_A_prev(SPoint new_prev)
@@ -651,7 +662,7 @@ double TrilaterationSolver::calculate_angle_BAC(SPoint A, SPoint B, SPoint C)
 double TrilaterationSolver::calculate_angle_from_azimuths(double az_AB, double az_AC)
 {
     double angle = az_AC - az_AB;      // Разница азимутов
-    return normalize_angle_deg(angle); // Нормализация и абсолютное значение
+    return normalize_angle_deg_abs(angle); // Нормализация и абсолютное значение
 }
 
 /*

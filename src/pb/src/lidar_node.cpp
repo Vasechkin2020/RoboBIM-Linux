@@ -224,7 +224,7 @@ int main(int argc, char **argv) // Главная функция програм�
                 }
 
                 CQ_found = solver.find_A_by_mnk_robust(); // Запуск расчета положения
-                solver.set_A_prev(CQ_found.A);                     // ТОчка опорная для следующего расчета
+                solver.set_A_prev(CQ_found.A);            // ТОчка опорная для следующего расчета
 
                 //-----------------------------------------------------------------------------------------------------------------------------
                 static SPoint_Q mnk_filter;
@@ -250,8 +250,16 @@ int main(int argc, char **argv) // Главная функция програм�
                         point.y = distDirect[i].y_true;
                         orientation_beacons.push_back(point); // Добавляем маяк
 
-                        double angle_to_point = normalize_and_invert_sign_deg(distDirect[i].direction); // Преобразуем в нормальный вид +-180. Плюс против часовой
-                        lidar_angles_deg.push_back(angle_to_point);                                     // Добавляем направление на маяк
+                        // double angle_to_point = normalize_and_invert_sign_deg(distDirect[i].direction); // Преобразуем в нормальный вид +-180. Плюс против часовой
+
+                        double convert;
+                        convert = -distDirect[i].direction;
+                        if (convert < -180)
+                            convert = 360 + convert;
+
+                        lidar_angles_deg.push_back(convert);                                    // Добавляем направление на маяк
+                        
+                        printf("=== direction = %+8.3f  convert = %+8.3f \n", distDirect[i].direction,convert);
                     }
                 }
                 // 1. Вызываем метод расчета ориентации, используя найденную позицию
@@ -260,17 +268,16 @@ int main(int argc, char **argv) // Главная функция програм�
                     orientation_beacons, // Координаты маяков (заполнены из переменных)
                     lidar_angles_deg     // Измеренные углы лидара (заполнены из переменных)
                 );
-                calculated_orientation = -calculated_orientation; // Исправление что плюс по часовой Подгонка как уж есть
+                // calculated_orientation = normalize_and_invert_sign_deg(calculated_orientation); // Исправление что плюс по часовой Подгонка как уж есть
                 // 2. Вывод результата
                 printf("\n--- SUMMARY TEST 4 (ORIENTATION) ---\n");                         // Output summary 4
                 printf("Position A used: (%+8.3f, %+8.3f)\n", CQ_found.A.x, CQ_found.A.y);  // Output result A
-                printf("Simulated True Orientation: %+8.3f deg\n", 0);                      // Output true orientation
                 printf("Calculated Orientation Psi: %+8.3f deg\n", calculated_orientation); // Output calculated orientation
                 printf("--------------------------------------\n");                         // Separator
                 g_poseLidar.mnkFused.th = g_poseLidar.mnkFused.th * k_mnk + calculated_orientation * (1 - k_mnk);
 
-                g_poseLidar.mnkDist.th = -solver.get_lidar_orientation(AQ_found.A, orientation_beacons, lidar_angles_deg); // Вывод углов без фильтрации
-                g_poseLidar.mnkAngle.th = -solver.get_lidar_orientation(BQ_found.A, orientation_beacons, lidar_angles_deg);
+                // g_poseLidar.mnkDist.th = solver.get_lidar_orientation(AQ_found.A, orientation_beacons, lidar_angles_deg); // Вывод углов без фильтрации
+                // g_poseLidar.mnkAngle.th = solver.get_lidar_orientation(BQ_found.A, orientation_beacons, lidar_angles_deg);
 
                 printf("======================================== END  ==========================================\n");
             }
