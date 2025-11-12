@@ -24,6 +24,11 @@ int main(int argc, char **argv) // Главная функция програм�
     ros::Subscriber subscriber_Lidar = nh.subscribe<sensor_msgs::LaserScan>("/scan", 1000, callback_Lidar); // Подписка на данные лидара
     ros::Duration(1).sleep();                                                                               // Подождем пока все обьявится и инициализируется внутри ROS
 
+    
+    nh.param<double>("/pb_config/lidar/bias", lidar_bias, 0.0 ); // Считываем bias, по умолчанию 0
+	ROS_INFO("--- Start node with parametrs: /pb_config/lidar/bias = %+8.3f deg", lidar_bias);
+    ros::Duration(1).sleep();                                                                               // Подождем пока все обьявится и инициализируется внутри ROS
+
     CPillar pillar;          // Обьявляем экземпляр класса в нем вся обработка и обсчет столбов
     PillarDetector detector; // Создаём объект детектора столбов
     CTopic topic;            // Экземпляр класса для всех публикуемых топиков
@@ -161,21 +166,10 @@ int main(int argc, char **argv) // Главная функция програм�
                             point1.y = distDirect[i].y_true;
                             point2.x = distDirect[j].x_true;
                             point2.y = distDirect[j].y_true;
-                            float a1 = distDirect[j].direction - distDirect[i].direction;
-                            // (a1 < 0) ? (a1 = a1 + 360) : a1 = a1;                                                                        // Проверка и приведение если через ноль столбы
-                            // (a1 > 180) ? (a1 = 360 - a1) : a1 = a1;                                                                      // Проверка и приведение если через ноль столбы
                             double check_angle = solver.calculate_angle_from_azimuths(distDirect[i].direction, distDirect[j].direction); // Расчет угла BAC по азимутам
-
                             // printf("check angle = %8.3f = %8.3f => ", check_angle, a1);
-                            // if (check_angle > 30 && check_angle < 150) // Проверка угла. Если вне диапазона то результаты не точные
-                            // {
                             solver.add_filtered_circle_from_angle(point1, point2, check_angle); // Добавление окружности по углу BAC
                             count_circle++;
-                            // }
-                            // else
-                            // {
-                            //     printf("=== Angle is not diapazon 30><180\n");
-                            // }
                         }
                     }
                 }
@@ -215,7 +209,6 @@ int main(int argc, char **argv) // Главная функция програм�
                             point1.y = distDirect[i].y_true;
                             point2.x = distDirect[j].x_true;
                             point2.y = distDirect[j].y_true;
-                            float a1 = distDirect[j].direction - distDirect[i].direction;
                             double check_angle = solver.calculate_angle_from_azimuths(distDirect[i].direction, distDirect[j].direction); // Расчет угла BAC по азимутам
                             solver.add_filtered_circle_from_angle(point1, point2, check_angle);                                          // Добавление окружности по углу BAC
                             count_circle++;
@@ -249,9 +242,7 @@ int main(int argc, char **argv) // Главная функция програм�
                         point.x = distDirect[i].x_true;
                         point.y = distDirect[i].y_true;
                         orientation_beacons.push_back(point); // Добавляем маяк
-
-                        // double angle_to_point = normalize_and_invert_sign_deg(distDirect[i].direction); // Преобразуем в нормальный вид +-180. Плюс против часовой
-
+                        
                         double convert;
                         convert = -distDirect[i].direction;
                         if (convert < -180)
@@ -276,8 +267,8 @@ int main(int argc, char **argv) // Главная функция програм�
                 printf("--------------------------------------\n");                         // Separator
                 g_poseLidar.mnkFused.th = g_poseLidar.mnkFused.th * k_mnk + calculated_orientation * (1 - k_mnk);
 
-                // g_poseLidar.mnkDist.th = solver.get_lidar_orientation(AQ_found.A, orientation_beacons, lidar_angles_deg); // Вывод углов без фильтрации
-                // g_poseLidar.mnkAngle.th = solver.get_lidar_orientation(BQ_found.A, orientation_beacons, lidar_angles_deg);
+                g_poseLidar.mnkDist.th = solver.get_lidar_orientation(AQ_found.A, orientation_beacons, lidar_angles_deg); // Вывод углов без фильтрации
+                g_poseLidar.mnkAngle.th = solver.get_lidar_orientation(BQ_found.A, orientation_beacons, lidar_angles_deg);
 
                 printf("======================================== END  ==========================================\n");
             }
