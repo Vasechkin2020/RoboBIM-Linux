@@ -62,6 +62,34 @@ double ctan(double rad)
     return 1.0 / tan(rad); // Функция для вычисления котангенса
 }
 
+/**
+ * @brief Преобразует угол из любого диапазона (например, 0-360) в диапазон (+-180] и инвертирует знак.
+ * * Стандарт: (-180, 180] (Плюс = против часовой стрелки)
+ * Требуется: (+180, -180] (Плюс = по часовой стрелке)
+ * * @param angle_deg Угол в градусах.
+ * @return Нормализованный и инвертированный угол в градусах.
+ */
+double normalize_and_invert_sign_deg(double angle_deg)
+{
+    // --- 1. Нормализация в стандартный диапазон (-180, 180] ---
+    
+    // Используем ту же логику, что и в normalize_angle_deg
+    double a = fmod(angle_deg + 180.0, 360.0); // Сдвигаем диапазон на 180
+    
+    if (a < 0.0) // Если результат fmod отрицателен (для некоторых компиляторов)
+    {
+        a += 360.0; // Приводим к положительному диапазону [0, 360)
+    }
+    
+    // Получаем стандартный угол: (-180, 180] (Плюс = CCW)
+    double standard_normalized_angle = a - 180.0;
+
+    // --- 2. Инверсия знака ---
+    
+    // Инвертируем знак, чтобы ПЛЮС соответствовал вращению по часовой стрелке (CW, вправо)
+    return -standard_normalized_angle; // Возвращаем инвертированный угол
+}
+
 // --- Основной класс решателя ---
 
 class TrilaterationSolver
@@ -148,11 +176,11 @@ void TrilaterationSolver::add_circle_from_distance(SPoint P_beacon, double dista
     printf("+++ add_circle_from_distance \n");
     // Отладочный вывод: Добавление измерения дальности
     printf("    Add Dist: Beacon (%.3f, %.3f), R=%.3f, W=%.4f\n", // Output: Adding distance measurement
-           P_beacon.x,                                        // X-coordinate of beacon
-           P_beacon.y,                                        // Y-coordinate of beacon
-           distance,                                          // Measured distance
-           WEIGHT_DISTANCE_NORM                               // Assigned weight
-    );                                                        // Выводим координаты, расстояние и вес
+           P_beacon.x,                                            // X-coordinate of beacon
+           P_beacon.y,                                            // Y-coordinate of beacon
+           distance,                                              // Measured distance
+           WEIGHT_DISTANCE_NORM                                   // Assigned weight
+    );                                                            // Выводим координаты, расстояние и вес
 
     // Вес дистанционного измерения ВСЕГДА 1.0 (наш эталон)
     all_circles.push_back({P_beacon.x, P_beacon.y, distance, WEIGHT_DISTANCE_NORM, true}); // Добавляем маяк с весом 1.0 и флагом active=true
@@ -173,8 +201,8 @@ void TrilaterationSolver::add_filtered_circle_from_angle(SPoint P1, SPoint P2, d
 
     // --- БЛОК РАСЧЕТА ДИНАМИЧЕСКОГО НОРМИРОВАННОГО ВЕСА (ЭМПИРИЧЕСКАЯ МОДЕЛЬ) ---
     double dynamic_weight_norm = MIN_WEIGHT_CLAMP; // Итоговый нормированный вес (по умолчанию почти 0)
-    double W_angle = 0.001;                         // Вес угла
-    double W_distance = 0.001;                      // Вес дальности
+    double W_angle = 0.001;                        // Вес угла
+    double W_distance = 0.001;                     // Вес дальности
 
     if (angle_deg < BAD_ANGLE_LOW_DEG || angle_deg > BAD_ANGLE_HIGH_DEG) // 1. Проверка на "плохой" угол
     {
@@ -259,7 +287,7 @@ void TrilaterationSolver::add_filtered_circle_from_angle(SPoint P1, SPoint P2, d
         chosen_circle = {O2.x, O2.y, R, dynamic_weight_norm, true}; // Выбираем O2
     }
 
-    all_circles.push_back(chosen_circle);                                 // Добавляем выбранную окружность
+    all_circles.push_back(chosen_circle);                                     // Добавляем выбранную окружность
     printf("    Added Circle: Center (%+7.3f, %+7.3f), R=%+7.3f, W=%+7.4f\n", // Output final circle parameters
            chosen_circle.x, chosen_circle.y, chosen_circle.r, chosen_circle.weight_factor);
 }
@@ -567,48 +595,50 @@ SPoint_Q TrilaterationSolver::find_A_by_mnk_robust()
 // --- Дополнительные методы (Ориентация, Расчет углов) ---
 
 double TrilaterationSolver::get_lidar_orientation(
-    const SPoint A_found,                       // Найденная позиция
+    const SPoint A_found,                       // Найденное положение A
     const std::vector<SPoint> &beacons,         // Координаты маяков
-    const std::vector<double> &lidar_angles_deg // Углы до маяков
+    const std::vector<double> &lidar_angles_deg // Углы на маяки, измеренные лидаром
 )
 {
-    if (beacons.size() != lidar_angles_deg.size() || beacons.empty()) // Проверка входных данных
+    if (beacons.size() != lidar_angles_deg.size() || beacons.empty()) // Проверка на соответствие и наличие данных
     {
-        printf("\n--- ORIENTATION CALCULATION SKIPPED ---\n");                      // Output skip
+        printf("\n--- ORIENTATION CALCULATION SKIPPED ---\n");                      // Output skip header
         printf("Error: Missing or mismatched data for orientation calculation.\n"); // Output error
-        return 0.0;
+        return 0.0;                                                                 // Возвращаем 0.0, если данных нет
     }
 
-    printf("\n--- ORIENTATION LSQ CALCULATION ---\n"); // Output start
+    printf("\n--- ORIENTATION LSQ CALCULATION ---\n"); // Output LSQ header
 
-    double sum_sin = 0.0;   // Сумма синусов для LSQ
-    double sum_cos = 0.0;   // Сумма косинусов для LSQ
-    int N = beacons.size(); // Количество маяков
+    double sum_sin = 0.0;   // Сумма синусов разностей азимутов
+    double sum_cos = 0.0;   // Сумма косинусов разностей азимутов
+    int N = beacons.size(); // Количество измерений
 
-    for (int i = 0; i < N; ++i)
+    for (int i = 0; i < N; ++i) // Перебираем все пары (маяк, угол лидара)
     {
-        double alpha_AM_deg = get_azimuth_deg(A_found, beacons[i]); // Азимут от А до Маяка (M)
-        double theta_lidar_deg = lidar_angles_deg[i];               // Угол, измеренный лидаром
+        double alpha_AM_deg = get_azimuth_deg(A_found, beacons[i]); // Рассчитываем азимут от A до маяка M (в градусах)
+        double theta_lidar_deg = lidar_angles_deg[i];               // Угол на маяк, измеренный лидаром (в градусах)
 
-        // Сырой угол ориентации: Psi = Alpha - Theta
-        double psi_raw_deg = alpha_AM_deg - theta_lidar_deg;
-        double psi_norm_deg = normalize_angle_deg(psi_raw_deg); // Нормализованный угол (-180, 180)
-        double psi_rad = DEG2RAD(psi_norm_deg);                 // В радианах
+        // Разница между азимутом (истинным) и измеренным углом лидара 
+        double psi_raw_deg = alpha_AM_deg - theta_lidar_deg;    // Ненормализованная оценка ориентации лидара // 3. ВОТ ЗДЕСЬ ПРОИСХОДИТ ВЫЧИТАНИЕ (Alpha - Theta = Psi)
+        double psi_norm_deg = normalize_angle_deg(psi_raw_deg); // Нормализуем разницу в диапазон (-180, 180] (в градусах)
+        double psi_rad = DEG2RAD(psi_norm_deg);                 // Переводим нормализованный угол в радианы
 
-        sum_sin += sin(psi_rad); // Накопление синусов
-        sum_cos += cos(psi_rad); // Накопление косинусов
+        sum_sin += sin(psi_rad); // Накапливаем синус
+        sum_cos += cos(psi_rad); // Накапливаем косинус
 
-        printf("Beacon %d (C%.2f): Alpha=%.2f, Theta=%.2f -> Psi_norm=%.2f deg\n", // Output details
-               i, beacons[i].x, alpha_AM_deg, theta_lidar_deg, psi_norm_deg);
+        printf("Beacon %d: Alpha=%.2f, Theta=%.2f -> Psi_norm=%.2f deg\n", // Output intermediate values
+               i, alpha_AM_deg, theta_lidar_deg, psi_norm_deg);            // Вывод промежуточных результатов
     }
 
-    double orientation_rad = atan2(sum_sin, sum_cos);  // Финальный LSQ угол в радианах
-    double orientation_deg = RAD2DEG(orientation_rad); // В градусах
+    // Метод усреднения углов с помощью atan2:
+    // Ориентация = atan2(Сумма_sin, Сумма_cos)
+    double orientation_rad = atan2(sum_sin, sum_cos);  // Результат LSQ в радианах
+    double orientation_deg = RAD2DEG(orientation_rad); // Переводим в градусы
 
     printf("Sum Sin: %.4f, Sum Cos: %.4f\n", sum_sin, sum_cos); // Output sums
-    printf("--- ORIENTATION LSQ CALCULATION: END ---\n");       // Output end
+    printf("--- ORIENTATION LSQ CALCULATION: END ---\n");       // Output end LSQ
 
-    return orientation_deg;
+    return orientation_deg; // Возвращаем финальную ориентацию лидара в градусах
 }
 
 double TrilaterationSolver::calculate_angle_BAC(SPoint A, SPoint B, SPoint C)
@@ -795,6 +825,63 @@ int main()
     printf("RMS:      %.6f m\n", result_test3.quality); // Output RMS
     printf("Used/Total: %d/%d\n", result_test3.used_measurements, result_test3.total_measurements); // Output used/total
     printf("Outliers: %s\n", result_test3.has_outliers ? "Yes" : "No"); // Output outliers
+    printf("--------------------------------------\n"); // Separator
+
+    // ====================================================================
+    // --- ТЕСТ 4: РАСЧЕТ ОРИЕНТАЦИИ ЛИДАРА (ДОПОЛНЕНИЕ) ---
+    // ====================================================================
+    
+    printf("\n################################################################################\n"); // Separator
+    printf("### TEST 4: LIDAR ORIENTATION CALCULATION ###\n"); // Output test 4 start
+    printf("################################################################################\n"); // Separator
+
+    // --- 1. ИСХОДНЫЕ ДАННЫЕ ДЛЯ РАСЧЕТА ОРИЕНТАЦИИ ---
+    
+    // Координаты маяков, на которые были прямые измерения (B, C, D, E)
+    // Эти переменные уже объявлены ранее в main.
+    SPoint beacon_B = B;
+    SPoint beacon_C = C;
+    SPoint beacon_D = D;
+    SPoint beacon_E = E;
+    
+    // Измеренные углы лидара (в градусах)
+    // Эти углы соответствуют: Lidar_Angle = Azimuth - True_Orientation (20.0 deg)
+    double angle_to_B = 310.46; 
+    double angle_to_C = 216.31;
+    double angle_to_D = 84.04;
+    double angle_to_E = 6.57;
+
+    // Истинная ориентация лидара для симуляции и сравнения
+    double true_orientation_deg = 20.0;
+    
+    // --- 2. ЗАПОЛНЕНИЕ ВЕКТОРОВ ИЗ ПЕРЕМЕННЫХ ---
+    
+    // Вектор координат маяков
+    std::vector<SPoint> orientation_beacons;
+    orientation_beacons.push_back(beacon_B); 
+    orientation_beacons.push_back(beacon_C);
+    orientation_beacons.push_back(beacon_D);
+    orientation_beacons.push_back(beacon_E);
+    
+    // Вектор измеренных углов
+    std::vector<double> lidar_angles_deg;
+    lidar_angles_deg.push_back(angle_to_B); 
+    lidar_angles_deg.push_back(angle_to_C);
+    lidar_angles_deg.push_back(angle_to_D);
+    lidar_angles_deg.push_back(angle_to_E);
+
+    // 1. Вызываем метод расчета ориентации, используя найденную позицию
+    double calculated_orientation = solver.get_lidar_orientation(
+        result_test3.A,                // Найденное положение (A_final из Pass 2)
+        orientation_beacons,           // Координаты маяков (заполнены из переменных)
+        lidar_angles_deg               // Измеренные углы лидара (заполнены из переменных)
+    );
+    
+    // 2. Вывод результата
+    printf("\n--- SUMMARY TEST 4 (ORIENTATION) ---\n"); // Output summary 4
+    printf("Position A used: (%.6f, %.6f)\n", result_test3.A.x, result_test3.A.y); // Output result A
+    printf("Simulated True Orientation: %.2f deg\n", true_orientation_deg); // Output true orientation
+    printf("Calculated Orientation Psi: %.4f deg\n", calculated_orientation); // Output calculated orientation
     printf("--------------------------------------\n"); // Separator
 
     return 0; // Завершение программы
