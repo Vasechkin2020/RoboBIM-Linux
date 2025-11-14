@@ -23,19 +23,19 @@ private:
 	ros::NodeHandle _nh;
 	//--------------------------------- ПУБЛИКАЦИЯ В ТОПИКИ -------------------------------------------------
 	pb_msgs::Struct_Driver2Data Driver2Data_msg;														 // Это структуры которые мы заполняем и потом публикуем
-	ros::Publisher publish_Driver2Data = _nh.advertise<pb_msgs::Struct_Driver2Data>("pbData/Driver", 3); // Это мы публикуем структуру которую получили с драйвера
+	ros::Publisher publish_Driver2Data = _nh.advertise<pb_msgs::Struct_Driver2Data>("pb/Data/Driver", 3); // Это мы публикуем структуру которую получили с драйвера
 
 	pb_msgs::Struct_Modul2Data Modul2Data_msg;														  // Это структуры которые мы заполняем и потом публикуем
-	ros::Publisher publish_Modul2Data = _nh.advertise<pb_msgs::Struct_Modul2Data>("pbData/Modul", 3); // Это мы создаем публикатор и определяем название топика в рос
+	ros::Publisher publish_Modul2Data = _nh.advertise<pb_msgs::Struct_Modul2Data>("pb/Data/Modul", 3); // Это мы создаем публикатор и определяем название топика в рос
 
 	pb_msgs::Struct_Print2Data Print2Data_msg;														  // Это структуры которые мы заполняем и потом публикуем
-	ros::Publisher publish_Print2Data = _nh.advertise<pb_msgs::Struct_Print2Data>("pbData/Print", 3); // Это мы создаем публикатор и определяем название топика в рос
+	ros::Publisher publish_Print2Data = _nh.advertise<pb_msgs::Struct_Print2Data>("pb/Data/Print", 3); // Это мы создаем публикатор и определяем название топика в рос
 
 	pb_msgs::Struct_Info_SPI spi_msg;													   // Это структуры которые мы заполняем и потом публикуем
-	ros::Publisher publish_Spi = _nh.advertise<pb_msgs::Struct_Info_SPI>("pbData/Spi", 3); // Это мы создаем публикатор и определяем название топика в рос
+	ros::Publisher publish_Spi = _nh.advertise<pb_msgs::Struct_Info_SPI>("pb/Data/Spi", 3); // Это мы создаем публикатор и определяем название топика в рос
 
 	pb_msgs::SSetSpeed setSpeed_msg;													 // Это структуры которые мы заполняем и потом публикуем
-	ros::Publisher publish_Speed = _nh.advertise<pb_msgs::SSetSpeed>("pbData/Speed", 3); // Это мы создаем публикатор и определяем название топика в рос
+	ros::Publisher publish_Speed = _nh.advertise<pb_msgs::SSetSpeed>("pb/Data/Speed", 3); // Это мы создаем публикатор и определяем название топика в рос
 
 	// ros::Publisher pub_JoyData = _nh.advertise<pb_msgs::SJoy>("pbInfo/JoyData", 16);                       // Это мы публикуем структуру которую сформировали по данным с джойстика
 

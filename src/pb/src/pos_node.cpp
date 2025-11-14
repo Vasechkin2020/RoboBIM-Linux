@@ -52,10 +52,10 @@ int main(int argc, char **argv)
     CTopic topic; // Экземпляр класса для всех публикуемых топиков
 
     //----------------------------- ПОДПИСКИ НА ТОПИКИ -------НЕ УБИРАЮ В КЛАСС ТАК КАК НУЖНЫ ГЛОБАЛЬНЫЕ КОЛБЕКИ И ПРОЧАЯ ХЕРНЯ --------
-    ros::Subscriber subscriber_Lidar = nh.subscribe<pb_msgs::Struct_PoseLidar>("pbLidar/PoseLidar", 1, callback_Lidar);
-    ros::Subscriber subscriber_Modul = nh.subscribe<pb_msgs::Struct_Modul2Data>("pbData/Modul", 1, callback_Modul);
-    ros::Subscriber subscriber_Driver = nh.subscribe<pb_msgs::Struct_Driver2Data>("pbData/Driver", 1, callback_Driver);
-    ros::Subscriber subscriber_Speed = nh.subscribe<pb_msgs::SSetSpeed>("pbData/Speed", 1, callback_Speed);
+    ros::Subscriber subscriber_Lidar = nh.subscribe<pb_msgs::Struct_PoseLidar>("pb/Lidar/Pose", 1, callback_Lidar);
+    ros::Subscriber subscriber_Modul = nh.subscribe<pb_msgs::Struct_Modul2Data>("pb/Data/Modul", 1, callback_Modul);
+    ros::Subscriber subscriber_Driver = nh.subscribe<pb_msgs::Struct_Driver2Data>("pb/Data/Driver", 1, callback_Driver); 
+    ros::Subscriber subscriber_Speed = nh.subscribe<pb_msgs::SSetSpeed>("pb/Data/Speed", 1, callback_Speed);
     //---------------------------------------------------------------------------------------------------------------------------
 
     readParam(); // Считывание переменных параметров из лаунч файла при запуске. Там офсеты и режимы работы
@@ -69,7 +69,7 @@ int main(int argc, char **argv)
     static bool flagPublish = false;
 
     ROS_INFO("Waiting for the /startup_signal topic to become active...");                       // БЛОКИРУЮЩЕЕ ОЖИДАНИЕ ЗАПУСКА ДРУГОЙ НОДЫ // Ожидаем, пока топик сигнала запуска не станет активным
-    ros::topic::waitForMessage<pb_msgs::Struct_Driver2Data>("pbData/Driver", ros::Duration(30)); // Блокирующий вызов: ждет первое сообщение из топика "/startup_signal" с таймаутом 30 секунд. Замените String на нужный тип сообщения.
+    ros::topic::waitForMessage<pb_msgs::Struct_Driver2Data>("pb/Data/Driver", ros::Duration(30)); // Блокирующий вызов: ждет первое сообщение из топика "/startup_signal" с таймаутом 30 секунд. Замените String на нужный тип сообщения.
     ROS_INFO("Topic received. Starting the calibration phase.");                                 // Топик получен. Начинаем фазу калибровки.
 
     calibr_accel_gyro(); // Калибровка гироскопа и акселерометра в момент запуска ноды

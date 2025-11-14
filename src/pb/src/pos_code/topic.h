@@ -46,39 +46,36 @@ private:
 
     //--------------------------------- ПУБЛИКАЦИЯ В ТОПИКИ -------------------------------------------------
 
-    ros::Publisher pub_ControlModul = _nh.advertise<pb_msgs::Struct_Data2Modul>("pbPos/ControlModul", 16); // Это мы публикуем структуру которую отправляем к исполнению на драйвер
+    ros::Publisher pub_ControlModul = _nh.advertise<pb_msgs::Struct_Data2Modul>("pb/Pos/ControlModul", 16); // Это мы публикуем структуру которую отправляем к исполнению на драйвер
 
-    ros::Publisher pub_poseBase = _nh.advertise<pb_msgs::Struct_PoseBase>("pbPos/PoseBase", 8);          // Это мы публикуем итоговую информацию по позици лидара обобщенную
-    ros::Publisher pub_poseRotation = _nh.advertise<pb_msgs::Struct_PoseRotation>("pbPos/PoseRotation", 8); // Это мы публикуем итоговую информацию по позици лидара обобщенную
+    ros::Publisher pub_poseBase = _nh.advertise<pb_msgs::Struct_PoseBase>("pb/Pos/PoseBase", 8);          // Это мы публикуем итоговую информацию по позици лидара обобщенную
+    ros::Publisher pub_poseRotation = _nh.advertise<pb_msgs::Struct_PoseRotation>("pb/Pos/PoseRotation", 8); // Это мы публикуем итоговую информацию по позици лидара обобщенную
 
-    ros::Publisher pub_linAngVel = _nh.advertise<pb_msgs::SLinAngVel>("pbPos/LinAngVel", 8);                // Это мы публикуем итоговую информацию линейной скорости угловой
+    ros::Publisher pub_linAngVel = _nh.advertise<pb_msgs::SLinAngVel>("pb/Pos/LinAngVel", 8);                // Это мы публикуем итоговую информацию линейной скорости угловой
 
-    ros::Publisher pub_AngleLLAll = _nh.advertise<pb_msgs::SAngleLaserLidar>("pbPos/AngleLLAll", 16); // Это мы публикуем итоговую информацию по углам лазера для нижнего уровня
+    ros::Publisher pub_AngleLLAll = _nh.advertise<pb_msgs::SAngleLaserLidar>("pb/Pos/AngleLLAll", 16); // Это мы публикуем итоговую информацию по углам лазера для нижнего уровня
 
-    ros::Publisher pub_PillarAll = _nh.advertise<pb_msgs::PillarOut>("pbPos/PillarAll", 16); // Это мы публикуем итоговую обобщенную информацию по столбам где все данные указаны НАФИГА?
+    ros::Publisher pub_PillarAll = _nh.advertise<pb_msgs::PillarOut>("pb/Pos/PillarAll", 16); // Это мы публикуем итоговую обобщенную информацию по столбам где все данные указаны НАФИГА?
 
-    ros::Publisher pub_markerPillar = _nh.advertise<visualization_msgs::Marker>("markerPillar0", 0);    // Публикуем столбы как маркер тип цилиндр
-    ros::Publisher pub_markerPosition = _nh.advertise<visualization_msgs::Marker>("markerPosition", 0); // Публикуем столики как точки позиций
+    ros::Publisher pub_markerPillar = _nh.advertise<visualization_msgs::Marker>("pb/rviz/Pose/markerPillar0", 0);    // Публикуем столбы как маркер тип цилиндр
+    ros::Publisher pub_markerPosition = _nh.advertise<visualization_msgs::Marker>("pb/rviz/Pose/markerPosition", 0); // Публикуем столики как точки позиций
 
-    ros::Publisher pub_StartPose = _nh.advertise<geometry_msgs::PoseStamped>("pbRviz/StartPose", 16); // Для публикации стартовой позиции
+    ros::Publisher pub_StartPose = _nh.advertise<geometry_msgs::PoseStamped>("pb/rviz/Pose/StartPose", 16); // Для публикации стартовой позиции
 
     // СТРЕЛКИ на столбы
-    ros::Publisher pub_poseLaser0 = _nh.advertise<geometry_msgs::PoseStamped>("pbRviz/PoseLaser0", 16); // Публикатор для позиции лазера на моторе 0
-    ros::Publisher pub_poseLaser1 = _nh.advertise<geometry_msgs::PoseStamped>("pbRviz/PoseLaser1", 16); // Публикатор для позиции лазера на моторе 1
-    ros::Publisher pub_poseLaser2 = _nh.advertise<geometry_msgs::PoseStamped>("pbRviz/PoseLaser2", 16); // Публикатор для позиции лазера на моторе 2
-    ros::Publisher pub_poseLaser3 = _nh.advertise<geometry_msgs::PoseStamped>("pbRviz/PoseLaser3", 16); // Публикатор для позиции лазера на моторе 3
+    ros::Publisher pub_poseLaser0 = _nh.advertise<geometry_msgs::PoseStamped>("pb/rviz/Pose/Laser0", 16); // Публикатор для позиции лазера на моторе 0
+    ros::Publisher pub_poseLaser1 = _nh.advertise<geometry_msgs::PoseStamped>("pb/rviz/Pose/Laser1", 16); // Публикатор для позиции лазера на моторе 1
+    ros::Publisher pub_poseLaser2 = _nh.advertise<geometry_msgs::PoseStamped>("pb/rviz/Pose/Laser2", 16); // Публикатор для позиции лазера на моторе 2
+    ros::Publisher pub_poseLaser3 = _nh.advertise<geometry_msgs::PoseStamped>("pb/rviz/Pose/Laser3", 16); // Публикатор для позиции лазера на моторе 3
 
-    ros::Publisher publish_Mode0 = _nh.advertise<nav_msgs::Odometry>("pbRviz/mode0", 8);     // Это мы создаем публикатор и определяем название топика в рос
-    ros::Publisher publish_Mode1 = _nh.advertise<nav_msgs::Odometry>("pbRviz/mode1", 8);     // Это мы создаем публикатор и определяем название топика в рос
-    ros::Publisher publish_Mode2 = _nh.advertise<nav_msgs::Odometry>("pbRviz/mode2", 8);     // Это мы создаем публикатор и определяем название топика в рос
-    ros::Publisher publish_Mode3 = _nh.advertise<nav_msgs::Odometry>("pbRviz/mode3", 8);     // Это мы создаем публикатор и определяем название топика в рос
-    ros::Publisher publish_Mode11 = _nh.advertise<nav_msgs::Odometry>("pbRviz/odom11", 8);   // Это мы создаем публикатор и определяем название топика в рос
-    ros::Publisher publish_Mode12 = _nh.advertise<nav_msgs::Odometry>("pbRviz/odom12", 8);   // Это мы создаем публикатор и определяем название топика в рос
-    ros::Publisher publish_Mode13 = _nh.advertise<nav_msgs::Odometry>("pbRviz/odom13", 8);   // Это мы создаем публикатор и определяем название топика в рос
-    ros::Publisher publish_Mode123 = _nh.advertise<nav_msgs::Odometry>("pbRviz/mode123", 8); // Это мы создаем публикатор и определяем название топика в рос
+    ros::Publisher publish_Mode0 = _nh.advertise<nav_msgs::Odometry>("pb/rviz/Pose/mode0", 8);     // Это мы создаем публикатор и определяем название топика в рос
+    ros::Publisher publish_Mode1 = _nh.advertise<nav_msgs::Odometry>("pb/rviz/Pose/mode1", 8);     // Это мы создаем публикатор и определяем название топика в рос
+    ros::Publisher publish_Mode2 = _nh.advertise<nav_msgs::Odometry>("pb/rviz/Pose/mode2", 8);     // Это мы создаем публикатор и определяем название топика в рос
+    ros::Publisher publish_Mode3 = _nh.advertise<nav_msgs::Odometry>("pb/rviz/Pose/mode3", 8);     // Это мы создаем публикатор и определяем название топика в рос
+    ros::Publisher publish_Mode11 = _nh.advertise<nav_msgs::Odometry>("pb/rviz/Pose/odom11", 8);   // Это мы создаем публикатор и определяем название топика в рос
 
-    // ros::Publisher pub_PoseLidarMode1 = _nh.advertise<geometry_msgs::PoseStamped>("pbRviz/PoseLidarMode1", 16); // Это мы публикуем итоговую информацию по позици лидара расчет по mode1
-    // ros::Publisher pub_PoseLidarMode2 = _nh.advertise<geometry_msgs::PoseStamped>("pbRviz/PoseLidarMode2", 16); // Это мы публикуем итоговую информацию по позици лидара расчет по mode2
+    // ros::Publisher pub_PoseLidarMode1 = _nh.advertise<geometry_msgs::PoseStamped>("pb/rviz/PoseLidarMode1", 16); // Это мы публикуем итоговую информацию по позици лидара расчет по mode1
+    // ros::Publisher pub_PoseLidarMode2 = _nh.advertise<geometry_msgs::PoseStamped>("pb/vriz/PoseLidarMode2", 16); // Это мы публикуем итоговую информацию по позици лидара расчет по mode2
 
     // ros::Publisher publish_OdomWheel = _nh.advertise<nav_msgs::Odometry>("pbMain/odom/Wheel", 3); // Это мы создаем публикатор и определяем название топика в рос
     //  nav_msgs::Odometry odomUnited_msg;

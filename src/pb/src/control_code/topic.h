@@ -18,7 +18,7 @@ private:
     ros::NodeHandle _nh;
     ros::Time ros_time; // Время ROS
 
-    ros::Publisher pub_ControlDriver = _nh.advertise<pb_msgs::Struct_Data2Driver>("pbControl/ControlDriver", 16); // Это мы публикуем структуру которую отправляем к исполнению на драйвер
+    ros::Publisher pub_ControlDriver = _nh.advertise<pb_msgs::Struct_Data2Driver>("pb/Control/ControlDriver", 16); // Это мы публикуем структуру которую отправляем к исполнению на драйвер
 };
 
 CTopic::CTopic(/* args */)

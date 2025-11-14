@@ -64,10 +64,10 @@ double Kp = 1.0; // Коэффициенты ПИД-регулятора
 double Ki = 0.0;
 double Kd = 0.05;
 
-PIDController steering_pid(Kp, Ki, Kd);																						 // 2. Создаем ПИД-контроллер
-																															 // Упреждающее объявление класса
+PIDController steering_pid(Kp, Ki, Kd);																	   // 2. Создаем ПИД-контроллер
+																										   // Упреждающее объявление класса
 double calculateSteering(const SPoint &point_C_, double robotAngleDeg, const SPoint &point_D_, double dt); // Главная функция управления
-double shortestDistanceToSegment(const SPoint &A, const SPoint &B, const SPoint &C);										 // Вычисляет кратчайшее расстояние от точки C до отрезка AB.
+double shortestDistanceToSegment(const SPoint &A, const SPoint &B, const SPoint &C);					   // Вычисляет кратчайшее расстояние от точки C до отрезка AB.
 
 // pb_msgs::SControlDriver speedCorrect(pb_msgs::SDriver2Data Driver2Data_msg_, pb_msgs::SControlDriver Data2Driver_); // Корректировка скорости движения в зависимости от датчиков растояния перед
 // void collectCommand(); // //Функция формирования команды для нижнего уровня на основе всех полученных данных, датчиков и анализа ситуации
@@ -741,14 +741,13 @@ void workVector(float len_, SPoint point_A_, SPoint point_B_, u_int64_t &time_, 
 
 	vectorMistake = vectorLen(point_C_, point_B_); // Находим длину вектора который отслеживаем. Сколько осталось до конечной точки
 
-
 	// ROS_INFO_THROTTLE(0.1, "    vectorMistake = %7.3f", vectorMistake);
 
 	if (flagVectorFirst)
 	{
 		accel = 0; // Первый запуск
 		flagVectorFirst = false;
-		ROS_INFO("    Vector Start vectorMistake = %f metr", vectorMistake);
+		ROS_INFO("    Vector Start vectorMistake = %f metr (%+6.3f, %+6.3f -> %+6.3f, %+6.3f)", vectorMistake, point_C_.x, point_C_.y, point_B_.x, point_B_.y);
 	}
 	if (abs(vectorMistake) <= minVectorMistake) // Когда ошибка по длине будет меньше заданной считаем что приехали и включаем время что-бы выйти из данного этапа алгоритма
 	{
@@ -758,7 +757,7 @@ void workVector(float len_, SPoint point_A_, SPoint point_B_, u_int64_t &time_, 
 		flagVector = false;
 		flagVectorFirst = true;
 		time_ = millis();
-		ROS_INFO("    Vector Final vectorMistake = %f metr", vectorMistake);
+		ROS_INFO("    Vector Final vectorMistake = %f metr (%+6.3f, %+6.3f -> %+6.3f, %+6.3f)", vectorMistake, point_C_.x, point_C_.y, point_B_.x, point_B_.y);
 	}
 	else
 	{
@@ -781,16 +780,15 @@ void workVector(float len_, SPoint point_A_, SPoint point_B_, u_int64_t &time_, 
 		// float speedCurrent = abs(vectorMistake * vectorKoef); // Это простейший вариант с ПИД регулировнаием по Р
 		// ROS_INFO_THROTTLE(0.1, "    speedCurrent vectorKoef = %f", speedCurrent);
 
-
-		//ЭТО УПРАВЛЕНИЕ ПО ТРАЕКТОРИИ. СТРАЕМСЯ ЕХАТЬ НА ТОЧКУ D, лежащуу на отрезке АВ
-		float L = 0.1;		
-		double steering = 0;													 // Длинна в метрах
+		// ЭТО УПРАВЛЕНИЕ ПО ТРАЕКТОРИИ. СТРАЕМСЯ ЕХАТЬ НА ТОЧКУ D, лежащуу на отрезке АВ
+		float L = 0.1;
+		double steering = 0; // Длинна в метрах
 		// point_D = findNearestSPointD(point_A, point_B, point_C, L);				 // Находим точку D на прямой между точками А и В и на расстоянии L от точки робота С
-		// steering = calculateSteering(point_C, msg_Pose.th.odom, point_D, dt); //  Расчет управляющего сигнала 
-		
-		steering = 0; // пока обнулим
-		if ((speedCurrent - steering)  < 0.005) // Минимальная скорость
-			speedCurrent = 0.005 + steering; // Если получается что меньше то берет так чтобы одно колесо было минимум а другое нет
+		// steering = calculateSteering(point_C, msg_Pose.th.odom, point_D, dt); //  Расчет управляющего сигнала
+
+		steering = 0;						   // пока обнулим
+		if ((speedCurrent - steering) < 0.005) // Минимальная скорость
+			speedCurrent = 0.005 + steering;   // Если получается что меньше то берет так чтобы одно колесо было минимум а другое нет
 
 		if (len_ > 0) // Если длина положительная то вращается в одну сторону или в другую
 		{
@@ -802,7 +800,8 @@ void workVector(float len_, SPoint point_A_, SPoint point_B_, u_int64_t &time_, 
 			controlSpeed.control.speedL = -speedCurrent + steering;
 			controlSpeed.control.speedR = -speedCurrent - steering;
 		}
-		ROS_INFO_THROTTLE(0.1, "    workVector vectorMistake = %7.3f | V_max = %f | fact speedL = %f speedR = %f | dt = %f  accel = %f", vectorMistake, V_max, controlSpeed.control.speedL, controlSpeed.control.speedR, dt, accel);
+		ROS_INFO_THROTTLE(0.1, "    workVector vectorMistake = %7.3f (%+6.3f, %+6.3f -> %+6.3f, %+6.3f) | V_max = %f | fact speedL = %f speedR = %f | dt = %f  accel = %f",
+						  vectorMistake, point_C_.x, point_C_.y, point_B_.x, point_B_.y, V_max, controlSpeed.control.speedL, controlSpeed.control.speedR, dt, accel);
 	}
 }
 
@@ -910,7 +909,6 @@ SPoint findNearestSPointD(const SPoint &A, const SPoint &B, const SPoint &C, dou
 		};
 }
 
-
 // Функции нормализации угла и PIDController остаются без изменений
 double normalizeAngle(double angle_rad)
 {
@@ -923,7 +921,7 @@ double normalizeAngle(double angle_rad)
 }
 
 /**
- * @brief Главная функция управления 
+ * @brief Главная функция управления
  */
 double calculateSteering(const SPoint &point_C_, double robotAngleDeg, const SPoint &point_D_, double dt)
 {

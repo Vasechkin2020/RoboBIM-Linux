@@ -19,7 +19,7 @@ int main(int argc, char **argv)
     // ros::Subscriber subscriber_Driver = nh.subscribe<pb_msgs::Struct_Driver2Data>("pbData/Driver", 1000, callback_Driver);
     // ros::Subscriber subscriber_Speed = nh.subscribe<pb_msgs::SSetSpeed>("pbData/Speed", 1000, callback_Speed);
 
-	ros::Publisher subscriber_Print = nh.advertise<pb_msgs::Struct_Data2Print>("pbData/Print", 3); // Это мы создаем публикатор и определяем название топика в рос
+	ros::Publisher subscriber_Print = nh.advertise<pb_msgs::Struct_Data2Print>("pb/Data/Print", 3); // Это мы создаем публикатор и определяем название топика в рос
 
     initCommandArray(); // Заполнение массива команд
     u_int64_t time = millis();
