@@ -136,7 +136,7 @@ void CTopic::visualStartPose()
     float theta = DEG2RAD(msg_startPose2d.theta); //
     geometry_msgs::Quaternion quat = tf::createQuaternionMsgFromYaw(theta);
     startPose_msg.pose.orientation = quat;
-    // ROS_INFO("startPose_msg Quaternion x =%.3f y =%.3f z =%.3f w =%.3f theta = %.3f", quat.x, quat.y, quat.z, quat.w, theta);
+    // ROS_INFO("startPose_msg Quaternion x =%+8.3f y =%+8.3f z =%+8.3f w =%+8.3f theta = %+8.3f", quat.x, quat.y, quat.z, quat.w, theta);
 
     pub_StartPose.publish(startPose_msg); // Публикация полученных данных
 
@@ -221,7 +221,7 @@ void CTopic::publicationPillarAll(CPillar pillar_) // Формируем пер�
         data.theta_true2 = pillar_.pillar[i].theta_true2;
         data.x_lidar = pillar_.pillar[i].x_lidar;
         data.y_lidar = pillar_.pillar[i].y_lidar;
-        // ROS_INFO("Status= %i azimuth= %.3f",pillar_out_msg.data[i].status,pillar_out_msg.data[i].azimuth);
+        // ROS_INFO("Status= %i azimuth= %+8.3f",pillar_out_msg.data[i].status,pillar_out_msg.data[i].azimuth);
         pillarAll_msg.data.push_back(data);
     }
     pub_PillarAll.publish(pillarAll_msg); // Публикуем информацию по столбам
@@ -481,7 +481,7 @@ void CTopic::transformBase(SPose poseBase_)
     tfOdomBase.header.stamp = ros_time;
     tfOdomBase.header.frame_id = "odom";
     tfOdomBase.child_frame_id = "base";
-    // printf("AAAAAAAAAAA % .3f %.3f", poseBase_.x,poseBase_.y);
+    // printf("AAAAAAAAAAA % .3f %+8.3f", poseBase_.x,poseBase_.y);
     tfOdomBase.transform.translation.x = poseBase_.x;
     tfOdomBase.transform.translation.y = poseBase_.y;
     tfOdomBase.transform.translation.z = 0.1;

@@ -167,7 +167,7 @@ void calcEuler()
 	static float prev_yaw = msg_Modul2Data.bno.angleEuler.yaw;								   // При первом запуске этой функции инициализируем тем значением что придет от Modul
 	g_angleEuler.yaw -= calculateAngleDifference(prev_yaw, msg_Modul2Data.bno.angleEuler.yaw); // Считаем угол куда смотрим // Расчет угла куда смотрим но пришедшим данным
 	prev_yaw = msg_Modul2Data.bno.angleEuler.yaw;
-	ROS_INFO_THROTTLE(RATE_OUTPUT, "    msg_Modul2Data.bno.angleEuler.yaw = %.3f g_angleEuler.yaw = %.3f (gradus) %.3f rad", msg_Modul2Data.bno.angleEuler.yaw, g_angleEuler.yaw, DEG2RAD(g_angleEuler.yaw));
+	ROS_INFO_THROTTLE(RATE_OUTPUT, "    msg_Modul2Data.bno.angleEuler.yaw = %+8.3f g_angleEuler.yaw = %+8.3f (gradus) %+8.3f rad", msg_Modul2Data.bno.angleEuler.yaw, g_angleEuler.yaw, DEG2RAD(g_angleEuler.yaw));
 }
 
 // Конвертация координат из Rotattion в Lidar систему
@@ -178,7 +178,7 @@ SPose convertRotation2Base(SPose pose_, std::string stroka_)
 	ret.x = pose_.x - (transformLidar2Rotation.x * cos(pose_.th));
 	ret.y = pose_.y - (transformLidar2Rotation.x * sin(pose_.th));
 	ret.th = RAD2DEG(pose_.th); // в g_poseBase угол в градусах
-	ROS_INFO_THROTTLE(RATE_OUTPUT, "    convertRotation2Base %s x = %.3f y = %.3f theta = %.3f (gradus) %.3f rad", stroka_.c_str(), ret.x, ret.y, ret.th, pose_.th);
+	ROS_INFO_THROTTLE(RATE_OUTPUT, "    convertRotation2Base %s x = %+8.3f y = %+8.3f theta = %+8.3f (gradus) %+8.3f rad", stroka_.c_str(), ret.x, ret.y, ret.th, pose_.th);
 	return ret;
 }
 // Конвертация координат из Lidar в Rotattion систему
@@ -190,7 +190,7 @@ SPose convertBase2Rotation(SPose pose_, std::string stroka_)
 	ret.x = pose_.x + (transformLidar2Rotation.x * cos(DEG2RAD(pose_.th)));
 	ret.y = pose_.y + (transformLidar2Rotation.x * sin(DEG2RAD(pose_.th)));
 	ret.th = DEG2RAD(pose_.th);
-	ROS_INFO_THROTTLE(RATE_OUTPUT, "    convertBase2Rotation %s x= %.3f y= %.3f th = %.3f (gradus) %.3f rad", stroka_.c_str(), ret.x, ret.y, RAD2DEG(ret.th), ret.th);
+	ROS_INFO_THROTTLE(RATE_OUTPUT, "    convertBase2Rotation %s x= %+8.3f y= %+8.3f th = %+8.3f (gradus) %+8.3f rad", stroka_.c_str(), ret.x, ret.y, RAD2DEG(ret.th), ret.th);
 	return ret;
 }
 
@@ -209,7 +209,7 @@ void startPosition(geometry_msgs::Pose2D &startPose2d_)
 	g_poseBase.fused.x = startPose2d_.x; // Устанавливаем координаты для mode10 что-бы по нему начало все считаться
 	g_poseBase.fused.y = startPose2d_.y;
 	g_poseBase.fused.th = startPose2d_.theta;
-	ROS_INFO("    startPose2d x= %.3f y= %.3f theta= %.3f ", startPose2d_.x, startPose2d_.y, startPose2d_.theta);
+	ROS_INFO("    startPose2d x= %+8.3f y= %+8.3f theta= %+8.3f ", startPose2d_.x, startPose2d_.y, startPose2d_.theta);
 	g_poseBase.lidar = g_poseBase.fused;
 	g_poseBase.laser = g_poseBase.fused;
 
@@ -300,7 +300,7 @@ long map(long x, long in_min, long in_max, long out_min, long out_max)
 //     Command_msg.speed = speed;
 //     ROS_INFO_THROTTLE(3,"%s Command_msg.speed= %f",NN, Command_msg.speed);
 
-//     //ROS_INFO("newSpeed = %.3f", speed);
+//     //ROS_INFO("newSpeed = %+8.3f", speed);
 //     //INFO ROS_INFO("-------------- ");
 //     //-----------------------------------------------------------
 // }
@@ -341,7 +341,7 @@ SPose calcNewPose_old(SPose odom_, STwistDt data_, std::string stroka_, float ko
 	pointLoc.y = data_.vy * data_.dt * koef_;
 	// printf(" Local system pointLoc.x= % .3f y= % .3f dt= % .3f th= % .3f | \n", pointLoc.x, pointLoc.y, data_.dt, RAD2DEG(odom_.pose.th));
 
-	// printf("DO pose.x= %.3f pose.y= %.3f pose.th= %.3f / ", odom_.pose.x, odom_.pose.y, RAD2DEG(odom_.pose.th));
+	// printf("DO pose.x= %+8.3f pose.y= %+8.3f pose.th= %+8.3f / ", odom_.pose.x, odom_.pose.y, RAD2DEG(odom_.pose.th));
 	// Находим смещние по осям матрица координаты точки из локальной системы координат в глобальной
 	double delta_x = pointLoc.x * cos(odom_.th) + pointLoc.y * sin(odom_.th);
 	double delta_y = -pointLoc.x * sin(odom_.th) + pointLoc.y * cos(odom_.th);
@@ -363,7 +363,7 @@ SPose calcNewPose_old(SPose odom_, STwistDt data_, std::string stroka_, float ko
 	// printf("twist.x= %.4f y= %.4f th= %.4f gradus ", bno055.twist.vx, bno055.twist.vy, bno055.twist.vth);
 	// odom_.twist = data_.twist; // Ничего не меняем в угловой скорости
 	// Меняем координаты и угол на основе вычислений
-	// ROS_INFO("    IN odom_.th = %.3f data_.dt= %.3f  * data_.twist.vth= %.3f ", odom_.th, data_.dt, data_.twist.vth);
+	// ROS_INFO("    IN odom_.th = %+8.3f data_.dt= %+8.3f  * data_.twist.vth= %+8.3f ", odom_.th, data_.dt, data_.twist.vth);
 
 	odom_.th += data_.vth * data_.dt * koef_; // Прибавляем к текущему углу и получаем новый угол куда смотрит наш робот С коефициентом это ПРЕДСКАЗАНИЕ УГЛА
 	// if (odom_.th > (2 * M_PI))
@@ -402,7 +402,7 @@ SPose calcNewOdom2(SPose odom_, STwistDt data_, std::string stroka_) // На в�
 
 	odom_.x = pointGlob.x; // Вычисляем координаты
 	odom_.y = pointGlob.y; // Вычисляем координаты
-	// ROS_INFO("    IN odom_.th = %.3f data_.dt= %.3f  * data_.twist.vth= %.3f ", odom_.th, data_.dt, data_.twist.vth);
+	// ROS_INFO("    IN odom_.th = %+8.3f data_.dt= %+8.3f  * data_.twist.vth= %+8.3f ", odom_.th, data_.dt, data_.twist.vth);
 
 	float k = 0.1;
 	odom_.th = (odom_.th + data_.vth * data_.dt) * (1 - k) + DEG2RAD(g_angleEuler.yaw) * k; // Комплементарный фильтр. Берем старое значение и увеличиваем на новый , берем с коефициентом большим и стабилизируем по точному значению
@@ -439,7 +439,7 @@ STwistDt calcTwistFromWheel(pb_msgs::SSetSpeed msg_Speed_)
 	yaw = normalize_angle(yaw + (ret.vth * dt)); // Расчет угла с нормализацией угла от пи до -пи
 	msg_LinAngVel.yaw.wheel = RAD2DEG(yaw);		 // Перевод в градусы перед публикацией
 
-	ROS_INFO_THROTTLE(RATE_OUTPUT, "    Twist Wheel vx= %.3f vy= %.3f vth= %.3f w= %.3f gradus/sec  %.3f rad/sec", ret.vx, ret.vy, RAD2DEG(ret.vth), ret.vth);
+	ROS_INFO_THROTTLE(RATE_OUTPUT, "    Twist Wheel vx= %+8.3f vy= %+8.3f vth= %+8.3f w= %+8.3f gradus/sec  %+8.3f rad/sec", ret.vx, ret.vy, RAD2DEG(ret.vth), ret.vth);
 
 	return ret;
 }
@@ -483,7 +483,7 @@ STwistDt calcTwistFromWheel_Old(pb_msgs::SSetSpeed msg_Speed_)
 	double sumSpeed = speedL + speedR;
 	double deltaSpeed = speedL - speedR;
 	double speed = (speedR + speedL) / 2.0; // Находим скорость всего обьекта.
-	// ROS_INFO("    dt = %.3f sec speedL = %.4f speedR = %.4f speed robot (speedR + speedL) / 2.0 = %.4f", dt, speedL, speedR, speed);
+	// ROS_INFO("    dt = %+8.3f sec speedL = %.4f speedR = %.4f speed robot (speedR + speedL) / 2.0 = %.4f", dt, speedL, speedR, speed);
 	//*******************************************************************************************************************************************************
 	double w = -deltaSpeed / DISTANCE_WHEELS; // Находим уголовую скорость движения по радиусу. Плюс по часовой минус против часовой
 
@@ -534,7 +534,7 @@ STwistDt calcTwistFromWheel_Old(pb_msgs::SSetSpeed msg_Speed_)
 	// }
 
 	theta = w;
-	// printf (" theta = %.3f \n", theta);
+	// printf (" theta = %+8.3f \n", theta);
 	//  Находим линейные скорости из моего вектора скорости. Я задаю общую скорость движения (длинна вектора), ее надо разложить на проекции по осям x y. Это будут линейные скорости
 	//  speed = 0.26;
 	twist.vx = speed * cos(theta * dt); // Проекция моей скорости на ось X получаем линейную скорость по оси за секунуду
@@ -542,14 +542,14 @@ STwistDt calcTwistFromWheel_Old(pb_msgs::SSetSpeed msg_Speed_)
 	twist.vth = theta;					// Угловая скорость в радианах.
 	twist.dt = dt;
 
-	ROS_INFO_THROTTLE(RATE_OUTPUT, "    Twist Wheel dt = %.3f vx= %.3f vy= %.3f vth= %.3f w= %.3f gradus/sec  %.3f rad/sec", dt, twist.vx, twist.vy, RAD2DEG(twist.vth), RAD2DEG(w), w);
+	ROS_INFO_THROTTLE(RATE_OUTPUT, "    Twist Wheel dt = %+8.3f vx= %+8.3f vy= %+8.3f vth= %+8.3f w= %+8.3f gradus/sec  %+8.3f rad/sec", dt, twist.vx, twist.vy, RAD2DEG(twist.vth), RAD2DEG(w), w);
 	// if (w==0)
 	// ROS_INFO("NULL");
 
 	// printf("vy= % .4f", twist.vy);
 	// printf("speed= %.4f twist.vth = %.4f / sin(twist.vth )= %.4f cos(twist.vth ) = %.4f / ", speed, RAD2DEG(twist.vth), sin(twist.vth ), cos(twist.vth ));
 	// printf("speed= %.4f twist.vth = %.8f / ", speed, RAD2DEG(twist.vth));
-	// ROS_INFO("SPEED= %.3f Linear speed twist.vx = %.3f twist.vy = %.3f Angular speed twist.vth = %.3f for sec.", speed, twist.vx, twist.vy, RAD2DEG(twist.vth));
+	// ROS_INFO("SPEED= %+8.3f Linear speed twist.vx = %+8.3f twist.vy = %+8.3f Angular speed twist.vth = %+8.3f for sec.", speed, twist.vx, twist.vy, RAD2DEG(twist.vth));
 	// //==============================================================================================================================
 	ret = twist;
 
@@ -566,7 +566,7 @@ STwistDt calcTwistFromWheel_Old(pb_msgs::SSetSpeed msg_Speed_)
 
 		// printf("vx= % .3f vy= % .f vth= % .3f | ", vx, vy, twist.vth);
 
-		// // printf("DO pose.x= %.3f pose.y= %.3f pose.th= %.3f / ", pose.x, pose.y, RAD2DEG(pose.th));
+		// // printf("DO pose.x= %+8.3f pose.y= %+8.3f pose.th= %+8.3f / ", pose.x, pose.y, RAD2DEG(pose.th));
 		// // Находим смещние по осям матрица координаты точки из локальной системы координат в глобальной
 		// double delta_x = vx * cos(pose.th) + vy * sin(pose.th);
 		// double delta_y = -vx * sin(pose.th) + vy * cos(pose.th);
@@ -647,7 +647,7 @@ STwistDt calcTwistFromImu(pb_msgs::Struct_Driver2Data msg_)
 	msg_LinAngVel.real_gyro = real_gyro;
 	ret.vth = real_gyro; // Берем угловую скорость готовую с показаний датчика
 
-	ROS_INFO_THROTTLE(RATE_OUTPUT, "    Twist IMU dt = %.3f | vx= %.3f vth= %.3f gradus/sec %.6f rad/sec | accel %.6f ", dt, ret.vx, RAD2DEG(ret.vth), ret.vth, msg_.icm.accel.y);
+	ROS_INFO_THROTTLE(RATE_OUTPUT, "    Twist IMU dt = %+8.3f | vx= %+8.3f vth= %+8.3f gradus/sec %.6f rad/sec | accel %.6f ", dt, ret.vx, RAD2DEG(ret.vth), ret.vth, msg_.icm.accel.y);
 
 	static double speedPred = 0;
 	static double speedPredPred = 0;
@@ -836,7 +836,7 @@ STwistDt calcTwistFromMpu(STwistDt mpu_, pb_msgs::Struct_Modul2Data msg_Modul2Da
 	// g_complYaw = complYaw2;
 	// g_fused_yaw = fused_yaw;
 
-	ROS_INFO_THROTTLE(RATE_OUTPUT, "    Twist MPU   dt = %.3f | vx= %.3f vy= %.3f | vth= %.3f gradus/sec %.6f rad/sec | norm = %.6f", dt, ret.vx, ret.vy, RAD2DEG(ret.vth), ret.vth, norm_angleDelta / dt);
+	ROS_INFO_THROTTLE(RATE_OUTPUT, "    Twist MPU   dt = %+8.3f | vx= %+8.3f vy= %+8.3f | vth= %+8.3f gradus/sec %.6f rad/sec | norm = %.6f", dt, ret.vx, ret.vy, RAD2DEG(ret.vth), ret.vth, norm_angleDelta / dt);
 	// ROS_INFO("--- calcTwistFromMpu");
 	return ret;
 }
@@ -864,7 +864,7 @@ STwistDt calcTwistFused(STwistDt odomTwist_, STwistDt imuTwist_)
 
 	//--------------------------------
 
-	ROS_INFO_THROTTLE(RATE_OUTPUT, "    fused Twist | %.3f %.3f %.3f | %.3f %.3f %.3f | ",
+	ROS_INFO_THROTTLE(RATE_OUTPUT, "    fused Twist | %+8.3f %+8.3f %+8.3f | %+8.3f %+8.3f %+8.3f | ",
 					  odomTwist_.vx, imuTwist_.vx, ret.vx,
 					  odomTwist_.vth, imuTwist_.vth, ret.vth);
 
@@ -967,7 +967,7 @@ void calcMode0()
 	// g_poseBase.mode0.y = odomMode0.pose.y;
 	// g_poseBase.mode0.th = RAD2DEG(odomMode0.pose.th);
 
-	// ROS_WARN_THROTTLE(THROTTLE_PERIOD_3, "    MODE0 pose.x= %.3f y= %.3f theta= %.3f ", g_poseBase.mode0.x, g_poseBase.mode0.y, g_poseBase.mode0.th);
+	// ROS_WARN_THROTTLE(THROTTLE_PERIOD_3, "    MODE0 pose.x= %+8.3f y= %+8.3f theta= %+8.3f ", g_poseBase.mode0.x, g_poseBase.mode0.y, g_poseBase.mode0.th);
 	ROS_INFO("--- calcMode0");
 }
 
@@ -987,7 +987,7 @@ void calcMode123()
 	// else
 	// {
 	// 	g_poseBase.mode123 = pose;
-	// 	ROS_WARN_THROTTLE(THROTTLE_PERIOD_3, "    MODE123 pose.x= % .3f y= % .3f theta= %.3f", g_poseBase.mode123.x, g_poseBase.mode123.y, g_poseBase.mode123.th);
+	// 	ROS_WARN_THROTTLE(THROTTLE_PERIOD_3, "    MODE123 pose.x= % .3f y= % .3f theta= %+8.3f", g_poseBase.mode123.x, g_poseBase.mode123.y, g_poseBase.mode123.th);
 	// }
 	// ROS_INFO("--- calcMode123.");
 }
@@ -1126,7 +1126,7 @@ void calcMode123()
 // odom_enc.y += delta_y;   // Вычисляем координаты
 // odom_enc.th += delta_th; // Прибавляем к текущему углу и получаем новый угол куда смотрит наш робот
 
-// printf("x= %.2f y= %.2f th= %.3f  time= %u \n", g_odom_enc.x, g_odom_enc.y, g_odom_enc.th, millis());
+// printf("x= %.2f y= %.2f th= %+8.3f  time= %u \n", g_odom_enc.x, g_odom_enc.y, g_odom_enc.th, millis());
 /*
 void startColibrovka(CTopic &topic)
 {
@@ -1231,7 +1231,7 @@ void startColibrovka(CTopic &topic)
 							colibrData[i].distMin = msg_Modul2Data.laser[i].distance; // Если новое измерение меньше то меняем раастояние
 							colibrData[i].angleMin = msg_Modul2Data.laser[i].angle;
 						}
-						printf("distMin = %.3f angleMin = %.3f stepp= %f \n", colibrData[i].distMin, colibrData[i].angleMin, stepp);
+						printf("distMin = %+8.3f angleMin = %+8.3f stepp= %f \n", colibrData[i].distMin, colibrData[i].angleMin, stepp);
 					}
 				}
 			}
@@ -1275,7 +1275,7 @@ void startColibrovka(CTopic &topic)
 							colibrData[i].distMin2 = msg_Modul2Data.laser[i].distance; // Если новое измерение меньше то меняем раастояние
 							colibrData[i].angleMin2 = msg_Modul2Data.laser[i].angle;
 						}
-						printf("distMin2 = %.3f angleMin2 = %.3f stepp= %f \n", colibrData[i].distMin2, colibrData[i].angleMin2, stepp);
+						printf("distMin2 = %+8.3f angleMin2 = %+8.3f stepp= %f \n", colibrData[i].distMin2, colibrData[i].angleMin2, stepp);
 					}
 				}
 			}
@@ -1299,9 +1299,9 @@ void startColibrovka(CTopic &topic)
 		for (int i = 0; i < 4; i++) // Перебираем моторы(лазеры)
 		{
 			dataControlModul.controlMotor.angle[i] = (colibrData[i].angleMin + colibrData[i].angleMin2) / 2.0;
-			printf(" numPillar = %i Teoria angle= %.3f |", g_numPillar[i], g_angleLaser[i]);
-			printf("angle1= %.3f angle2= %.3f  | distMin1 = %.3f distMin2 = %.3f \n", colibrData[i].angleMin, colibrData[i].angleMin2, colibrData[i].distMin, colibrData[i].distMin2);
-			printf("i= %i angle= %.3f distMin = %.3f \n", i, dataControlModul.controlMotor.angle[i], (colibrData[i].distMin + colibrData[i].distMin2) / 2.0);
+			printf(" numPillar = %i Teoria angle= %+8.3f |", g_numPillar[i], g_angleLaser[i]);
+			printf("angle1= %+8.3f angle2= %+8.3f  | distMin1 = %+8.3f distMin2 = %+8.3f \n", colibrData[i].angleMin, colibrData[i].angleMin2, colibrData[i].distMin, colibrData[i].distMin2);
+			printf("i= %i angle= %+8.3f distMin = %+8.3f \n", i, dataControlModul.controlMotor.angle[i], (colibrData[i].distMin + colibrData[i].distMin2) / 2.0);
 		}
 		topic.publicationControlModul(dataControlModul); // Формируем и Публикуем команды для управления Modul
 		flag5Colibrovka = false;
@@ -1313,7 +1313,7 @@ void startColibrovka(CTopic &topic)
 			correctAngle += (g_angleLaser[i] - colibrData[i].angleMin); // Находим на сколько полученный угол не совпадает с расчетным по начальной позиции
 		}
 		correctAngle = correctAngle / 4.0; // Находим среднюю ошибку
-		printf(" correctAngle= %.3f\n\n", correctAngle);
+		printf(" correctAngle= %+8.3f\n\n", correctAngle);
 		exit(1);
 	}
 	/*
@@ -1387,12 +1387,12 @@ void readParam()
 	nh_global.param<float>("/pb_config/pillars/pillar_3_x", msg_pillar.pillar[3].x, 3.11); // Если не найдено, laser_b0 = -0.0001
 	nh_global.param<float>("/pb_config/pillars/pillar_3_y", msg_pillar.pillar[3].y, 3.11); // Если не найдено, laser_b0 = -0.0001
 
-	ROS_INFO("startPose x = %.3f y = %.3f theta = %.3f", msg_startPose2d.x, msg_startPose2d.y, msg_startPose2d.theta);
+	ROS_INFO("startPose x = %+8.3f y = %+8.3f theta = %+8.3f", msg_startPose2d.x, msg_startPose2d.y, msg_startPose2d.theta);
 	ROS_INFO("start PillarPose");
-	ROS_INFO("x0= %.3f y0 = %.3f", msg_pillar.pillar[0].x, msg_pillar.pillar[0].y);
-	ROS_INFO("x1= %.3f y1 = %.3f", msg_pillar.pillar[1].x, msg_pillar.pillar[1].y);
-	ROS_INFO("x2= %.3f y2 = %.3f", msg_pillar.pillar[2].x, msg_pillar.pillar[2].y);
-	ROS_INFO("x3= %.3f y3 = %.3f", msg_pillar.pillar[3].x, msg_pillar.pillar[3].y);
+	ROS_INFO("x0= %+8.3f y0 = %+8.3f", msg_pillar.pillar[0].x, msg_pillar.pillar[0].y);
+	ROS_INFO("x1= %+8.3f y1 = %+8.3f", msg_pillar.pillar[1].x, msg_pillar.pillar[1].y);
+	ROS_INFO("x2= %+8.3f y2 = %+8.3f", msg_pillar.pillar[2].x, msg_pillar.pillar[2].y);
+	ROS_INFO("x3= %+8.3f y3 = %+8.3f", msg_pillar.pillar[3].x, msg_pillar.pillar[3].y);
 	ROS_INFO("--- readParam");
 }
 
@@ -1409,7 +1409,7 @@ double calculateAngleDifference(double prev_angle, double current_angle)
 	{
 		diff += 360.0;
 	}
-	ROS_INFO_THROTTLE(RATE_OUTPUT, "    calculateAngleDifference = %.3f gradus   %.3f rad", diff, DEG2RAD(diff));
+	ROS_INFO_THROTTLE(RATE_OUTPUT, "    calculateAngleDifference = %+8.3f gradus   %+8.3f rad", diff, DEG2RAD(diff));
 	return diff;
 }
 

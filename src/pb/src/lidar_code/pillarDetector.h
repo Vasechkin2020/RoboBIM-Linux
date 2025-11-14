@@ -51,7 +51,7 @@ public:
         // Изменение координат столба
         KNOWN_PILLARS[i].first = first_;   // Новое значение x
         KNOWN_PILLARS[i].second = second_; // Новое значение y
-        ROS_INFO("setKnownPillars %i x= %.3f y= %.3f", i, KNOWN_PILLARS[i].first, KNOWN_PILLARS[i].second);
+        ROS_INFO("setKnownPillars %i x= %+8.3f y= %+8.3f", i, KNOWN_PILLARS[i].first, KNOWN_PILLARS[i].second);
     }
     // Метод изменения положения лидара
     void setPoseLidar(float x_, float y_, float th_)
@@ -59,7 +59,7 @@ public:
         lidar_x = x_;                             // Координата x лидара в глобальной системе
         lidar_y = y_;                             // Координата y лидара в глобальной системе
         lidar_theta = (th_ + 180) / (180 / M_PI); // Угол ориентации лидара в глобальной системе (рад)
-        ROS_INFO("setPoseLidar x= %.3f y= %.3f  th= %.4f (rad) th= %.3f (grad)", lidar_x, lidar_y, lidar_theta, th_);
+        ROS_INFO("setPoseLidar x= %+8.3f y= %+8.3f  th= %.4f (rad) th= %+8.3f (grad)", lidar_x, lidar_y, lidar_theta, th_);
     }
 
     // Структура для точки с координатами x и y
@@ -129,8 +129,8 @@ public:
         lidar_x = poseLidar_.x;
         lidar_y = poseLidar_.y;
         lidar_theta = DEG2RAD(poseLidar_.th) + M_PI;
-        // ROS_INFO("    Lidar theta START = %.3f rad (%.3f deg)", lidar_theta, RAD2DEG(lidar_theta));
-        ROS_INFO("    IN PoseLidar x= %.3f y= %.3f  th= %.4f (rad)  th= %.3f (grad)", lidar_x, lidar_y, lidar_theta, RAD2DEG(lidar_theta));
+        // ROS_INFO("    Lidar theta START = %+8.3f rad (%+8.3f deg)", lidar_theta, RAD2DEG(lidar_theta));
+        ROS_INFO("    IN PoseLidar x= %+8.3f y= %+8.3f  th= %.4f (rad)  th= %+8.3f (grad)", lidar_x, lidar_y, lidar_theta, RAD2DEG(lidar_theta));
 
         findPillars();  // Ищем столбы в этих кластерах
         matchPillars(); // // Сопоставляем столбы с известными координатами и вычисляем позицию и ориентацию лидара
@@ -214,7 +214,7 @@ private:
         }
         // ROS_INFO("    Found %d clusters total", (int)clusters.size()); // Выводим общее количество найденных кластеров
         elapsed_time = ros::Time::now() - start_time; // Вычисляем интервал
-        // ROS_INFO("    End findClusters Elapsed time: %.3f seconds", elapsed_time.toSec());
+        // ROS_INFO("    End findClusters Elapsed time: %+8.3f seconds", elapsed_time.toSec());
         return clusters;
     }
 
@@ -348,13 +348,13 @@ private:
                 double distance = sqrt(dx * dx + dy * dy);
                 double direction = atan2(dy, dx);
                 pillar.direction = direction;
-                // ROS_INFO("azimuth1 = %.3f", azimuth);
+                // ROS_INFO("azimuth1 = %+8.3f", azimuth);
                 azimuth = 180 + RAD2DEG(azimuth); // Преобразование угла из лидара в Base. он у меня повернут на 180
                 if (azimuth > 180)
                 {
                     azimuth = azimuth - 360; // Подгонка под стандарт
                 }
-                // ROS_INFO("azimuth2 = %.3f", azimuth);
+                // ROS_INFO("azimuth2 = %+8.3f", azimuth);
 
                 pillar.claster_azimut = DEG2RAD(azimuth); // В радианы как положено
 
@@ -439,14 +439,14 @@ private:
                 // Сохраняем пару координат и азимут для вычисления позиции и ориентации лидара
                 matched_pairs.push_back({pillars[i].x_global, pillars[i].y_global});
 
-                // ROS_INFO("    pillars.claster_azimut = %.3f pillars.direction = %.3f", RAD2DEG(pillars[i].claster_azimut), RAD2DEG(pillars[i].direction));
+                // ROS_INFO("    pillars.claster_azimut = %+8.3f pillars.direction = %+8.3f", RAD2DEG(pillars[i].claster_azimut), RAD2DEG(pillars[i].direction));
 
                 // measured_azimuths.push_back(pillars[i].direction); // Тут направление влокальнй системе записано, надо его потом в преобразовать с учетом куда смотрим угла theta
                 measured_azimuths.push_back(pillars[i].claster_azimut); //
                 // pillars[i].direction - это направление на кластер теоретический угол из полученых координат
                 // pillars[i].claster_azimut - это направление на кластер из лидара по его лидарной системе
                 // Выводим результат сопоставления
-                // ROS_INFO("    Pillar %zu matched pillar %d (x=%.2f, y=%.2f): delta_x= %.3f m, delta_y= %.3f m, gipot= %.3f m, dist= %.3f m, direc= %.3f grad, cla_azimut= %.3f grad",
+                // ROS_INFO("    Pillar %zu matched pillar %d (x=%.2f, y=%.2f): delta_x= %+8.3f m, delta_y= %+8.3f m, gipot= %+8.3f m, dist= %+8.3f m, direc= %+8.3f grad, cla_azimut= %+8.3f grad",
                 //  i, best_match,
                 //  KNOWN_PILLARS[best_match].first, KNOWN_PILLARS[best_match].second,
                 //  delta_x, delta_y, min_dist, pillars[i].distance, RAD2DEG(pillars[i].direction), RAD2DEG(pillars[i].claster_azimut));
@@ -519,7 +519,7 @@ private:
                                                   KNOWN_PILLARS[global_idx].first - lidar_x);
                     // Разница между измеренным и глобальным азимутом даёт угол поворота лидара
                     double theta_diff = -normalizeAngle(measured_azimuths[i] - global_azimuth); // Минус чтобы совпадало по знаку
-                    ROS_INFO("    global_azimuth = %.3f, measured_azimuths = %.3f, theta_diff = %.3f |  lidar_x = %.3f  lidar_y = %.3f",
+                    ROS_INFO("    global_azimuth = %+8.3f, measured_azimuths = %+8.3f, theta_diff = %+8.3f |  lidar_x = %+8.3f  lidar_y = %+8.3f",
                              RAD2DEG(global_azimuth), RAD2DEG(measured_azimuths[i]), RAD2DEG(theta_diff), lidar_x, lidar_y);
                     sum_theta += theta_diff;
                     count++;
@@ -537,7 +537,7 @@ private:
                 g_poseLidar.modeClaster.th = RAD2DEG(lidar_theta_T);
 
                 ROS_WARN("    modeClaster pose.x= %+8.3f y= %+8.3f theta= %+8.3f ", lidar_x + lidar_xX, lidar_y + lidar_yY, RAD2DEG(lidar_theta_T));
-                // ROS_INFO("    Lidar theta END 22 = %.3f rad (%.3f deg)", lidar_theta_T, RAD2DEG(lidar_theta_T));
+                // ROS_INFO("    Lidar theta END 22 = %+8.3f rad (%+8.3f deg)", lidar_theta_T, RAD2DEG(lidar_theta_T));
 
                 // lidar_x += lidar_xX;
                 // lidar_y += lidar_yY;

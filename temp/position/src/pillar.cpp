@@ -88,8 +88,8 @@ void scanCallback(const sensor_msgs::LaserScan::ConstPtr &scan)
                     // ROS_INFO("Point b= %i degree= %f ranges= %f previous= %f width = %f", b, degree, ranges, previous, width);            // Запоминаем вторую точку  и начинаем анализировать эту группу точек
                     if (width > 0.2 && width < 0.4) // Если ширина похожа на наш столб
                     {
-                        ROS_INFO("Pillar width= %.2f min_dist= %.2f max_dist= %.2f Angle = %.3f angle = %.3f", width, min_dist, max_dist, RAD2DEG(scan->angle_min + scan->angle_increment * a), RAD2DEG(scan->angle_min + scan->angle_increment * (b - 1)));
-                        ROS_INFO("Angle = %.3f ", (RAD2DEG(scan->angle_min + scan->angle_increment * a) + RAD2DEG(scan->angle_min + scan->angle_increment * (b - 1))) / 2);
+                        ROS_INFO("Pillar width= %.2f min_dist= %.2f max_dist= %.2f Angle = %+8.3f angle = %+8.3f", width, min_dist, max_dist, RAD2DEG(scan->angle_min + scan->angle_increment * a), RAD2DEG(scan->angle_min + scan->angle_increment * (b - 1)));
+                        ROS_INFO("Angle = %+8.3f ", (RAD2DEG(scan->angle_min + scan->angle_increment * a) + RAD2DEG(scan->angle_min + scan->angle_increment * (b - 1))) / 2);
 
                         int x = 0;
                         for (int i = a - 1; i <= b; i++) // Перебираем точки с захватом крайних для анализа если нужно будет
@@ -110,8 +110,8 @@ void scanCallback(const sensor_msgs::LaserScan::ConstPtr &scan)
                     }
                     else
                     {
-                        ROS_INFO("BED !!! Pillar width= %.2f min_dist= %.2f max_dist= %.2f Angle = %.3f angle = %.3f", width, min_dist, max_dist, RAD2DEG(scan->angle_min + scan->angle_increment * a), RAD2DEG(scan->angle_min + scan->angle_increment * (b - 1)));
-                        ROS_INFO("Angle = %.3f ", (RAD2DEG(scan->angle_min + scan->angle_increment * a) + RAD2DEG(scan->angle_min + scan->angle_increment * (b - 1))) / 2);
+                        ROS_INFO("BED !!! Pillar width= %.2f min_dist= %.2f max_dist= %.2f Angle = %+8.3f angle = %+8.3f", width, min_dist, max_dist, RAD2DEG(scan->angle_min + scan->angle_increment * a), RAD2DEG(scan->angle_min + scan->angle_increment * (b - 1)));
+                        ROS_INFO("Angle = %+8.3f ", (RAD2DEG(scan->angle_min + scan->angle_increment * a) + RAD2DEG(scan->angle_min + scan->angle_increment * (b - 1))) / 2);
                     }
                     // Сбрасываем переменные для следующего расчета
                     flag = false;

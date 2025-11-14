@@ -29,7 +29,7 @@ int main(int argc, char **argv)
         startPose2D_msg.theta = 0.11;
 
     ROS_INFO("Start pub_StartPose2D.publish");
-    ROS_INFO(" x= %.3f y= %.3f th= %.3f", startPose2D_msg.x, startPose2D_msg.y, startPose2D_msg.theta);
+    ROS_INFO(" x= %+8.3f y= %+8.3f th= %+8.3f", startPose2D_msg.x, startPose2D_msg.y, startPose2D_msg.theta);
 
     if (ros::ok())
     {

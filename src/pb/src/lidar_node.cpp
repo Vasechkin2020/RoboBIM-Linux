@@ -83,12 +83,12 @@ int main(int argc, char **argv) // Главная функция програм�
             ROS_INFO("");
             ROS_ERROR("------------       flag_msgLidar    -------------");
             flag_msgLidar = false;
-            // ROS_INFO("=== %.3f %.3f | %.3f %.3f | %.3f %.3f",g_poseLidar.modeDist.x, g_poseLidar.mode.x, g_poseLidar.modeDist.y, g_poseLidar.mode.y, g_poseLidar.modeDist.th, g_poseLidar.mode.th);
-            pillar.searchPillars(msg_lidar, g_poseLidar.modeDist); // Разбираем пришедшие данные и ищем там столбы.
+            // ROS_INFO("=== %+8.3f %+8.3f | %+8.3f %+8.3f | %+8.3f %+8.3f",g_poseLidar.modeDist.x, g_poseLidar.mode.x, g_poseLidar.modeDist.y, g_poseLidar.mode.y, g_poseLidar.modeDist.th, g_poseLidar.mode.th);
+            pillar.searchPillars(msg_lidar, g_poseLidar.mnkFused); // Разбираем пришедшие данные и ищем там столбы.
             pillar.comparisonPillar();                             // Сопоставляем столбы
             // topic.publicationPillarAll(pillar);                // Публикуем всю обобщенную информацию по столб
 
-            detector.scanCallback(msg_lidar, g_poseLidar.modeDist);
+            detector.scanCallback(msg_lidar, g_poseLidar.mnkFused);
             // topic.visualizeClasters(detector.cluster_info_list); // Большой обьем данных. Лучше отключать
             // topic.visualizePillars(detector.pillars); // Визуализация найденых столбов
             // topic.visualizeLidar();
@@ -288,7 +288,7 @@ int main(int argc, char **argv) // Главная функция програм�
             // (g_poseLidar.modeAngle.th < 0) ? angle2 = g_poseLidar.modeAngle.th + 360 : angle2 = g_poseLidar.modeAngle.th;
             // (g_poseLidar.modeClaster.th < 0) ? angle3 = g_poseLidar.modeClaster.th + 360 : angle3 = g_poseLidar.modeClaster.th;
 
-            // ROS_INFO("    th1 = %.3f th2 = %.3f th3 = %.3f | angle1 = %.3f angle2 = %.3f angle3 = %.3f ",
+            // ROS_INFO("    th1 = %+8.3f th2 = %+8.3f th3 = %+8.3f | angle1 = %+8.3f angle2 = %+8.3f angle3 = %+8.3f ",
             //          g_poseLidar.modeDist.th, g_poseLidar.modeAngle.th, g_poseLidar.modeClaster.th, angle1, angle2, angle3);
 
             // angleSum = angle1 * 0.4 + angle2 * 0.3 + angle3 * 0.3;
@@ -297,11 +297,11 @@ int main(int argc, char **argv) // Главная функция програм�
 
             // float angleSum4 = RAD2DEG(detector.normalizeAngle(DEG2RAD(angleSum3 + 0.66))); // Add offset angle lidar
             // g_poseLidar.mode.th = angleSum3;
-            // ROS_INFO("    angleSum = %.3f angleSum2 = %.3f angleSum3 = %.3f ", angleSum, angleSum2, angleSum3);
+            // ROS_INFO("    angleSum = %+8.3f angleSum2 = %+8.3f angleSum3 = %+8.3f ", angleSum, angleSum2, angleSum3);
 
             // g_poseLidar.modeFused.th = complementAngle(g_poseLidar.modeDist.th, g_poseLidar.modeAngle.th, g_poseLidar.modeClaster.th, 0.8, 0.2, 0.0, 0.0); // Функйия комплементации 3 углов с разными весвми и добавление поправки offset по лидару
 
-            // ROS_WARN("    g_poseLidar.modeFused.x = %.3f th = %.3f th = %.3f ", g_poseLidar.modeFused.x, g_poseLidar.modeFused.y, g_poseLidar.modeFused.th);
+            // ROS_WARN("    g_poseLidar.modeFused.x = %+8.3f th = %+8.3f th = %+8.3f ", g_poseLidar.modeFused.x, g_poseLidar.modeFused.y, g_poseLidar.modeFused.th);
 
             // g_poseLidar.mode.th = g_poseLidar.mode.th * COMPLEMENTARN + ((g_poseLidar.modeDist.th + g_poseLidar.modeAngle.th) / 2.0) * (1 - COMPLEMENTARN);
 

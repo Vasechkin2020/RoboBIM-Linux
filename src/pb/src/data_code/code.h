@@ -266,9 +266,9 @@ void readParam() // Считывание переменных параметро
 	nh_global.param<int>("/data_node/modeModul", modeModul, 5 );
 
 	ROS_INFO("--- Start node with parametrs:");
-	ROS_INFO("offSetLaser0 = %.3f offSetLaser1 = %.3f offSetLaser2 = %.3f offSetLaser3 = %.3f", offSetLaser[0], offSetLaser[1], offSetLaser[2], offSetLaser[3]);
-	ROS_INFO("offSetLaserL = %.3f offSetLaserR = %.3f", offSetLaserL, offSetLaserR);
-	ROS_INFO("offSetUZI = %.3f", offSetUzi);
+	ROS_INFO("offSetLaser0 = %+8.3f offSetLaser1 = %+8.3f offSetLaser2 = %+8.3f offSetLaser3 = %+8.3f", offSetLaser[0], offSetLaser[1], offSetLaser[2], offSetLaser[3]);
+	ROS_INFO("offSetLaserL = %+8.3f offSetLaserR = %+8.3f", offSetLaserL, offSetLaserR);
+	ROS_INFO("offSetUZI = %+8.3f", offSetUzi);
 	ROS_INFO("modeModul = %i", modeModul);
 	ROS_INFO("---");
 }

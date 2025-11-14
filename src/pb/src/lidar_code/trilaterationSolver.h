@@ -171,7 +171,7 @@ double TrilaterationSolver::normalize_angle_deg(double angle_deg)
 void TrilaterationSolver::set_A_prev(SPoint new_prev)
 {
     A_prev = new_prev;                                               // Устанавливаем новое предыдущее положение
-    printf("A_prev updated to: (%.3f, %.3f)\n", A_prev.x, A_prev.y); // Output updated A_prev
+    printf("A_prev updated to: (%+8.3f, %+8.3f)\n", A_prev.x, A_prev.y); // Output updated A_prev
 }
 
 void TrilaterationSolver::clear_circles()
@@ -189,7 +189,7 @@ void TrilaterationSolver::add_circle_from_distance(SPoint P_beacon, double dista
 {
     // printf("+++ add_circle_from_distance \n");
     // Отладочный вывод: Добавление измерения дальности
-    printf("    Add Dist: Beacon (%.3f, %.3f), R=%.3f, W=%.4f\n", // Output: Adding distance measurement
+    printf("    Add Dist: Beacon (%+8.3f, %+8.3f), R=%+8.3f, W=%.4f\n", // Output: Adding distance measurement
            P_beacon.x,                                            // X-coordinate of beacon
            P_beacon.y,                                            // Y-coordinate of beacon
            distance,                                              // Measured distance
@@ -363,7 +363,7 @@ bool TrilaterationSolver::perform_wls_pass(SPoint &result_A, double &result_rms,
         double combined_variance = current_variance + base_variance;                            // sigma_k^2 = sigma_i^2 + sigma_0^2
         double Wi = 1.0 / combined_variance;                                                    // W_k = 1 / sigma_k^2
         // ---------------------------------------------------
-        // printf("  Eq %d vs Base %d : Circle current_weight W= %.3f, Eq Wi= %.3f \n", i, base_index, current_weight, Wi); // Output WLS weights (добавленный вывод)
+        // printf("  Eq %d vs Base %d : Circle current_weight W= %+8.3f, Eq Wi= %+8.3f \n", i, base_index, current_weight, Wi); // Output WLS weights (добавленный вывод)
         // Коэффициенты линеаризации (Ai*x + Bi*y = Ci)
         double Ai = 2.0 * (current.x - base.x);
         double Bi = 2.0 * (current.y - base.y);
@@ -421,7 +421,7 @@ bool TrilaterationSolver::perform_wls_pass(SPoint &result_A, double &result_rms,
 
         if (print_residuals) // Печатаем остатки, если это финальный проход
         {
-            // printf("    Beacon %d (W=%.2f, R=%.3f): Geom. Residual=%.3f m (ACTIVE)\n", i, current.weight_factor, current.r, residual_geom); // Output final residual
+            // printf("    Beacon %d (W=%.2f, R=%+8.3f): Geom. Residual=%+8.3f m (ACTIVE)\n", i, current.weight_factor, current.r, residual_geom); // Output final residual
         }
     }
 
@@ -473,7 +473,7 @@ SPoint_Q TrilaterationSolver::find_A_by_mnk_simple()
     // 2. Выполняем ОДИН проход (print_residuals = true)
     if (perform_wls_pass(A_final, rms_final, used_count_final, true))
     {
-        printf("Simple WLS Found A: (%.3f, %.3f)\n", A_final.x, A_final.y); // Output result
+        printf("Simple WLS Found A: (%+8.3f, %+8.3f)\n", A_final.x, A_final.y); // Output result
 
         // ЗАПОЛНЕНИЕ ФИНАЛЬНЫХ МЕТРИК
         AQ.A = A_final;
@@ -536,7 +536,7 @@ SPoint_Q TrilaterationSolver::find_A_by_mnk_robust()
         return AQ;                                                                 // Возвращаем с плохим качеством
     }
 
-    printf("Pass 1 Found A: (%.3f, %.3f), Initial RMS: %.3f m (Threshold: %.3f m) \n", A_temp.x, A_temp.y, rms_temp, OUTLIER_REJECTION_THRESHOLD_METERS); // Output pass 1 result
+    printf("Pass 1 Found A: (%+8.3f, %+8.3f), Initial RMS: %+8.3f m (Threshold: %+8.3f m) \n", A_temp.x, A_temp.y, rms_temp, OUTLIER_REJECTION_THRESHOLD_METERS); // Output pass 1 result
 
     // --- АНАЛИЗ ОСТАТКОВ И ОТБРАКОВКА (на основе A_temp) ---
     int rejected_count = 0; // Счетчик отброшенных
@@ -551,11 +551,11 @@ SPoint_Q TrilaterationSolver::find_A_by_mnk_robust()
         {
             all_circles[i].is_active = false; // Отбрасываем
             rejected_count++;
-            // printf("   -Beacon %d (R=%.3f): Rejected! Residual=%.3f m\n", i, current.r, residual); // Output rejection
+            // printf("   -Beacon %d (R=%+8.3f): Rejected! Residual=%+8.3f m\n", i, current.r, residual); // Output rejection
         }
         else
         {
-            // printf("   +Beacon %d (R=%.3f): Accepted. Residual=%.3f m\n", i, current.r, residual); // Output acceptance
+            // printf("   +Beacon %d (R=%+8.3f): Accepted. Residual=%+8.3f m\n", i, current.r, residual); // Output acceptance
         }
     }
 
@@ -579,7 +579,7 @@ SPoint_Q TrilaterationSolver::find_A_by_mnk_robust()
         }
         else
         {
-            printf("Pass 2 Found A (Final  WLS without %d outliers): (%.3f, %.3f)\n", rejected_count, A_final.x, A_final.y); // Output pass 2 result
+            printf("Pass 2 Found A (Final  WLS without %d outliers): (%+8.3f, %+8.3f)\n", rejected_count, A_final.x, A_final.y); // Output pass 2 result
             AQ.has_outliers = true;                                                                                          // Успешно отбросили выбросы
         }
     }
@@ -764,7 +764,7 @@ int main()
     // 2. Создание решателя
     TrilaterationSolver solver(A_prev); // Создаем объект решателя
     printf("--- INITIAL SETUP (THREE TEST SCENARIOS WITH 6 CORRECT ANGLES) ---\n"); // Output initial setup
-    printf("True Position: (%.3f, %.3f)\n", A_true.x, A_true.y); // Output true position
+    printf("True Position: (%+8.3f, %+8.3f)\n", A_true.x, A_true.y); // Output true position
     printf("------------------------------------------------------------------\n"); // Separator
 
     // ====================================================================

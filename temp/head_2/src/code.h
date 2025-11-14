@@ -163,7 +163,7 @@
 //     Command_msg.speed = speed;
 //     ROS_INFO_THROTTLE(3,"%s Command_msg.speed= %f",NN, Command_msg.speed);
     
-//     //ROS_INFO("newSpeed = %.3f", speed);
+//     //ROS_INFO("newSpeed = %+8.3f", speed);
 //     //INFO ROS_INFO("-------------- ");
 //     //-----------------------------------------------------------
 // }

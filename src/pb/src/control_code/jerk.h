@@ -107,7 +107,7 @@ void jlp_init(JerkLimitedProfile *p, const char *name, double v_start, double j_
     {
         if (p->enable_diagnostics)
         {
-            printf("[%s][FATAL] Недопустимые параметры: j_max=%.3f, a_max=%.3f, v_max=%.3f\n",
+            printf("[%s][FATAL] Недопустимые параметры: j_max=%+8.3f, a_max=%+8.3f, v_max=%+8.3f\n",
                    p->wheel_name, p->j_max, p->a_max, p->v_max);
         }
     }
@@ -515,7 +515,7 @@ void jlp_step(JerkLimitedProfile *p, double dt)
             const char *dir_str = (p->direction > 0) ? "разгон" : "тормож";
             const char *profile_str = p->has_cruise_phase ? "трапец" : "треуг";
 
-            printf("[%s] t= %.3f | v= %.6f | a= %.6f | j= %.6f | фаза=%s | сост=%s | цель= %.6f | dir=%s | проф=%s\n",
+            printf("[%s] t= %+8.3f | v= %.6f | a= %.6f | j= %.6f | фаза=%s | сост=%s | цель= %.6f | dir=%s | проф=%s\n",
                    p->wheel_name,
                    p->t_current,
                    p->v_current,
@@ -553,7 +553,7 @@ int main()
         printf("wheel\tt\tv\ta\tj\tphase\tstate\ttarget\tdirection\tprofile\n");
     }
 
-    printf("Лог включён. dt=%.3f с (100 Гц)\n", dt);
+    printf("Лог включён. dt=%+8.3f с (100 Гц)\n", dt);
     printf("================================================================================\n");
 
     while (steps < 600)  // 6 секунд симуляции

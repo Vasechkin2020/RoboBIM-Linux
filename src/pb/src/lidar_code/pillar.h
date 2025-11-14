@@ -96,7 +96,7 @@ SPose CPillar::getLocationmodeDist(SDistDirect *distDirect, SPose pose_, float a
 {
     ROS_INFO("+++ getLocationmodeDist IN x= %+8.3f y= %+8.3f th= %+8.3f", pose_.x, pose_.y, pose_.th);
     SPose poseReturn_;
-    // ROS_INFO("pose IN x= %.3f y= %.3f theta= %.3f ", pose_.x, pose_.y, pose_.theta);
+    // ROS_INFO("pose IN x= %+8.3f y= %+8.3f theta= %+8.3f ", pose_.x, pose_.y, pose_.theta);
     // ROS_INFO("---"); //
     float a1, a2;
     SCircle c1, c2;
@@ -162,12 +162,12 @@ float CPillar::getTheta(SPose poseLidar_, int mode_)
         // printf("pillar[i].status = %i \n",pillar[i].status);
         if (pillar[i].status) // Берем только сопоставленные столбы
         {
-            // ROS_INFO("    x_true = %.3f y_true = %.3f | poseLidar_.x = %.3f poseLidar_.y = %.3f", pillar[i].x_true, pillar[i].y_true, poseLidar_.x, poseLidar_.y); // Это вектор из нашего текущего положения на столб и угол на него от оси Y
+            // ROS_INFO("    x_true = %+8.3f y_true = %+8.3f | poseLidar_.x = %+8.3f poseLidar_.y = %+8.3f", pillar[i].x_true, pillar[i].y_true, poseLidar_.x, poseLidar_.y); // Это вектор из нашего текущего положения на столб и угол на него от оси Y
             float a = (pillar[i].x_true - poseLidar_.x);
             float b = (pillar[i].y_true - poseLidar_.y);
             float alfa = RAD2DEG(atan2(b, a));
-            // ROS_INFO("     a= %.3f b= %.3f  alfa= %.3f ", a, b, alfa); // Это вектор из нашего текущего положения на столб и угол на него от оси Y
-            // ROS_INFO("    alfa= %.3f ", alfa); // Это вектор из нашего текущего положения на столб и угол на него от оси Y
+            // ROS_INFO("     a= %+8.3f b= %+8.3f  alfa= %+8.3f ", a, b, alfa); // Это вектор из нашего текущего положения на столб и угол на него от оси Y
+            // ROS_INFO("    alfa= %+8.3f ", alfa); // Это вектор из нашего текущего положения на столб и угол на него от оси Y
             // (alfa < 0) ? alfa += 360 : alfa = alfa;
             // if (mode_ == 1)
             // {
@@ -184,9 +184,9 @@ float CPillar::getTheta(SPose poseLidar_, int mode_)
             alfa = -alfa; // Меняею знак так как там азимут сделан что положительный по часовой
             if (alfa < 0)
                 alfa = 360 + alfa; // Превращаем в 360 из +-180
-            // ROS_INFO("    alfa2= %.3f pillar[i].azimuth = %.3f ", alfa,pillar[i].azimuth); // Это вектор из нашего текущего положения на столб и угол на него от оси Y
+            // ROS_INFO("    alfa2= %+8.3f pillar[i].azimuth = %+8.3f ", alfa,pillar[i].azimuth); // Это вектор из нашего текущего положения на столб и угол на него от оси Y
             float delta = (alfa - pillar[i].azimuth);
-            // ROS_INFO("    delta= %.3f ", delta); // Это вектор из нашего текущего положения на столб и угол на него от оси Y
+            // ROS_INFO("    delta= %+8.3f ", delta); // Это вектор из нашего текущего положения на столб и угол на него от оси Y
             float delta2 = delta;
             if (delta < -180) // Если больше значит угол не с той стороны измерили
             {
@@ -196,10 +196,10 @@ float CPillar::getTheta(SPose poseLidar_, int mode_)
             {
                 delta2 = delta - 360;
             }
-            // ROS_INFO("    delta2= %.3f ", delta2); // Это вектор из нашего текущего положения на столб и угол на него от оси Y
+            // ROS_INFO("    delta2= %+8.3f ", delta2); // Это вектор из нашего текущего положения на столб и угол на него от оси Y
             gamma = gamma + delta2;
             count++; // Считаем на сколько отличаются углы, это значит на столько повернут нос лидара
-            // ROS_INFO("alfa360= %.3f azimuth= %.3f delta= %.3f delta2= %.3f ", pillar[i].azimuth, alfa, delta, delta2); //
+            // ROS_INFO("alfa360= %+8.3f azimuth= %+8.3f delta= %+8.3f delta2= %+8.3f ", pillar[i].azimuth, alfa, delta, delta2); //
         }
         else
         {
@@ -207,12 +207,12 @@ float CPillar::getTheta(SPose poseLidar_, int mode_)
         }
         // ROS_INFO("---"); //
     }
-    // ROS_INFO("gamma= %.3f count= %i ", gamma, count);
+    // ROS_INFO("gamma= %+8.3f count= %i ", gamma, count);
     float rez = 0;
     if (count != 0)
     {
         rez = (gamma / count); // Усредняем угол
-        // ROS_INFO("    getTheta= %.3f ", rez); // Это вектор из нашего текущего положения на столб и угол на него от оси Y
+        // ROS_INFO("    getTheta= %+8.3f ", rez); // Это вектор из нашего текущего положения на столб и угол на него от оси Y
     }
     return rez;
 }
@@ -245,14 +245,14 @@ SPose CPillar::getLocationmodeAngle(SDistDirect *distDirect, SPose pose_, float 
             if (a1 > 30 && a1 < 150)                // Проверка угла. Если вне диапазона то результаты не точные
             {
                 c = getCircle(p1, p2, a1); // Ищем 2 окружности по 2 точкам и углу между ними  https://lektsia.com/1x1ff.html https://studfile.net/preview/1853275/page:2/ https://vk.com/@theoryofsailing-navigaciya-glava-5-33-opredelenie-mesta-po-dvum-gorizontalny
-                ROS_INFO("    p1 x= %.3f y= %.3f | p2 x= %.3f y= %.3f | a1 = %.3f ", p1.x, p1.y, p2.x, p2.y, a1);
+                ROS_INFO("    p1 x= %+8.3f y= %+8.3f | p2 x= %+8.3f y= %+8.3f | a1 = %+8.3f ", p1.x, p1.y, p2.x, p2.y, a1);
                 c.c1.r = c.c1.r + 0.0; // Гипотеза что если увеличить радиус чуть-чуть по будет больше пересечений и лучше результат )
                 c.c2.r = c.c2.r + 0.0;
                 circleAnglePillar[count_circleAnglePillar] = c.c1; // Записываем 2 окружности
                 count_circleAnglePillar++;
                 circleAnglePillar[count_circleAnglePillar] = c.c2;
                 count_circleAnglePillar++;
-                ROS_INFO("    getCircle => c1 x= %.3f y= %.3f c1 = %.3f | c2 x= %.3f y= %.3f c2 = %.3f ", c.c1.x, c.c1.y, c.c1.r, c.c2.x, c.c2.y, c.c2.r);
+                ROS_INFO("    getCircle => c1 x= %+8.3f y= %+8.3f c1 = %+8.3f | c2 x= %+8.3f y= %+8.3f c2 = %+8.3f ", c.c1.x, c.c1.y, c.c1.r, c.c2.x, c.c2.y, c.c2.r);
             }
         }
     }
@@ -336,21 +336,21 @@ SPose CPillar::getLocationmodeAngle(SDistDirect *distDirect, SPose pose_, float 
     //     (a2 < 0) ? (a2 = a2 + 360) : a2 = a2; // Проверка и приведение если через ноль столбы
     //     c1 = getCircle(p1, p2, a1, p0);       // Ищем окружность по 2 точкам и углу между ними, для выбора окружности из 2 используем расстояние до предыдущей позиции https://lektsia.com/1x1ff.html https://studfile.net/preview/1853275/page:2/ https://vk.com/@theoryofsailing-navigaciya-glava-5-33-opredelenie-mesta-po-dvum-gorizontalny
     //     c2 = getCircle(p2, p3, a2, p0);       // Ищем окружность по 2 точкам и углу между ними, для выбора окружности из 2 используем расстояние до предыдущей позиции https://trans-service.org/ru.php?section=info&page=navi&subpage=opr_mest_observ_04
-    //     ROS_INFO("c1_x= %.3f  c1_y= %.3f  / c1_r= %.3f ", c1.x, c1.y, c1.r);
-    //     ROS_INFO("c2_x= %.3f  c2_y= %.3f  / c2_r= %.3f ", c2.x, c2.y, c2.r);
+    //     ROS_INFO("c1_x= %+8.3f  c1_y= %+8.3f  / c1_r= %+8.3f ", c1.x, c1.y, c1.r);
+    //     ROS_INFO("c2_x= %+8.3f  c2_y= %+8.3f  / c2_r= %+8.3f ", c2.x, c2.y, c2.r);
     //     SPoint point = getCrossing(c1, c2, p0);           // Считаем пересечение окружнойстей и в итоге получаем текущее положение по 2 окружностям
     //     poseLidar[i] = calculationPose(point, pillar[i]); // Заполняем позицию лидара посчитанную по 3 столбам начиная с заданного, расчитываем теоретический азимут исходя из позиции и первого столба в расчете
     // }
 
     // a1 = 52.9435;
 
-    // ROS_INFO("p1x= %.3f p1y= %.3f  / p2x= %.3f p2y= %.3f  / angle = %.3f / p0x= %.3f p0y= %.3f ", p1.x, p1.y, p2.x, p2.y, a1, p0.x, p0.y);
+    // ROS_INFO("p1x= %+8.3f p1y= %+8.3f  / p2x= %+8.3f p2y= %+8.3f  / angle = %+8.3f / p0x= %+8.3f p0y= %+8.3f ", p1.x, p1.y, p2.x, p2.y, a1, p0.x, p0.y);
 
     // a1 = pillar[1].azimuth - pillar[0].azimuth;
     // a2 = 66.8014;
 
     // SCircle c2 = getCircle(p2, p3, a2, pose_);
-    // ROS_INFO("c2x= %.3f  c2y= %.3f  / c2r= %.3f ", c2.x, c2.y, c2.r);
+    // ROS_INFO("c2x= %+8.3f  c2y= %+8.3f  / c2r= %+8.3f ", c2.x, c2.y, c2.r);
 
     // SPose ret;
     // ret.x = poseLidar.x;
@@ -388,7 +388,7 @@ SCircle2 CPillar::getCircle(SPoint p1_, SPoint p2_, float angle_) // На вхо
 // Функция возвращает одну из двух точек пеерсечения двух окружностей ближайшую к заданной
 int CPillar::getCrossing(SCircle c1_, SCircle c2_, SPose pose_, SPoint &pointX_, float len_) // https://algolist.manual.ru/maths/geom/intersect/circlecircle2d.php https://planetcalc.ru/8098/ https://paulbourke.net/geometry/circlesphere/
 {
-    // ROS_INFO("getCrossing IN c1 x= %.3f y= %.3f c1 = %.3f | c2 x= %.3f y= %.3f c2 = %.3f | pose_ x= %.3f y= %.3f th= %.3f | len= %.3f",
+    // ROS_INFO("getCrossing IN c1 x= %+8.3f y= %+8.3f c1 = %+8.3f | c2 x= %+8.3f y= %+8.3f c2 = %+8.3f | pose_ x= %+8.3f y= %+8.3f th= %+8.3f | len= %+8.3f",
     //  c1_.x, c1_.y, c1_.r, c2_.x, c2_.y, c2_.r, pose_.x, pose_.y, pose_.th, len_);
     int ret = 0;
     // Находим раастояние между центрами окружностей
@@ -405,7 +405,7 @@ int CPillar::getCrossing(SCircle c1_, SCircle c2_, SPose pose_, SPoint &pointX_,
     // Делаем проверку на расстояние между точками
     if ((d >= c1_.r + c2_.r) || (d < abs(c1_.r - c2_.r))) // Если расстояние меньше суммы радиусов то окружности не пересекаются Если равно то одна точка, нам не подходит/ Если меньше разницы то окружность внутри другой тоже не наш случай
     {
-        // ROS_WARN("Circles do not fit the conditions !!! d= %.3f  c1 x= %.3f y= %.3f c1 = %.3f | c2 x= %.3f y= %.3f c2 = %.3f ", d, c1_.x, c1_.y, c1_.r, c2_.x, c2_.y, c2_.r);
+        // ROS_WARN("Circles do not fit the conditions !!! d= %+8.3f  c1 x= %+8.3f y= %+8.3f c1 = %+8.3f | c2 x= %+8.3f y= %+8.3f c2 = %+8.3f ", d, c1_.x, c1_.y, c1_.r, c2_.x, c2_.y, c2_.r);
         ret = -1; // Ошибка по окружностям
         return ret;
     }
@@ -436,11 +436,11 @@ int CPillar::getCrossing(SCircle c1_, SCircle c2_, SPose pose_, SPoint &pointX_,
         ret = -2;      // Нет подходящих пересечений
         pointX_.x = 0; // Возвращаем нули
         pointX_.y = 0;
-        // ROS_INFO("Error getCrossing. vl3 > Len = %.3f m vl3 = %.3f", len_, vl3);
+        // ROS_INFO("Error getCrossing. vl3 > Len = %+8.3f m vl3 = %+8.3f", len_, vl3);
         return ret;
     }
     ret = 1; // Все хорошо
-    // ROS_INFO("OK getCrossing. vl3 > Len = %.3f m vl3 = %.3f | pointX_ x= %.3f y= %.3f \n", len_, vl3, pointX_.x, pointX_.y);
+    // ROS_INFO("OK getCrossing. vl3 > Len = %+8.3f m vl3 = %+8.3f | pointX_ x= %+8.3f y= %+8.3f \n", len_, vl3, pointX_.x, pointX_.y);
     return ret;
 }
 // Считаем отклонение азимута полученного с лидара от направления которое должно быть от итогового местоположения
@@ -463,7 +463,7 @@ void CPillar::parsingPillar(SPoint *pillar_)
         pillar[i].x_true = pillar_[i].x;
         pillar[i].y_true = pillar_[i].y;
         countPillar++;
-        ROS_INFO("    pillarTrue[ %i ].x= %.3f pillarTrue[ %i ].y= %.3f ", i, pillar[i].x_true, i, pillar[i].y_true);
+        ROS_INFO("    pillarTrue[ %i ].x= %+8.3f pillarTrue[ %i ].y= %+8.3f ", i, pillar[i].x_true, i, pillar[i].y_true);
     }
     ROS_INFO("--- parsingPillar");
 }
@@ -500,13 +500,13 @@ void CPillar::comparisonPillar()
                 pillar[i].x_lidar = pillarLidar[j].x_globalXY;
                 pillar[i].y_lidar = pillarLidar[j].y_globalXY;
                 sum_hypotenuse += hypotenuse;
-                ROS_INFO("    comparisonPillar %i =>  hypotenuse= %.3f distance_lidar= %.3f azimuth = %.3f ", i, hypotenuse, pillar[i].distance_lidar, pillar[i].azimuth);
+                ROS_INFO("    comparisonPillar %i =>  hypotenuse= %+8.3f distance_lidar= %+8.3f azimuth = %+8.3f ", i, hypotenuse, pillar[i].distance_lidar, pillar[i].azimuth);
                 countComparisonPillar++;
                 break;
             }
             else
             {
-                // ROS_WARN("!!! NO comparisonPillar %i hypotenuse= %.3f", i, hypotenuse);
+                // ROS_WARN("!!! NO comparisonPillar %i hypotenuse= %+8.3f", i, hypotenuse);
             }
         }
     }
@@ -556,11 +556,11 @@ void CPillar::searchPillars(const sensor_msgs::LaserScan::ConstPtr &scan, SPose 
             j++;
             // if (i < 5)
             // {
-            //     ROS_INFO("i = %i degree= %.3f distance= %.3f", i, degree, distance);
+            //     ROS_INFO("i = %i degree= %+8.3f distance= %+8.3f", i, degree, distance);
             // }
             // if (i > 3575)
             // {
-            //     ROS_INFO("i = %i degree= %.3f distance= %.3f", i, degree, distance);
+            //     ROS_INFO("i = %i degree= %+8.3f distance= %+8.3f", i, degree, distance);
             // }
         }
     }
@@ -588,8 +588,8 @@ void CPillar::searchPillars(const sensor_msgs::LaserScan::ConstPtr &scan, SPose 
             if (lidarData[i].distance - distance_pred > PEREHOD && flag) // Если дальность текущей точки больше предыдущей больше чем на 0,3 метра и ранее была найдена точка a
             {
                 b = i;
-                // ROS_INFO("Point a= %i degree= %.3f distance= %.3f ", a, lidarData[a].degree, lidarData[a].distance);
-                // ROS_INFO("Point b= %i degree= %.3f distance= %.3f \n", b, lidarData[b].degree, lidarData[b].distance);
+                // ROS_INFO("Point a= %i degree= %+8.3f distance= %+8.3f ", a, lidarData[a].degree, lidarData[a].distance);
+                // ROS_INFO("Point b= %i degree= %+8.3f distance= %+8.3f \n", b, lidarData[b].degree, lidarData[b].distance);
                 //  ROS_INFO("=====");
                 poiskPillar(a, b, lidarData, poseLidarMode_);
                 flag = false; // Сбрасываем флаг для следующего расчета
@@ -618,8 +618,8 @@ void CPillar::searchPillars(const sensor_msgs::LaserScan::ConstPtr &scan, SPose 
                 b = i;
                 // ROS_WARN("=== LAST PILLAR ==");
                 // ROS_WARN("=====");
-                // ROS_WARN("Point a= %i degree= %.3f distance= %.3f ", a, lidarData[a].degree, lidarData[a].distance);
-                // ROS_WARN("Point b= %i degree= %.3f distance= %.3f \n", b, lidarData[b].degree, lidarData[b].distance);
+                // ROS_WARN("Point a= %i degree= %+8.3f distance= %+8.3f ", a, lidarData[a].degree, lidarData[a].distance);
+                // ROS_WARN("Point b= %i degree= %+8.3f distance= %+8.3f \n", b, lidarData[b].degree, lidarData[b].distance);
                 // ROS_WARN("=====");
 
                 for (int i = a; i < j; i++) // Пишем в новый массив ту часть которая в конце старого массива.
@@ -729,20 +729,20 @@ void CPillar::poiskPillar(int a_, int b_, SLidar *lidarData, SPose &poseLidarMod
         // pillarLidar[countPillarLidar].x_globalXY = car_XY.x + g_poseLidar.modeDist.x;                                                                           // Прибавляем смещение. Это раастояние где находится машина относительно глобальной системы координат нуля. И получаем координаты в глобальной системе координат
         // pillarLidar[countPillarLidar].y_globalXY = car_XY.y + g_poseLidar.modeDist.y;
 
-        // ROS_INFO(" Pillar Angle a = %.3f Angle b= %.3f ", pillarLidar[countPillarLidar].angle_left, pillarLidar[countPillarLidar].angle_right);
-        // ROS_INFO(" Angle_middle= %.3f Angle_dist_min= %.3f angle_middle_min= %.3f Angle_azimuth= %.3f ", pillarLidar[countPillarLidar].angle_middle, pillarLidar[countPillarLidar].angle_dist_min, pillarLidar[countPillarLidar].angle_middle_min, pillarLidar[countPillarLidar].azimuth);
-        // printf(" Angle_middle= %.3f dist_min= %.3f middle_min= %.3f \n", pillarLidar[countPillarLidar].angle_middle, pillarLidar[countPillarLidar].angle_dist_min, pillarLidar[countPillarLidar].angle_middle_min);
-        // ROS_INFO(" dist_min= %.3f width= %.3f ", pillarLidar[countPillarLidar].dist_min, pillarLidar[countPillarLidar].width);
-        // ROS_INFO(" x_lidarXY= %.3f y_lidarXY= %.3f ", pillarLidar[countPillarLidar].x_lidarXY, pillarLidar[countPillarLidar].y_lidarXY);
-        // ROS_INFO(" x_globalXY= %.3f y_globalXY= %.3f ", pillarLidar[countPillarLidar].x_globalXY, pillarLidar[countPillarLidar].y_globalXY);
+        // ROS_INFO(" Pillar Angle a = %+8.3f Angle b= %+8.3f ", pillarLidar[countPillarLidar].angle_left, pillarLidar[countPillarLidar].angle_right);
+        // ROS_INFO(" Angle_middle= %+8.3f Angle_dist_min= %+8.3f angle_middle_min= %+8.3f Angle_azimuth= %+8.3f ", pillarLidar[countPillarLidar].angle_middle, pillarLidar[countPillarLidar].angle_dist_min, pillarLidar[countPillarLidar].angle_middle_min, pillarLidar[countPillarLidar].azimuth);
+        // printf(" Angle_middle= %+8.3f dist_min= %+8.3f middle_min= %+8.3f \n", pillarLidar[countPillarLidar].angle_middle, pillarLidar[countPillarLidar].angle_dist_min, pillarLidar[countPillarLidar].angle_middle_min);
+        // ROS_INFO(" dist_min= %+8.3f width= %+8.3f ", pillarLidar[countPillarLidar].dist_min, pillarLidar[countPillarLidar].width);
+        // ROS_INFO(" x_lidarXY= %+8.3f y_lidarXY= %+8.3f ", pillarLidar[countPillarLidar].x_lidarXY, pillarLidar[countPillarLidar].y_lidarXY);
+        // ROS_INFO(" x_globalXY= %+8.3f y_globalXY= %+8.3f ", pillarLidar[countPillarLidar].x_globalXY, pillarLidar[countPillarLidar].y_globalXY);
 
         // ROS_INFO("=====");
         countPillarLidar++;
     }
     else
     {
-        // ROS_INFO("BED width --->>> Pillar width= %.2f min_dist= %.2f max_dist= %.2f Angle = %.3f angle = %.3f", width, min_dist, max_dist, RAD2DEG(scan->angle_min + scan->angle_increment * a_), RAD2DEG(scan->angle_min + scan->angle_increment * (b_ - 1)));
-        // ROS_INFO("Angle = %.3f ", (RAD2DEG(scan->angle_min + scan->angle_increment * a_) + RAD2DEG(scan->angle_min + scan->angle_increment * (b_ - 1))) / 2);
+        // ROS_INFO("BED width --->>> Pillar width= %.2f min_dist= %.2f max_dist= %.2f Angle = %+8.3f angle = %+8.3f", width, min_dist, max_dist, RAD2DEG(scan->angle_min + scan->angle_increment * a_), RAD2DEG(scan->angle_min + scan->angle_increment * (b_ - 1)));
+        // ROS_INFO("Angle = %+8.3f ", (RAD2DEG(scan->angle_min + scan->angle_increment * a_) + RAD2DEG(scan->angle_min + scan->angle_increment * (b_ - 1))) / 2);
     }
 }
 

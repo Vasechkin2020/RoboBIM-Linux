@@ -126,7 +126,7 @@ int main(int argc, char **argv)
             //   ROS_INFO("--------------------------------------- flag_msgLidar ***");
             flag_msgLidar = false;
 
-            ROS_INFO("---- IN Data PoseLidar x = %.3f y = %.3f th = %.3f |  FindPillar = %i ComparePillar = %i CrossCircle = %i DistDirect = %i | azimut %.3f %.3f %.3f %.3f | dtStoping = %f msec",
+            ROS_INFO("---- IN Data PoseLidar x = %+8.3f y = %+8.3f th = %+8.3f |  FindPillar = %i ComparePillar = %i CrossCircle = %i DistDirect = %i | azimut %+8.3f %+8.3f %+8.3f %+8.3f | dtStoping = %f msec",
                      msg_lidar.modeFused.x, msg_lidar.modeFused.y, msg_lidar.modeFused.th,
                      msg_lidar.countFindPillar, msg_lidar.countComparePillar, msg_lidar.countCrossCircle, msg_lidar.countDistDirect,
                      msg_lidar.azimut[0], msg_lidar.azimut[1], msg_lidar.azimut[2], msg_lidar.azimut[3], dtStoping * 1000);
@@ -146,7 +146,7 @@ int main(int argc, char **argv)
                 aver.y = aver.y + msg_lidar.modeFused.y;
                 aver.th = aver.th + msg_lidar.modeFused.th;
                 averCount++;
-                // ROS_INFO("    averCount = %i aver.x = %.3f aver.x / averCount = %.3f", averCount, aver.x, aver.x / averCount);
+                // ROS_INFO("    averCount = %i aver.x = %+8.3f aver.x / averCount = %+8.3f", averCount, aver.x, aver.x / averCount);
 
                 if (dtStoping > 0.6) // Если прошло больше 0,5 секунды с момента остановки тогда комплементируем позицию.
                 {
@@ -161,9 +161,9 @@ int main(int argc, char **argv)
                     g_poseRotation.fused = convertBase2Rotation(g_poseBase.fused, "fused");
 
                     g_poseBase.mode = g_poseBase.fused;
-                    ROS_INFO("    complementation g_poseBase.mode x= %.3f y= %.3f theta= %.3f grad", g_poseBase.mode.x, g_poseBase.mode.y, g_poseBase.mode.th);
+                    ROS_INFO("    complementation g_poseBase.mode x= %+8.3f y= %+8.3f theta= %+8.3f grad", g_poseBase.mode.x, g_poseBase.mode.y, g_poseBase.mode.th);
 
-                    // ROS_INFO("    complementation g_poseRotation.mode0 x= %.3f y= %.3f theta= %.3f grad", g_poseRotation.mode0.x, g_poseRotation.mode0.y, RAD2DEG(g_poseRotation.mode0.th));
+                    // ROS_INFO("    complementation g_poseRotation.mode0 x= %+8.3f y= %+8.3f theta= %+8.3f grad", g_poseRotation.mode0.x, g_poseRotation.mode0.y, RAD2DEG(g_poseRotation.mode0.th));
                 }
             }
             //     // odomMode11.pose.x = kalman11.calcX(g_poseBase.mode1.x, odomMode11.pose.x); // Фильр Калмана для координаты Х. На вход подаем измеренное значение по MODE1  и вычисленное значение по модели ускорение на время плюс старое знаение

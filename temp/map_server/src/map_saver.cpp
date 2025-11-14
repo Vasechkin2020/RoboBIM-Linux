@@ -54,7 +54,7 @@ class MapGenerator
 
     void mapCallback(const nav_msgs::OccupancyGridConstPtr& map)
     {
-      ROS_INFO("Received a %d X %d map @ %.3f m/pix",
+      ROS_INFO("Received a %d X %d map @ %+8.3f m/pix",
                map->info.width,
                map->info.height,
                map->info.resolution);
@@ -69,7 +69,7 @@ class MapGenerator
         return;
       }
 
-      fprintf(out, "P5\n# CREATOR: map_saver.cpp %.3f m/pix\n%d %d\n255\n",
+      fprintf(out, "P5\n# CREATOR: map_saver.cpp %+8.3f m/pix\n%d %d\n255\n",
               map->info.resolution, map->info.width, map->info.height);
       for(unsigned int y = 0; y < map->info.height; y++) {
         for(unsigned int x = 0; x < map->info.width; x++) {

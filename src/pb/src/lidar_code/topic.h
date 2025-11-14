@@ -42,7 +42,7 @@ public:
         float theta = DEG2RAD(startPose2d.th); //
         geometry_msgs::Quaternion quat = tf::createQuaternionMsgFromYaw(theta);
         startPose_msg.pose.orientation = quat;
-        // ROS_INFO("startPose_msg Quaternion x =%.3f y =%.3f z =%.3f w =%.3f theta = %.3f", quat.x, quat.y, quat.z, quat.w, theta);
+        // ROS_INFO("startPose_msg Quaternion x =%+8.3f y =%+8.3f z =%+8.3f w =%+8.3f theta = %+8.3f", quat.x, quat.y, quat.z, quat.w, theta);
 
         pub_StartPose.publish(startPose_msg); // Публикация полученных данных
 
@@ -126,7 +126,7 @@ public:
                 data.theta_true2 = pillar_.pillar[i].theta_true2;
                 data.x_lidar = pillar_.pillar[i].x_lidar;
                 data.y_lidar = pillar_.pillar[i].y_lidar;
-                // ROS_INFO("Status= %i azimuth= %.3f",pillar_out_msg.data[i].status,pillar_out_msg.data[i].azimuth);
+                // ROS_INFO("Status= %i azimuth= %+8.3f",pillar_out_msg.data[i].status,pillar_out_msg.data[i].azimuth);
                 pillarAll_msg.data.push_back(data);
             }
             pub_PillarAll.publish(pillarAll_msg); // Публикуем информацию по столбам

@@ -159,13 +159,13 @@ void CLaser::calcAnglePillarForLaser(CPillar::SPillar *pillar_, SPose &poseLidar
     {
         lenPillar[i] = sqrt(pow(pointPillarInLidar[i].x, 2) + pow(pointPillarInLidar[i].y, 2)); // Теорема Пифагора // Находим длинну до столба от центра системы координат
         angPillar[i] = RAD2DEG(atan2(pointPillarInLidar[i].y, pointPillarInLidar[i].x));        // Находим его и правим его смотря в какой чатверти круга он находится
-        // ROS_INFO("    angPillar[%i] = %.3f x = %.3f y = %.3f len = %.3f", i, angPillar[i], pointPillarInLidar[i].x, pointPillarInLidar[i].y, lenPillar[i]);
+        // ROS_INFO("    angPillar[%i] = %+8.3f x = %+8.3f y = %+8.3f len = %+8.3f", i, angPillar[i], pointPillarInLidar[i].x, pointPillarInLidar[i].y, lenPillar[i]);
 
         g_poseBase.azimut[i] = angPillar[i];
 
         lenMotor[i] = sqrt(pow(_poseLaser[i].x, 2) + pow(_poseLaser[i].y, 2)); // Теорема Пифагора // Находим длинну до мотора от центра системы координат
         angMotor[i] = RAD2DEG(atan2(_poseLaser[i].y, _poseLaser[i].x));        // Находим его и правим его смотря в какой чатверти круга он находится
-        // ROS_INFO("    angMotor[%i]  = %.3f x = %.3f y = %.3f len = %.3f \n", i, angMotor[i], _poseLaser[i].x, _poseLaser[i].y, lenMotor[i]);
+        // ROS_INFO("    angMotor[%i]  = %+8.3f x = %+8.3f y = %+8.3f len = %+8.3f \n", i, angMotor[i], _poseLaser[i].x, _poseLaser[i].y, lenMotor[i]);
     }
     //************** Функция расчета углов на моторы. Используется как проверка основного расчета. По формуле Максима Вадима.
     for (int i = 0; i < 4; i++) // Перебираем моторы
@@ -173,19 +173,19 @@ void CLaser::calcAnglePillarForLaser(CPillar::SPillar *pillar_, SPose &poseLidar
         for (int j = 0; j < 4; j++) // Перебираем столбы
         {
             float alfa = angPillar[j] - angMotor[i];
-            // ROS_INFO("    alfa = %.3f", alfa);
+            // ROS_INFO("    alfa = %+8.3f", alfa);
             float ang = DEG2RAD(alfa);
 
             float ll = lenPillar[j];
             float ee1 = ll - 0.09 * cos(ang);
             float ee2 = 0.09 * sin(ang);
 
-            // ROS_INFO("    ll = %.3f ee1 = %.3f ee2 = %.3f ang = %.3f", ll, ee1, ee2, ang);
+            // ROS_INFO("    ll = %+8.3f ee1 = %+8.3f ee2 = %+8.3f ang = %+8.3f", ll, ee1, ee2, ang);
             float cc = atan2(ee2, ee1);
             float mm = RAD2DEG(cc);
             // float cc = RAD2DEG(atan((lenPillar[i] - 0.09 * cos(ang)) / (0.09 * sin(ang))));
-            // ROS_INFO("    [%i] ang = %.3f cc = %.3f rad   %.3f gradus", i, ang, cc, mm);
-            // ROS_INFO("    [%i] alfa = %.3f    cc = %.3f rad       %.3f gradus", i, alfa, cc, mm);
+            // ROS_INFO("    [%i] ang = %+8.3f cc = %+8.3f rad   %+8.3f gradus", i, ang, cc, mm);
+            // ROS_INFO("    [%i] alfa = %+8.3f    cc = %+8.3f rad       %+8.3f gradus", i, alfa, cc, mm);
             float itog;
             float itog2;
             itog = alfa + mm;
@@ -196,7 +196,7 @@ void CLaser::calcAnglePillarForLaser(CPillar::SPillar *pillar_, SPose &poseLidar
             else
                 itog2 = 90 - itog;
             //ROS_INFO("    ITOG[%i] = %8.3f                         ITOG2 = %8.3f ", i, itog, itog2);
-            // ROS_INFO("    Var1= %.3f Var2= %.3f",90-itog, 90+ itog);
+            // ROS_INFO("    Var1= %+8.3f Var2= %+8.3f",90-itog, 90+ itog);
         }
         // ROS_INFO(" ");
     }
@@ -308,7 +308,7 @@ void CLaser::calcAnglePillarForLaser(CPillar::SPillar *pillar_, SPose &poseLidar
     //     float alfa = angleThetaFromPoint(pointPillarInLidar[i]); // Получаем угол в Лидарной системе
     //     (alfa < 0) ? alfa += 360 : alfa = alfa;
     //     anglePillarInLidar[i] = alfa;
-    //     ROS_INFO("anglePillarInLidar= %.3f ", alfa);
+    //     ROS_INFO("anglePillarInLidar= %+8.3f ", alfa);
 
     //     SPoint point;
     //     // Распределяем какой лазер будет светить на этот столб исходя из ранее посчитанной таблицы сопоставлений столбов и лазеров
