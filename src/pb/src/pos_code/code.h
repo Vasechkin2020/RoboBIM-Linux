@@ -215,7 +215,7 @@ void startPosition(geometry_msgs::Pose2D &startPose2d_)
 
 	g_poseRotation.fused = convertBase2Rotation(g_poseBase.fused, "fused"); // Конвентируем координаты заданные для точки в системе Base в систему Rotation
 	g_poseRotation.odom = g_poseRotation.fused;								// Первоначальная установка позиции
-	ROS_INFO("    start g_poseRotation.fused x= %.3f y= %.3f theta= %.3f ", g_poseRotation.fused.x, g_poseRotation.fused.y, g_poseRotation.fused.th);
+	ROS_INFO("    start g_poseRotation.fused x= %+8.3f y= %+8.3f theta= %+8.3f ", g_poseRotation.fused.x, g_poseRotation.fused.y, g_poseRotation.fused.th);
 
 	ROS_INFO("--- startPosition");
 }
@@ -435,9 +435,9 @@ STwistDt calcTwistFromWheel(pb_msgs::SSetSpeed msg_Speed_)
 	msg_LinAngVel.track.wheel = track + (ret.vx * dt);
 	track = msg_LinAngVel.track.wheel;
 
-	static double yaw = 0; // Угол на который повернули
-	msg_LinAngVel.yaw.wheel = normalize_angle (yaw + (ret.vth * dt)); // Расчет угла с нормализацией угла от пи до -пи
-	yaw = msg_LinAngVel.yaw.wheel;
+	static double yaw = 0;						 // Угол на который повернули
+	yaw = normalize_angle(yaw + (ret.vth * dt)); // Расчет угла с нормализацией угла от пи до -пи
+	msg_LinAngVel.yaw.wheel = RAD2DEG(yaw);		 // Перевод в градусы перед публикацией
 
 	ROS_INFO_THROTTLE(RATE_OUTPUT, "    Twist Wheel vx= %.3f vy= %.3f vth= %.3f w= %.3f gradus/sec  %.3f rad/sec", ret.vx, ret.vy, RAD2DEG(ret.vth), ret.vth);
 
@@ -635,17 +635,17 @@ STwistDt calcTwistFromImu(pb_msgs::Struct_Driver2Data msg_)
 	static double raw_accel = 0;
 	raw_accel = raw_accel * ka + (msg_.icm.accel.y * (1 - ka)); // Сырые данные с фильтрацией Тут или ось Х или У. Смотря как установлен датчик
 	msg_LinAngVel.raw_accel = raw_accel;						//
-	real_accel = raw_accel - g_offsetX; // Применяем bias
-	msg_LinAngVel.real_accel = real_accel; // Пишем в переменную для опубликования в топик
-	ret.vx = ret.vx + (real_accel * dt); // Считаем линейную скорость. Берем упрощенно данные акселерометра, подразумевая что гравитация у нас всегда вниз, поскольку датчик закреплен горизонтально и жестко к корпусу.
+	real_accel = raw_accel - g_offsetX;							// Применяем bias
+	msg_LinAngVel.real_accel = real_accel;						// Пишем в переменную для опубликования в топик
+	ret.vx = ret.vx + (real_accel * dt);						// Считаем линейную скорость. Берем упрощенно данные акселерометра, подразумевая что гравитация у нас всегда вниз, поскольку датчик закреплен горизонтально и жестко к корпусу.
 
 	float kg = 0.5;
 	static double raw_gyro = 0;
-	raw_gyro = raw_gyro * kg + (DEG2RAD(msg_.icm.gyro.z) * (1 - kg)); // Сырые данные с фильтрацией  
+	raw_gyro = raw_gyro * kg + (DEG2RAD(msg_.icm.gyro.z) * (1 - kg)); // Сырые данные с фильтрацией
 	msg_LinAngVel.raw_gyro = raw_gyro;
-	real_gyro = raw_gyro - g_offsetYaw; 
+	real_gyro = raw_gyro - g_offsetYaw;
 	msg_LinAngVel.real_gyro = real_gyro;
-	ret.vth = real_gyro;				 // Берем угловую скорость готовую с показаний датчика
+	ret.vth = real_gyro; // Берем угловую скорость готовую с показаний датчика
 
 	ROS_INFO_THROTTLE(RATE_OUTPUT, "    Twist IMU dt = %.3f | vx= %.3f vth= %.3f gradus/sec %.6f rad/sec | accel %.6f ", dt, ret.vx, RAD2DEG(ret.vth), ret.vth, msg_.icm.accel.y);
 
@@ -661,7 +661,7 @@ STwistDt calcTwistFromImu(pb_msgs::Struct_Driver2Data msg_)
 
 	if (abs(accelNow) < 0.05) // Если текущее ускорение посчитанное с колес меньше заданного то можно считать офсет по оси Х. Значит или стоим или двигаемся достаточно равномерно
 	{
-		g_offsetX = autoOffsetX(raw_accel, 64);	   // Калибровка bias (во время остановки или равномерного движения).
+		g_offsetX = autoOffsetX(raw_accel, 64); // Калибровка bias (во время остановки или равномерного движения).
 		ROS_INFO("    speedNow = %f accelNow = %f offsetX= %+8.6f offsetYaw= %+8.6f ", speedNow, accelNow, g_offsetX, g_offsetYaw);
 	}
 	msg_LinAngVel.offsetX = g_offsetX; // Вывод в топик что насчитали
@@ -670,8 +670,8 @@ STwistDt calcTwistFromImu(pb_msgs::Struct_Driver2Data msg_)
 	// Проверяем условие остановки (например, от одометрии). Если стоим то неважно что выше насчитали.Все обнуляем.
 	if (dtStoping >= 0.05) // Если стоим уже больше 0,1 секунды то
 	{
-		ret.vx = 0;	 // СБРАСЫВАЕМ ВСЕ СКОРОСТи В НОЛЬ Так как стоим на месте и никаких линейных скоростей быть не может. Стоим на месте.
-		ret.vth = 0; // СБРАСЫВАЕМ ВСЕ СКОРОСТи В НОЛЬ Так как стоим на месте и никаких линейных скоростей быть не может. Стоим на месте.
+		ret.vx = 0;								   // СБРАСЫВАЕМ ВСЕ СКОРОСТи В НОЛЬ Так как стоим на месте и никаких линейных скоростей быть не может. Стоим на месте.
+		ret.vth = 0;							   // СБРАСЫВАЕМ ВСЕ СКОРОСТи В НОЛЬ Так как стоим на месте и никаких линейных скоростей быть не может. Стоим на месте.
 		g_offsetYaw = autoOffsetYaw(raw_gyro, 64); // Калибровка bias (ТОЛЬКО во время остановки ).
 		ROS_INFO("    speed = 0");
 	}
@@ -684,9 +684,9 @@ STwistDt calcTwistFromImu(pb_msgs::Struct_Driver2Data msg_)
 	msg_LinAngVel.track.imu = track + (ret.vx * dt);
 	track = msg_LinAngVel.track.imu;
 
-	static double yaw = 0; // Угол на который повернули
-	msg_LinAngVel.yaw.imu = normalize_angle (yaw + (ret.vth * dt)); // Расчет угла с нормализацией угла от пи до -пи
-	yaw = msg_LinAngVel.yaw.imu;
+	static double yaw = 0;						 // Угол на который повернули
+	yaw = normalize_angle(yaw + (ret.vth * dt)); // Расчет угла с нормализацией угла от пи до -пи
+	msg_LinAngVel.yaw.imu = RAD2DEG(yaw);		 // Перевод в градусы перед публикацией
 
 	return ret;
 }
@@ -878,9 +878,10 @@ STwistDt calcTwistFused(STwistDt odomTwist_, STwistDt imuTwist_)
 	msg_LinAngVel.track.fused = track + (ret.vx * dt);
 	track = msg_LinAngVel.track.fused;
 
-	static double yaw = 0; // Угол на который повернули
-	msg_LinAngVel.yaw.fused= normalize_angle (yaw + (ret.vth * dt)); // Расчет угла с нормализацией угла от пи до -пи
-	yaw = msg_LinAngVel.yaw.fused;
+	static double yaw = 0;						 // Угол на который повернули
+	yaw = normalize_angle(yaw + (ret.vth * dt)); // Расчет угла с нормализацией угла от пи до -пи
+	msg_LinAngVel.yaw.fused = RAD2DEG(yaw);		 // Перевод в градусы перед публикацией
+
 	return ret;
 }
 
@@ -1341,7 +1342,7 @@ void readParam()
 	ROS_INFO("+++ readParam");
 	ros::NodeHandle nh_private("~");
 	// Имя можно с палкой или без, смотря как в лаунч файле параметры обявлены. связано с видимостью глобальной или локальной. относительным поиском переменной как сказал Максим
-    ros::NodeHandle nh_global; // <--- Используется для доступа к /pb_config/ // Создаем ГЛОБАЛЬНЫЙ обработчик, который ищет параметры, начиная с корня (/).
+	ros::NodeHandle nh_global; // <--- Используется для доступа к /pb_config/ // Создаем ГЛОБАЛЬНЫЙ обработчик, который ищет параметры, начиная с корня (/).
 
 	//<!-- Указываем стартовую позицию робота. В какое место поставили и куда направили-->
 	// if (!nh_private.getParam("x", msg_startPose2d.x))
@@ -1375,8 +1376,6 @@ void readParam()
 	// 	msg_pillar.pillar[3].x = 3.11;
 	// if (!nh_private.getParam("y3", msg_pillar.pillar[3].y))
 	// 	msg_pillar.pillar[3].y = 3.11;
-
-
 
 	// printf("\n--- Считывание смещений массива лазеров ---\n"); // Разделитель секции...
 	nh_global.param<float>("/pb_config/pillars/pillar_0_x", msg_pillar.pillar[0].x, 0.11); // Если не найдено, laser_b0 = -0.0001

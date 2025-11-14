@@ -24,10 +24,9 @@ int main(int argc, char **argv) // Главная функция програм�
     ros::Subscriber subscriber_Lidar = nh.subscribe<sensor_msgs::LaserScan>("/scan", 1000, callback_Lidar); // Подписка на данные лидара
     ros::Duration(1).sleep();                                                                               // Подождем пока все обьявится и инициализируется внутри ROS
 
-    
-    nh.param<double>("/pb_config/lidar/bias", lidar_bias, 0.0 ); // Считываем bias, по умолчанию 0
-	ROS_INFO("--- Start node with parametrs: /pb_config/lidar/bias = %+8.3f deg", lidar_bias);
-    ros::Duration(1).sleep();                                                                               // Подождем пока все обьявится и инициализируется внутри ROS
+    nh.param<double>("/pb_config/lidar/bias", lidar_bias, 0.0); // Считываем bias, по умолчанию 0
+    ROS_INFO("--- Start node with parametrs: /pb_config/lidar/bias = %+8.3f deg", lidar_bias);
+    ros::Duration(1).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
 
     CPillar pillar;          // Обьявляем экземпляр класса в нем вся обработка и обсчет столбов
     PillarDetector detector; // Создаём объект детектора столбов
@@ -43,9 +42,13 @@ int main(int argc, char **argv) // Главная функция програм�
     SPoint startPillar[4];
     readParam(startPose, startPillar); // Считывание переменных параметров из лаунч файла при запуске. Там офсеты и режимы работы
 
-    g_poseLidar.modeFused = startPose;
     g_poseLidar.modeDist = startPose;
     g_poseLidar.modeAngle = startPose;
+    g_poseLidar.modeFused = startPose;
+    g_poseLidar.mnkDist = startPose;
+    g_poseLidar.mnkAngle = startPose;
+    g_poseLidar.mnkFused = startPose;
+
     pillar.parsingPillar(startPillar); // Разбираем пришедшие данные Заполняем массив правильных координат.
 
     detector.setPoseLidar(startPose.x, startPose.y, startPose.th);   // Установка начальной позиции
@@ -82,7 +85,7 @@ int main(int argc, char **argv) // Главная функция програм�
             flag_msgLidar = false;
             // ROS_INFO("=== %.3f %.3f | %.3f %.3f | %.3f %.3f",g_poseLidar.modeDist.x, g_poseLidar.mode.x, g_poseLidar.modeDist.y, g_poseLidar.mode.y, g_poseLidar.modeDist.th, g_poseLidar.mode.th);
             pillar.searchPillars(msg_lidar, g_poseLidar.modeDist); // Разбираем пришедшие данные и ищем там столбы.
-            pillar.comparisonPillar();                              // Сопоставляем столбы
+            pillar.comparisonPillar();                             // Сопоставляем столбы
             // topic.publicationPillarAll(pillar);                // Публикуем всю обобщенную информацию по столб
 
             detector.scanCallback(msg_lidar, g_poseLidar.modeDist);
@@ -91,9 +94,9 @@ int main(int argc, char **argv) // Главная функция програм�
             // topic.visualizeLidar();
 
             calcDistDirect(distDirect, pillar, detector); // Обьединение сопоставленных столбов в итоговую таблицу. Дальше по этой таблице все считается
-
-            g_poseLidar.modeDist = pillar.getLocationmodeDist(distDirect, g_poseLidar.modeFused, 0.16);   // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
-            g_poseLidar.modeAngle = pillar.getLocationmodeAngle(distDirect, g_poseLidar.modeFused, 0.16); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
+            // Сначала по углу а потом пересчитываем по растоянию инача ужу входный dist другой становиться
+            g_poseLidar.modeAngle = pillar.getLocationmodeAngle(distDirect, g_poseLidar.modeDist, 0.16); // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
+            g_poseLidar.modeDist = pillar.getLocationmodeDist(distDirect, g_poseLidar.modeDist, 0.16);   // Считаем текущие координаты по столбам На вход старая позиция лидара, на выходе новая позиция лидара
 
             // if (isnan(g_poseLidar.modeAngle.x) || isnan(g_poseLidar.modeAngle.y) || isnan(g_poseLidar.modeAngle.th))
             // {
@@ -103,7 +106,6 @@ int main(int argc, char **argv) // Главная функция програм�
             g_poseLidar.modeFused.x = g_poseLidar.modeDist.x * 0.8 + g_poseLidar.modeAngle.x * 0.2 + g_poseLidar.modeClaster.x * 0.0; // Легкая комплементация двух методов расчета. Второй сильно волатильный
             g_poseLidar.modeFused.y = g_poseLidar.modeDist.y * 0.8 + g_poseLidar.modeAngle.y * 0.2 + g_poseLidar.modeClaster.y * 0.0;
             // g_poseLidar.mode.th = g_poseLidar.modeDist.th * 0.4 + g_poseLidar.modeAngle.th * 0.3 + g_poseLidar.modeClaster.th * 0.3;
-
 
             try
             {
@@ -126,6 +128,9 @@ int main(int argc, char **argv) // Главная функция програм�
                 SPoint_Q AQ_found;
                 SPoint_Q BQ_found;
                 SPoint_Q CQ_found;
+                SPoint point1;
+                SPoint point2;
+                /*
                 //-----------------------------------------------------------------------------------------------------------------------------
                 printf("======================================== 1 ==========================================\n");
                 solver.clear_circles(); // <<< Очистка данных перед расчетом!
@@ -153,8 +158,6 @@ int main(int argc, char **argv) // Главная функция програм�
                 printf("======================================== 2 ==========================================\n");
                 //-----------------------------------------------------------------------------------------------------------------------------
                 solver.clear_circles(); // <<< Очистка данных перед расчетом!
-                SPoint point1;
-                SPoint point2;
                 count_circle = 0;           // Обнуляем счетчик
                 for (int i = 0; i < 3; i++) //        Перебираем столбы, и для каждой пары формируем окружность
                 {
@@ -182,6 +185,7 @@ int main(int argc, char **argv) // Главная функция програм�
                     g_poseLidar.quality_mknAngle = BQ_found.quality;
                 }
                 //-----------------------------------------------------------------------------------------------------------------------------
+                */
                 printf("======================================== 3 ==========================================\n");
                 count_circle = 0;       // Обнуляем счетчик
                 solver.clear_circles(); // <<< Очистка данных перед расчетом!
@@ -220,15 +224,10 @@ int main(int argc, char **argv) // Главная функция програм�
                 solver.set_A_prev(CQ_found.A);            // ТОчка опорная для следующего расчета
 
                 //-----------------------------------------------------------------------------------------------------------------------------
-                static SPoint_Q mnk_filter;
                 float k_mnk = 0.5; // Коефициент для фильтра
-                mnk_filter.A.x = mnk_filter.A.x * k_mnk + CQ_found.A.x * (1 - k_mnk);
-                mnk_filter.A.y = mnk_filter.A.y * k_mnk + CQ_found.A.y * (1 - k_mnk);
-                mnk_filter.quality = mnk_filter.quality * k_mnk + CQ_found.quality * (1 - k_mnk);
-
-                g_poseLidar.mnkFused.x = mnk_filter.A.x; // ДЛя вывода отфильтрованные значения
-                g_poseLidar.mnkFused.y = mnk_filter.A.y;
-                g_poseLidar.quality_mknFused = mnk_filter.quality;
+                g_poseLidar.mnkFused.x = g_poseLidar.mnkFused.x * k_mnk + CQ_found.A.x * (1 - k_mnk);
+                g_poseLidar.mnkFused.y = g_poseLidar.mnkFused.y * k_mnk + CQ_found.A.y * (1 - k_mnk);
+                g_poseLidar.quality_mknFused = g_poseLidar.quality_mknFused * k_mnk + CQ_found.quality * (1 - k_mnk);
                 printf("======================================== 4  ==========================================\n");
 
                 std::vector<SPoint> orientation_beacons; // Вектор координат маяков
@@ -250,9 +249,9 @@ int main(int argc, char **argv) // Главная функция програм�
                         if (convert < -180)
                             convert = 360 + convert;
 
-                        lidar_angles_deg.push_back(convert);                                    // Добавляем направление на маяк
-                        
-                        // printf("=== direction = %+8.3f  convert = %+8.3f \n", distDirect[i].direction,convert);
+                        lidar_angles_deg.push_back(convert); // Добавляем направление на маяк
+
+                        printf("=== direction = %+8.3f  convert = %+8.3f \n", distDirect[i].direction, convert);
                     }
                 }
                 // 1. Вызываем метод расчета ориентации, используя найденную позицию
@@ -264,14 +263,16 @@ int main(int argc, char **argv) // Главная функция програм�
                 // calculated_orientation = normalize_and_invert_sign_deg(calculated_orientation); // Исправление что плюс по часовой Подгонка как уж есть
                 // 2. Вывод результата
                 // printf("\n--- SUMMARY TEST 4 (ORIENTATION) ---\n");                         // Output summary 4
-                printf("    SUMMARY TEST 4 (ORIENTATION)Position A used: (%+8.3f, %+8.3f)\n", CQ_found.A.x, CQ_found.A.y);  // Output result A
-                printf("    Calculated Orientation Psi: %+8.3f deg\n", calculated_orientation); // Output calculated orientation
+                printf("    SUMMARY TEST 4 (ORIENTATION) Position A =>: (%+8.3f, %+8.3f)\n", CQ_found.A.x, CQ_found.A.y); // Output result A
+                printf("    Calculated Orientation Psi: %+8.3f deg\n", calculated_orientation);                           // Output calculated orientation
                 // printf("--------------------------------------\n");                         // Separator
-                g_poseLidar.mnkFused.th = g_poseLidar.mnkFused.th * k_mnk + calculated_orientation * (1 - k_mnk);
+                // g_poseLidar.mnkFused.th = g_poseLidar.mnkFused.th * k_mnk + calculated_orientation * (1 - k_mnk);
+                g_poseLidar.mnkFused.th = solver.complementary_filter_angle_deg(g_poseLidar.mnkFused.th, calculated_orientation, k_mnk);
 
-                g_poseLidar.mnkDist.th = solver.get_lidar_orientation(AQ_found.A, orientation_beacons, lidar_angles_deg); // Вывод углов без фильтрации
-                g_poseLidar.mnkAngle.th = solver.get_lidar_orientation(BQ_found.A, orientation_beacons, lidar_angles_deg);
+                // g_poseLidar.mnkDist.th = solver.get_lidar_orientation(AQ_found.A, orientation_beacons, lidar_angles_deg); // Вывод углов без фильтрации
+                // g_poseLidar.mnkAngle.th = solver.get_lidar_orientation(BQ_found.A, orientation_beacons, lidar_angles_deg);
 
+                ROS_WARN("    mnkFused x= %+8.3f y= %+8.3f th= %+8.3f ", g_poseLidar.mnkFused.x, g_poseLidar.mnkFused.y, g_poseLidar.mnkFused.th);
                 printf("======================================== END  ==========================================\n");
             }
             catch (const std::invalid_argument &e)
@@ -298,9 +299,9 @@ int main(int argc, char **argv) // Главная функция програм�
             // g_poseLidar.mode.th = angleSum3;
             // ROS_INFO("    angleSum = %.3f angleSum2 = %.3f angleSum3 = %.3f ", angleSum, angleSum2, angleSum3);
 
-            g_poseLidar.modeFused.th = complementAngle(g_poseLidar.modeDist.th, g_poseLidar.modeAngle.th, g_poseLidar.modeClaster.th, 0.8, 0.2, 0.0, 0.0); // Функйия комплементации 3 углов с разными весвми и добавление поправки offset по лидару
+            // g_poseLidar.modeFused.th = complementAngle(g_poseLidar.modeDist.th, g_poseLidar.modeAngle.th, g_poseLidar.modeClaster.th, 0.8, 0.2, 0.0, 0.0); // Функйия комплементации 3 углов с разными весвми и добавление поправки offset по лидару
 
-            ROS_WARN("    g_poseLidar.modeFused.x = %.3f th = %.3f th = %.3f ", g_poseLidar.modeFused.x, g_poseLidar.modeFused.y, g_poseLidar.modeFused.th);
+            // ROS_WARN("    g_poseLidar.modeFused.x = %.3f th = %.3f th = %.3f ", g_poseLidar.modeFused.x, g_poseLidar.modeFused.y, g_poseLidar.modeFused.th);
 
             // g_poseLidar.mode.th = g_poseLidar.mode.th * COMPLEMENTARN + ((g_poseLidar.modeDist.th + g_poseLidar.modeAngle.th) / 2.0) * (1 - COMPLEMENTARN);
 

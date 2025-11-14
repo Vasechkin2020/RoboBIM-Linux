@@ -98,7 +98,7 @@ public:
     // Функция обработки данных от лидара
     void scanCallback(const sensor_msgs::LaserScan::ConstPtr &scan, SPose poseLidar_)
     {
-        ROS_INFO("+++ pillarDetector scanCallback");
+        ROS_INFO("+++ pillarDetector scanCallback IN x= %+8.3f y= %+8.3f th= %+8.3f", poseLidar_.x, poseLidar_.y, poseLidar_.th);
         start_time = ros::Time::now(); // Записываем начальное время
         // ROS_INFO("+++ scanCallback");
         std::vector<PointXY> points; // Создаём пустой список точек
@@ -130,7 +130,7 @@ public:
         lidar_y = poseLidar_.y;
         lidar_theta = DEG2RAD(poseLidar_.th) + M_PI;
         // ROS_INFO("    Lidar theta START = %.3f rad (%.3f deg)", lidar_theta, RAD2DEG(lidar_theta));
-        ROS_INFO("    pillarDetector scanCallback -> IN PoseLidar x= %.3f y= %.3f  th= %.4f (rad)  th= %.3f (grad)", lidar_x, lidar_y, lidar_theta, RAD2DEG(lidar_theta));
+        ROS_INFO("    IN PoseLidar x= %.3f y= %.3f  th= %.4f (rad)  th= %.3f (grad)", lidar_x, lidar_y, lidar_theta, RAD2DEG(lidar_theta));
 
         findPillars();  // Ищем столбы в этих кластерах
         matchPillars(); // // Сопоставляем столбы с известными координатами и вычисляем позицию и ориентацию лидара
@@ -536,7 +536,7 @@ private:
                 g_poseLidar.modeClaster.y = lidar_y + lidar_yY;
                 g_poseLidar.modeClaster.th = RAD2DEG(lidar_theta_T);
 
-                ROS_WARN("    modeClaster pose.x= %.3f y= %.3f theta= %.3f ", lidar_x + lidar_xX, lidar_y + lidar_yY, RAD2DEG(lidar_theta_T));
+                ROS_WARN("    modeClaster pose.x= %+8.3f y= %+8.3f theta= %+8.3f ", lidar_x + lidar_xX, lidar_y + lidar_yY, RAD2DEG(lidar_theta_T));
                 // ROS_INFO("    Lidar theta END 22 = %.3f rad (%.3f deg)", lidar_theta_T, RAD2DEG(lidar_theta_T));
 
                 // lidar_x += lidar_xX;

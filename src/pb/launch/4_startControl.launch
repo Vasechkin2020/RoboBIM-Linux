@@ -5,7 +5,8 @@
     <!-- <param name="verComand" type="int" value="$(arg verComand)" /> -->
     <!-- Параметр для пути к файлу G-code (в приватном пространстве ~gcode_file, относительно пакета) -->
     <!--param name="gcode_file" value="$(find pb)/gcode/my_custom_gcode.gcode" /-->
-    <param name="gcode_file" value="$(find pb)/gcode/gcodeAngle.gcode" />
+    <!--param name="gcode_file" value="$(find pb)/gcode/zigZag.gcode" /-->
+    <param name="gcode_file" value="$(find pb)/gcode/tudaSuda.gcode" />
 
   </node>
 </launch> 
