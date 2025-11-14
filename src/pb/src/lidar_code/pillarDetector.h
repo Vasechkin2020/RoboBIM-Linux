@@ -82,17 +82,16 @@ public:
         double azimuth_global;       // Азимут в глобальной системе
     };
 
-        // Функция для нормализации угла в диапазон [-π, π]
-        double normalizeAngle(double angle)
-        {
-            while (angle > M_PI)
-                angle -= 2 * M_PI;
-            while (angle <= -M_PI)
-                angle += 2 * M_PI;
-            return angle;
-        }
+    // Функция для нормализации угла в диапазон [-π, π]
+    double normalizeAngle(double angle)
+    {
+        while (angle > M_PI)
+            angle -= 2 * M_PI;
+        while (angle <= -M_PI)
+            angle += 2 * M_PI;
+        return angle;
+    }
 
-        
     std::vector<Pillar> pillars;                // Список найденных столбов
     std::vector<ClusterInfo> cluster_info_list; // Список информации о кластерах
 
@@ -111,9 +110,12 @@ public:
             if (range >= scan->range_min && range <= scan->range_max) // Проверяем, что расстояние в допустимом диапазоне
             {
                 float angle = scan->angle_min + i * scan->angle_increment; // Вычисляем угол для текущей точки
+                angle = angle + DEG2RAD(lidar_bias);                       // учитываем смещение от неточной установки
+                angle = normalizeAnglePI(angle);                          // Нормализуем угол если перескачили pi
+
                 PointXY point;
                 point.x = range * cos(angle); // Переводим полярные координаты (угол, расстояние) в декартовы (x, y)
-                point.y = range * sin(angle);
+                point.y = range * sin(angle);  
                 points.push_back(point); // Добавляем точку в список
             }
         }
@@ -302,7 +304,6 @@ private:
         return sqrt(dx * dx + dy * dy);
     }
 
-
     // Функция для поиска столбов среди кластеров (по ширине)
     void findPillars()
     {
@@ -441,14 +442,14 @@ private:
                 // ROS_INFO("    pillars.claster_azimut = %.3f pillars.direction = %.3f", RAD2DEG(pillars[i].claster_azimut), RAD2DEG(pillars[i].direction));
 
                 // measured_azimuths.push_back(pillars[i].direction); // Тут направление влокальнй системе записано, надо его потом в преобразовать с учетом куда смотрим угла theta
-                measured_azimuths.push_back(pillars[i].claster_azimut); // 
+                measured_azimuths.push_back(pillars[i].claster_azimut); //
                 // pillars[i].direction - это направление на кластер теоретический угол из полученых координат
                 // pillars[i].claster_azimut - это направление на кластер из лидара по его лидарной системе
                 // Выводим результат сопоставления
                 // ROS_INFO("    Pillar %zu matched pillar %d (x=%.2f, y=%.2f): delta_x= %.3f m, delta_y= %.3f m, gipot= %.3f m, dist= %.3f m, direc= %.3f grad, cla_azimut= %.3f grad",
-                        //  i, best_match,
-                        //  KNOWN_PILLARS[best_match].first, KNOWN_PILLARS[best_match].second,
-                        //  delta_x, delta_y, min_dist, pillars[i].distance, RAD2DEG(pillars[i].direction), RAD2DEG(pillars[i].claster_azimut));
+                //  i, best_match,
+                //  KNOWN_PILLARS[best_match].first, KNOWN_PILLARS[best_match].second,
+                //  delta_x, delta_y, min_dist, pillars[i].distance, RAD2DEG(pillars[i].direction), RAD2DEG(pillars[i].claster_azimut));
 
                 matchPillar[best_match].x_global = KNOWN_PILLARS[best_match].first;
                 matchPillar[best_match].y_global = KNOWN_PILLARS[best_match].second;
@@ -517,7 +518,7 @@ private:
                     double global_azimuth = atan2(KNOWN_PILLARS[global_idx].second - lidar_y,
                                                   KNOWN_PILLARS[global_idx].first - lidar_x);
                     // Разница между измеренным и глобальным азимутом даёт угол поворота лидара
-                    double theta_diff = - normalizeAngle(measured_azimuths[i] - global_azimuth); // Минус чтобы совпадало по знаку
+                    double theta_diff = -normalizeAngle(measured_azimuths[i] - global_azimuth); // Минус чтобы совпадало по знаку
                     ROS_INFO("    global_azimuth = %.3f, measured_azimuths = %.3f, theta_diff = %.3f |  lidar_x = %.3f  lidar_y = %.3f",
                              RAD2DEG(global_azimuth), RAD2DEG(measured_azimuths[i]), RAD2DEG(theta_diff), lidar_x, lidar_y);
                     sum_theta += theta_diff;

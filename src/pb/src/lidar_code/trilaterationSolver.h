@@ -184,7 +184,7 @@ int TrilaterationSolver::get_circle_count() const
 
 void TrilaterationSolver::add_circle_from_distance(SPoint P_beacon, double distance)
 {
-    printf("+++ add_circle_from_distance \n");
+    // printf("+++ add_circle_from_distance \n");
     // Отладочный вывод: Добавление измерения дальности
     printf("    Add Dist: Beacon (%.3f, %.3f), R=%.3f, W=%.4f\n", // Output: Adding distance measurement
            P_beacon.x,                                            // X-coordinate of beacon
@@ -199,7 +199,7 @@ void TrilaterationSolver::add_circle_from_distance(SPoint P_beacon, double dista
 
 void TrilaterationSolver::add_filtered_circle_from_angle(SPoint P1, SPoint P2, double angle_deg)
 {
-    printf("+++ ANGLE CIRCLE CALCULATION (P1=(%+7.3f, %+7.3f), P2=(%+7.3f, %+7.3f), Angle= %+8.3f) --- | ", P1.x, P1.y, P2.x, P2.y, angle_deg);
+    printf("    ANGLE CIRCLE (P1=(%+7.3f, %+7.3f), P2=(%+7.3f, %+7.3f), Angle= %+8.3f) | ", P1.x, P1.y, P2.x, P2.y, angle_deg);
 
     double alpha_rad = DEG2RAD(angle_deg); // Угол в радианах
     double sin_alpha = sin(alpha_rad);     // Синус угла
@@ -256,7 +256,7 @@ void TrilaterationSolver::add_filtered_circle_from_angle(SPoint P1, SPoint P2, d
         dynamic_weight_norm = std::max(dynamic_weight_norm, MIN_WEIGHT_CLAMP);     // Ограничение снизу (1e-6)
     }
 
-    printf("    dynamic_weight_norm = %.6f (W_angle = %.6f, W_distance = %.6f)\n", dynamic_weight_norm, W_angle, W_distance); // Output calculated weight
+    printf("dynamic_weight_norm = %.6f (W_angle = %.6f, W_distance = %.6f) | ", dynamic_weight_norm, W_angle, W_distance); // Output calculated weight
     // --- КОНЕЦ БЛОКА ---
 
     // 2. Расчет геометрии окружности
@@ -299,8 +299,7 @@ void TrilaterationSolver::add_filtered_circle_from_angle(SPoint P1, SPoint P2, d
     }
 
     all_circles.push_back(chosen_circle);                                     // Добавляем выбранную окружность
-    printf("    Added Circle: Center (%+7.3f, %+7.3f), R=%+7.3f, W=%+7.4f\n", // Output final circle parameters
-           chosen_circle.x, chosen_circle.y, chosen_circle.r, chosen_circle.weight_factor);
+    printf("Added Circle: Center (%+7.3f, %+7.3f), R=%+7.3f, W=%+7.4f\n", chosen_circle.x, chosen_circle.y, chosen_circle.r, chosen_circle.weight_factor);// Output final circle parameters
 }
 
 // ------------------------------------------------------------------
@@ -419,7 +418,7 @@ bool TrilaterationSolver::perform_wls_pass(SPoint &result_A, double &result_rms,
 
         if (print_residuals) // Печатаем остатки, если это финальный проход
         {
-            printf("    Beacon %d (W=%.2f, R=%.3f): Geom. Residual=%.3f m (ACTIVE)\n", i, current.weight_factor, current.r, residual_geom); // Output final residual
+            // printf("    Beacon %d (W=%.2f, R=%.3f): Geom. Residual=%.3f m (ACTIVE)\n", i, current.weight_factor, current.r, residual_geom); // Output final residual
         }
     }
 
@@ -506,7 +505,7 @@ SPoint_Q TrilaterationSolver::find_A_by_mnk_robust()
 
     int N = all_circles.size();
 
-    printf("\n--- SOLVER: ROBUST (Two-Pass) (Total N=%d) Aprev x= %6.3f y= %6.3f ---\n", N, A_prev.x, A_prev.y); // Output solver start
+    printf("\n--- SOLVER: ROBUST (Two-Pass) (Total N=%d) IN Aprev x= %6.3f y= %6.3f ---\n", N, A_prev.x, A_prev.y); // Output solver start
 
     if (N < 3)
     {
@@ -525,7 +524,7 @@ SPoint_Q TrilaterationSolver::find_A_by_mnk_robust()
     double rms_temp = 0.0;   // RMS для первого прохода
     int used_count_temp = 0; // Количество использованных в проходе 1
 
-    printf("\n--- SOLVER: PASS 1 (Initial WLS) ---\n"); // Output pass 1
+    // printf("\n--- SOLVER: PASS 1 (Initial WLS) ---\n"); // Output pass 1
 
     // Выполняем WLS, (print_residuals = false) -> без печати остатков
     if (!perform_wls_pass(A_temp, rms_temp, used_count_temp, false))
@@ -534,12 +533,10 @@ SPoint_Q TrilaterationSolver::find_A_by_mnk_robust()
         return AQ;                                                                 // Возвращаем с плохим качеством
     }
 
-    printf("Pass 1 Found A: (%.3f, %.3f), Initial RMS: %.3f m\n", A_temp.x, A_temp.y, rms_temp); // Output pass 1 result
+    printf("Pass 1 Found A: (%.3f, %.3f), Initial RMS: %.3f m (Threshold: %.3f m) \n", A_temp.x, A_temp.y, rms_temp, OUTLIER_REJECTION_THRESHOLD_METERS ); // Output pass 1 result
 
     // --- АНАЛИЗ ОСТАТКОВ И ОТБРАКОВКА (на основе A_temp) ---
     int rejected_count = 0; // Счетчик отброшенных
-
-    printf("\n--- OUTLIER REJECTION ANALYSIS (Threshold: %.3f m) ---\n", OUTLIER_REJECTION_THRESHOLD_METERS); // Output rejection analysis
 
     for (int i = 0; i < N; ++i)
     {
@@ -551,15 +548,15 @@ SPoint_Q TrilaterationSolver::find_A_by_mnk_robust()
         {
             all_circles[i].is_active = false; // Отбрасываем
             rejected_count++;
-            printf("   -Beacon %d (R=%.3f): Rejected! Residual=%.3f m\n", i, current.r, residual); // Output rejection
+            // printf("   -Beacon %d (R=%.3f): Rejected! Residual=%.3f m\n", i, current.r, residual); // Output rejection
         }
         else
         {
-            printf("   +Beacon %d (R=%.3f): Accepted. Residual=%.3f m\n", i, current.r, residual); // Output acceptance
+            // printf("   +Beacon %d (R=%.3f): Accepted. Residual=%.3f m\n", i, current.r, residual); // Output acceptance
         }
     }
 
-    printf("Total rejected measurements: %d\n", rejected_count); // Output rejected count
+    printf("Total rejected measurements: %d | ", rejected_count); // Output rejected count
 
     // --- ПРОХОД 2: Финальный расчет ---
     SPoint A_final = A_prev;                // Результат для финализации
@@ -568,7 +565,7 @@ SPoint_Q TrilaterationSolver::find_A_by_mnk_robust()
 
     if (rejected_count > 0) // Если были отбракованные
     {
-        printf("\n--- SOLVER: PASS 2 (Final WLS without %d outliers) ---\n", rejected_count); // Output pass 2
+        // printf("\n--- SOLVER: PASS 2 (Final WLS without %d outliers) ---\n", rejected_count); // Output pass 2
 
         if (!perform_wls_pass(A_final, rms_final, used_count_final, true)) // print_residuals = true
         {
@@ -579,13 +576,13 @@ SPoint_Q TrilaterationSolver::find_A_by_mnk_robust()
         }
         else
         {
-            printf("Pass 2 Found A (Final): (%.3f, %.3f)\n", A_final.x, A_final.y); // Output pass 2 result
+            printf("Pass 2 Found A (Final  WLS without %d outliers): (%.3f, %.3f)\n", rejected_count, A_final.x, A_final.y); // Output pass 2 result
             AQ.has_outliers = true;                                                 // Успешно отбросили выбросы
         }
     }
     else // Если ничего не отбраковано
     {
-        printf("\n--- SOLVER: FINAL RESULT (Pass 1 used as final) ---\n"); // Output final result
+        // printf("\n--- SOLVER: FINAL RESULT (Pass 1 used as final) ---\n"); // Output final result
         // Повторно вызовем WLS с (print_residuals = true) для печати остатков
         perform_wls_pass(A_final, rms_final, used_count_final, true);
     }
@@ -596,9 +593,8 @@ SPoint_Q TrilaterationSolver::find_A_by_mnk_robust()
     AQ.used_measurements = used_count_final;
 
     printf("    Quality Assessment (ROBUST, N=%d, Rejected=%d) ", N, rejected_count); // Output final quality
-    printf(" Geometric RMS: **%6.3f m** (Used: %d, Total: %d, Outliers: %s)\n",
-           AQ.quality, AQ.used_measurements, AQ.total_measurements, AQ.has_outliers ? "Yes" : "No");
-    printf("--- SOLVER: END ---\n"); // Output solver end
+    printf("    Geometric RMS: **%6.3f m** (Used: %d, Total: %d, Outliers: %s) --- SOLVER: END --- \n", AQ.quality, AQ.used_measurements, AQ.total_measurements, AQ.has_outliers ? "Yes" : "No");
+    // printf("--- SOLVER: END ---\n"); // Output solver end
 
     return AQ;
 }
@@ -618,7 +614,7 @@ double TrilaterationSolver::get_lidar_orientation(
         return 0.0;                                                                 // Возвращаем 0.0, если данных нет
     }
 
-    printf("\n--- ORIENTATION LSQ CALCULATION ---\n"); // Output LSQ header
+    printf("+++ ORIENTATION LSQ CALCULATION ---\n"); // Output LSQ header
 
     double sum_sin = 0.0;   // Сумма синусов разностей азимутов
     double sum_cos = 0.0;   // Сумма косинусов разностей азимутов
@@ -646,8 +642,8 @@ double TrilaterationSolver::get_lidar_orientation(
     double orientation_rad = atan2(sum_sin, sum_cos);  // Результат LSQ в радианах
     double orientation_deg = RAD2DEG(orientation_rad); // Переводим в градусы
 
-    printf("Sum Sin: %.4f, Sum Cos: %.4f\n", sum_sin, sum_cos); // Output sums
-    printf("--- ORIENTATION LSQ CALCULATION: END ---\n");       // Output end LSQ
+    printf("Sum Sin: %.4f, Sum Cos: %.4f | ALCULATION: END\n", sum_sin, sum_cos); // Output sums
+    // printf("--- ORIENTATION LSQ CALCULATION: END ---\n");       // Output end LSQ
 
     return orientation_deg; // Возвращаем финальную ориентацию лидара в градусах
 }
