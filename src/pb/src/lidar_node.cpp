@@ -243,6 +243,8 @@ int main(int argc, char **argv) // Главная функция програм�
                         point.y = distDirect[i].y_true;
                         orientation_beacons.push_back(point); // Добавляем маяк
 
+                        // double angle_to_point = normalize_and_invert_sign_deg(distDirect[i].direction); // Преобразуем в нормальный вид +-180. Плюс против часовой
+
                         double convert;
                         convert = -distDirect[i].direction;
                         if (convert < -180)
