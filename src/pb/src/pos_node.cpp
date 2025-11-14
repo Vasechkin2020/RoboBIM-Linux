@@ -126,9 +126,9 @@ int main(int argc, char **argv)
             //   ROS_INFO("--------------------------------------- flag_msgLidar ***");
             flag_msgLidar = false;
 
-            ROS_INFO("---- IN Data PoseLidar x = %.3f y = %.3f th = %.3f | match = %i cross = %i | azimut %.3f %.3f %.3f %.3f | dtStoping = %f msec",
+            ROS_INFO("---- IN Data PoseLidar x = %.3f y = %.3f th = %.3f |  FindPillar = %i ComparePillar = %i CrossCircle = %i DistDirect = %i | azimut %.3f %.3f %.3f %.3f | dtStoping = %f msec",
                      msg_lidar.modeFused.x, msg_lidar.modeFused.y, msg_lidar.modeFused.th,
-                     msg_lidar.countMatchPillar, msg_lidar.countCrossCircle,
+                     msg_lidar.countFindPillar, msg_lidar.countComparePillar, msg_lidar.countCrossCircle, msg_lidar.countDistDirect,
                      msg_lidar.azimut[0], msg_lidar.azimut[1], msg_lidar.azimut[2], msg_lidar.azimut[3], dtStoping * 1000);
 
             // ROS_INFO("    dtStoping = %f msec", dtStoping * 1000);

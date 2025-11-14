@@ -726,7 +726,7 @@ public:
         }
         ROS_INFO("Total commands: %zu", commands_.size()); // Логируем общее число команд
 
-        ros::Rate loop_rate(3);           // Устанавливаем частоту цикла (3 Гц)
+        ros::Rate loop_rate(10);           // Устанавливаем частоту цикла (3 Гц)
         for (const auto &cmd : commands_) // Перебираем команды для выполнения
         {
             if (cmd.command == "G0")

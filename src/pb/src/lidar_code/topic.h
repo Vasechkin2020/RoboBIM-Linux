@@ -183,8 +183,12 @@ public:
         msg.mnkFused.th = g_poseLidar.mnkFused.th;
         msg.quality_mknFused = g_poseLidar.quality_mknFused;
 
-        msg.countMatchPillar = g_poseLidar.countMatchPillar;
+        msg.countFindPillar = g_poseLidar.countFindPillar;
+        msg.countComparePillar = g_poseLidar.countComparePillar;
+        msg.countDistDirect = g_poseLidar.countDistDirect;
         msg.countCrossCircle = g_poseLidar.countCrossCircle;
+        
+        msg.quality_ComparePillar = g_poseLidar.quality_ComparePillar;
 
         for (size_t i = 0; i < 4; i++)
         {

@@ -164,7 +164,7 @@ void calcDistDirect(SDistDirect *distDirect, CPillar pillar, PillarDetector dete
     }
     flagFirst = 1;
     ROS_INFO("    calcDistDirect -> sum = %i", sum);
-    g_poseLidar.countMatchPillar = sum;
+    g_poseLidar.countDistDirect = sum;
 }
 
 

@@ -475,6 +475,7 @@ void CPillar::comparisonPillar()
     float delta_x = 0;
     float delta_y = 0;
     float hypotenuse = 0;
+    float sum_hypotenuse = 0; 
     int countComparisonPillar = 0;
 
     for (int i = 0; i < countPillar; i++) // Перебираем все истинные столбы и ищем соответствие из лидарных столбов]
@@ -498,6 +499,7 @@ void CPillar::comparisonPillar()
                 pillar[i].distance_lidar = pillarLidar[j].dist_min;
                 pillar[i].x_lidar = pillarLidar[j].x_globalXY;
                 pillar[i].y_lidar = pillarLidar[j].y_globalXY;
+                sum_hypotenuse += hypotenuse;
                 ROS_INFO("    comparisonPillar %i =>  hypotenuse= %.3f distance_lidar= %.3f azimuth = %.3f ", i, hypotenuse, pillar[i].distance_lidar, pillar[i].azimuth);
                 countComparisonPillar++;
                 break;
@@ -508,7 +510,10 @@ void CPillar::comparisonPillar()
             }
         }
     }
-    ROS_INFO("    Comparison Pillar %i", countComparisonPillar);
+    float quality_ComparePillar = sum_hypotenuse / countComparisonPillar; // Для выводв в топик
+    ROS_INFO("    Comparison Pillar %i quality_ComparePillar %i", countComparisonPillar, quality_ComparePillar);
+    g_poseLidar.countComparePillar = countComparisonPillar; // Для выводв в топик
+    g_poseLidar.quality_ComparePillar = quality_ComparePillar;
     // ROS_INFO("--- comparisonPillar");
 }
 
@@ -519,11 +524,11 @@ void CPillar::searchPillars(const sensor_msgs::LaserScan::ConstPtr &scan, SPose 
 {
     ROS_INFO("+++ searchPillars");
     float distance_pred = 0;    // Предыдущее значение дистанции
-    int a = 0;                  // Начало группы точек
+    int a = 0;                  // Начало группы точек    
     int b = 0;                  // Конец группы точек
     bool flag = false;          // Флаг поиска точки
     SLidar lidarData[4096];     // Выделяем массив из расчета что всего 32000 за секунду и вращаемся 10 Герц с запасом
-    SLidar lidarDataLast[4096]; // Выделяем массив из расчета что всего 32000 за секунду и вращаемся 10 Герц с запасом
+    SLidar lidarDataLast[4096]; // Выделяем массив из расчета что всего 32000 за секунду и вращаемся 10 Герц с запасом 
     SLidar lidarDataSrc[4096];  // Преобразованный к моему виду массив
     countPillarLidar = 0;       // Обнуляем для нового сканирования, каждый раз можем находить разное число столбов
     int count = scan->scan_time / scan->time_increment;
@@ -636,6 +641,7 @@ void CPillar::searchPillars(const sensor_msgs::LaserScan::ConstPtr &scan, SPose 
         }
     }
     ROS_INFO("    Found Pillar from Lidar= %i ", countPillarLidar);
+    g_poseLidar.countFindPillar = countPillarLidar; // Для выводв в топик
     // ROS_INFO("--- searchPillars");
 }
 
