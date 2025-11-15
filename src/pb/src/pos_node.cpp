@@ -52,9 +52,9 @@ int main(int argc, char **argv)
     CTopic topic; // Экземпляр класса для всех публикуемых топиков
 
     //----------------------------- ПОДПИСКИ НА ТОПИКИ -------НЕ УБИРАЮ В КЛАСС ТАК КАК НУЖНЫ ГЛОБАЛЬНЫЕ КОЛБЕКИ И ПРОЧАЯ ХЕРНЯ --------
-    ros::Subscriber subscriber_Lidar = nh.subscribe<pb_msgs::Struct_PoseLidar>("pb/Lidar/Pose", 1, callback_Lidar);
+    ros::Subscriber subscriber_Lidar = nh.subscribe<pb_msgs::Struct_PoseLidar>("pb/Lidar/Pose", 1, callback_Measurement); // Измеренная позиция по лидару лазеру
     ros::Subscriber subscriber_Modul = nh.subscribe<pb_msgs::Struct_Modul2Data>("pb/Data/Modul", 1, callback_Modul);
-    ros::Subscriber subscriber_Driver = nh.subscribe<pb_msgs::Struct_Driver2Data>("pb/Data/Driver", 1, callback_Driver); 
+    ros::Subscriber subscriber_Driver = nh.subscribe<pb_msgs::Struct_Driver2Data>("pb/Data/Driver", 1, callback_Driver);
     ros::Subscriber subscriber_Speed = nh.subscribe<pb_msgs::SSetSpeed>("pb/Data/Speed", 1, callback_Speed);
     //---------------------------------------------------------------------------------------------------------------------------
 
@@ -68,9 +68,9 @@ int main(int argc, char **argv)
     ros::Duration(1).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
     static bool flagPublish = false;
 
-    ROS_INFO("Waiting for the /startup_signal topic to become active...");                       // БЛОКИРУЮЩЕЕ ОЖИДАНИЕ ЗАПУСКА ДРУГОЙ НОДЫ // Ожидаем, пока топик сигнала запуска не станет активным
+    ROS_INFO("Waiting for the /startup_signal topic to become active...");                        // БЛОКИРУЮЩЕЕ ОЖИДАНИЕ ЗАПУСКА ДРУГОЙ НОДЫ // Ожидаем, пока топик сигнала запуска не станет активным
     ros::topic::waitForMessage<pb_msgs::Struct_Driver2Data>("pb/Data/Driver", ros::Duration(30)); // Блокирующий вызов: ждет первое сообщение из топика "/startup_signal" с таймаутом 30 секунд. Замените String на нужный тип сообщения.
-    ROS_INFO("Topic received. Starting the calibration phase.");                                 // Топик получен. Начинаем фазу калибровки.
+    ROS_INFO("Topic received. Starting the calibration phase.");                                  // Топик получен. Начинаем фазу калибровки.
 
     calibr_accel_gyro(); // Калибровка гироскопа и акселерометра в момент запуска ноды
     initKalman();        // Задаем коэфициенты для Калмана
@@ -83,31 +83,30 @@ int main(int argc, char **argv)
         timeNow = ros::Time::now(); // Захватываем текущий момент времени начала цикла
         // testFunction();
         ros::spinOnce(); // Опрашиваем ядро ROS и по этой команде наши срабатывают колбеки. Нужно только для подписки на топики
-                         // ROS_INFO_THROTTLE(RATE_OUTPUT,"----");
 
         timeStop = timeStopping(msg_Speed);                           // Расчет времени когда остановились. ЕСли движемся то выдаем текущее время. Если стоим то время когда остановились
         ros::Duration durationStopping = ros::Time::now() - timeStop; // Находим разницу между началом и концом
         dtStoping = durationStopping.toSec();                         // Получаем количество секунд
 
         // 100 Hz ************************************************************ ОБРАБОТКА ДАННЫХ ИЗ ТОПИКОВ ЧТО ПОДПИСАНЫ  СРАБАТЫВАЕТ КАК ОТПРАВЛЯЕТ DATA_NODE  ********************************************
-        if (flag_msgSpeed) // Флаг что пришло сообщение от ноды Data по Speed. Расчитываем линейную и угловую скорость и потом на нее основе расчитываем остальное
+        if (flag_msgSpeed) // ЭТО РАСЧЕТ МОДЕЛИ Флаг что пришло сообщение от ноды Data по Speed. Расчитываем линейную и угловую скорость и потом на нее основе расчитываем остальное
         {
-            // ROS_INFO("--- flag_msgSpeed");
+            ROS_WARN("--- flag_msgSpeed");
             flag_msgSpeed = false;
             flagPublish = true;
 
-            g_linAngVel.odom = calcTwistFromWheel(msg_Speed);    // Обработка пришедших данных. По ним считаем линейные скорости по осям и угловую по углу. Запоминаем dt
-            g_linAngVel.imu = calcTwistFromImu(msg_Driver2Data); // Обработка пришедших данных. По ним считаем линейные скорости по осям и угловую по углу. Запоминаем dt
+            g_linAngVel.odom = calcTwistFromWheel(msg_Speed);                      // Обработка пришедших данных. По ним считаем линейные скорости по осям и угловую по углу. Запоминаем dt
+            g_linAngVel.imu = calcTwistFromImu(msg_Driver2Data);                   // Обработка пришедших данных. По ним считаем линейные скорости по осям и угловую по углу. Запоминаем dt
             g_linAngVel.fused = calcTwistFused(g_linAngVel.odom, g_linAngVel.imu); // Комплементация данных используя фильтр (Комплементарный или Калмана) тут написать функцию комплементации данных угловых скоростей с разными условиями когда и в каком соотношении скомплементировать скорсти с двух источников
             // g_linAngVel.fused = calcTwistFromMpu(g_linAngVel.fused, msg_Modul2Data, g_linAngVel.odom); // Обработка пришедших данных для расчета линейных и угловых скоростей
 
-            g_poseRotation.odom = calcNewPose(g_poseRotation.odom, g_linAngVel.odom, "odom"); // На основе линейных скоростей считаем новую позицию и угол по колесам
-            g_poseRotation.imu = calcNewPose(g_poseRotation.imu, g_linAngVel.imu, "imu");        // На основе линейных скоростей считаем новую позицию и угол по колесам
+            g_poseRotation.odom = calcNewPose(g_poseRotation.odom, g_linAngVel.odom, "odom");     // На основе линейных скоростей считаем новую позицию и угол по колесам
+            g_poseRotation.imu = calcNewPose(g_poseRotation.imu, g_linAngVel.imu, "imu");         // На основе линейных скоростей считаем новую позицию и угол по колесам
             g_poseRotation.fused = calcNewPose(g_poseRotation.fused, g_linAngVel.fused, "fused"); // На основе линейных скоростей считаем новую позицию и угол по колесам
             // g_poseRotation.mode10 = calcNewOdom2(g_poseRotation.mode10, g_linAngVel.fused, "mode10"); // На основе линейных скоростей считаем новую позицию и угол по колесам
 
-            g_poseBase.odom = convertRotation2Base(g_poseRotation.odom, "odom");    // Эти данные mode10 используем как основную точку для расчета mode1.2.3
-            g_poseBase.fused = convertRotation2Base(g_poseRotation.fused, "fused"); // Эти данные mode10 используем как основную точку для расчета mode1.2.3
+            g_poseBase.odom = convertRotation2Base(g_poseRotation.odom, "odom");         // Позиция для отладки и сравнения по результатм только одометрии
+            g_poseBase.calculated = convertRotation2Base(g_poseRotation.fused, "fused"); // Позиция по результатам слияния одометрии и imu считаем РАСЧЕТОМ
 
             // РАСЧЕТ НАПРАВЛЕНИЯ УГЛОВ ЛАЗЕРОВ
             // laser.calcAnglePillarForLaser(pillar.pillar, g_poseBase.odom); // Расчет углов в локальной системе лазеров на столбы для передачи на нижний уровень для исполнения
@@ -115,73 +114,79 @@ int main(int argc, char **argv)
 
             // angleMPU(); // Расчет угла положения на основе данных сдатчика MPU
             // calcEuler(); // Расчет угла yaw с датчика IMU
-
-            // topic.visualPublishOdomMode_3();                                  // Отобращение стрелкой где начало и куда смотрит в Mode3
-            // topic.publicationAngleLaser(laser);                               // Формируем перемнную с собщением для публикации
         }
 
-        // Выполняется 10 Hz как ЛИДАР ПРИШЛЕТ ***************************************************************************************************************************************************
-        if (flag_msgLidar) // Если пришло сообщение в топик от лидара и мы уже разобрали данные по координатам машинки, а значит можем грубо посчитать где стоят столбы.  И знаем где истинные столбы
+        // Выполняется 10 -11 Hz как придут результаты ИЗМЕРЕНИЯ ***
+        if (flag_msgMeasurement) // Если пришло сообщение в топик от измерениям и мы уже разобрали данные по координатам машинки по расчету с колес и IMU
         {
-            //   ROS_INFO("--------------------------------------- flag_msgLidar ***");
-            flag_msgLidar = false;
+            ROS_ERROR("--- flag_msgMeasurement ***");
+            flag_msgMeasurement = false;
+            ROS_INFO("---- IN Data Pose Calculated x = %+8.3f y = %+8.3f th = %+8.3f", g_poseBase.calculated.x, g_poseBase.calculated.y, g_poseBase.calculated.th);
 
-            ROS_INFO("---- IN Data PoseLidar x = %+8.3f y = %+8.3f th = %+8.3f |  FindPillar = %i ComparePillar = %i CrossCircle = %i DistDirect = %i | azimut %+8.3f %+8.3f %+8.3f %+8.3f | dtStoping = %f msec",
-                     msg_lidar.modeFused.x, msg_lidar.modeFused.y, msg_lidar.modeFused.th,
-                     msg_lidar.countFindPillar, msg_lidar.countComparePillar, msg_lidar.countCrossCircle, msg_lidar.countDistDirect,
-                     msg_lidar.azimut[0], msg_lidar.azimut[1], msg_lidar.azimut[2], msg_lidar.azimut[3], dtStoping * 1000);
+            g_poseBase.measurement.x = msg_Measurement.modeFused.x;
+            g_poseBase.measurement.y = msg_Measurement.modeFused.y;
+            g_poseBase.measurement.th = msg_Measurement.modeFused.th;
+            ROS_INFO("---- IN Data Pose Measurement x = %+8.3f y = %+8.3f th = %+8.3f", g_poseBase.measurement.x, g_poseBase.measurement.y, g_poseBase.measurement.th);
+
+            // ROS_INFO("---- IN Data Pose Measurement x = %+8.3f y = %+8.3f th = %+8.3f |  FindPillar = %i ComparePillar = %i CrossCircle = %i DistDirect = %i | azimut %+8.3f %+8.3f %+8.3f %+8.3f | dtStoping = %f msec",
+            //          msg_Measurement.modeFused.x, msg_Measurement.modeFused.y, msg_Measurement.modeFused.th,
+            //          msg_Measurement.countFindPillar, msg_Measurement.countComparePillar, msg_Measurement.countCrossCircle, msg_Measurement.countDistDirect,
+            //          msg_Measurement.azimut[0], msg_Measurement.azimut[1], msg_Measurement.azimut[2], msg_Measurement.azimut[3], dtStoping * 1000);
+
+            ROS_INFO("    complementation g_poseBase.main x= %+8.3f y= %+8.3f theta= %+8.3f grad", g_poseBase.main.x, g_poseBase.main.y, g_poseBase.main.th);
+
+
+
+
 
             // ROS_INFO("    dtStoping = %f msec", dtStoping * 1000);
+            /*
+                        if (dtStoping < 0.1) // Если меньше 0,2 секунды то возвращаем что есть
+                        {
+                            aver.x = g_poseBase.measurement.x;
+                            aver.y = g_poseBase.measurement.y;
+                            aver.th = g_poseBase.measurement.th;
+                            averCount = 1;
+                        }
+                        else // Если прошло больше 0,2 секунды с момента остановки начинаем усреднять позицию
+                        {
+                            aver.x = aver.x + g_poseBase.measurement.x;
+                            aver.y = aver.y + g_poseBase.measurement.y;
+                            aver.th = aver.th + g_poseBase.measurement.th;
+                            averCount++;
+                            // ROS_INFO("    averCount = %i aver.x = %+8.3f aver.x / averCount = %+8.3f", averCount, aver.x, aver.x / averCount);
 
-            if (dtStoping < 0.1) // Если меньше 0,2 секунды то возвращаем что есть
-            {
-                aver.x = msg_lidar.modeFused.x;
-                aver.y = msg_lidar.modeFused.y;
-                aver.th = msg_lidar.modeFused.th;
-                averCount = 1;
-            }
-            else // Если прошло больше 0,2 секунды с момента остановки начинаем усреднять позицию
-            {
-                aver.x = aver.x + msg_lidar.modeFused.x;
-                aver.y = aver.y + msg_lidar.modeFused.y;
-                aver.th = aver.th + msg_lidar.modeFused.th;
-                averCount++;
-                // ROS_INFO("    averCount = %i aver.x = %+8.3f aver.x / averCount = %+8.3f", averCount, aver.x, aver.x / averCount);
+                            if (dtStoping > 0.6) // Если прошло больше 0,5 секунды с момента остановки тогда комплементируем позицию.
+                            {
+                                aver.x = aver.x - (aver.x / averCount);
+                                aver.y = aver.y - (aver.y / averCount);
+                                aver.th = aver.th - (aver.th / averCount);
+                                averCount--;
 
-                if (dtStoping > 0.6) // Если прошло больше 0,5 секунды с момента остановки тогда комплементируем позицию.
-                {
-                    aver.x = aver.x - (aver.x / averCount);
-                    aver.y = aver.y - (aver.y / averCount);
-                    aver.th = aver.th - (aver.th / averCount);
-                    averCount--;
-                    // ROS_INFO("    --- complementation Pose Average to Mode ---");
-                    g_poseBase.fused.x = aver.x / averCount;
-                    g_poseBase.fused.y = aver.y / averCount;
-                    g_poseBase.fused.th = aver.th / averCount;
-                    g_poseRotation.fused = convertBase2Rotation(g_poseBase.fused, "fused");
-
-                    g_poseBase.mode = g_poseBase.fused;
-                    ROS_INFO("    complementation g_poseBase.mode x= %+8.3f y= %+8.3f theta= %+8.3f grad", g_poseBase.mode.x, g_poseBase.mode.y, g_poseBase.mode.th);
-
-                    // ROS_INFO("    complementation g_poseRotation.mode0 x= %+8.3f y= %+8.3f theta= %+8.3f grad", g_poseRotation.mode0.x, g_poseRotation.mode0.y, RAD2DEG(g_poseRotation.mode0.th));
-                }
-            }
-            //     // odomMode11.pose.x = kalman11.calcX(g_poseBase.mode1.x, odomMode11.pose.x); // Фильр Калмана для координаты Х. На вход подаем измеренное значение по MODE1  и вычисленное значение по модели ускорение на время плюс старое знаение
-            //     // odomMode11.pose.y = kalman11.calcY(g_poseBase.mode1.y, odomMode11.pose.y); // Фильр Калмана для координаты Y. На вход подаем измеренное значение по MODE1  и вычисленное значение по модели ускорение на время плюс старое знаение
-
-            //     // odomMode12.pose.x = kalman12.calcX(g_poseBase.mode2.x, odomMode12.pose.x); // Фильр Калмана для координаты Х. На вход подаем измеренное значение по MODE1  и вычисленное значение по модели ускорение на время плюс старое знаение
-            //     // odomMode12.pose.y = kalman12.calcY(g_poseBase.mode2.y, odomMode12.pose.y); // Фильр Калмана для координаты Y. На вход подаем измеренное значение по MODE1  и вычисленное значение по модели ускорение на время плюс старое знаение
-
-            //     // topic.visualPoseLidarMode_1_2();                                // Отобращение стрелкой где начало и куда смотрит в Mode0 1 2
-            //     topic.visualPublishOdomMode_1(); // Отобращение стрелкой где начало и куда смотрит в Mode0 1 2
-            //     topic.visualPublishOdomMode_2(); // Отобращение стрелкой где начало и куда смотрит в Mode0 1 2
-
-            //     if (isnan(g_poseBase.mode2.x) || isnan(g_poseBase.mode2.y) || isnan(g_poseBase.mode2.th))
-            //     {
-            //         ROS_ERROR("STOP MODE 1-2");
-            //         exit(0);
-            //     }
+                                // ROS_INFO("    complementation g_poseRotation.mode0 x= %+8.3f y= %+8.3f theta= %+8.3f grad", g_poseRotation.mode0.x, g_poseRotation.mode0.y, RAD2DEG(g_poseRotation.mode0.th));
+                            }
+                        }
+                        // ROS_INFO("    --- complementation Pose Average to Mode ---");
+                        g_poseBase.main.x = aver.x / averCount;
+                        g_poseBase.main.y = aver.y / averCount;
+                        g_poseBase.main.th = aver.th / averCount;
+                        g_poseRotation.fused = convertBase2Rotation(g_poseBase.main, "main -> fused");
+            */
         }
+
+        //     // odomMode12.pose.y = kalman12.calcY(g_poseBase.mode2.y, odomMode12.pose.y); // Фильр Калмана для координаты Y. На вход подаем измеренное значение по MODE1  и вычисленное значение по модели ускорение на время плюс старое знаение
+
+        //     // topic.visualPoseLidarMode_1_2();                                // Отобращение стрелкой где начало и куда смотрит в Mode0 1 2
+        //     topic.visualPublishOdomMode_1(); // Отобращение стрелкой где начало и куда смотрит в Mode0 1 2
+
+        //     if (isnan(g_poseBase.mode2.x) || isnan(g_poseBase.mode2.y) || isnan(g_poseBase.mode2.th))
+        //     {
+        //         ROS_ERROR("STOP MODE 1-2");
+        //         exit(0);
+        //     }
+
+        // topic.visualPublishOdomMode_3();                                  // Отобращение стрелкой где начало и куда смотрит в Mode3
+        // topic.publicationAngleLaser(laser);                               // Формируем перемнную с собщением для публикации
         /*
        // 100 Hz ************************************************************ ОБРАБОТКА ДАННЫХ ИЗ ТОПИКОВ ЧТО ПОДПИСАНЫ  СРАБАТЫВАЕТ КАК ОТПРАВЛЯЕТ DATA_NODE  ********************************************
        if (flag_msgModul) // Флаг что пришло сообщение от ноды Data по Modul. Тут пишем какую-то обработку данных если нужно. Это будет MODE_3
@@ -223,9 +228,9 @@ int main(int argc, char **argv)
         if (timeRviz <= millis()) // 30 Hz
         {
             // Публикуем тут так как если один раз опубликовать то они исчезают через некоторое время.
-            topic.transformBase(g_poseBase.fused); // Публикуем трансформации систем координат, задаем по какому расчету трансформировать
-            topic.transformLaser(laser);           // Публикуем трансформации систем координат, задаем по какому расчету трансформировать
-            topic.transformRotation();             // Публикуем трансформации систем координат
+            topic.transformBase(g_poseBase.calculated); // Публикуем трансформации систем координат, задаем по какому расчету трансформировать
+            topic.transformLaser(laser);                // Публикуем трансформации систем координат, задаем по какому расчету трансформировать
+            topic.transformRotation();                  // Публикуем трансформации систем координат
 
             topic.visualStartPose();           // Отобращение стрелкой где начало стартовой позиции и куда направлен нос платформы
             topic.visualPillarPoint(pillar);   // Отображение места размещения столбов

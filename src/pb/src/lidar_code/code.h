@@ -37,7 +37,7 @@ void timeCycle(ros::Time timeStart_, ros::Time timeLoop_)
 {
     ros::Duration durationStart = ros::Time::now() - timeStart_;                                                                                        // Находим разницу между началом и концом
     ros::Duration durationLoop = ros::Time::now() - timeLoop_;                                                                                          // Находим разницу между началом и концом
-    ROS_INFO("    dt Start = %+8.3f sec | dt last cycle = %+8.3f sec and %d nanoseconds ", durationStart.toSec(), durationLoop.toSec(), durationLoop.nsec); // Время цикла в милисекундах
+    ROS_INFO("    dt Start = %.3f sec | dt last cycle = %.3f sec and %d nanoseconds ", durationStart.toSec(), durationLoop.toSec(), durationLoop.nsec); // Время цикла в милисекундах
     // ROS_INFO("Current time: %d seconds and %d nanoseconds", durationLoop.sec, durationLoop.nsec);
     // if (dtEnd > 5)                                      // Если цикл занял бользе 5 милисекунд значит что не уложились в 200 Нz
     //     ROS_INFO("    !!! cycle = %8.3f msec", dtEnd);  // Время цикла в милисекундах
@@ -103,13 +103,13 @@ void readParam(SPose &startPose, SPoint *startPillar)
 
 
 
-    ROS_INFO("    startPose x = %+8.3f y = %+8.3f th = %+8.3f gradus", startPose.x, startPose.y, startPose.th);
-    ROS_INFO("    g_transformGlobal2Local x = %+8.3f y = %+8.3f th = %+8.3f gradus", g_transformGlobal2Local.x, g_transformGlobal2Local.y, g_transformGlobal2Local.th);
+    ROS_INFO("    startPose x = %.3f y = %.3f th = %.3f gradus", startPose.x, startPose.y, startPose.th);
+    ROS_INFO("    g_transformGlobal2Local x = %.3f y = %.3f th = %.3f gradus", g_transformGlobal2Local.x, g_transformGlobal2Local.y, g_transformGlobal2Local.th);
     ROS_INFO("    start PillarPose");
-    ROS_INFO("    x0= %+8.3f y0 = %+8.3f", startPillar[0].x, startPillar[0].y);
-    ROS_INFO("    x1= %+8.3f y1 = %+8.3f", startPillar[1].x, startPillar[1].y);
-    ROS_INFO("    x2= %+8.3f y2 = %+8.3f", startPillar[2].x, startPillar[2].y);
-    ROS_INFO("    x3= %+8.3f y3 = %+8.3f", startPillar[3].x, startPillar[3].y);
+    ROS_INFO("    x0= %.3f y0 = %.3f", startPillar[0].x, startPillar[0].y);
+    ROS_INFO("    x1= %.3f y1 = %.3f", startPillar[1].x, startPillar[1].y);
+    ROS_INFO("    x2= %.3f y2 = %.3f", startPillar[2].x, startPillar[2].y);
+    ROS_INFO("    x3= %.3f y3 = %.3f", startPillar[3].x, startPillar[3].y);
     ROS_INFO("--- readParam");
 }
 // Функция, которая срабатывает при нажатии Ctrl+C
@@ -130,7 +130,7 @@ void calcDistDirect(SDistDirect *distDirect, CPillar pillar, PillarDetector dete
         distDirect[i].distance = 0;
         distDirect[i].direction = 0;
         distDirect[i].count = 0;
-        // ROS_INFO("x_true = %+8.3f x_true = %+8.3f  | y_true = %+8.3f y_true = %+8.3f  | distance = %.5f distance = %.5f  | direction = %+8.3f direction = %+8.3f",
+        // ROS_INFO("x_true = %.3f x_true = %.3f  | y_true = %.3f y_true = %.3f  | distance = %.5f distance = %.5f  | direction = %.3f direction = %.3f",
         //          pillar.pillar[i].x_true, detector.matchPillar[i].x_global,
         //          pillar.pillar[i].y_true, detector.matchPillar[i].y_global,
         //          pillar.pillar[i].distance_lidar, detector.matchPillar[i].distance,
@@ -149,10 +149,10 @@ void calcDistDirect(SDistDirect *distDirect, CPillar pillar, PillarDetector dete
         if (count > 0)
         {
             distDirect[i].distance = (distDirect[i].distance + detector.matchPillar[i].distance) / count;
-            // ROS_INFO("    distDirect[i].direction = %+8.3f ||| detector.matchPillar[i].direction = %+8.3f count = %.1f", distDirect[i].direction, detector.matchPillar[i].direction,count);
+            // ROS_INFO("    distDirect[i].direction = %.3f ||| detector.matchPillar[i].direction = %.3f count = %.1f", distDirect[i].direction, detector.matchPillar[i].direction,count);
             distDirect[i].direction = (distDirect[i].direction + detector.matchPillar[i].direction) / count;
         }
-        // ROS_INFO("x_true = %+8.3f y_true = %+8.3f distance = %.5f direction = %+8.3f", distDirect[i].x_true,distDirect[i].y_true, distDirect[i].distance, distDirect[i].direction);
+        // ROS_INFO("x_true = %.3f y_true = %.3f distance = %.5f direction = %.3f", distDirect[i].x_true,distDirect[i].y_true, distDirect[i].distance, distDirect[i].direction);
 
         // g_poseLidar.azimut[i] = distDirect[i].direction; // Индивидуальные углы наведения
         if (flagFirst == 0)

@@ -9,7 +9,7 @@
 #include "localizer.h"
 // #include "pillar.h"
 //**************************** ОБЬЯВЛЕНИЕ ПРОЦЕДУР **********************************
-void callback_Lidar(sensor_msgs::LaserScan::ConstPtr msg); //
+void callback_Measurement(pb_msgs::Struct_PoseLidar msg); //
 void callback_Modul(pb_msgs::Struct_Modul2Data msg);
 void callback_Speed(pb_msgs::SSetSpeed msg);
 void callback_Driver(pb_msgs::Struct_Driver2Data msg); //
@@ -76,10 +76,10 @@ float filtrComplem(float koef_, float oldData_, float newData_)
 	return (1 - koef_) * oldData_ + (koef_ * newData_);
 }
 
-void callback_Lidar(pb_msgs::Struct_PoseLidar msg)
+void callback_Measurement(pb_msgs::Struct_PoseLidar msg)
 {
-	msg_lidar = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
-	flag_msgLidar = true;
+	msg_Measurement = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
+	flag_msgMeasurement = true;
 }
 void callback_Modul(pb_msgs::Struct_Modul2Data msg)
 {
@@ -206,14 +206,14 @@ void startPosition(geometry_msgs::Pose2D &startPose2d_)
 	g_angleEuler.yaw = startPose2d_.theta; // Присваиваем yaw углу начальное значение
 	// g_poseRotation.theta = DEG2RAD(startPose2d_.theta); // Присваиваем глобальному углу начальное значение
 
-	g_poseBase.fused.x = startPose2d_.x; // Устанавливаем координаты для mode10 что-бы по нему начало все считаться
-	g_poseBase.fused.y = startPose2d_.y;
-	g_poseBase.fused.th = startPose2d_.theta;
+	g_poseBase.main.x = startPose2d_.x; // Устанавливаем координаты для что-бы по нему начало все считаться
+	g_poseBase.main.y = startPose2d_.y;
+	g_poseBase.main.th = startPose2d_.theta;
 	ROS_INFO("    startPose2d x= %+8.3f y= %+8.3f theta= %+8.3f ", startPose2d_.x, startPose2d_.y, startPose2d_.theta);
-	g_poseBase.lidar = g_poseBase.fused;
-	g_poseBase.laser = g_poseBase.fused;
+	g_poseBase.calculated = g_poseBase.main;
+	g_poseBase.measurement = g_poseBase.main;
 
-	g_poseRotation.fused = convertBase2Rotation(g_poseBase.fused, "fused"); // Конвентируем координаты заданные для точки в системе Base в систему Rotation
+	g_poseRotation.fused = convertBase2Rotation(g_poseBase.main, "fused"); // Конвентируем координаты заданные для точки в системе Base в систему Rotation
 	g_poseRotation.odom = g_poseRotation.fused;								// Первоначальная установка позиции
 	ROS_INFO("    start g_poseRotation.fused x= %+8.3f y= %+8.3f theta= %+8.3f ", g_poseRotation.fused.x, g_poseRotation.fused.y, g_poseRotation.fused.th);
 
@@ -952,7 +952,6 @@ void angleMPU()
 	{
 		g_angleMPU += (msg_Modul2Data.bno.angleEuler.yaw - predAngleZ); // Меняем угол поворота увеличивая на разницу. Разобраться с 360 и переходом через 0
 		predAngleZ = msg_Modul2Data.bno.angleEuler.yaw;					// Запоминаяем угол поворота Для следующего обсчета
-																		// dataNode.parsingDriver(msg_Driver2Data);
 	}
 	printf("g_angleMPU = % .3f \n", g_angleMPU);
 }

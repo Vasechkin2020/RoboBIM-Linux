@@ -261,17 +261,17 @@ void CTopic::publicationPoseBase() // Формируем перемнную с �
 {
     pb_msgs::Struct_PoseBase poseBase_msg; // Обобщенные данные в моем формате о всех вариантах расчета позиции
 
-    poseBase_msg.x.lidar = g_poseBase.lidar.x;
-    poseBase_msg.y.lidar = g_poseBase.lidar.y;
-    poseBase_msg.th.lidar = g_poseBase.lidar.th;
+    poseBase_msg.x.main = g_poseBase.main.x;
+    poseBase_msg.y.main = g_poseBase.main.y;
+    poseBase_msg.th.main = g_poseBase.main.th;
 
-    poseBase_msg.x.laser = g_poseBase.laser.x;
-    poseBase_msg.y.laser = g_poseBase.laser.y;
-    poseBase_msg.th.laser = g_poseBase.laser.th;
+    poseBase_msg.x.measurement = g_poseBase.measurement.x;
+    poseBase_msg.y.measurement = g_poseBase.measurement.y;
+    poseBase_msg.th.measurement = g_poseBase.measurement.th;
 
-    poseBase_msg.x.fused = g_poseBase.fused.x;
-    poseBase_msg.y.fused = g_poseBase.fused.y;
-    poseBase_msg.th.fused = g_poseBase.fused.th;
+    poseBase_msg.x.calculated = g_poseBase.calculated.x;
+    poseBase_msg.y.calculated = g_poseBase.calculated.y;
+    poseBase_msg.th.calculated = g_poseBase.calculated.th;
 
     poseBase_msg.x.odom = g_poseBase.odom.x;
     poseBase_msg.y.odom = g_poseBase.odom.y;

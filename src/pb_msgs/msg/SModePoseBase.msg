@@ -1,4 +1,4 @@
 float32 odom
-float32 fused
-float32 lidar
-float32 laser
+float32 main
+float32 measurement
+float32 calculated
