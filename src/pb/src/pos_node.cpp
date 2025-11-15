@@ -1,6 +1,6 @@
 
 #include "genStruct.h" // Тут все общие структуры. Истользуются и Data и Main и Head
-#include "logf.h" // Тут все общие структуры. Истользуются и Data и Main и Head
+#include "logi.h" // Тут все общие структуры. Истользуются и Data и Main и Head
 AsyncFileLogger logi("/home/pi/RoboBIM-Linux/src/pb/log/","pose_node"); 
 
 #include "pos_code/config.h"
