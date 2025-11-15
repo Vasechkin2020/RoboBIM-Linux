@@ -1,9 +1,13 @@
 
 #include "genStruct.h" // Тут все общие структуры. Истользуются и Data и Main и Head
+#include "logf.h" // Тут все общие структуры. Истользуются и Data и Main и Head
+AsyncFileLogger logi("/home/pi/RoboBIM-Linux/src/pb/log/","pose_node"); 
+
 #include "pos_code/config.h"
 
 #include "pos_code/localizer.h"
-ComplementaryLocalizer comp_loc;
+RateLimitedLocalizer rate_fuser;     // Экземпляр Rate-Limited
+const double lidar_latency_L = 0.05; // Задержка лидара/SLAM: 50 мс
 
 float g_angleMPU = 0;  // Глобальная перемнная угла получаемого с MPU куда смотрим
 float g_angleLaser[4]; // Углы на столбы которые передаем на нижний угол для управления
@@ -28,7 +32,6 @@ CPillar pillar; // Обьявляем экземпляр класса в нем 
 // CDataNode dataNode; // Экземпляр класса для всех данных получаемых с ноды Data  с нижнего уровня
 
 #include "pos_code/code.h"
-
 #include "pos_code/kalman.h"
 CKalman kalman11;
 
@@ -41,6 +44,8 @@ int main(int argc, char **argv)
     ROS_FATAL("\n");
     ROS_FATAL("***  pos_node *** ver. 1.57 *** printBIM.ru *** 2025 ***");
     ROS_FATAL("--------------------------------------------------------\n");
+    logi.log("***  pos_node *** ver. 1.57 *** printBIM.ru *** 2025 ***\n");
+    logi.log("--------------------------------------------------------\n");
 
     ros::init(argc, argv, "pos_node");
     ros::NodeHandle nh;
@@ -75,6 +80,8 @@ int main(int argc, char **argv)
     calibr_accel_gyro(); // Калибровка гироскопа и акселерометра в момент запуска ноды
     initKalman();        // Задаем коэфициенты для Калмана
 
+    rate_fuser.max_pos_step = 0.01;      // Настройка параметров слияния Максимальный шаг коррекции позиции (0.01 м)
+
     ROS_WARN("++++ End Setup. Start loop.");
     ros::Duration(3).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
 
@@ -96,17 +103,19 @@ int main(int argc, char **argv)
             flagPublish = true;
 
             g_linAngVel.odom = calcTwistFromWheel(msg_Speed);                      // Обработка пришедших данных. По ним считаем линейные скорости по осям и угловую по углу. Запоминаем dt
-            g_linAngVel.imu = calcTwistFromImu(msg_Driver2Data);                   // Обработка пришедших данных. По ним считаем линейные скорости по осям и угловую по углу. Запоминаем dt
-            g_linAngVel.fused = calcTwistFused(g_linAngVel.odom, g_linAngVel.imu); // Комплементация данных используя фильтр (Комплементарный или Калмана) тут написать функцию комплементации данных угловых скоростей с разными условиями когда и в каком соотношении скомплементировать скорсти с двух источников
-            // g_linAngVel.fused = calcTwistFromMpu(g_linAngVel.fused, msg_Modul2Data, g_linAngVel.odom); // Обработка пришедших данных для расчета линейных и угловых скоростей
-
             g_poseRotation.odom = calcNewPose(g_poseRotation.odom, g_linAngVel.odom, "odom");     // На основе линейных скоростей считаем новую позицию и угол по колесам
+            g_poseBase.odom = convertRotation2Base(g_poseRotation.odom, "odom");         // Позиция для отладки и сравнения по результатм только одометрии
+
+            g_linAngVel.imu = calcTwistFromImu(msg_Driver2Data);                   // Обработка пришедших данных. По ним считаем линейные скорости по осям и угловую по углу. Запоминаем dt
             g_poseRotation.imu = calcNewPose(g_poseRotation.imu, g_linAngVel.imu, "imu");         // На основе линейных скоростей считаем новую позицию и угол по колесам
+            
+            g_linAngVel.fused = calcTwistFused(g_linAngVel.odom, g_linAngVel.imu); // Комплементация данных используя фильтр (Комплементарный или Калмана) тут написать функцию комплементации данных угловых скоростей с разными условиями когда и в каком соотношении скомплементировать скорсти с двух источников
             g_poseRotation.fused = calcNewPose(g_poseRotation.fused, g_linAngVel.fused, "fused"); // На основе линейных скоростей считаем новую позицию и угол по колесам
+            g_poseBase.calculated = convertRotation2Base(g_poseRotation.fused, "fused"); // Позиция по результатам слияния одометрии и imu считаем РАСЧЕТОМ
+            
+            // g_linAngVel.fused = calcTwistFromMpu(g_linAngVel.fused, msg_Modul2Data, g_linAngVel.odom); // Обработка пришедших данных для расчета линейных и угловых скоростей
             // g_poseRotation.mode10 = calcNewOdom2(g_poseRotation.mode10, g_linAngVel.fused, "mode10"); // На основе линейных скоростей считаем новую позицию и угол по колесам
 
-            g_poseBase.odom = convertRotation2Base(g_poseRotation.odom, "odom");         // Позиция для отладки и сравнения по результатм только одометрии
-            g_poseBase.calculated = convertRotation2Base(g_poseRotation.fused, "fused"); // Позиция по результатам слияния одометрии и imu считаем РАСЧЕТОМ
 
             // РАСЧЕТ НАПРАВЛЕНИЯ УГЛОВ ЛАЗЕРОВ
             // laser.calcAnglePillarForLaser(pillar.pillar, g_poseBase.odom); // Расчет углов в локальной системе лазеров на столбы для передачи на нижний уровень для исполнения
@@ -114,6 +123,7 @@ int main(int argc, char **argv)
 
             // angleMPU(); // Расчет угла положения на основе данных сдатчика MPU
             // calcEuler(); // Расчет угла yaw с датчика IMU
+            logi.log("---- 100Hz Data Pose g_poseRotation fused x = %+8.3f y = %+8.3f th = %+8.3f \n", g_poseRotation.fused.x, g_poseRotation.fused.y, g_poseRotation.fused.th);
         }
 
         // Выполняется 10 -11 Hz как придут результаты ИЗМЕРЕНИЯ ***
@@ -128,13 +138,12 @@ int main(int argc, char **argv)
             g_poseBase.measurement.th = msg_Measurement.modeFused.th;
             ROS_INFO("---- IN Data Pose Measurement x = %+8.3f y = %+8.3f th = %+8.3f", g_poseBase.measurement.x, g_poseBase.measurement.y, g_poseBase.measurement.th);
 
-            // ROS_INFO("---- IN Data Pose Measurement x = %+8.3f y = %+8.3f th = %+8.3f |  FindPillar = %i ComparePillar = %i CrossCircle = %i DistDirect = %i | azimut %+8.3f %+8.3f %+8.3f %+8.3f | dtStoping = %f msec",
-            //          msg_Measurement.modeFused.x, msg_Measurement.modeFused.y, msg_Measurement.modeFused.th,
-            //          msg_Measurement.countFindPillar, msg_Measurement.countComparePillar, msg_Measurement.countCrossCircle, msg_Measurement.countDistDirect,
-            //          msg_Measurement.azimut[0], msg_Measurement.azimut[1], msg_Measurement.azimut[2], msg_Measurement.azimut[3], dtStoping * 1000);
+            // Вызываем СЛИЯНИЕ (Fusion) для Rate-Limited Fuser
+            g_poseBase.main = rate_fuser.fuse(g_poseBase.calculated, g_poseBase.measurement, g_linAngVel.fused.vx, g_linAngVel.fused.vth, lidar_latency_L);// Состояние Модели (по ссылке) и Измерение (SPose)
+            ROS_INFO("---- OUT Data Pose Main x = %+8.3f y = %+8.3f th = %+8.3f", g_poseBase.main.x, g_poseBase.main.y, g_poseBase.main.th);
 
-            ROS_INFO("    complementation g_poseBase.main x= %+8.3f y= %+8.3f theta= %+8.3f grad", g_poseBase.main.x, g_poseBase.main.y, g_poseBase.main.th);
-
+            g_poseRotation.fused  = convertBase2Rotation(g_poseBase.main, "main -> fused"); // Обновляем уже уточненным значением
+            logi.log("---- 10Hz Data Pose g_poseRotation fused x = %+8.3f y = %+8.3f th = %+8.3f \n", g_poseRotation.fused.x, g_poseRotation.fused.y, g_poseRotation.fused.th);
 
 
 
