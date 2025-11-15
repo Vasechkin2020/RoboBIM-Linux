@@ -14,9 +14,10 @@ void callback_Modul(pb_msgs::Struct_Modul2Data msg);
 void callback_Speed(pb_msgs::SSetSpeed msg);
 void callback_Driver(pb_msgs::Struct_Driver2Data msg); //
 
+SPose startPose; // Стартовая позиция считываем из параметров рос
 pb_msgs::SLinAngVel msg_LinAngVel; // Обобщенные данные в моем формате о всех вариантах расчета позиции
 
-void readParam(); // Считывание переменных параметров из лаунч файла при запуске. Там офсеты и режимы работы
+void read_Param_StartPose(); // Считывание переменных параметров из лаунч файла при запуске. Там офсеты и режимы работы
 void calcMode0(); // Расчет одометрии и применения ее для всех режимов
 
 void calcMode123();								 // Комплеиентация Mode123
@@ -28,7 +29,6 @@ double calculateAngleDifference(double prev_angle, double current_angle); // Ф�
 
 long map(long x, long in_min, long in_max, long out_min, long out_max); // Переводит значение из одного диапазона в другой, взял из Ардуино
 
-void startPosition(geometry_msgs::Pose2D &startPose2d_); // Разбираем топик со стартовой позицией робота
 
 void testFunction(); // Тест математических ипрочих функций
 
@@ -192,32 +192,6 @@ SPose convertBase2Rotation(SPose pose_, std::string stroka_)
 	ret.th = DEG2RAD(pose_.th);
 	ROS_INFO_THROTTLE(RATE_OUTPUT, "    convertBase2Rotation %s x= %+8.3f y= %+8.3f th = %+8.3f (gradus) %+8.3f rad", stroka_.c_str(), ret.x, ret.y, RAD2DEG(ret.th), ret.th);
 	return ret;
-}
-
-// Разбираем топик со стартовой позицией робота
-void startPosition(geometry_msgs::Pose2D &startPose2d_)
-{
-	ROS_INFO("+++ startPosition");
-
-	transformLidar2Rotation.x = 0.095; // Данные для трасформации из Lidar в Rotation 95 мм
-	transformLidar2Rotation.y = 0;
-	transformLidar2Rotation.th = 0;
-
-	g_angleEuler.yaw = startPose2d_.theta; // Присваиваем yaw углу начальное значение
-	// g_poseRotation.theta = DEG2RAD(startPose2d_.theta); // Присваиваем глобальному углу начальное значение
-
-	g_poseBase.main.x = startPose2d_.x; // Устанавливаем координаты для что-бы по нему начало все считаться
-	g_poseBase.main.y = startPose2d_.y;
-	g_poseBase.main.th = startPose2d_.theta;
-	ROS_INFO("    startPose2d x= %+8.3f y= %+8.3f theta= %+8.3f ", startPose2d_.x, startPose2d_.y, startPose2d_.theta);
-	g_poseBase.calculated = g_poseBase.main;
-	g_poseBase.measurement = g_poseBase.main;
-
-	g_poseRotation.fused = convertBase2Rotation(g_poseBase.main, "fused"); // Конвентируем координаты заданные для точки в системе Base в систему Rotation
-	g_poseRotation.odom = g_poseRotation.fused;								// Первоначальная установка позиции
-	ROS_INFO("    start g_poseRotation.fused x= %+8.3f y= %+8.3f theta= %+8.3f ", g_poseRotation.fused.x, g_poseRotation.fused.y, g_poseRotation.fused.th);
-
-	ROS_INFO("--- startPosition");
 }
 
 // Переводит значение из одного диапазона в другой, взял из Ардуино
@@ -1318,7 +1292,6 @@ void startColibrovka(CTopic &topic)
 	/*
 					geometry_msgs::Pose2D startPose2ver;
 					startPose2ver.theta = correctAngle;
-					startPosition(startPose2ver); // Определяем начальное положение
 					offsetAngle = correctAngle; // Меняем поправочный коэффициент
 					//==========================================================
 					// меняем флаг что-бы сюда больше не попадать
@@ -1335,48 +1308,13 @@ void initKalman()
 	kalman11.setParametrY(1, 1);
 }
 
-// Считывание переменных параметров из лаунч файла при запуске. Там офсеты и режимы работы
-void readParam()
+// Считывание переменных параметров при запуске. Там офсеты и режимы работы
+void read_Param_StartPose()
 {
-	ROS_INFO("+++ readParam");
-	ros::NodeHandle nh_private("~");
-	// Имя можно с палкой или без, смотря как в лаунч файле параметры обявлены. связано с видимостью глобальной или локальной. относительным поиском переменной как сказал Максим
+	ROS_INFO("+++ read_Param_StartPose");
 	ros::NodeHandle nh_global; // <--- Используется для доступа к /pb_config/ // Создаем ГЛОБАЛЬНЫЙ обработчик, который ищет параметры, начиная с корня (/).
 
-	//<!-- Указываем стартовую позицию робота. В какое место поставили и куда направили-->
-	// if (!nh_private.getParam("x", msg_startPose2d.x))
-	// 	msg_startPose2d.x = 0.11;
-	// if (!nh_private.getParam("y", msg_startPose2d.y))
-	// 	msg_startPose2d.y = 0.11;
-	// if (!nh_private.getParam("theta", msg_startPose2d.theta))
-	// 	msg_startPose2d.theta = 0.11;
-
-	nh_global.param<double>("/pb_config/start_pose/x", msg_startPose2d.x, 0.0);
-	nh_global.param<double>("/pb_config/start_pose/y", msg_startPose2d.y, 0.0);
-	nh_global.param<double>("/pb_config/start_pose/th", msg_startPose2d.theta, 0.0);
-
-	//<!-- Указываем места расположения столбов на локальной карте -->
-	// if (!nh_private.getParam("x0", msg_pillar.pillar[0].x))
-	// 	msg_pillar.pillar[0].x = 0.11;
-	// if (!nh_private.getParam("y0", msg_pillar.pillar[0].y))
-	// 	msg_pillar.pillar[0].y = 0.11;
-
-	// if (!nh_private.getParam("x1", msg_pillar.pillar[1].x))
-	// 	msg_pillar.pillar[1].x = 1.11;
-	// if (!nh_private.getParam("y1", msg_pillar.pillar[1].y))
-	// 	msg_pillar.pillar[1].y = 1.11;
-
-	// if (!nh_private.getParam("x2", msg_pillar.pillar[2].x))
-	// 	msg_pillar.pillar[2].x = 2.11;
-	// if (!nh_private.getParam("y2", msg_pillar.pillar[2].y))
-	// 	msg_pillar.pillar[2].y = 2.11;
-
-	// if (!nh_private.getParam("x3", msg_pillar.pillar[3].x))
-	// 	msg_pillar.pillar[3].x = 3.11;
-	// if (!nh_private.getParam("y3", msg_pillar.pillar[3].y))
-	// 	msg_pillar.pillar[3].y = 3.11;
-
-	// printf("\n--- Считывание смещений массива лазеров ---\n"); // Разделитель секции...
+		// printf("\n--- Считывание смещений массива лазеров ---\n"); // Разделитель секции...
 	nh_global.param<float>("/pb_config/pillars/pillar_0_x", msg_pillar.pillar[0].x, 0.11); // Если не найдено, laser_b0 = -0.0001
 	nh_global.param<float>("/pb_config/pillars/pillar_0_y", msg_pillar.pillar[0].y, 0.11); // Если не найдено, laser_b0 = -0.0001
 	nh_global.param<float>("/pb_config/pillars/pillar_1_x", msg_pillar.pillar[1].x, 1.11); // Если не найдено, laser_b0 = -0.0001
@@ -1386,13 +1324,41 @@ void readParam()
 	nh_global.param<float>("/pb_config/pillars/pillar_3_x", msg_pillar.pillar[3].x, 3.11); // Если не найдено, laser_b0 = -0.0001
 	nh_global.param<float>("/pb_config/pillars/pillar_3_y", msg_pillar.pillar[3].y, 3.11); // Если не найдено, laser_b0 = -0.0001
 
-	ROS_INFO("startPose x = %+8.3f y = %+8.3f theta = %+8.3f", msg_startPose2d.x, msg_startPose2d.y, msg_startPose2d.theta);
-	ROS_INFO("start PillarPose");
-	ROS_INFO("x0= %+8.3f y0 = %+8.3f", msg_pillar.pillar[0].x, msg_pillar.pillar[0].y);
-	ROS_INFO("x1= %+8.3f y1 = %+8.3f", msg_pillar.pillar[1].x, msg_pillar.pillar[1].y);
-	ROS_INFO("x2= %+8.3f y2 = %+8.3f", msg_pillar.pillar[2].x, msg_pillar.pillar[2].y);
-	ROS_INFO("x3= %+8.3f y3 = %+8.3f", msg_pillar.pillar[3].x, msg_pillar.pillar[3].y);
-	ROS_INFO("--- readParam");
+	ROS_INFO("    start PillarPose");
+	ROS_INFO("    x0= %+8.3f y0 = %+8.3f", msg_pillar.pillar[0].x, msg_pillar.pillar[0].y);
+	ROS_INFO("    x1= %+8.3f y1 = %+8.3f", msg_pillar.pillar[1].x, msg_pillar.pillar[1].y);
+	ROS_INFO("    x2= %+8.3f y2 = %+8.3f", msg_pillar.pillar[2].x, msg_pillar.pillar[2].y);
+	ROS_INFO("    x3= %+8.3f y3 = %+8.3f", msg_pillar.pillar[3].x, msg_pillar.pillar[3].y);
+	ROS_INFO("--- read_Param_StartPose");
+
+	ROS_INFO("+++ startPosition");
+
+
+	nh_global.param<double>("/pb_config/start_pose/x", startPose.x, 0.0);
+	nh_global.param<double>("/pb_config/start_pose/y", startPose.y, 0.0);
+	nh_global.param<double>("/pb_config/start_pose/th", startPose.th, 0.0);
+
+	ROS_INFO("    startPose x = %+8.3f y = %+8.3f theta = %+8.3f", startPose.x, startPose.y, startPose.th);
+
+	transformLidar2Rotation.x = 0.095; // Данные для трасформации из Lidar в Rotation 95 мм
+	transformLidar2Rotation.y = 0;
+	transformLidar2Rotation.th = 0;
+
+	g_angleEuler.yaw = startPose.th; // Присваиваем yaw углу начальное значение
+	// g_poseRotation.theta = DEG2RAD(startPose2d_.theta); // Присваиваем глобальному углу начальное значение
+
+	g_poseBase.main.x = startPose.x; // Устанавливаем координаты для что-бы по нему начало все считаться
+	g_poseBase.main.y = startPose.y;
+	g_poseBase.main.th = startPose.th;
+	ROS_INFO("    startPose2d x= %+8.3f y= %+8.3f theta= %+8.3f ", startPose.x, startPose.y, startPose.th);
+	g_poseBase.calculated = g_poseBase.main;
+	g_poseBase.measurement = g_poseBase.main;
+
+	g_poseRotation.fused = convertBase2Rotation(g_poseBase.main, "fused"); // Конвентируем координаты заданные для точки в системе Base в систему Rotation
+	g_poseRotation.odom = g_poseRotation.fused;								// Первоначальная установка позиции
+	ROS_INFO("    start g_poseRotation.fused x= %+8.3f y= %+8.3f theta= %+8.3f ", g_poseRotation.fused.x, g_poseRotation.fused.y, g_poseRotation.fused.th);
+
+	ROS_INFO("--- startPosition");
 }
 
 // Функция для вычисления разницы между углами

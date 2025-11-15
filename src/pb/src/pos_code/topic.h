@@ -131,9 +131,9 @@ void CTopic::visualStartPose()
     geometry_msgs::PoseStamped startPose_msg;      // Начальная позиция отображаем в RVIZ
     startPose_msg.header.stamp = ros::Time::now(); // Время ROS
     startPose_msg.header.frame_id = "odom";
-    startPose_msg.pose.position.x = msg_startPose2d.x;
-    startPose_msg.pose.position.y = msg_startPose2d.y;
-    float theta = DEG2RAD(msg_startPose2d.theta); //
+    startPose_msg.pose.position.x = startPose.x;
+    startPose_msg.pose.position.y = startPose.y;
+    float theta = DEG2RAD(startPose.th); //
     geometry_msgs::Quaternion quat = tf::createQuaternionMsgFromYaw(theta);
     startPose_msg.pose.orientation = quat;
     // ROS_INFO("startPose_msg Quaternion x =%+8.3f y =%+8.3f z =%+8.3f w =%+8.3f theta = %+8.3f", quat.x, quat.y, quat.z, quat.w, theta);
@@ -147,8 +147,8 @@ void CTopic::visualStartPose()
     marker.id = 0;
     marker.type = visualization_msgs::Marker::CYLINDER;
     marker.action = visualization_msgs::Marker::ADD;
-    marker.pose.position.x = msg_startPose2d.x;
-    marker.pose.position.y = msg_startPose2d.y;
+    marker.pose.position.x = startPose.x;
+    marker.pose.position.y = startPose.y;
     marker.pose.position.z = 0.1;
     marker.pose.orientation = tf::createQuaternionMsgFromYaw(0);
     marker.scale.x = 0.05;
