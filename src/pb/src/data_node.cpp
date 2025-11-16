@@ -1,5 +1,7 @@
 
 // #include "bcm2835.h"
+#include "logi.h" //Класс для моего формата логов
+AsyncFileLogger logi("/home/pi/RoboBIM-Linux/src/pb/log/", "data_node");
 
 #include "genStruct.h" // Тут все общие структуры. Истользуются и Data и Main и Head
 #include "data_code/config.h"
@@ -13,9 +15,15 @@
 int main(int argc, char **argv)
 {
 
-    // ROS_WARN("%s --------------------------------------------------------", NN);
-    ROS_FATAL("%s *** Data_Node *** ver. 1.5 22-09-25 *** printBIM.ru *** 2025 ***", NN);
-    // ROS_WARN("%s --------------------------------------------------------", NN);
+    logi.log_b("*** Data_Node *** ver. 1.5 16-11-25 *** printBIM.ru *** 2025 ***\n");
+    logi.log_b("-------------------------------------------------------- \n");
+
+    logi.logf("Это сообщение попадёт ТОЛЬКО в файл.\n");                // 1) Только в файл
+    logi.log("Обычный лог: скорость = %d, ошибка = %.2f\n", 42, 0.123); // 2) На экран + в файл (обычный белый)
+    logi.log_g("Зелёный лог — всё хорошо!\n");                          // 3) Цветные логи + запись в файл
+    logi.log_r("Красный лог — ошибка!\n");
+    logi.log_w("Жёлтый лог — предупреждение!\n");
+    logi.log_b("Синий лог — информационное сообщение.\n");
 
     ros::init(argc, argv, "data_node");
     log4cxx::MDC::put("node", "|data_node|");
@@ -42,7 +50,7 @@ int main(int argc, char **argv)
     last_time = ros::Time::now();
     // double dt = (current_time - last_time).toSec();
 
-    ROS_INFO("+++ test laser... Waiting 7 sec...");
+    logi.log_b("+++ test laser... Waiting 7 sec...\n");
     ros::Duration(1).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
 
     // Data2Modul.id++;                                       //= 0x1F1F1F1F;
@@ -63,28 +71,34 @@ int main(int argc, char **argv)
     // Data2Modul.cheksum = measureCheksum(Data2Modul);       // Считаем контрольную сумму отправляемой структуры// тут нужно посчитать контрольную сумму структуры
     // sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
     // ros::Duration(1).sleep();                              // Подождем пока все обьявится и инициализируется внутри ROS
-    ROS_INFO("--- test laser");
+    logi.log("--- test laser\n");
 
     uint64_t timeWork = millis(); // Время работы ноды
-    ROS_WARN("End Setup. Start loop.");
+    logi.log_w("End Setup. Start loop.\n");
 
     while (ros::ok())
     {
+        double current_time_sec = ros::Time::now().toSec(); // Текущее время в секундах
         // ROS_INFO(""); // С новой строки в логе новый цикл
         led_status = 1 - led_status; // Мигаем с частотой работы цикла
         digitalWrite(PIN_LED_BLUE, led_status);
 
-        static ros::Time start_time = ros::Time::now(); // Захватываем начальный момент времени
+        static ros::Time start_cicle_time = ros::Time::now(); // Захватываем начальный момент времени
         ros::Time now_time = ros::Time::now();          // Захватываем текущий момент времени
-        ros::Duration duration = now_time - start_time; // Находим разницу между началом и концом
+        ros::Duration duration = now_time - start_cicle_time; // Находим разницу между началом и концом
         double dt = duration.toSec();                   // Получаем количество секунд
-        start_time = now_time;                          // Запоминаем на будущий расчет
-
+        start_cicle_time = now_time;                          // Запоминаем на будущий расчет
         ros::spinOnce(); // Обновление в данных в ядре ROS, по этой команде происходит вызов функции обратного вызова
-        ROS_INFO_THROTTLE(THROTTLE_PERIOD_1, "%u msec. SPI Modul %u/%u %u/%u | Driver %u/%u %u/%u | Print %u/%u %u/%u |", millis(),
-                          Modul2Data.spi.all, Modul2Data.spi.bed, data_modul_all, data_modul_bed,
-                          Driver2Data.spi.all, Driver2Data.spi.bed, data_driver_all, data_driver_bed,
-                          Print2Data.spi.all, Print2Data.spi.bed, data_print_all, data_print_bed);
+
+        static double time_print = current_time_sec; // Переменная для периодической печати
+        if (time_print <= current_time_sec) // Если время становиться больше чем текущее то выводим на печать
+        {
+            time_print += 1.0; // раз в секунду
+            logi.log("%u msec. SPI Modul %u/%u %u/%u | Driver %u/%u %u/%u | Print %u/%u %u/%u | \n", millis(),
+                     Modul2Data.spi.all, Modul2Data.spi.bed, data_modul_all, data_modul_bed,
+                     Driver2Data.spi.all, Driver2Data.spi.bed, data_driver_all, data_driver_bed,
+                     Print2Data.spi.all, Print2Data.spi.bed, data_print_all, data_print_bed);
+        }
         //-----------------------------------------------------------------------------------------------------------------------------------
         if (flag_msgControlModul) // Если пришло сообщение в топике и сработал колбек
         {
@@ -110,11 +124,11 @@ int main(int argc, char **argv)
         if (millis() - timeSpiPrint > 3000) // Если по топикам не пришли данные больше 3 секунд то отправляем значения по умолчанию
             collect_Data2Print(0);
 
-        g_factSpeed.speedL = g_desiredSpeed.speedL;  // 
-        g_factSpeed.speedR = g_desiredSpeed.speedR; // 
+        g_factSpeed.speedL = g_desiredSpeed.speedL; //
+        g_factSpeed.speedR = g_desiredSpeed.speedR; //
 
         if (g_factSpeed.speedL != 0 || g_factSpeed.speedR != 0)
-            ROS_INFO_THROTTLE(0.01,"g_factSpeed.L = %f g_factSpeed.R= %f", g_factSpeed.speedL, g_factSpeed.speedR);
+            logi.log("g_factSpeed.L = %f g_factSpeed.R= %f \n", g_factSpeed.speedL, g_factSpeed.speedR);
 
         Data2Driver.control = speedToRps(g_factSpeed); // Конвертация скорости из метров в секунду в обороты в секунду для передачи на нижний уровень
         // printf("Data2Driver.controlL = %f Data2Driver.controlR= %f \n \n",Data2Driver.control.speedL,Data2Driver.control.speedR);
@@ -160,7 +174,7 @@ int main(int argc, char **argv)
         // ROS_INFO("id= %i speedL= %f speedR= %f cheksum = %i", Data2Driver.id, Data2Driver.control.speedL, Data2Driver.control.speedR, Data2Driver.cheksum);
         if (rezData) // Если пришли хорошие данные то обрабатываем их и публикуем данные в ROS
         {
-            topic.processing_Driver2Data();         // Обработанные данные записываем их в структуру для публикации в топике и публикуем И знак смотря как установлен. Подбор. 
+            topic.processing_Driver2Data();         // Обработанные данные записываем их в структуру для публикации в топике и публикуем И знак смотря как установлен. Подбор.
             topic.processing_SetSpeed(g_factSpeed); // Заполнение и публикация заданной скорости Публикуем после Driver2Data
         }
         //-----------------------------------------------------------------------------------------------------------------------------------
@@ -174,6 +188,6 @@ int main(int argc, char **argv)
     Data2Modul.controlLaser.mode = 0;                      // Ручной вариант проверка
     Data2Modul.cheksum = measureCheksum(Data2Modul);       // Считаем контрольную сумму отправляемой структуры// тут нужно посчитать контрольную сумму структуры
     sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
-    printf("data_node STOP \n");
+    logi.log_b("data_node STOP \n");
     return 0;
 }
