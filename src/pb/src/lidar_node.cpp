@@ -19,6 +19,7 @@ int main(int argc, char **argv) // Главная функция програм�
 {
     signal(SIGINT, stopProgram);         // Настраиваем обработку Ctrl+C
     ros::init(argc, argv, "lidar_node"); // Инициализируем ROS с именем узла "lidar_node"
+    
 
     ros::NodeHandle nh;
     ros::Subscriber subscriber_Lidar = nh.subscribe<sensor_msgs::LaserScan>("/scan", 1000, callback_Lidar); // Подписка на данные лидара

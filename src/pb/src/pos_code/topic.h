@@ -46,21 +46,21 @@ private:
 
     //--------------------------------- ПУБЛИКАЦИЯ В ТОПИКИ -------------------------------------------------
 
-    ros::Publisher pub_ControlModul = _nh.advertise<pb_msgs::Struct_Data2Modul>("pb/Pos/ControlModul", 16); // Это мы публикуем структуру которую отправляем к исполнению на драйвер
+    ros::Publisher pub_ControlModul = _nh.advertise<pb_msgs::Struct_Data2Modul>("pb/Pos/ControlModul", 1); // Это мы публикуем структуру которую отправляем к исполнению на драйвер
+ 
+    ros::Publisher pub_poseBase = _nh.advertise<pb_msgs::Struct_PoseBase>("pb/Pos/PoseBase", 1);          // Это мы публикуем итоговую информацию по позици лидара обобщенную
+    ros::Publisher pub_poseRotation = _nh.advertise<pb_msgs::Struct_PoseRotation>("pb/Pos/PoseRotation", 1); // Это мы публикуем итоговую информацию по позици лидара обобщенную
 
-    ros::Publisher pub_poseBase = _nh.advertise<pb_msgs::Struct_PoseBase>("pb/Pos/PoseBase", 8);          // Это мы публикуем итоговую информацию по позици лидара обобщенную
-    ros::Publisher pub_poseRotation = _nh.advertise<pb_msgs::Struct_PoseRotation>("pb/Pos/PoseRotation", 8); // Это мы публикуем итоговую информацию по позици лидара обобщенную
+    ros::Publisher pub_linAngVel = _nh.advertise<pb_msgs::SLinAngVel>("pb/Pos/LinAngVel", 1);                // Это мы публикуем итоговую информацию линейной скорости угловой
 
-    ros::Publisher pub_linAngVel = _nh.advertise<pb_msgs::SLinAngVel>("pb/Pos/LinAngVel", 8);                // Это мы публикуем итоговую информацию линейной скорости угловой
+    ros::Publisher pub_AngleLLAll = _nh.advertise<pb_msgs::SAngleLaserLidar>("pb/Pos/AngleLLAll", 1); // Это мы публикуем итоговую информацию по углам лазера для нижнего уровня
 
-    ros::Publisher pub_AngleLLAll = _nh.advertise<pb_msgs::SAngleLaserLidar>("pb/Pos/AngleLLAll", 16); // Это мы публикуем итоговую информацию по углам лазера для нижнего уровня
-
-    ros::Publisher pub_PillarAll = _nh.advertise<pb_msgs::PillarOut>("pb/Pos/PillarAll", 16); // Это мы публикуем итоговую обобщенную информацию по столбам где все данные указаны НАФИГА?
+    ros::Publisher pub_PillarAll = _nh.advertise<pb_msgs::PillarOut>("pb/Pos/PillarAll", 1); // Это мы публикуем итоговую обобщенную информацию по столбам где все данные указаны НАФИГА?
 
     ros::Publisher pub_markerPillar = _nh.advertise<visualization_msgs::Marker>("pb/rviz/Pose/markerPillar0", 0);    // Публикуем столбы как маркер тип цилиндр
     ros::Publisher pub_markerPosition = _nh.advertise<visualization_msgs::Marker>("pb/rviz/Pose/markerPosition", 0); // Публикуем столики как точки позиций
 
-    ros::Publisher pub_StartPose = _nh.advertise<geometry_msgs::PoseStamped>("pb/rviz/Pose/StartPose", 16); // Для публикации стартовой позиции
+    ros::Publisher pub_StartPose = _nh.advertise<geometry_msgs::PoseStamped>("pb/rviz/Pose/StartPose", 1); // Для публикации стартовой позиции
 
     // СТРЕЛКИ на столбы
     ros::Publisher pub_poseLaser0 = _nh.advertise<geometry_msgs::PoseStamped>("pb/rviz/Pose/Laser0", 16); // Публикатор для позиции лазера на моторе 0
@@ -261,21 +261,21 @@ void CTopic::publicationPoseBase() // Формируем перемнную с �
 {
     pb_msgs::Struct_PoseBase poseBase_msg; // Обобщенные данные в моем формате о всех вариантах расчета позиции
 
-    poseBase_msg.x.main = g_poseBase.main.x;
-    poseBase_msg.y.main = g_poseBase.main.y;
-    poseBase_msg.th.main = g_poseBase.main.th;
+    poseBase_msg.x.odom = g_poseBase.odom.x;
+    poseBase_msg.y.odom = g_poseBase.odom.y;
+    poseBase_msg.th.odom = g_poseBase.odom.th;
+
+    poseBase_msg.x.fused = g_poseBase.fused.x;
+    poseBase_msg.y.fused = g_poseBase.fused.y;
+    poseBase_msg.th.fused = g_poseBase.fused.th;
 
     poseBase_msg.x.measurement = g_poseBase.measurement.x;
     poseBase_msg.y.measurement = g_poseBase.measurement.y;
     poseBase_msg.th.measurement = g_poseBase.measurement.th;
 
-    poseBase_msg.x.calculated = g_poseBase.calculated.x;
-    poseBase_msg.y.calculated = g_poseBase.calculated.y;
-    poseBase_msg.th.calculated = g_poseBase.calculated.th;
-
-    poseBase_msg.x.odom = g_poseBase.odom.x;
-    poseBase_msg.y.odom = g_poseBase.odom.y;
-    poseBase_msg.th.odom = g_poseBase.odom.th;
+    poseBase_msg.x.main = g_poseBase.main.x;
+    poseBase_msg.y.main = g_poseBase.main.y;
+    poseBase_msg.th.main = g_poseBase.main.th;
 
     poseBase_msg.azimut[0] =  g_poseBase.azimut[0];
     poseBase_msg.azimut[1] =  g_poseBase.azimut[1];
@@ -293,14 +293,17 @@ void CTopic::publicationPoseRotattion() // Вывод в топик данных
     msg.x.odom = g_poseRotation.odom.x;
     msg.x.imu = g_poseRotation.imu.x;
     msg.x.fused = g_poseRotation.fused.x;
+    msg.x.main = g_poseRotation.main.x;
 
     msg.y.odom = g_poseRotation.odom.y;
     msg.y.imu = g_poseRotation.imu.y;
     msg.y.fused = g_poseRotation.fused.y;
+    msg.y.main = g_poseRotation.main.y;
     
     msg.th.odom = g_poseRotation.odom.th;
     msg.th.imu = g_poseRotation.imu.th;
     msg.th.fused = g_poseRotation.fused.th;
+    msg.th.main = g_poseRotation.main.th;
    
     msg.theta = DEG2RAD(g_angleEuler.yaw);
 

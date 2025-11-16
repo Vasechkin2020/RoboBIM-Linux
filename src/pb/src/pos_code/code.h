@@ -14,11 +14,11 @@ void callback_Modul(pb_msgs::Struct_Modul2Data msg);
 void callback_Speed(pb_msgs::SSetSpeed msg);
 void callback_Driver(pb_msgs::Struct_Driver2Data msg); //
 
-SPose startPose; // Стартовая позиция считываем из параметров рос
+SPose startPose;				   // Стартовая позиция считываем из параметров рос
 pb_msgs::SLinAngVel msg_LinAngVel; // Обобщенные данные в моем формате о всех вариантах расчета позиции
 
 void read_Param_StartPose(); // Считывание переменных параметров из лаунч файла при запуске. Там офсеты и режимы работы
-void calcMode0(); // Расчет одометрии и применения ее для всех режимов
+void calcMode0();			 // Расчет одометрии и применения ее для всех режимов
 
 void calcMode123();								 // Комплеиентация Mode123
 double convert_angle_360_to_pm180(double angle); // Преобразование угла из 0..360 (по часовой) в ±180 (положительное против часовой)
@@ -28,7 +28,6 @@ double normalize_angle(double a); // Нормализация угла в диа
 double calculateAngleDifference(double prev_angle, double current_angle); // Функция для вычисления разницы между углами
 
 long map(long x, long in_min, long in_max, long out_min, long out_max); // Переводит значение из одного диапазона в другой, взял из Ардуино
-
 
 void testFunction(); // Тест математических ипрочих функций
 
@@ -178,7 +177,7 @@ SPose convertRotation2Base(SPose pose_, std::string stroka_)
 	ret.x = pose_.x - (transformLidar2Rotation.x * cos(pose_.th));
 	ret.y = pose_.y - (transformLidar2Rotation.x * sin(pose_.th));
 	ret.th = RAD2DEG(pose_.th); // в g_poseBase угол в градусах
-	ROS_INFO_THROTTLE(RATE_OUTPUT, "    convertRotation2Base %s x = %+8.3f y = %+8.3f theta = %+8.3f (gradus) %+8.3f rad", stroka_.c_str(), ret.x, ret.y, ret.th, pose_.th);
+	// logi.log("    convert Rotation => Base %s x = %+8.3f y = %+8.3f theta = %+8.3f (gradus) %+8.3f rad \n", stroka_.c_str(), ret.x, ret.y, ret.th, pose_.th);
 	return ret;
 }
 // Конвертация координат из Lidar в Rotattion систему
@@ -190,7 +189,7 @@ SPose convertBase2Rotation(SPose pose_, std::string stroka_)
 	ret.x = pose_.x + (transformLidar2Rotation.x * cos(DEG2RAD(pose_.th)));
 	ret.y = pose_.y + (transformLidar2Rotation.x * sin(DEG2RAD(pose_.th)));
 	ret.th = DEG2RAD(pose_.th);
-	ROS_INFO_THROTTLE(RATE_OUTPUT, "    convertBase2Rotation %s x= %+8.3f y= %+8.3f th = %+8.3f (gradus) %+8.3f rad", stroka_.c_str(), ret.x, ret.y, RAD2DEG(ret.th), ret.th);
+	// logi.log("    convert Base => Rotation %s x= %+8.3f y= %+8.3f th = %+8.3f (gradus) %+8.3f rad \n", stroka_.c_str(), ret.x, ret.y, RAD2DEG(ret.th), ret.th);
 	return ret;
 }
 
@@ -288,6 +287,7 @@ SPose calcNewPose(SPose pose_, STwistDt twist_, std::string stroka_)
 	double dx = twist_.vx * cos(theta_avg) * twist_.dt; // Перемещение в глобальных координатах через среднее направление
 	double dy = twist_.vx * sin(theta_avg) * twist_.dt;
 
+	// logi.log_r("    theta_avg = %+8.4f dx= %+8.4f dy= %+8.4f  dt= %+8.4f   cos= %+8.4f \n", theta_avg, dx, dy, twist_.dt, cos(theta_avg));
 	ret.x = pose_.x + dx; // Обновляем позу
 	ret.y = pose_.y + dy;
 	ret.th = pose_.th + (twist_.vth * twist_.dt);
@@ -413,7 +413,7 @@ STwistDt calcTwistFromWheel(pb_msgs::SSetSpeed msg_Speed_)
 	yaw = normalize_angle(yaw + (ret.vth * dt)); // Расчет угла с нормализацией угла от пи до -пи
 	msg_LinAngVel.yaw.wheel = RAD2DEG(yaw);		 // Перевод в градусы перед публикацией
 
-	ROS_INFO_THROTTLE(RATE_OUTPUT, "    Twist Wheel vx= %+8.3f vy= %+8.3f vth= %+8.3f w= %+8.3f gradus/sec  %+8.3f rad/sec", ret.vx, ret.vy, RAD2DEG(ret.vth), ret.vth);
+	// logi.log("    Twist Wheel vx= %+8.3f vy= %+8.3f vth= %+8.3f w= %+8.3f gradus/sec  %+8.3f rad/sec \n", ret.vx, ret.vy, RAD2DEG(ret.vth), ret.vth);
 
 	return ret;
 }
@@ -444,7 +444,7 @@ STwistDt calcTwistFromWheel_Old(pb_msgs::SSetSpeed msg_Speed_)
 
 	if (dt < 0.002) // При первом запуске просто выходим из функции
 	{
-		ROS_INFO("    First start. alcTwistFromWheel dt< 0.002 dt= %f | dt_micros = %f sec", dt, dt_micros);
+		logi.log_g("    First start. alcTwistFromWheel dt< 0.002 dt= %f | dt_micros = %f sec \n", dt, dt_micros);
 		return ret;
 	}
 	// double speedL = PERIMETR * Driver2Data.motor.rpsEncodL; // По формуле периметр колеса на обороты это и есть пройденный путь за секунду Это и есть скорость за секунду
@@ -516,7 +516,7 @@ STwistDt calcTwistFromWheel_Old(pb_msgs::SSetSpeed msg_Speed_)
 	twist.vth = theta;					// Угловая скорость в радианах.
 	twist.dt = dt;
 
-	ROS_INFO_THROTTLE(RATE_OUTPUT, "    Twist Wheel dt = %+8.3f vx= %+8.3f vy= %+8.3f vth= %+8.3f w= %+8.3f gradus/sec  %+8.3f rad/sec", dt, twist.vx, twist.vy, RAD2DEG(twist.vth), RAD2DEG(w), w);
+	logi.log("    Twist Wheel dt = %+8.3f vx= %+8.3f vy= %+8.3f vth= %+8.3f w= %+8.3f gradus/sec  %+8.3f rad/sec \n", dt, twist.vx, twist.vy, RAD2DEG(twist.vth), RAD2DEG(w), w);
 	// if (w==0)
 	// ROS_INFO("NULL");
 
@@ -599,7 +599,7 @@ STwistDt calcTwistFromImu(pb_msgs::Struct_Driver2Data msg_)
 
 	if (dt < 0.003) // При первом запуске просто выходим из функции
 	{
-		ROS_INFO("    First calcTwistFromImu dt< 0.003 !!!! dt = %f", dt);
+		logi.log_g("    First calcTwistFromImu dt< 0.003 !!!! dt = %f \n", dt);
 		ret.vx = 0; //
 		ret.vth = 0;
 		return ret;
@@ -621,7 +621,7 @@ STwistDt calcTwistFromImu(pb_msgs::Struct_Driver2Data msg_)
 	msg_LinAngVel.real_gyro = real_gyro;
 	ret.vth = real_gyro; // Берем угловую скорость готовую с показаний датчика
 
-	ROS_INFO_THROTTLE(RATE_OUTPUT, "    Twist IMU dt = %+8.3f | vx= %+8.3f vth= %+8.3f gradus/sec %.6f rad/sec | accel %.6f ", dt, ret.vx, RAD2DEG(ret.vth), ret.vth, msg_.icm.accel.y);
+	// logi.log("    Twist IMU dt = %+8.3f | vx= %+8.3f vth= %+8.3f gradus/sec %.6f rad/sec | accel %.6f \n", dt, ret.vx, RAD2DEG(ret.vth), ret.vth, msg_.icm.accel.y);
 
 	static double speedPred = 0;
 	static double speedPredPred = 0;
@@ -636,7 +636,7 @@ STwistDt calcTwistFromImu(pb_msgs::Struct_Driver2Data msg_)
 	if (abs(accelNow) < 0.05) // Если текущее ускорение посчитанное с колес меньше заданного то можно считать офсет по оси Х. Значит или стоим или двигаемся достаточно равномерно
 	{
 		g_offsetX = autoOffsetX(raw_accel, 64); // Калибровка bias (во время остановки или равномерного движения).
-		ROS_INFO("    speedNow = %f accelNow = %f offsetX= %+8.6f offsetYaw= %+8.6f ", speedNow, accelNow, g_offsetX, g_offsetYaw);
+												// ROS_INFO("    speedNow = %f accelNow = %f offsetX= %+8.6f offsetYaw= %+8.6f ", speedNow, accelNow, g_offsetX, g_offsetYaw);
 	}
 	msg_LinAngVel.offsetX = g_offsetX; // Вывод в топик что насчитали
 	msg_LinAngVel.offsetYaw = g_offsetYaw;
@@ -837,24 +837,21 @@ STwistDt calcTwistFused(STwistDt odomTwist_, STwistDt imuTwist_)
 	ret.vth = ret.vth * k_filtr_angle_vel + v_angl_fused * (1 - k_filtr_angle_vel); // Фильтруем
 
 	//--------------------------------
-
-	ROS_INFO_THROTTLE(RATE_OUTPUT, "    fused Twist | %+8.3f %+8.3f %+8.3f | %+8.3f %+8.3f %+8.3f | ",
-					  odomTwist_.vx, imuTwist_.vx, ret.vx,
-					  odomTwist_.vth, imuTwist_.vth, ret.vth);
-
 	double dt = (odomTwist_.dt + imuTwist_.dt) * 0.5;
+	ret.dt = dt;
+	// logi.log("    fused Twist | %+8.3f %+8.3f %+8.3f | %+8.3f %+8.3f %+8.3f | dt= %+8.3f \n", odomTwist_.vx, imuTwist_.vx, ret.vx, odomTwist_.vth, imuTwist_.vth, ret.vth, dt);
 
 	msg_LinAngVel.vx.fused = ret.vx;
 	msg_LinAngVel.vth.fused = ret.vth;
-	msg_LinAngVel.dt.fused = dt;
+	msg_LinAngVel.dt.fused = ret.dt;
 
 	static double track = 0; // Пройденный путь
-	msg_LinAngVel.track.fused = track + (ret.vx * dt);
+	msg_LinAngVel.track.fused = track + (ret.vx * ret.dt);
 	track = msg_LinAngVel.track.fused;
 
-	static double yaw = 0;						 // Угол на который повернули
-	yaw = normalize_angle(yaw + (ret.vth * dt)); // Расчет угла с нормализацией угла от пи до -пи
-	msg_LinAngVel.yaw.fused = RAD2DEG(yaw);		 // Перевод в градусы перед публикацией
+	static double yaw = 0;							 // Угол на который повернули
+	yaw = normalize_angle(yaw + (ret.vth * ret.dt)); // Расчет угла с нормализацией угла от пи до -пи
+	msg_LinAngVel.yaw.fused = RAD2DEG(yaw);			 // Перевод в градусы перед публикацией
 
 	return ret;
 }
@@ -1314,7 +1311,7 @@ void read_Param_StartPose()
 	logi.log_b("+++ read_Param_StartPose\n");
 	ros::NodeHandle nh_global; // <--- Используется для доступа к /pb_config/ // Создаем ГЛОБАЛЬНЫЙ обработчик, который ищет параметры, начиная с корня (/).
 
-		// printf("\n--- Считывание смещений массива лазеров ---\n"); // Разделитель секции...
+	// printf("\n--- Считывание смещений массива лазеров ---\n"); // Разделитель секции...
 	nh_global.param<float>("/pb_config/pillars/pillar_0_x", msg_pillar.pillar[0].x, 0.11); // Если не найдено, laser_b0 = -0.0001
 	nh_global.param<float>("/pb_config/pillars/pillar_0_y", msg_pillar.pillar[0].y, 0.11); // Если не найдено, laser_b0 = -0.0001
 	nh_global.param<float>("/pb_config/pillars/pillar_1_x", msg_pillar.pillar[1].x, 1.11); // Если не найдено, laser_b0 = -0.0001
@@ -1329,11 +1326,10 @@ void read_Param_StartPose()
 	logi.log("    x1= %+8.3f y1 = %+8.3f \n", msg_pillar.pillar[1].x, msg_pillar.pillar[1].y);
 	logi.log("    x2= %+8.3f y2 = %+8.3f \n", msg_pillar.pillar[2].x, msg_pillar.pillar[2].y);
 	logi.log("    x3= %+8.3f y3 = %+8.3f \n", msg_pillar.pillar[3].x, msg_pillar.pillar[3].y);
-	
+
 	logi.log_b("--- read_Param_StartPose \n");
 
 	logi.log_b("+++ startPosition \n");
-
 
 	nh_global.param<double>("/pb_config/start_pose/x", startPose.x, 0.0);
 	nh_global.param<double>("/pb_config/start_pose/y", startPose.y, 0.0);
@@ -1348,15 +1344,15 @@ void read_Param_StartPose()
 	g_angleEuler.yaw = startPose.th; // Присваиваем yaw углу начальное значение
 	// g_poseRotation.theta = DEG2RAD(startPose2d_.theta); // Присваиваем глобальному углу начальное значение
 
-	g_poseBase.main.x = startPose.x; // Устанавливаем координаты для что-бы по нему начало все считаться
-	g_poseBase.main.y = startPose.y;
-	g_poseBase.main.th = startPose.th;
+	g_poseBase.odom = startPose;
+	g_poseBase.fused = startPose;
+	g_poseBase.main = startPose; // Устанавливаем координаты для что-бы по нему начало все считаться
+	g_poseBase.measurement = startPose;
 
-	g_poseBase.calculated = g_poseBase.main;
-	g_poseBase.measurement = g_poseBase.main;
-
-	g_poseRotation.fused = convertBase2Rotation(g_poseBase.main, "fused"); // Конвентируем координаты заданные для точки в системе Base в систему Rotation
-	g_poseRotation.odom = g_poseRotation.fused;								// Первоначальная установка позиции
+	g_poseRotation.fused = convertBase2Rotation(startPose, "fused"); // Конвентируем координаты заданные для точки в системе Base в систему Rotation
+	g_poseRotation.odom = g_poseRotation.fused;						 // Первоначальная установка позиции
+	g_poseRotation.imu = g_poseRotation.fused;						 // Первоначальная установка позиции
+	g_poseRotation.main = g_poseRotation.fused;						 // Первоначальная установка позиции
 	logi.log("    start g_poseRotation.fused x= %+8.3f y= %+8.3f theta= %+8.3f \n", g_poseRotation.fused.x, g_poseRotation.fused.y, g_poseRotation.fused.th);
 
 	logi.log_b("--- startPosition \n");

@@ -2,7 +2,7 @@
 #include "genStruct.h" // Тут все общие структуры. Истользуются и Data и Main и Head
 
 #include "logi.h" //Класс для моего формата логов
-AsyncFileLogger logi("/home/pi/RoboBIM-Linux/src/pb/log/","pose_node"); 
+AsyncFileLogger logi("/home/pi/RoboBIM-Linux/src/pb/log/", "pose_node");
 
 #include "pos_code/config.h"
 
@@ -43,14 +43,12 @@ int main(int argc, char **argv)
     log4cxx::MDC::put("node", "|pos_node|"); // Установка дополнительных данных в контекст
 
     ROS_FATAL("\n");
-    ROS_FATAL("***  pos_node *** ver. 1.57 *** printBIM.ru *** 2025 ***");
-    ROS_FATAL("--------------------------------------------------------\n");
-    logi.log("***  pos_node *** ver. 1.57 *** printBIM.ru *** 2025 ***\n");
+    logi.log("***  pos_node *** ver. 1.59 *** printBIM.ru *** 2025 ***\n");
     logi.log("--------------------------------------------------------\n");
 
-    logi.logf("Это сообщение попадёт ТОЛЬКО в файл.\n"); // 1) Только в файл
-    logi.log("Обычный лог: скорость = %d, ошибка = %.2f\n", 42, 0.123);// 2) На экран + в файл (обычный белый)
-    logi.log_g("Зелёный лог — всё хорошо!\n"); // 3) Цветные логи + запись в файл
+    logi.logf("Это сообщение попадёт ТОЛЬКО в файл.\n");                // 1) Только в файл
+    logi.log("Обычный лог: скорость = %d, ошибка = %.2f\n", 42, 0.123); // 2) На экран + в файл (обычный белый)
+    logi.log_g("Зелёный лог — всё хорошо!\n");                          // 3) Цветные логи + запись в файл
     logi.log_r("Красный лог — ошибка!\n");
     logi.log_w("Жёлтый лог — предупреждение!\n");
     logi.log_b("Синий лог — информационное сообщение.\n");
@@ -86,7 +84,7 @@ int main(int argc, char **argv)
     calibr_accel_gyro(); // Калибровка гироскопа и акселерометра в момент запуска ноды
     initKalman();        // Задаем коэфициенты для Калмана
 
-    rate_fuser.max_pos_step = 0.01;      // Настройка параметров слияния Максимальный шаг коррекции позиции (0.01 м)
+    rate_fuser.max_pos_step = 0.01; // Настройка параметров слияния Максимальный шаг коррекции позиции (0.01 м)
 
     ROS_WARN("++++ End Setup. Start loop.");
     ros::Duration(3).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
@@ -104,24 +102,33 @@ int main(int argc, char **argv)
         // 100 Hz ************************************************************ ОБРАБОТКА ДАННЫХ ИЗ ТОПИКОВ ЧТО ПОДПИСАНЫ  СРАБАТЫВАЕТ КАК ОТПРАВЛЯЕТ DATA_NODE  ********************************************
         if (flag_msgSpeed) // ЭТО РАСЧЕТ МОДЕЛИ Флаг что пришло сообщение от ноды Data по Speed. Расчитываем линейную и угловую скорость и потом на нее основе расчитываем остальное
         {
-            ROS_WARN("--- flag_msgSpeed");
+            logi.log_w("--- flag_msgSpeed \n");
             flag_msgSpeed = false;
             flagPublish = true;
 
-            g_linAngVel.odom = calcTwistFromWheel(msg_Speed);                      // Обработка пришедших данных. По ним считаем линейные скорости по осям и угловую по углу. Запоминаем dt
-            g_poseRotation.odom = calcNewPose(g_poseRotation.odom, g_linAngVel.odom, "odom");     // На основе линейных скоростей считаем новую позицию и угол по колесам
-            g_poseBase.odom = convertRotation2Base(g_poseRotation.odom, "odom");         // Позиция для отладки и сравнения по результатм только одометрии
+            logi.log_b("odom \n");
+            g_linAngVel.odom = calcTwistFromWheel(msg_Speed);                                 // Обработка пришедших данных. По ним считаем линейные скорости по осям и угловую по углу. Запоминаем dt
+            g_poseRotation.odom = calcNewPose(g_poseRotation.odom, g_linAngVel.odom, "odom"); // На основе линейных скоростей считаем новую позицию и угол по колесам
+            logi.log("    100Hz OUT Data Pose Rotation odom  x = %+8.3f y = %+8.3f th = %+8.3f \n", g_poseRotation.odom.x, g_poseRotation.odom.y, g_poseRotation.odom.th);
+            g_poseBase.odom = convertRotation2Base(g_poseRotation.odom, "odom"); // Позиция для отладки и сравнения по результатм только одометрии
 
-            g_linAngVel.imu = calcTwistFromImu(msg_Driver2Data);                   // Обработка пришедших данных. По ним считаем линейные скорости по осям и угловую по углу. Запоминаем dt
-            g_poseRotation.imu = calcNewPose(g_poseRotation.imu, g_linAngVel.imu, "imu");         // На основе линейных скоростей считаем новую позицию и угол по колесам
-            
+            logi.log_b("imu \n");
+            g_linAngVel.imu = calcTwistFromImu(msg_Driver2Data);                          // Обработка пришедших данных. По ним считаем линейные скорости по осям и угловую по углу. Запоминаем dt
+            g_poseRotation.imu = calcNewPose(g_poseRotation.imu, g_linAngVel.imu, "imu"); // На основе линейных скоростей считаем новую позицию и угол по колесам
+
+            logi.log_b("fused \n");
             g_linAngVel.fused = calcTwistFused(g_linAngVel.odom, g_linAngVel.imu); // Комплементация данных используя фильтр (Комплементарный или Калмана) тут написать функцию комплементации данных угловых скоростей с разными условиями когда и в каком соотношении скомплементировать скорсти с двух источников
+
             g_poseRotation.fused = calcNewPose(g_poseRotation.fused, g_linAngVel.fused, "fused"); // На основе линейных скоростей считаем новую позицию и угол по колесам
-            g_poseBase.calculated = convertRotation2Base(g_poseRotation.fused, "fused"); // Позиция по результатам слияния одометрии и imu считаем РАСЧЕТОМ
-            
+            logi.log("    100Hz OUT Data Pose Rotation fused x = %+8.3f y = %+8.3f th = %+8.3f \n", g_poseRotation.fused.x, g_poseRotation.fused.y, g_poseRotation.fused.th);
+            g_poseBase.fused = convertRotation2Base(g_poseRotation.fused, "fused"); // Позиция по результатам слияния одометрии и imu считаем РАСЧЕТОМ
+
+            g_poseRotation.main = calcNewPose(g_poseRotation.main, g_linAngVel.fused, "main"); // На основе линейных скоростей считаем новую позицию и угол по колесам
+            logi.log("    100Hz OUT Data Pose Rotation main x = %+8.3f y = %+8.3f th = %+8.3f \n", g_poseRotation.main.x, g_poseRotation.main.y, g_poseRotation.main.th);
+            g_poseBase.main = convertRotation2Base(g_poseRotation.main, "fused"); // Позиция по результатам слияния одометрии и imu считаем РАСЧЕТОМ
+
             // g_linAngVel.fused = calcTwistFromMpu(g_linAngVel.fused, msg_Modul2Data, g_linAngVel.odom); // Обработка пришедших данных для расчета линейных и угловых скоростей
             // g_poseRotation.mode10 = calcNewOdom2(g_poseRotation.mode10, g_linAngVel.fused, "mode10"); // На основе линейных скоростей считаем новую позицию и угол по колесам
-
 
             // РАСЧЕТ НАПРАВЛЕНИЯ УГЛОВ ЛАЗЕРОВ
             // laser.calcAnglePillarForLaser(pillar.pillar, g_poseBase.odom); // Расчет углов в локальной системе лазеров на столбы для передачи на нижний уровень для исполнения
@@ -129,30 +136,40 @@ int main(int argc, char **argv)
 
             // angleMPU(); // Расчет угла положения на основе данных сдатчика MPU
             // calcEuler(); // Расчет угла yaw с датчика IMU
-            logi.log("---- 100Hz Data Pose g_poseRotation fused x = %+8.3f y = %+8.3f th = %+8.3f \n", g_poseRotation.fused.x, g_poseRotation.fused.y, g_poseRotation.fused.th);
         }
 
         // Выполняется 10 -11 Hz как придут результаты ИЗМЕРЕНИЯ ***
         if (flag_msgMeasurement) // Если пришло сообщение в топик от измерениям и мы уже разобрали данные по координатам машинки по расчету с колес и IMU
         {
-            ROS_ERROR("--- flag_msgMeasurement ***");
             flag_msgMeasurement = false;
-            ROS_INFO("---- IN Data Pose Calculated x = %+8.3f y = %+8.3f th = %+8.3f", g_poseBase.calculated.x, g_poseBase.calculated.y, g_poseBase.calculated.th);
+            logi.log_b("--- flag_msgMeasurement *** \n");
 
-            g_poseBase.measurement.x = msg_Measurement.modeFused.x;
+            logi.log("    IN Data Pose main x = %+8.3f y = %+8.3f th = %+8.3f \n", g_poseBase.main.x, g_poseBase.main.y, g_poseBase.main.th);
+
+            g_poseBase.measurement.x = msg_Measurement.modeFused.x; // Запоминаем данные ИЗМЕРЕНИЯ которые пришли
             g_poseBase.measurement.y = msg_Measurement.modeFused.y;
             g_poseBase.measurement.th = msg_Measurement.modeFused.th;
-            ROS_INFO("---- IN Data Pose Measurement x = %+8.3f y = %+8.3f th = %+8.3f", g_poseBase.measurement.x, g_poseBase.measurement.y, g_poseBase.measurement.th);
+            logi.log("    IN Data Pose Measurement x = %+8.3f y = %+8.3f th = %+8.3f \n", g_poseBase.measurement.x, g_poseBase.measurement.y, g_poseBase.measurement.th);
 
-            // Вызываем СЛИЯНИЕ (Fusion) для Rate-Limited Fuser
-            g_poseBase.main = rate_fuser.fuse(g_poseBase.calculated, g_poseBase.measurement, g_linAngVel.fused.vx, g_linAngVel.fused.vth, lidar_latency_L);// Состояние Модели (по ссылке) и Измерение (SPose)
-            ROS_INFO("---- OUT Data Pose Main x = %+8.3f y = %+8.3f th = %+8.3f", g_poseBase.main.x, g_poseBase.main.y, g_poseBase.main.th);
+            static int firstData = 0;
+            if (firstData == 0)
+            {
+                firstData = 1;                                                                                       // Флаг что начальные знаения поменяли на лидарные
+                g_poseRotation.odom = convertBase2Rotation(g_poseBase.measurement, "First data measurement odom");   // Обновляем уже уточненным значением   
+                g_poseRotation.imu = convertBase2Rotation(g_poseBase.measurement, "First data measurement imu");     // Обновляем уже уточненным значением
+                g_poseRotation.fused = convertBase2Rotation(g_poseBase.measurement, "First data measurement fused"); // Обновляем уже уточненным значением
+                g_poseRotation.main = convertBase2Rotation(g_poseBase.measurement, "First data measurement main");   // Обновляем уже уточненным значением
+                logi.log_b("=== FIRST Data Pose Rotation Measurement x = %+8.3f y = %+8.3f th = %+8.3f \n", g_poseRotation.odom.x, g_poseRotation.odom.y, g_poseRotation.odom.th);
+            }
+            else
+            {
+                // Вызываем СЛИЯНИЕ (Fusion) для Rate-Limited Fuser
+                g_poseBase.main = rate_fuser.fuse(g_poseBase.main, g_poseBase.measurement, g_linAngVel.fused.vx, g_linAngVel.fused.vth, lidar_latency_L); // Состояние Модели (по ссылке) и Измерение (SPose)
+                logi.log("    OUT Data Pose Main x = %+8.3f y = %+8.3f th = %+8.3f \n", g_poseBase.main.x, g_poseBase.main.y, g_poseBase.main.th);
 
-            g_poseRotation.fused  = convertBase2Rotation(g_poseBase.main, "main -> fused"); // Обновляем уже уточненным значением
-            logi.log("---- 10Hz Data Pose g_poseRotation fused x = %+8.3f y = %+8.3f th = %+8.3f \n", g_poseRotation.fused.x, g_poseRotation.fused.y, g_poseRotation.fused.th);
-
-
-
+                g_poseRotation.main = convertBase2Rotation(g_poseBase.main, "main"); // Обновляем уже уточненным значением
+                logi.log("    OUT 10Hz Data Pose Rotation fused x = %+8.3f y = %+8.3f th = %+8.3f \n", g_poseRotation.fused.x, g_poseRotation.fused.y, g_poseRotation.fused.th);
+            }
 
             // ROS_INFO("    dtStoping = %f msec", dtStoping * 1000);
             /*
@@ -243,9 +260,9 @@ int main(int argc, char **argv)
         if (timeRviz <= millis()) // 30 Hz
         {
             // Публикуем тут так как если один раз опубликовать то они исчезают через некоторое время.
-            topic.transformBase(g_poseBase.calculated); // Публикуем трансформации систем координат, задаем по какому расчету трансформировать
-            topic.transformLaser(laser);                // Публикуем трансформации систем координат, задаем по какому расчету трансформировать
-            topic.transformRotation();                  // Публикуем трансформации систем координат
+            topic.transformBase(g_poseBase.odom); // Публикуем трансформации систем координат, задаем по какому расчету трансформировать
+            topic.transformLaser(laser);          // Публикуем трансформации систем координат, задаем по какому расчету трансформировать
+            topic.transformRotation();            // Публикуем трансформации систем координат
 
             topic.visualStartPose();           // Отобращение стрелкой где начало стартовой позиции и куда направлен нос платформы
             topic.visualPillarPoint(pillar);   // Отображение места размещения столбов

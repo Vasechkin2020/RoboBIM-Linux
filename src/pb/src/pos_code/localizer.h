@@ -29,7 +29,7 @@ double angleDiff(double a, double b)
 class RateLimitedLocalizer
 {
 public:
-    double max_pos_step = 0.03;
+    double max_pos_step = 0.05; // Шаг на который приближаемся к измерению от модели
     double max_angle_step = 0.05;
 
     SPose fuse(const SPose &pose_model_in, // Входное положение Модели (const)
