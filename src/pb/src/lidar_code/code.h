@@ -197,7 +197,38 @@ double complementAngle(double angle1, double angle2, double angle3, float weight
 
 
 
+// Весовое смешивание углов по всем правилам
+double weighted_angle_blend(double angle1, double angle2, double weight)
+{
+	// Нормализация угла в диапазон [-180, 180)
+	auto normalize = [](double a)
+	{
+		a = fmod(a + 180.0, 360.0);
+		if (a < 0)
+			a += 360.0;
+		return a - 180.0;
+	};
 
+	angle1 = normalize(angle1);
+	angle2 = normalize(angle2);
+
+	double w1 = weight;
+	double w2 = 1.0 - weight;
+
+	// Переводим в радианы
+	double a1 = angle1 * M_PI / 180.0;
+	double a2 = angle2 * M_PI / 180.0;
+
+	// Взвешенное суммирование компонент единичного круга
+	double x = w1 * cos(a1) + w2 * cos(a2);
+	double y = w1 * sin(a1) + w2 * sin(a2);
+
+	// Получаем итоговый угол
+	double result_rad = atan2(y, x);
+	double result_deg = result_rad * 180.0 / M_PI;
+
+	return normalize(result_deg);
+}
 
 
 

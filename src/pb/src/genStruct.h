@@ -336,7 +336,12 @@ float normalizeAnglePI(float angle_rad)
     return angle_rad; // Возвращаем нормализованный угол
 }
 
-
+// Угловая разность: phi - theta, нормализованная в [-180, 180)
+double angle_diff_deg(double phi, double theta)
+{
+    double diff = phi - theta;        // Расчет сырой разницы
+    return normalizeAngle180(diff); // Нормализуем разницу для получения кратчайшего пути
+}
 
 
 

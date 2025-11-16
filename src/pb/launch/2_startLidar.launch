@@ -3,7 +3,7 @@
   <rosparam file="$(find pb)/src/config.yaml" command="load" />
 
   <!--include file="$(find rplidar_ros)/launch/rplidar_s2.launch" /-->
-  <include file="$(find rplidar_ros)/launch/rplidar_a3.launch" />
+  <!--include file="$(find rplidar_ros)/launch/rplidar_a3.launch" /-->
   <node pkg="pb" type="lidar_node" name="lidar_node" output ="screen">
   
   </node>

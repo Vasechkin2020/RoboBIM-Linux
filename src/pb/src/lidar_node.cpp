@@ -106,7 +106,10 @@ int main(int argc, char **argv) // Главная функция програм�
             // }
             g_poseLidar.modeFused.x = g_poseLidar.modeDist.x * 0.8 + g_poseLidar.modeAngle.x * 0.2 + g_poseLidar.modeClaster.x * 0.0; // Легкая комплементация двух методов расчета. Второй сильно волатильный
             g_poseLidar.modeFused.y = g_poseLidar.modeDist.y * 0.8 + g_poseLidar.modeAngle.y * 0.2 + g_poseLidar.modeClaster.y * 0.0;
-            // g_poseLidar.mode.th = g_poseLidar.modeDist.th * 0.4 + g_poseLidar.modeAngle.th * 0.3 + g_poseLidar.modeClaster.th * 0.3;
+            // g_poseLidar.modeFused.th = g_poseLidar.modeDist.th * 0.8 + g_poseLidar.modeAngle.th * 0.2 + g_poseLidar.modeClaster.th * 0.0;
+
+            float alpha = 0.8; // Коефициент смешивания
+            g_poseLidar.modeFused.th = weighted_angle_blend(g_poseLidar.modeDist.th,g_poseLidar.modeAngle.th,alpha); // Весовое смешение углов по правилам
 
             try
             {
