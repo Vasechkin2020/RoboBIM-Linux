@@ -1311,7 +1311,7 @@ void initKalman()
 // Считывание переменных параметров при запуске. Там офсеты и режимы работы
 void read_Param_StartPose()
 {
-	ROS_INFO("+++ read_Param_StartPose");
+	logi.log_b("+++ read_Param_StartPose\n");
 	ros::NodeHandle nh_global; // <--- Используется для доступа к /pb_config/ // Создаем ГЛОБАЛЬНЫЙ обработчик, который ищет параметры, начиная с корня (/).
 
 		// printf("\n--- Считывание смещений массива лазеров ---\n"); // Разделитель секции...
@@ -1324,21 +1324,22 @@ void read_Param_StartPose()
 	nh_global.param<float>("/pb_config/pillars/pillar_3_x", msg_pillar.pillar[3].x, 3.11); // Если не найдено, laser_b0 = -0.0001
 	nh_global.param<float>("/pb_config/pillars/pillar_3_y", msg_pillar.pillar[3].y, 3.11); // Если не найдено, laser_b0 = -0.0001
 
-	ROS_INFO("    start PillarPose");
-	ROS_INFO("    x0= %+8.3f y0 = %+8.3f", msg_pillar.pillar[0].x, msg_pillar.pillar[0].y);
-	ROS_INFO("    x1= %+8.3f y1 = %+8.3f", msg_pillar.pillar[1].x, msg_pillar.pillar[1].y);
-	ROS_INFO("    x2= %+8.3f y2 = %+8.3f", msg_pillar.pillar[2].x, msg_pillar.pillar[2].y);
-	ROS_INFO("    x3= %+8.3f y3 = %+8.3f", msg_pillar.pillar[3].x, msg_pillar.pillar[3].y);
-	ROS_INFO("--- read_Param_StartPose");
+	logi.log("    start PillarPose \n");
+	logi.log("    x0= %+8.3f y0 = %+8.3f \n", msg_pillar.pillar[0].x, msg_pillar.pillar[0].y);
+	logi.log("    x1= %+8.3f y1 = %+8.3f \n", msg_pillar.pillar[1].x, msg_pillar.pillar[1].y);
+	logi.log("    x2= %+8.3f y2 = %+8.3f \n", msg_pillar.pillar[2].x, msg_pillar.pillar[2].y);
+	logi.log("    x3= %+8.3f y3 = %+8.3f \n", msg_pillar.pillar[3].x, msg_pillar.pillar[3].y);
+	
+	logi.log_b("--- read_Param_StartPose \n");
 
-	ROS_INFO("+++ startPosition");
+	logi.log_b("+++ startPosition \n");
 
 
 	nh_global.param<double>("/pb_config/start_pose/x", startPose.x, 0.0);
 	nh_global.param<double>("/pb_config/start_pose/y", startPose.y, 0.0);
 	nh_global.param<double>("/pb_config/start_pose/th", startPose.th, 0.0);
 
-	ROS_INFO("    startPose x = %+8.3f y = %+8.3f theta = %+8.3f", startPose.x, startPose.y, startPose.th);
+	logi.log("    startPose x = %+8.3f y = %+8.3f theta = %+8.3f \n", startPose.x, startPose.y, startPose.th);
 
 	transformLidar2Rotation.x = 0.095; // Данные для трасформации из Lidar в Rotation 95 мм
 	transformLidar2Rotation.y = 0;
@@ -1350,15 +1351,15 @@ void read_Param_StartPose()
 	g_poseBase.main.x = startPose.x; // Устанавливаем координаты для что-бы по нему начало все считаться
 	g_poseBase.main.y = startPose.y;
 	g_poseBase.main.th = startPose.th;
-	ROS_INFO("    startPose2d x= %+8.3f y= %+8.3f theta= %+8.3f ", startPose.x, startPose.y, startPose.th);
+
 	g_poseBase.calculated = g_poseBase.main;
 	g_poseBase.measurement = g_poseBase.main;
 
 	g_poseRotation.fused = convertBase2Rotation(g_poseBase.main, "fused"); // Конвентируем координаты заданные для точки в системе Base в систему Rotation
 	g_poseRotation.odom = g_poseRotation.fused;								// Первоначальная установка позиции
-	ROS_INFO("    start g_poseRotation.fused x= %+8.3f y= %+8.3f theta= %+8.3f ", g_poseRotation.fused.x, g_poseRotation.fused.y, g_poseRotation.fused.th);
+	logi.log("    start g_poseRotation.fused x= %+8.3f y= %+8.3f theta= %+8.3f \n", g_poseRotation.fused.x, g_poseRotation.fused.y, g_poseRotation.fused.th);
 
-	ROS_INFO("--- startPosition");
+	logi.log_b("--- startPosition \n");
 }
 
 // Функция для вычисления разницы между углами

@@ -1,6 +1,7 @@
 
 #include "genStruct.h" // Тут все общие структуры. Истользуются и Data и Main и Head
-#include "logi.h" // Тут все общие структуры. Истользуются и Data и Main и Head
+
+#include "logi.h" //Класс для моего формата логов
 AsyncFileLogger logi("/home/pi/RoboBIM-Linux/src/pb/log/","pose_node"); 
 
 #include "pos_code/config.h"
@@ -46,6 +47,13 @@ int main(int argc, char **argv)
     ROS_FATAL("--------------------------------------------------------\n");
     logi.log("***  pos_node *** ver. 1.57 *** printBIM.ru *** 2025 ***\n");
     logi.log("--------------------------------------------------------\n");
+
+    logi.logf("Это сообщение попадёт ТОЛЬКО в файл.\n"); // 1) Только в файл
+    logi.log("Обычный лог: скорость = %d, ошибка = %.2f\n", 42, 0.123);// 2) На экран + в файл (обычный белый)
+    logi.log_g("Зелёный лог — всё хорошо!\n"); // 3) Цветные логи + запись в файл
+    logi.log_r("Красный лог — ошибка!\n");
+    logi.log_w("Жёлтый лог — предупреждение!\n");
+    logi.log_b("Синий лог — информационное сообщение.\n");
 
     ros::init(argc, argv, "pos_node");
     ros::NodeHandle nh;
