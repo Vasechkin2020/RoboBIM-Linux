@@ -5,6 +5,8 @@
 #include <cmath>                       // Математические функции (sin, cos, sqrt)
 #include <signal.h>                    // Для обработки Ctrl+C
 
+#include "logi.h" //Класс для моего формата логов
+AsyncFileLogger logi("/home/pi/RoboBIM-Linux/src/pb/log/", "lidar_node");
 #include "genStruct.h" // Тут все общие структуры. Истользуются и Data и Main и Head
 #include "lidar_code/config.h"
 #include "lidar_code/code.h"
@@ -13,6 +15,7 @@
 #include "lidar_code/trilaterationSolver.h"
 #include "lidar_code/topic.h" // Файл для функций для формирования топиков в нужном виде и формате
 
+
 SPoseLidar g_poseLidar; // Позиции лидара по расчетам Центральная система координат
 
 int main(int argc, char **argv) // Главная функция программы
@@ -20,13 +23,23 @@ int main(int argc, char **argv) // Главная функция програм�
     signal(SIGINT, stopProgram);         // Настраиваем обработку Ctrl+C
     ros::init(argc, argv, "lidar_node"); // Инициализируем ROS с именем узла "lidar_node"
     
+    ROS_FATAL("\n");
+    logi.log("***  lidar_node *** ver. 1.01 *** printBIM.ru *** 2025 ***\n");
+    logi.log("--------------------------------------------------------\n");
+
+    logi.logf("Это сообщение попадёт ТОЛЬКО в файл.\n");                // 1) Только в файл
+    logi.log("Обычный лог: скорость = %d, ошибка = %.2f\n", 42, 0.123); // 2) На экран + в файл (обычный белый)
+    logi.log_g("Зелёный лог — всё хорошо!\n");                          // 3) Цветные логи + запись в файл
+    logi.log_r("Красный лог — ошибка!\n");
+    logi.log_w("Жёлтый лог — предупреждение!\n");
+    logi.log_b("Синий лог — информационное сообщение.\n");
 
     ros::NodeHandle nh;
     ros::Subscriber subscriber_Lidar = nh.subscribe<sensor_msgs::LaserScan>("/scan", 1000, callback_Lidar); // Подписка на данные лидара
     ros::Duration(1).sleep();                                                                               // Подождем пока все обьявится и инициализируется внутри ROS
 
     nh.param<double>("/pb_config/lidar/bias", lidar_bias, 0.0); // Считываем bias, по умолчанию 0
-    ROS_INFO("--- Start node with parametrs: /pb_config/lidar/bias = %+8.3f deg", lidar_bias);
+    logi.log_b("--- Start node with parametrs: /pb_config/lidar/bias = %+8.3f deg \n", lidar_bias);
     ros::Duration(1).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
 
     CPillar pillar;          // Обьявляем экземпляр класса в нем вся обработка и обсчет столбов
@@ -70,7 +83,7 @@ int main(int argc, char **argv) // Главная функция програм�
     std::tm *formattedTime = std::localtime(&timeSec);
     char buffer[80]; // Форматируем вывод
     std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", formattedTime);
-    ROS_INFO("TIME START NODE current time: %s", buffer); // Выводим в консоль
+    logi.log_b("TIME START NODE current time: %s \n", buffer); // Выводим в консоль
 
     ros::Rate loop_rate(100);          // Создаём цикл с частотой 10 Гц
     while (ros::ok() && keep_running) // Пока ROS работает и не нажат Ctrl+C
@@ -81,8 +94,7 @@ int main(int argc, char **argv) // Главная функция програм�
         // Выполняется 10 Hz как ЛИДАР ПРИШЛЕТ ***************************************************************************************************************************************************
         if (flag_msgLidar) // Если пришло сообщение в топик от лидара и мы уже разобрали данные по координатам машинки, а значит можем грубо посчитать где стоят столбы.  И знаем где истинные столбы
         {
-            ROS_INFO("");
-            ROS_ERROR("------------       flag_msgLidar    -------------");
+            logi.log_w("------------       flag_msgLidar    -------------\n");
             flag_msgLidar = false;
             // ROS_INFO("=== %+8.3f %+8.3f | %+8.3f %+8.3f | %+8.3f %+8.3f",g_poseLidar.modeDist.x, g_poseLidar.mode.x, g_poseLidar.modeDist.y, g_poseLidar.mode.y, g_poseLidar.modeDist.th, g_poseLidar.mode.th);
             pillar.searchPillars(msg_lidar, g_poseLidar.mnkFused); // Разбираем пришедшие данные и ищем там столбы.
@@ -190,7 +202,7 @@ int main(int argc, char **argv) // Главная функция програм�
                 }
                 //-----------------------------------------------------------------------------------------------------------------------------
                 */
-                printf("======================================== 3 ==========================================\n");
+                logi.log_b("======================================== 3 ==========================================\n");
                 count_circle = 0;       // Обнуляем счетчик
                 solver.clear_circles(); // <<< Очистка данных перед расчетом!
                 for (size_t i = 0; i < 4; i++)
@@ -232,7 +244,7 @@ int main(int argc, char **argv) // Главная функция програм�
                 g_poseLidar.mnkFused.x = g_poseLidar.mnkFused.x * k_mnk + CQ_found.A.x * (1 - k_mnk);
                 g_poseLidar.mnkFused.y = g_poseLidar.mnkFused.y * k_mnk + CQ_found.A.y * (1 - k_mnk);
                 g_poseLidar.quality_mknFused = g_poseLidar.quality_mknFused * k_mnk + CQ_found.quality * (1 - k_mnk);
-                printf("======================================== 4  ==========================================\n");
+                logi.log_b("======================================== 4  ==========================================\n");
 
                 std::vector<SPoint> orientation_beacons; // Вектор координат маяков
                 std::vector<double> lidar_angles_deg;    // Вектор измеренных углов
@@ -255,7 +267,7 @@ int main(int argc, char **argv) // Главная функция програм�
 
                         lidar_angles_deg.push_back(convert); // Добавляем направление на маяк
 
-                        printf("=== direction = %+8.3f  convert = %+8.3f \n", distDirect[i].direction, convert);
+                        logi.log("=== direction = %+8.3f  convert = %+8.3f \n", distDirect[i].direction, convert);
                     }
                 }
                 // 1. Вызываем метод расчета ориентации, используя найденную позицию
@@ -267,8 +279,8 @@ int main(int argc, char **argv) // Главная функция програм�
                 // calculated_orientation = normalize_and_invert_sign_deg(calculated_orientation); // Исправление что плюс по часовой Подгонка как уж есть
                 // 2. Вывод результата
                 // printf("\n--- SUMMARY TEST 4 (ORIENTATION) ---\n");                         // Output summary 4
-                printf("    SUMMARY TEST 4 (ORIENTATION) Position A =>: (%+8.3f, %+8.3f)\n", CQ_found.A.x, CQ_found.A.y); // Output result A
-                printf("    Calculated Orientation Psi: %+8.3f deg\n", calculated_orientation);                           // Output calculated orientation
+                logi.log("    SUMMARY TEST 4 (ORIENTATION) Position A =>: (%+8.3f, %+8.3f)\n", CQ_found.A.x, CQ_found.A.y); // Output result A
+                logi.log("    Calculated Orientation Psi: %+8.3f deg\n", calculated_orientation);                           // Output calculated orientation
                 // printf("--------------------------------------\n");                         // Separator
                 // g_poseLidar.mnkFused.th = g_poseLidar.mnkFused.th * k_mnk + calculated_orientation * (1 - k_mnk);
                 g_poseLidar.mnkFused.th = solver.complementary_filter_angle_deg(g_poseLidar.mnkFused.th, calculated_orientation, k_mnk);
@@ -277,7 +289,7 @@ int main(int argc, char **argv) // Главная функция програм�
                 // g_poseLidar.mnkAngle.th = solver.get_lidar_orientation(BQ_found.A, orientation_beacons, lidar_angles_deg);
 
                 ROS_WARN("    mnkFused x= %+8.3f y= %+8.3f th= %+8.3f ", g_poseLidar.mnkFused.x, g_poseLidar.mnkFused.y, g_poseLidar.mnkFused.th);
-                printf("======================================== END  ==========================================\n");
+                logi.log_b("======================================== END  ==========================================\n");
             }
             catch (const std::invalid_argument &e)
             {
@@ -328,6 +340,6 @@ int main(int argc, char **argv) // Главная функция програм�
         loop_rate.sleep();              // Ждём, чтобы поддерживать частоту 10 Гц
     }
 
-    ROS_INFO("Program stopped");
+    logi.log_b("Program stopped \n");
     return 0;
 }

@@ -47,18 +47,8 @@ void timeCycle(ros::Time timeStart_, ros::Time timeLoop_)
 // Считывание переменных параметров из лаунч файла при запуске. Там офсеты и режимы работы
 void readParam(SPose &startPose, SPoint *startPillar)
 {
-    ROS_INFO("+++ readParam");
-    // ros::NodeHandle nh_private("~");
-    // Имя можно с палкой или без, смотря как в лаунч файле параметры обявлены. связано с видимостью глобальной или локальной. относительным поиском переменной как сказал Максим
+    logi.log_b("+++ readParam\n");
     ros::NodeHandle nh_global; // <--- Используется для доступа к /pb_config/ // Создаем ГЛОБАЛЬНЫЙ обработчик, который ищет параметры, начиная с корня (/).
-
-    //<!-- Указываем стартовую позицию робота. В какое место поставили и куда направили-->
-    // if (!nh_private.getParam("x", startPose.x))
-    //     startPose.x = 0.11;
-    // if (!nh_private.getParam("y", startPose.y))
-    //     startPose.y = 0.11;
-    // if (!nh_private.getParam("theta", startPose.th))
-    //     startPose.th = 0.11;
 
 	nh_global.param<double>("/pb_config/start_pose/x", startPose.x, 0.0);
 	nh_global.param<double>("/pb_config/start_pose/y", startPose.y, 0.0);
@@ -67,29 +57,6 @@ void readParam(SPose &startPose, SPoint *startPillar)
     g_transformGlobal2Local.x = startPose.x;
     g_transformGlobal2Local.y = startPose.y;
     g_transformGlobal2Local.th = startPose.th + 180;
-
-    //<!-- Указываем места расположения столбов на локальной карте -->
-    // if (!nh_private.getParam("x0", startPillar[0].x))
-    //     startPillar[0].x = 0.11;
-    // if (!nh_private.getParam("y0", startPillar[0].y))
-    //     startPillar[0].y = 0.11;
-
-    // if (!nh_private.getParam("x1", startPillar[1].x))
-    //     startPillar[1].x = 1.11;
-    // if (!nh_private.getParam("y1", startPillar[1].y))
-    //     startPillar[1].y = 1.11;
-
-    // if (!nh_private.getParam("x2", startPillar[2].x))
-    //     startPillar[2].x = 2.11;
-    // if (!nh_private.getParam("y2", startPillar[2].y))
-    //     startPillar[2].y = 2.11;
-
-    // if (!nh_private.getParam("x3", startPillar[3].x))
-    //     startPillar[3].x = 3.11;
-    // if (!nh_private.getParam("y3", startPillar[3].y))
-    //     startPillar[3].y = 3.11;
-
-
 
 	// printf("\n--- Считывание смещений массива лазеров ---\n"); // Разделитель секции...
 	nh_global.param<double>("/pb_config/pillars/pillar_0_x", startPillar[0].x, 0.11); // Если не найдено, laser_b0 = -0.0001
@@ -101,16 +68,14 @@ void readParam(SPose &startPose, SPoint *startPillar)
 	nh_global.param<double>("/pb_config/pillars/pillar_3_x", startPillar[3].x, 3.11); // Если не найдено, laser_b0 = -0.0001
 	nh_global.param<double>("/pb_config/pillars/pillar_3_y", startPillar[3].y, 3.11); // Если не найдено, laser_b0 = -0.0001
 
-
-
-    ROS_INFO("    startPose x = %.3f y = %.3f th = %.3f gradus", startPose.x, startPose.y, startPose.th);
-    ROS_INFO("    g_transformGlobal2Local x = %.3f y = %.3f th = %.3f gradus", g_transformGlobal2Local.x, g_transformGlobal2Local.y, g_transformGlobal2Local.th);
-    ROS_INFO("    start PillarPose");
-    ROS_INFO("    x0= %.3f y0 = %.3f", startPillar[0].x, startPillar[0].y);
-    ROS_INFO("    x1= %.3f y1 = %.3f", startPillar[1].x, startPillar[1].y);
-    ROS_INFO("    x2= %.3f y2 = %.3f", startPillar[2].x, startPillar[2].y);
-    ROS_INFO("    x3= %.3f y3 = %.3f", startPillar[3].x, startPillar[3].y);
-    ROS_INFO("--- readParam");
+    logi.log("    startPose x = %.3f y = %.3f th = %.3f gradus \n", startPose.x, startPose.y, startPose.th);
+    logi.log("    g_transformGlobal2Local x = %.3f y = %.3f th = %.3f gradus \n", g_transformGlobal2Local.x, g_transformGlobal2Local.y, g_transformGlobal2Local.th);
+    logi.log("    start PillarPose \n");
+    logi.log("    x0= %.3f y0 = %.3f \n", startPillar[0].x, startPillar[0].y);
+    logi.log("    x1= %.3f y1 = %.3f \n", startPillar[1].x, startPillar[1].y);
+    logi.log("    x2= %.3f y2 = %.3f \n", startPillar[2].x, startPillar[2].y);
+    logi.log("    x3= %.3f y3 = %.3f \n", startPillar[3].x, startPillar[3].y);
+    logi.log("--- readParam \n");
 }
 // Функция, которая срабатывает при нажатии Ctrl+C
 static void stopProgram(int signal)
