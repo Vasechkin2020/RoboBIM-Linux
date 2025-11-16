@@ -98,7 +98,7 @@ public:
     // Функция обработки данных от лидара
     void scanCallback(const sensor_msgs::LaserScan::ConstPtr &scan, SPose poseLidar_)
     {
-        ROS_INFO("+++ pillarDetector scanCallback IN x= %+8.3f y= %+8.3f th= %+8.3f", poseLidar_.x, poseLidar_.y, poseLidar_.th);
+        logi.log_b("+++ pillarDetector scanCallback IN x= %+8.3f y= %+8.3f th= %+8.3f \n", poseLidar_.x, poseLidar_.y, poseLidar_.th);
         start_time = ros::Time::now(); // Записываем начальное время
         // ROS_INFO("+++ scanCallback");
         std::vector<PointXY> points; // Создаём пустой список точек
@@ -111,11 +111,11 @@ public:
             {
                 float angle = scan->angle_min + i * scan->angle_increment; // Вычисляем угол для текущей точки
                 angle = angle + DEG2RAD(lidar_bias);                       // учитываем смещение от неточной установки
-                angle = normalizeAnglePI(angle);                          // Нормализуем угол если перескачили pi
+                angle = normalizeAnglePI(angle);                           // Нормализуем угол если перескачили pi
 
                 PointXY point;
                 point.x = range * cos(angle); // Переводим полярные координаты (угол, расстояние) в декартовы (x, y)
-                point.y = range * sin(angle);  
+                point.y = range * sin(angle);
                 points.push_back(point); // Добавляем точку в список
             }
         }
@@ -130,7 +130,7 @@ public:
         lidar_y = poseLidar_.y;
         lidar_theta = DEG2RAD(poseLidar_.th) + M_PI;
         // ROS_INFO("    Lidar theta START = %+8.3f rad (%+8.3f deg)", lidar_theta, RAD2DEG(lidar_theta));
-        ROS_INFO("    IN PoseLidar x= %+8.3f y= %+8.3f  th= %.4f (rad)  th= %+8.3f (grad)", lidar_x, lidar_y, lidar_theta, RAD2DEG(lidar_theta));
+        logi.log("    IN PoseLidar x= %+8.3f y= %+8.3f  th= %.4f (rad)  th= %+8.3f (grad)", lidar_x, lidar_y, lidar_theta, RAD2DEG(lidar_theta));
 
         findPillars();  // Ищем столбы в этих кластерах
         matchPillars(); // // Сопоставляем столбы с известными координатами и вычисляем позицию и ориентацию лидара
@@ -373,7 +373,7 @@ private:
                 //          cluster_info_list[i].width);
             }
         }
-        ROS_INFO("    findPillars - > Found %d pillars total", (int)pillars.size()); // Выводим общее количество найденных столбов
+        logi.log_b("    findPillars - > Found %d pillars total \n", (int)pillars.size()); // Выводим общее количество найденных столбов
     }
 
     // Функция для сопоставления обнаруженных столбов с известными координатами и вычисления позиции и ориентации лидара
@@ -382,7 +382,7 @@ private:
         // ROS_INFO("+++ matchPillars");
         if (pillars.empty())
         {
-            ROS_INFO("No pillars detected to match with known coordinates.");
+            logi.log_r("    No pillars detected to match with known coordinates.\n");
             return;
         }
 
@@ -477,8 +477,7 @@ private:
         {
             if (!used[j])
             {
-                ROS_INFO("!!! Known pillar %zu (x=%.2f, y=%.2f) not matched to any detected pillar.",
-                         j, KNOWN_PILLARS[j].first, KNOWN_PILLARS[j].second);
+                logi.log_w("!!! Known pillar %zu (x=%.2f, y=%.2f) not matched to any detected pillar.\n", j, KNOWN_PILLARS[j].first, KNOWN_PILLARS[j].second);
             }
         }
 
@@ -519,7 +518,7 @@ private:
                                                   KNOWN_PILLARS[global_idx].first - lidar_x);
                     // Разница между измеренным и глобальным азимутом даёт угол поворота лидара
                     double theta_diff = -normalizeAngle(measured_azimuths[i] - global_azimuth); // Минус чтобы совпадало по знаку
-                    ROS_INFO("    global_azimuth = %+8.3f, measured_azimuths = %+8.3f, theta_diff = %+8.3f |  lidar_x = %+8.3f  lidar_y = %+8.3f",
+                    logi.log("    global_azimuth = %+8.3f, measured_azimuths = %+8.3f, theta_diff = %+8.3f |  lidar_x = %+8.3f  lidar_y = %+8.3f \n",
                              RAD2DEG(global_azimuth), RAD2DEG(measured_azimuths[i]), RAD2DEG(theta_diff), lidar_x, lidar_y);
                     sum_theta += theta_diff;
                     count++;
@@ -536,7 +535,7 @@ private:
                 g_poseLidar.modeClaster.y = lidar_y + lidar_yY;
                 g_poseLidar.modeClaster.th = RAD2DEG(lidar_theta_T);
 
-                ROS_WARN("    modeClaster pose.x= %+8.3f y= %+8.3f theta= %+8.3f ", lidar_x + lidar_xX, lidar_y + lidar_yY, RAD2DEG(lidar_theta_T));
+                logi.log_w("    modeClaster pose.x= %+8.3f y= %+8.3f theta= %+8.3f \n", lidar_x + lidar_xX, lidar_y + lidar_yY, RAD2DEG(lidar_theta_T));
                 // ROS_INFO("    Lidar theta END 22 = %+8.3f rad (%+8.3f deg)", lidar_theta_T, RAD2DEG(lidar_theta_T));
 
                 // lidar_x += lidar_xX;
@@ -545,12 +544,12 @@ private:
             }
             else
             {
-                ROS_INFO("Could not compute lidar position and orientation: no valid matches.");
+                logi.log_r("Could not compute lidar position and orientation: no valid matches.\n");
             }
         }
         else
         {
-            ROS_INFO("Could not compute lidar position and orientation: no pillars matched.");
+            logi.log_r("Could not compute lidar position and orientation: no pillars matched.\n");
         }
     }
 

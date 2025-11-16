@@ -6,24 +6,24 @@
 #include <stdlib.h>
 
 // --- Вспомогательные функции ---
-void normalizeAngle(double &angle)
-{
-    while (angle > M_PI)
-    {
-        angle -= 2.0 * M_PI; // вычитаем 2π, пока угол не станет ≤ π
-    }
-    while (angle < -M_PI)
-    {
-        angle += 2.0 * M_PI; // прибавляем 2π, пока угол не станет ≥ -π
-    }
-}
+// void normalizeAngle(double &angle)
+// {
+//     while (angle > M_PI)
+//     {
+//         angle -= 2.0 * M_PI; // вычитаем 2π, пока угол не станет ≤ π
+//     }
+//     while (angle < -M_PI)
+//     {
+//         angle += 2.0 * M_PI; // прибавляем 2π, пока угол не станет ≥ -π
+//     }
+// }
 
-double angleDiff(double a, double b)
-{
-    double d = a - b; // вычисление разности углов
-    normalizeAngle(d);    // нормализация разности
-    return d;             // возврат кратчайшей разности
-}
+// double angleDiff(double a, double b)
+// {
+//     double d = a - b; // вычисление разности углов
+//     normalizeAngle(d);    // нормализация разности
+//     return d;             // возврат кратчайшей разности
+// }
 
 // --- Класс 1: Rate-Limited Fuser ---
 class RateLimitedLocalizer
@@ -44,7 +44,7 @@ public:
         pose_meas_current.x = pose_meas_old.x + v_model * lidar_latency_L * cos(pose_meas_old.th); // Прогноз X измерения
         pose_meas_current.y = pose_meas_old.y + v_model * lidar_latency_L * sin(pose_meas_old.th); // Прогноз Y измерения
         pose_meas_current.th = pose_meas_old.th + omega_model * lidar_latency_L;                   // Прогноз Угла измерения
-        normalizeAngle(pose_meas_current.th);                                                       // Нормализация угла
+        normalizeAngle180(pose_meas_current.th);                                                       // Нормализация угла
 
         // --- Шаг 2: Коррекция (Rate-Limited) ---
 
@@ -66,9 +66,9 @@ public:
         }
 
         // 2.2. Коррекция угла
-        double dtheta = angleDiff(pose_meas_current.th, pose_model.th); // кратчайшая разность углов
+        double dtheta = angle_diff_deg(pose_meas_current.th, pose_model.th); // кратчайшая разность углов
 
-        if (fabs(dtheta) > 0.001) // Если есть угловое расхождение (0.001 радиан)
+        if (fabs(dtheta) > 0.005) // Если есть угловое расхождение (0.005 градус)
         {
             double ratio = max_angle_step / fabs(dtheta); // доля угла для поворота
             if (ratio > 1.0)                              
@@ -77,7 +77,7 @@ public:
             }
 
             pose_model.th += dtheta * ratio; // плавно поворачиваем Угол Модели
-            normalizeAngle(pose_model.th);   // нормализуем
+            normalizeAngle180(pose_model.th);   // нормализуем
         }
         
         return pose_model; // Возвращаем новое, слитое положение
@@ -104,7 +104,7 @@ public:
         pose_meas_current.x = pose_meas_old.x + v_model * lidar_latency_L * cos(pose_meas_old.th);     // Прогноз X измерения
         pose_meas_current.y = pose_meas_old.y + v_model * lidar_latency_L * sin(pose_meas_old.th);     // Прогноз Y измерения
         pose_meas_current.th = pose_meas_old.th + omega_model * lidar_latency_L;                       // Прогноз Угла измерения
-        normalizeAngle(pose_meas_current.th);                                                           // Нормализация угла
+        normalizeAngle180(pose_meas_current.th);                                                           // Нормализация угла
 
         // --- Шаг 2: Коррекция (Blending) ---
 
@@ -121,12 +121,12 @@ public:
 
 
         // 2.2. Коррекция угла
-        double dtheta = angleDiff(pose_meas_current.th, pose_model.th); // Разность углов
+        double dtheta = angle_diff_deg(pose_meas_current.th, pose_model.th); // Разность углов
 
-        if (fabs(dtheta) > 0.001) // Если есть угловое расхождение (0.001 радиан)
+        if (fabs(dtheta) > 0.005) // Если есть угловое расхождение (0.005 градусов)
         {
             pose_model.th += alpha_angle * dtheta; // корректируем Угол Модели пропорционально ошибке
-            normalizeAngle(pose_model.th);         // Нормализация
+            normalizeAngle180(pose_model.th);         // Нормализация
         }
         
         return pose_model; // Возвращаем новое, слитое положение

@@ -288,7 +288,7 @@ int main(int argc, char **argv) // Главная функция програм�
                 // g_poseLidar.mnkDist.th = solver.get_lidar_orientation(AQ_found.A, orientation_beacons, lidar_angles_deg); // Вывод углов без фильтрации
                 // g_poseLidar.mnkAngle.th = solver.get_lidar_orientation(BQ_found.A, orientation_beacons, lidar_angles_deg);
 
-                ROS_WARN("    mnkFused x= %+8.3f y= %+8.3f th= %+8.3f ", g_poseLidar.mnkFused.x, g_poseLidar.mnkFused.y, g_poseLidar.mnkFused.th);
+                logi.log_w("    mnkFused x= %+8.3f y= %+8.3f th= %+8.3f \n", g_poseLidar.mnkFused.x, g_poseLidar.mnkFused.y, g_poseLidar.mnkFused.th);
                 logi.log_b("======================================== END  ==========================================\n");
             }
             catch (const std::invalid_argument &e)

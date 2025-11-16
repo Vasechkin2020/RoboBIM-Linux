@@ -232,7 +232,7 @@ struct SPose
 {
   double x = 0;  // Координата по Х
   double y = 0;  // Координата по Y
-  double th = 0; // Направление 
+  double th = 0; // Направление
 };
 
 //---
@@ -297,13 +297,16 @@ void normalizeVector(double &x, double &y, double &z)
   y /= norm;
   z /= norm;
 }
-// Нормализует угол (в градусах) в диапазон [0, 360)
-float normalizeAngle360(float angle)
+
+// Нормализует угол (в радианах) в диапазон (-PI, PI]
+float normalizeAnglePI(float angle_rad)
 {
-  angle = fmodf(angle, 360.0f); // Приводим угол к диапазону [0, 360)
-  if (angle < 0)               // Обрабатываем отрицательные углы
-    angle += 360.0f;
-  return angle;
+  float TWO_PI = 2.0f * M_PI; // Константа 2 * PI
+  while (angle_rad > M_PI)    // Если угол больше PI
+    angle_rad -= TWO_PI;      // Вычитаем 2*PI
+  while (angle_rad <= -M_PI)  // Если угол меньше или равен -PI
+    angle_rad += TWO_PI;      // Прибавляем 2*PI
+  return angle_rad;           // Возвращаем нормализованный угол
 }
 
 // Нормализует угол (в радианах) в диапазон [0, 2*PI)
@@ -318,42 +321,27 @@ float normalizeAngle2PI(float angle_rad)
 // Нормализует угол (в градусах) в диапазон (-180, 180]
 float normalizeAngle180(float angle_deg)
 {
-    while (angle_deg > 180.0f) // Если угол больше 180
-        angle_deg -= 360.0f; // Вычитаем полный оборот
-    while (angle_deg <= -180.0f) // Если угол меньше или равен -180
-        angle_deg += 360.0f; // Прибавляем полный оборот
-    return angle_deg; // Возвращаем нормализованный угол
+  while (angle_deg > 180.0f)   // Если угол больше 180
+    angle_deg -= 360.0f;       // Вычитаем полный оборот
+  while (angle_deg <= -180.0f) // Если угол меньше или равен -180
+    angle_deg += 360.0f;       // Прибавляем полный оборот
+  return angle_deg;            // Возвращаем нормализованный угол
 }
 
-// Нормализует угол (в радианах) в диапазон (-PI, PI]
-float normalizeAnglePI(float angle_rad)
+// Нормализует угол (в градусах) в диапазон [0, 360)
+float normalizeAngle360(float angle)
 {
-    float TWO_PI = 2.0f * M_PI; // Константа 2 * PI
-    while (angle_rad > M_PI) // Если угол больше PI
-        angle_rad -= TWO_PI; // Вычитаем 2*PI
-    while (angle_rad <= -M_PI) // Если угол меньше или равен -PI
-        angle_rad += TWO_PI; // Прибавляем 2*PI
-    return angle_rad; // Возвращаем нормализованный угол
+  angle = fmodf(angle, 360.0f); // Приводим угол к диапазону [0, 360)
+  if (angle < 0)                // Обрабатываем отрицательные углы
+    angle += 360.0f;
+  return angle;
 }
 
 // Угловая разность: phi - theta, нормализованная в [-180, 180)
 double angle_diff_deg(double phi, double theta)
 {
-    double diff = phi - theta;        // Расчет сырой разницы
-    return normalizeAngle180(diff); // Нормализуем разницу для получения кратчайшего пути
+  double diff = phi - theta;      // Расчет сырой разницы
+  return normalizeAngle180(diff); // Нормализуем разницу для получения кратчайшего пути
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 #endif
