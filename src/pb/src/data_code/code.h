@@ -76,17 +76,17 @@ void init_Gpio()
 void init_SPI(int channel_, int speed_)
 {
 	uint8_t errSpi = 0; // Ошибка при инициализации шины SPI
-	ROS_INFO("Init SPI start... ");
+	logi.log_b("+++ Init SPI start... \n");
 
 	if ((errSpi = wiringPiSPISetup(channel_, speed_)) < 0) // Инициализация канало 0 это чип селект 0
 	{
-		ROS_ERROR("%s Can't open the SPI bus 0: %s\n", NN, strerror(errno));
-		ROS_ERROR("%s errSpi: %s\n", NN, errSpi);
+		logi.log_r("    Can't open the SPI bus 0: %s\n", NN, strerror(errno));
+		logi.log_r("    errSpi: %s\n", errSpi);
 		exit(EXIT_FAILURE);
 	}
 	else
 	{
-		ROS_INFO("SPI ok!");
+		logi.log("    SPI ok!\n");
 	}
 }
 
@@ -236,20 +236,6 @@ void setModeModul()
 
 void readParam() // Считывание переменных параметров из лаунч файла при запуске. Там офсеты и режимы работы
 {
-	// ros::NodeHandle nh_private("~");
-	// Имя можно с палкой или без, смотря как в лаунч файле параметры обявлены. связано с видимостью глобальной или локальной. относительным поиском переменной как сказал Максим
-
-	// nh_private.getParam("laser0", offSetLaser[0]);
-	// nh_private.getParam("laser1", offSetLaser[1]);
-	// nh_private.getParam("laser2", offSetLaser[2]);
-	// nh_private.getParam("laser3", offSetLaser[3]);
-
-	// nh_private.getParam("laserL", offSetLaserL);
-	// nh_private.getParam("uzi", offSetUzi);
-	// nh_private.getParam("laserR", offSetLaserR);
-
-	// nh_private.getParam("modeModul", modeModul);
-
 	ros::NodeHandle nh_global; // <--- Используется для доступа к /pb_config/ // Создаем ГЛОБАЛЬНЫЙ обработчик, который ищет параметры, начиная с корня (/).
 
 	// printf("\n--- Считывание смещений датчиков ---\n"); // Разделитель секции...
@@ -263,13 +249,12 @@ void readParam() // Считывание переменных параметро
 	nh_global.param<double>("/pb_config/laser/bias_2", offSetLaser[2], -0.0001);
 	nh_global.param<double>("/pb_config/laser/bias_3", offSetLaser[3], -0.0001);
 	
-	nh_global.param<int>("/data_node/modeModul", modeModul, 5 );
+	nh_global.param<int>("/pb_config/modul/mode", modeModul, 5 );
 
-	ROS_INFO("--- Start node with parametrs:");
-	ROS_INFO("offSetLaser0 = %+8.3f offSetLaser1 = %+8.3f offSetLaser2 = %+8.3f offSetLaser3 = %+8.3f", offSetLaser[0], offSetLaser[1], offSetLaser[2], offSetLaser[3]);
-	ROS_INFO("offSetLaserL = %+8.3f offSetLaserR = %+8.3f", offSetLaserL, offSetLaserR);
-	ROS_INFO("offSetUZI = %+8.3f", offSetUzi);
-	ROS_INFO("modeModul = %i", modeModul);
-	ROS_INFO("---");
+	logi.log_b("+++ Start node with parametrs:\n");
+	logi.log("    offSetLaser0 = %+8.3f offSetLaser1 = %+8.3f offSetLaser2 = %+8.3f offSetLaser3 = %+8.3f \n", offSetLaser[0], offSetLaser[1], offSetLaser[2], offSetLaser[3]);
+	logi.log("    offSetLaserL = %+8.3f offSetLaserR = %+8.3f \n", offSetLaserL, offSetLaserR);
+	logi.log("    offSetUZI = %+8.3f \n", offSetUzi);
+	logi.log("    modeModul = %i \n", modeModul);
 }
 #endif

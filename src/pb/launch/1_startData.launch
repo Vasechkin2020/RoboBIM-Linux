@@ -6,7 +6,7 @@
   <node pkg="pb" type="data_node" name="data_node" output ="screen">
    
     <!--param name="modeModul" type="int" value="3" /-->
-    <param name="modeModul" type="int" value="$(arg modeModul)" />
+    <!--param name="modeModul" type="int" value="$(arg modeModul)" /-->
 
   </node>
 </launch> 

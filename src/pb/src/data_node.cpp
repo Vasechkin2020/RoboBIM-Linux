@@ -74,7 +74,7 @@ int main(int argc, char **argv)
     logi.log("--- test laser\n");
 
     uint64_t timeWork = millis(); // Время работы ноды
-    logi.log_w("End Setup. Start loop.\n");
+    logi.log_w("+++ End Setup. Start loop.\n");
 
     while (ros::ok())
     {
