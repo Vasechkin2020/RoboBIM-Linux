@@ -4,7 +4,7 @@
 #include "logi.h" //Класс для моего формата логов
 AsyncFileLogger logi("/home/pi/RoboBIM-Linux/src/pb/log/", "pose_node");
 
-#include "pos_code/config.h"
+#include "pos_code/config.h" // Конфигурационный файл
 
 #include "pos_code/localizer.h"
 RateLimitedLocalizer rate_fuser;     // Экземпляр Rate-Limited
