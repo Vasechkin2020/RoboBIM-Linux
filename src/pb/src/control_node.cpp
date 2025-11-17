@@ -1,3 +1,7 @@
+
+#include "logi.h" //Класс для моего формата логов
+AsyncFileLogger logi("/home/pi/RoboBIM-Linux/src/pb/log/", "control_node");
+
 #include "genStruct.h" // Тут все общие структуры. Истользуются и Data и Main и Control
 #include "control_code/config.h"
 #include "control_code/topic.h" // Файл для функций для формирования топиков в нужном виде и формате
@@ -10,9 +14,16 @@ float angleNow = 0; // Текущий угол из топика
 
 int main(int argc, char **argv)
 {
-    ROS_WARN("%s -------------------------------------------------------------", NN);
-    ROS_WARN("%s  Control Module PrintBIM ROS 1.0 Raspberry Pi 4B  ver 1.0001 ", NN);
-    ROS_WARN("%s ------------------ROS_ERROR----------------------------------", NN);
+    ROS_FATAL("\n");
+    logi.log_r("*** Control_node PrintBIM ROS 1.0 Raspberry Pi 4B  ver 1.0001 \n");
+    logi.log("--------------------------------------------------------\n");
+
+    logi.logf("Это сообщение попадёт ТОЛЬКО в файл.\n");                // 1) Только в файл
+    logi.log("Обычный лог: скорость = %d, ошибка = %.2f\n", 42, 0.123); // 2) На экран + в файл (обычный белый)
+    logi.log_g("Зелёный лог — всё хорошо!\n");                          // 3) Цветные логи + запись в файл
+    logi.log_r("Красный лог — ошибка!\n");
+    logi.log_w("Жёлтый лог — предупреждение!\n");
+    logi.log_b("Синий лог — информационное сообщение.\n");
 
     ros::init(argc, argv, "control_node");
     log4cxx::MDC::put("node", "|control_node|");
@@ -51,7 +62,7 @@ int main(int argc, char **argv)
     // list int listok;
 
     ROS_WARN("End Setup. Start loop.\n");
-    ros::Duration(1).sleep(); // Подождем пока
+    ros::Duration(100).sleep(); // Подождем пока
 
     while (ros::ok())
     {

@@ -336,9 +336,7 @@ private:
 static void example_logger_usage()
 {
     // Создаём логгер
-    // Логи будут писаться в "./logs/"
-    // Имя файла — prefix_YYYYMMDD_HHMMSS_PID.log
-    AsyncFileLogger log("logs", "robot");
+    AsyncFileLogger logi("/home/pi/RoboBIM-Linux/src/pb/log/", "control_node");
 
     // --------------------------------------------------
     // 1) Только в файл
@@ -357,14 +355,6 @@ static void example_logger_usage()
     log.log_r("Красный лог — ошибка!\n");
     log.log_w("Жёлтый лог — предупреждение!\n");
     log.log_b("Синий лог — информационное сообщение.\n");
-
-    // --------------------------------------------------
-    // 4) Показ примера с задержкой времени
-    // --------------------------------------------------
-    for (int i = 0; i < 3; i++) {
-        log.log("Тик %d... время обновляется до миллисекунд.\n", i);
-        std::this_thread::sleep_for(std::chrono::milliseconds(250));
-    }
 
     // В конце функции логгер корректно завершится,
     // поток записи закроется в деструкторе.

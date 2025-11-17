@@ -1,816 +1,549 @@
-
 #ifndef GCODEPARSER_H
 #define GCODEPARSER_H
 
-#include <ros/ros.h>     // Подключаем ROS для взаимодействия с ROS-системой
-#include <ros/package.h> // Для получения пути к пакету
-// #include <algorithm>         // Для обработки строк (trim)
-#include <std_msgs/String.h> // Подключаем тип сообщения String для публикации в топик
-#include <sstream>           // Подключаем stringstream для форматирования строк
-#include <fstream>           // Подключаем fstream для чтения G-code файла
-#include <string>            // Подключаем string для работы со строками
-#include <vector>            // Подключаем vector для хранения команд G-code
-#include <cmath>             // Подключаем cmath для математических функций (sin, cos, abs)
+#include <ros/ros.h>
+#include <fstream>
+#include <sstream>
+#include <string>
+#include <vector>
+#include <cmath>
+#include <exception>
 
-struct GCodeCommand // Структура для хранения параметров одной команды G-code
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
+
+struct GCodeCommand
 {
-    std::string command;                                                    // Код команды (например, G0, G1, M3)
-    bool has_l, has_a, has_f, has_p, has_r, has_t, has_f_l, has_f_r, has_d; // Флаги наличия параметров
-    float l, a, f, p, r, t, f_l, f_r, d;                                    // Параметры: L (длина), A (угол), F (скорость), P (пауза), R (радиус), T (время), F_L (скорость левого колеса), F_R (скорость правого), D (направление)
-    std::string comment;                                                    // Комментарий к команде (после ; )
-    std::string raw_line;                                                   // Полная строка G-code
-    int line_number;                                                        // Номер строки в файле
+    std::string command;
+    bool has_l, has_a, has_f, has_p, has_t, has_f_l, has_f_r;
+    bool has_o, has_x, has_y;
+    float l, a, f, p, t, f_l, f_r;
+    float o, x, y;
+    std::string comment;
+    std::string raw_line;
+    int line_number;
 
-    GCodeCommand() : has_l(false), has_a(false), has_f(false), has_p(false),       // Конструктор, инициализирует все флаги false
-                     has_r(false), has_t(false), has_f_l(false), has_f_r(false),   // Инициализирует флаги для новых параметров
-                     has_d(false), l(0.0), a(0.0), f(0.0), p(0.0), r(0.0), t(0.0), // Инициализирует параметры нулями
-                     f_l(0.0), f_r(0.0), d(0.0)
-    {
-    } // Инициализирует новые параметры F_L, F_R, D
+    GCodeCommand()
+        : has_l(false), has_a(false), has_f(false), has_p(false),
+          has_t(false), has_f_l(false), has_f_r(false),
+          has_o(false), has_x(false), has_y(false),
+          l(0.0f), a(0.0f), f(0.0f), p(0.0f), t(0.0f),
+          f_l(0.0f), f_r(0.0f),
+          o(0.0f), x(0.0f), y(0.0f),
+          line_number(0)
+    {}
 };
 
-// Класс для обработки G-code
 class GCodeParser
 {
 private:
-    ros::NodeHandle nh_;                      // NodeHandle для взаимодействия с ROS (приватное пространство имён)
-    ros::Publisher pub_;                      // Паблишер для топика robot_position
-    bool absolute_mode_;                      // Режим координат: true — абсолютный, false — относительный
-    float current_x_, current_y_, current_a_; // Текущая позиция и угол
-    std::string gcode_file_;                  // Путь к файлу G-code
-    float wheel_base_ = 200.0;                // Ширина базы робота (мм), расстояние между колёсами, нужно уточнить
-    std::vector<GCodeCommand> commands_;      // Вектор для хранения разобранных команд G-code
+    ros::NodeHandle nh_;
+    float current_x_, current_y_, current_a_;
+    std::string gcode_file_;
+    float wheel_base_ = 200.0f;
+    std::vector<GCodeCommand> commands_;
+    std::vector<SCommand> commandArray;
+    float total_time_sec_ = 0.0f;
 
-    // Удаление пробелов в начале и конце строки
     std::string trim(const std::string &str)
     {
-        size_t first = str.find_first_not_of(" \t"); // Поиск первого непробельного символа
-        size_t last = str.find_last_not_of(" \t");   // Поиск последнего непробельного символа
-        if (first == std::string::npos)
-            return "";                              // Если строка пуста, вернуть пустую
-        return str.substr(first, last - first + 1); // Вырезать подстроку
+        size_t first = str.find_first_not_of(" \t\n\r");
+        if (first == std::string::npos) return "";
+        size_t last = str.find_last_not_of(" \t\n\r");
+        return str.substr(first, (last - first + 1));
     }
 
-    // Разбор строки G-code
-    bool parseGCodeLine(const std::string &line, GCodeCommand &cmd, int line_number) // Парсит строку G-code
+    float normalizeAngle(float angle_deg)
     {
-        std::string trimmed_line = trim(line); // Удаляем пробелы
-        if (trimmed_line.empty())
-            return false; // Пропускаем пустые строки
+        while (angle_deg > 180.0f) angle_deg -= 360.0f;
+        while (angle_deg <= -180.0f) angle_deg += 360.0f;
+        return angle_deg;
+    }
 
-        cmd.raw_line = line;           // Сохраняем исходную строку
-        cmd.line_number = line_number; // Сохраняем номер строки
+    bool parseGCodeLine(const std::string &line, GCodeCommand &cmd, int line_number)
+    {
+        std::string trimmed_line = trim(line);
+        if (trimmed_line.empty()) return false;
 
-        std::stringstream ss(trimmed_line); // Создаём поток для разбора
-        std::string token;                  // Токен для чтения
+        cmd.raw_line = line;
+        cmd.line_number = line_number;
 
-        ss >> token; // Читаем команду
+        std::stringstream ss(trimmed_line);
+        std::string token;
+        ss >> token;
+
         if (token.empty() || (token[0] != 'G' && token[0] != 'M'))
         {
-            ROS_WARN("Line %d: Invalid command token '%s' in command '%s'", line_number, token.c_str(), line.c_str());
-            return false; // Проверяем, что это G или M команда
+            logi.log_w("Line %d: Invalid command token '%s'\n", line_number, token.c_str());
+            return false;
         }
-        cmd.command = token; // Сохраняем команду
-        ROS_INFO("Line %d: Parsed command '%s'", line_number, token.c_str());
+        cmd.command = token;
+        logi.log_b("Line %d: Parsed command '%s'\n", line_number, token.c_str());
 
-        while (ss >> token) // Читаем параметры
+        while (ss >> token)
         {
-            if (token[0] == ';') // Если комментарий
+            if (token[0] == ';')
             {
-                std::getline(ss, cmd.comment);   // Считываем комментарий
-                cmd.comment = trim(cmd.comment); // Удаляем пробелы
-                ROS_INFO("Line %d: Parsed comment '%s'", line_number, cmd.comment.c_str());
-                break; // Прерываем разбор
+                std::getline(ss, cmd.comment);
+                cmd.comment = trim(cmd.comment);
+                logi.log_b("Line %d: Parsed comment '%s'\n", line_number, cmd.comment.c_str());
+                break;
             }
-            if (token.length() < 2) // Пропускаем короткие токены
+            if (token.length() < 2)
             {
-                ROS_WARN("Line %d: Skipping short token '%s' in command '%s'", line_number, token.c_str(), line.c_str());
+                logi.log_w("Line %d: Skipping short token '%s'\n", line_number, token.c_str());
                 continue;
             }
-            char param = token[0]; // Первый символ — параметр
-            float value;           // Значение параметра
+
+            char param = token[0];
+            float value;
+
+            // === ПРОВЕРКА НА КИРИЛЛИЧЕСКУЮ "О" ===
+            if (token.length() >= 2 &&
+                static_cast<unsigned char>(token[0]) == 0xD0 &&
+                static_cast<unsigned char>(token[1]) == 0x9E)
+            {
+                logi.log_r("Line %d: Invalid parameter 'О' (Cyrillic O). Use Latin 'O' for relative angle!\n",
+                          line_number);
+                continue;
+            }
+
             try
             {
-                // Проверяем, является ли токен F_L или F_R
                 if (param == 'F' && token.length() >= 3 && token[1] == '_')
                 {
-                    std::string suffix = token.substr(2, 1);  // Символ после F_
-                    std::string number_str = token.substr(3); // Число после F_X
+                    std::string suffix = token.substr(2, 1);
+                    std::string number_str = token.substr(3);
                     if (number_str.empty())
                     {
-                        ROS_WARN("Line %d: Empty number after '%s' in token '%s' in command '%s'",
-                                 line_number, token.substr(0, 3).c_str(), token.c_str(), line.c_str());
+                        logi.log_w("Line %d: Empty number after F_\n", line_number);
                         continue;
                     }
-                    value = std::stof(number_str); // Преобразуем число
+                    value = std::stof(number_str);
                     if (suffix == "L")
                     {
                         cmd.f_l = value;
                         cmd.has_f_l = true;
-                        ROS_INFO("Line %d: Parsed F_L=%.2f from token '%s'", line_number, value, token.c_str());
+                        logi.log_b("Line %d: Parsed F_L=%.3f\n", line_number, value);
                     }
                     else if (suffix == "R")
                     {
                         cmd.f_r = value;
                         cmd.has_f_r = true;
-                        ROS_INFO("Line %d: Parsed F_R=%.2f from token '%s'", line_number, value, token.c_str());
+                        logi.log_b("Line %d: Parsed F_R=%.3f\n", line_number, value);
                     }
                     else
                     {
-                        ROS_WARN("Line %d: Invalid F parameter format: token '%s', expected F_L or F_R (suffix=%s) in command '%s'",
-                                 line_number, token.c_str(), suffix.c_str(), line.c_str());
-                        continue;
+                        logi.log_w("Line %d: Unknown F suffix '%s'\n", line_number, suffix.c_str());
                     }
                 }
                 else
                 {
-                    value = std::stof(token.substr(1)); // Преобразуем число после первого символа
-                    if (param == 'F')                   // Скорость подачи
-                    {
-                        cmd.f = value;
-                        cmd.has_f = true;
-                        ROS_INFO("Line %d: Parsed F=%.2f from token '%s'", line_number, value, token.c_str());
-                    }
-                    else if (param == 'L') // Длина пути
-                    {
-                        cmd.l = value;
-                        cmd.has_l = true;
-                        ROS_INFO("Line %d: Parsed L=%.2f from token '%s'", line_number, value, token.c_str());
-                    }
-                    else if (param == 'A') // Угол
-                    {
-                        cmd.a = value;
-                        cmd.has_a = true;
-                        ROS_INFO("Line %d: Parsed A=%.2f from token '%s'", line_number, value, token.c_str());
-                    }
-                    else if (param == 'P') // Пауза
-                    {
-                        cmd.p = value;
-                        cmd.has_p = true;
-                        ROS_INFO("Line %d: Parsed P=%.2f from token '%s'", line_number, value, token.c_str());
-                    }
-                    else if (param == 'R') // Радиус
-                    {
-                        cmd.r = value;
-                        cmd.has_r = true;
-                        ROS_INFO("Line %d: Parsed R=%.2f from token '%s'", line_number, value, token.c_str());
-                    }
-                    else if (param == 'T') // Время
-                    {
-                        cmd.t = value;
-                        cmd.has_t = true;
-                        ROS_INFO("Line %d: Parsed T=%.2f from token '%s'", line_number, value, token.c_str());
-                    }
-                    else if (param == 'D') // Направление
-                    {
-                        cmd.d = value;
-                        cmd.has_d = true;
-                        ROS_INFO("Line %d: Parsed D=%.2f from token '%s'", line_number, value, token.c_str());
-                    }
+                    value = std::stof(token.substr(1));
+                    if (param == 'F') { cmd.f = value; cmd.has_f = true; }
+                    else if (param == 'L') { cmd.l = value; cmd.has_l = true; }
+                    else if (param == 'A') { cmd.a = value; cmd.has_a = true; }
+                    else if (param == 'O') { cmd.o = value; cmd.has_o = true; }
+                    else if (param == 'P') { cmd.p = value; cmd.has_p = true; }
+                    else if (param == 'T') { cmd.t = value; cmd.has_t = true; }
+                    else if (param == 'X') { cmd.x = value; cmd.has_x = true; }
+                    else if (param == 'Y') { cmd.y = value; cmd.has_y = true; }
                     else
                     {
-                        ROS_WARN("Line %d: Unknown parameter '%c' in token '%s' in command '%s'",
-                                 line_number, param, token.c_str(), line.c_str());
+                        logi.log_w("Line %d: Unknown parameter '%c' (code=%d)\n",
+                                  line_number, param, static_cast<int>(param));
+                        continue;
                     }
+                    logi.log_b("Line %d: Parsed %c=%.3f\n", line_number, param, value);
                 }
             }
             catch (const std::exception &e)
             {
-                ROS_WARN("Line %d: Failed to parse value for token '%s' in command '%s': %s",
-                         line_number, token.c_str(), line.c_str(), e.what());
-                continue; // Пропускаем при ошибке
+                logi.log_w("Line %d: Parse error in '%s': %s\n", line_number, token.c_str(), e.what());
+                continue;
             }
         }
-        return true; // Успешный разбор
+        return true;
     }
 
-    // Публикация сообщения в топик
-    void publishMessage(const std::string &message)
+    void executeG0(const GCodeCommand &cmd)
     {
-        std_msgs::String msg; // Создание сообщения
-        msg.data = message;   // Заполнение сообщения
-        pub_.publish(msg);    // Публикация
-    }
+        logi.log_b("\n>>> EXECUTING: %s\n", cmd.raw_line.c_str());
+        logi.log_b("    BEFORE: X=%.3f, Y=%.3f, A=%.3f°\n", current_x_, current_y_, current_a_);
 
-    // Вычисление дистанции между текущей и новой позицией
-    float calculateDistance(float new_x, float new_y)
-    {
-        float dx = new_x - current_x_;       // Разница по X
-        float dy = new_y - current_y_;       // Разница по Y
-        return std::sqrt(dx * dx + dy * dy); // Евклидова дистанция в 2D
-    }
-    // Добавление паузы в массив исполнения
-    void executePause(float time_)
-    {
-        SCommand temp;
-        temp.mode = 0;
-        temp.duration = time_;
-        temp.velL = 0.0;
-        temp.velR = 0.0;
-        commandArray.push_back(temp);
-        ROS_INFO("    executePause %u msec", temp.duration); // Вывод лога
-    }
-
-    // // Выполнение G1 (линейное перемещение или поворот)
-    // void executeG1(const GCodeCommand &cmd)
-    // {
-    //     executePause(1000);                          // Добавляем паузу перед любой операцией для стабилизации робота в ключевых точках.
-    //     std::stringstream ss;                        // Для формирования лога
-    //     float feed_rate = cmd.has_f ? cmd.f : 100.0; // Скорость подачи, по умолчанию 100
-
-    //     // Проверка, является ли команда угловой (только A)
-    //     if (cmd.has_a && !cmd.has_x && !cmd.has_y)
-    //     {
-    //         float new_a = cmd.a; // Новый угол A
-    //         if (absolute_mode_)
-    //         {
-    //             current_a_ = new_a; // Обновление A
-    //         }
-    //         else
-    //         {
-    //             current_a_ += new_a; // Относительное смещение A
-    //         }
-    //         ss << "G1: Rotate to A= " << current_a_ << " F= " << feed_rate << " deg/s";
-    //         if (!cmd.comment.empty())
-    //             ss << " (" << cmd.comment << ")"; // Добавление комментария
-    //         ROS_INFO("%s", ss.str().c_str());     // Вывод лога
-    //         publishMessage(ss.str());             // Публикация
-
-    //         SCommand temp;
-    //         temp.mode = 2;
-    //         temp.angle = cmd.a;
-    //         temp.velAngle = cmd.f;
-    //         commandArray.push_back(temp);
-    //         ROS_INFO("    executeG1 mode= %i angle= %f velAngle=%f ", temp.mode, temp.angle, temp.velAngle); // Вывод лога
-
-    //         return;
-    //     }
-
-    //     // Линейное перемещение
-    //     float new_x = cmd.has_x ? cmd.x : current_x_; // Новая координата X
-    //     float new_y = cmd.has_y ? cmd.y : current_y_; // Новая координата Y
-    //     float new_a = cmd.has_a ? cmd.a : current_a_; // Новый угол A
-    //     if (absolute_mode_)
-    //     {
-    //         current_x_ = new_x; // Обновление X
-    //         current_y_ = new_y; // Обновление Y
-    //         current_a_ = new_a; // Обновление A
-    //     }
-    //     else
-    //     {
-    //         current_x_ += cmd.has_x ? cmd.x : 0.0; // Относительное смещение X
-    //         current_y_ += cmd.has_y ? cmd.y : 0.0; // Относительное смещение Y
-    //         current_a_ += cmd.has_a ? cmd.a : 0.0; // Относительное смещение A
-    //     }
-    //     float distance = calculateDistance(new_x, new_y); // Вычисление дистанции
-    //     ss << "G1: Linear move to X= " << current_x_ << " Y= " << current_y_ << " A= " << current_a_ << " F= " << feed_rate;
-    //     ss << ", distance= " << distance << " mm";
-    //     if (!cmd.comment.empty())
-    //         ss << " (" << cmd.comment << ")"; // Добавление комментария
-    //     ROS_INFO("%s", ss.str().c_str());     // Вывод лога
-    //     publishMessage(ss.str());             // Публикация
-    // }
-    //-------------------------------------------------------------------------------------------------------------------------------------
-
-    void executeG0(const GCodeCommand &cmd) // Выполняет G0: движение с F_L, F_R, T
-    {
-        std::stringstream ss; // Поток для лога
-
-        if (!cmd.has_f_l || !cmd.has_f_r || !cmd.has_t) // Проверяем наличие параметров
+        if (!cmd.has_f_l || !cmd.has_f_r || !cmd.has_t)
         {
-            ROS_ERROR("Line %d: Invalid G0 parameters: must specify F_L, F_R, T in command '%s'", cmd.line_number, cmd.raw_line.c_str()); // Ошибка с номером строки и её содержимым
+            logi.log_r("Line %d: G0 requires F_L, F_R, T\n", cmd.line_number);
             return;
         }
-        float f_l = cmd.f_l; // Скорость левого колеса
-        float f_r = cmd.f_r; // Скорость правого колеса
-        float time = cmd.t;  // Время движения
-
-        if (time <= 0.0) // Проверяем время
+        if (cmd.t <= 0.0f || cmd.f_l < 0.0f || cmd.f_r < 0.0f)
         {
-            ROS_ERROR("Line %d: Invalid G0 time: T=%.2f in command '%s'", cmd.line_number, time, cmd.raw_line.c_str());
-            return;
-        }
-        if (f_l < 0.0 || f_r < 0.0) // Проверяем скорости
-        {
-            ROS_ERROR("Line %d: Invalid G0 wheel speeds: F_L=%.2f, F_R=%.2f in command '%s'", cmd.line_number, f_l, f_r, cmd.raw_line.c_str());
+            logi.log_r("Line %d: Invalid G0 params: T=%.3f, F_L=%.3f, F_R=%.3f\n",
+                      cmd.line_number, cmd.t, cmd.f_l, cmd.f_r);
             return;
         }
 
-        // Кинематика
-        float v = (f_l + f_r) / 2.0;             // Линейная скорость
-        float omega = (f_r - f_l) / wheel_base_; // Угловая скорость
-        std::string direction = (omega < 0.0) ? "clockwise" : (omega > 0.0) ? "counterclockwise"
-                                                                            : "linear"; // Определяем направление
+        float v = (cmd.f_l + cmd.f_r) / 2.0f;
+        float omega = (cmd.f_r - cmd.f_l) / wheel_base_;
+        float time_sec = cmd.t;
 
-        if (std::abs(omega) < 0.001) // Прямое движение
+        float start_x = current_x_;
+        float start_y = current_y_;
+        float start_a = current_a_;
+
+        if (std::abs(omega) < 0.001f)
         {
-            float length = v * time;                                                 // Длина пути
-            current_x_ += length * std::cos(current_a_ * M_PI / 180.0);              // Обновляем x
-            current_y_ += length * std::sin(current_a_ * M_PI / 180.0);              // Обновляем y
-            ss << "G0: Linear move, F_L=" << f_l << " F_R=" << f_r << " T=" << time; // Формируем сообщение
+            float length = v * time_sec;
+            current_x_ += length * std::cos(start_a * M_PI / 180.0f);
+            current_y_ += length * std::sin(start_a * M_PI / 180.0f);
         }
-        else // Движение по дуге
+        else
         {
-            float radius = v / std::abs(omega);                                                                                         // Радиус дуги
-            float theta = omega * time;                                                                                                 // Угол дуги (рад)
-            float center_x = current_x_ + radius * std::cos((current_a_ + (omega > 0 ? 90.0 : -90.0)) * M_PI / 180.0);                  // x центра дуги
-            float center_y = current_y_ + radius * std::sin((current_a_ + (omega > 0 ? 90.0 : -90.0)) * M_PI / 180.0);                  // y центра дуги
-            current_x_ = center_x + radius * std::cos((current_a_ + (omega > 0 ? 90.0 : -90.0) + theta * 180.0 / M_PI) * M_PI / 180.0); // Обновляем x
-            current_y_ = center_y + radius * std::sin((current_a_ + (omega > 0 ? 90.0 : -90.0) + theta * 180.0 / M_PI) * M_PI / 180.0); // Обновляем y
-            current_a_ += theta * 180.0 / M_PI;                                                                                         // Обновляем угол
-            ss << "G0: Arc move, F_L=" << f_l << " F_R=" << f_r << " T=" << time << " R=" << radius << " D=" << direction;              // Формируем сообщение
+            float radius = v / std::abs(omega);
+            float theta = omega * time_sec;
+            float sign = (omega > 0) ? 1.0f : -1.0f;
+            float center_x = start_x + radius * std::cos((start_a + sign * 90.0f) * M_PI / 180.0f);
+            float center_y = start_y + radius * std::sin((start_a + sign * 90.0f) * M_PI / 180.0f);
+            current_x_ = center_x + radius * std::cos((start_a + sign * 90.0f + theta * 180.0f / M_PI) * M_PI / 180.0f);
+            current_y_ = center_y + radius * std::sin((start_a + sign * 90.0f + theta * 180.0f / M_PI) * M_PI / 180.0f);
+            current_a_ = normalizeAngle(start_a + theta * 180.0f / M_PI);
         }
 
-        if (!cmd.comment.empty())
-            ss << " (" << cmd.comment << ")";                                                                         // Добавляем комментарий
-        ROS_INFO("Line %d: %s", cmd.line_number, ss.str().c_str());                                                   // Логируем с номером строки
-        ROS_INFO("Line %d: End position: X=%.2f Y=%.2f A=%.2f", cmd.line_number, current_x_, current_y_, current_a_); // Логируем позицию
-        publishMessage(ss.str());                                                                                     // Публикуем
+        total_time_sec_ += time_sec;
 
         SCommand command;
-        command.mode = 0;         // Задаем режим
-        command.duration = cmd.t; // Задаем длительность (время)
-        command.velL = cmd.f_l;   // Скорость на левом
-        command.velR = cmd.f_r;   // Скорость на правом
+        command.mode = 0;
+        command.duration = cmd.t * 1000.0f;
+        command.velL = cmd.f_l;
+        command.velR = cmd.f_r;
         commandArray.push_back(command);
-        ROS_INFO("    executeG0 mode= %i duration= %f velL=%f velR=%f ", command.mode, command.duration, command.velL, command.velR); // Вывод лога
+
+        logi.log_b("    AFTER:  X=%.3f, Y=%.3f, A=%.3f°\n", current_x_, current_y_, current_a_);
+        logi.log_b("    DURATION: %.3f sec (TOTAL: %.3f sec)\n", time_sec, total_time_sec_);
     }
 
-    void executeG1(const GCodeCommand &cmd) // Выполняет G1: поворот на месте с A, F
+    void executeG1(const GCodeCommand &cmd)
     {
-        std::stringstream ss; // Поток для лога
+        logi.log_b("\n>>> EXECUTING: %s\n", cmd.raw_line.c_str());
+        logi.log_b("    BEFORE: X=%.3f, Y=%.3f, A=%.3f°\n", current_x_, current_y_, current_a_);
 
-        if (!cmd.has_a) // Проверяем наличие угла
+        int mode_count = (cmd.has_a ? 1 : 0) + (cmd.has_o ? 1 : 0) + ((cmd.has_x || cmd.has_y) ? 1 : 0);
+        if ((cmd.has_x || cmd.has_y) && !(cmd.has_x && cmd.has_y))
         {
-            ROS_ERROR("Line %d: Invalid G1 parameters: must specify A in command '%s'", cmd.line_number, cmd.raw_line.c_str()); // Ошибка
+            logi.log_r("Line %d: G1 requires both X and Y\n", cmd.line_number);
             return;
         }
-        float feed_rate = cmd.has_f ? cmd.f : 100.0; // Скорость поворота (градусы/с), по умолчанию 100
-        if (feed_rate <= 0.0)                        // Проверяем скорость
+        if (mode_count != 1)
         {
-            ROS_ERROR("Line %d: Invalid G1 feed rate: F=%.2f in command '%s'", cmd.line_number, feed_rate, cmd.raw_line.c_str());
+            logi.log_r("Line %d: G1 must have exactly one of A, O, or X/Y\n", cmd.line_number);
             return;
         }
-        float angle = cmd.a;                      // Угол поворота
-        float time = std::abs(angle) / feed_rate; // Время поворота
-        if (absolute_mode_)                       // Абсолютный режим
+
+        float target_angle = 0.0f;
+        if (cmd.has_a) target_angle = normalizeAngle(cmd.a);
+        else if (cmd.has_o) target_angle = normalizeAngle(current_a_ + cmd.o);
+        else if (cmd.has_x && cmd.has_y)
         {
-            current_a_ = angle; // Устанавливаем угол
+            float dx = cmd.x - current_x_;
+            float dy = cmd.y - current_y_;
+            target_angle = (std::abs(dx) < 1e-3f && std::abs(dy) < 1e-3f)
+                ? current_a_
+                : normalizeAngle(static_cast<float>(atan2(dy, dx) * 180.0 / M_PI));
         }
-        else // Относительный режим
+
+        float angle_diff = normalizeAngle(target_angle - current_a_);
+        float feed_rate = cmd.has_f ? cmd.f : 0.1f;
+        if (feed_rate > 0.5f) feed_rate = 0.5f;
+        if (feed_rate <= 0.0f)
         {
-            current_a_ += angle; // Добавляем угол
+            logi.log_r("Line %d: Invalid G1 F=%.3f\n", cmd.line_number, feed_rate);
+            return;
         }
-        ss << "G1: Rotate to A=" << current_a_ << " F=" << feed_rate << " T=" << time; // Формируем сообщение
-        if (!cmd.comment.empty())
-            ss << " (" << cmd.comment << ")";                       // Добавляем комментарий
-        ROS_INFO("Line %d: %s", cmd.line_number, ss.str().c_str()); // Логируем с номером строки
-        publishMessage(ss.str());                                   // Публикуем
+
+        float time_sec = std::abs(angle_diff) / feed_rate;
+        current_a_ = target_angle;
+        total_time_sec_ += time_sec;
 
         SCommand command;
-        command.mode = 1;         // Задаем режим
-        command.angle = cmd.a;    // Угол поворота
-        command.velAngle = cmd.f; // Скорость поворота
+        command.mode = 1;
+        command.angle = angle_diff;
+        command.velAngle = feed_rate;
         commandArray.push_back(command);
-        ROS_INFO("    executeG1 mode= %i angle= %f velAngle=%f ", command.mode, command.angle, command.velAngle); // Вывод лога
+
+        logi.log_b("    AFTER:  X=%.3f, Y=%.3f, A=%.3f°\n", current_x_, current_y_, current_a_);
+        logi.log_b("    DURATION: %.3f sec (TOTAL: %.3f sec)\n", time_sec, total_time_sec_);
     }
 
-    void executeG2(const GCodeCommand &cmd) // Выполняет G2: линейное движение с L, F
+    void executeG2(const GCodeCommand &cmd)
     {
-        std::stringstream ss;                        // Поток для лога
-        float length = cmd.has_l ? cmd.l : 0.0;      // Длина пути
-        float feed_rate = cmd.has_f ? cmd.f : 100.0; // Скорость подачи
+        logi.log_b("\n>>> EXECUTING: %s\n", cmd.raw_line.c_str());
+        logi.log_b("    BEFORE: X=%.3f, Y=%.3f, A=%.3f°\n", current_x_, current_y_, current_a_);
 
-        if (!cmd.has_l || !cmd.has_f) // Проверяем параметры
+        bool has_length = cmd.has_l;
+        bool has_point = cmd.has_x || cmd.has_y;
+
+        if (has_point && !(cmd.has_x && cmd.has_y))
         {
-            ROS_ERROR("Line %d: Invalid G2 parameters: must specify L and F in command '%s'", cmd.line_number, cmd.raw_line.c_str()); // Ошибка
+            logi.log_r("Line %d: G2 requires both X and Y\n", cmd.line_number);
             return;
         }
-        if (length <= 0.0) // Проверяем длину
+        if (has_length && has_point)
         {
-            ROS_ERROR("Line %d: Invalid G2 length: L=%.2f in command '%s'", cmd.line_number, length, cmd.raw_line.c_str()); // Ошибка
+            logi.log_r("Line %d: G2 cannot have both L and X/Y\n", cmd.line_number);
             return;
         }
-        if (feed_rate <= 0.0) // Проверяем скорость
+        if (!has_length && !has_point)
         {
-            ROS_ERROR("Line %d: Invalid G2 feed rate: F=%.2f in command '%s'", cmd.line_number, feed_rate, cmd.raw_line.c_str()); // Ошибка
+            logi.log_r("Line %d: G2 must have L or X/Y\n", cmd.line_number);
             return;
         }
 
-        float time = length / feed_rate;                            // Вычисляем время
-        current_x_ += length * std::cos(current_a_ * M_PI / 180.0); // Обновляем x
-        current_y_ += length * std::sin(current_a_ * M_PI / 180.0); // Обновляем y
+        float target_x = current_x_;
+        float target_y = current_y_;
+        float length = 0.0f;
 
-        ss << "G2: Linear move, L=" << length << " F=" << feed_rate << " T=" << time; // Формируем сообщение
-        if (!cmd.comment.empty())
-            ss << " (" << cmd.comment << ")";                                                                         // Добавляем комментарий
-        ROS_INFO("Line %d: %s", cmd.line_number, ss.str().c_str());                                                   // Логируем с номером строки
-        ROS_INFO("Line %d: End position: X=%.2f Y=%.2f A=%.2f", cmd.line_number, current_x_, current_y_, current_a_); // Логируем позицию
-        publishMessage(ss.str());
+        if (has_length)
+        {
+            if (cmd.l <= 0.0f)
+            {
+                logi.log_r("Line %d: Invalid G2 L=%.3f\n", cmd.line_number, cmd.l);
+                return;
+            }
+            length = cmd.l;
+            target_x = current_x_ + length * std::cos(current_a_ * M_PI / 180.0f);
+            target_y = current_y_ + length * std::sin(current_a_ * M_PI / 180.0f);
+        }
+        else if (has_point)
+        {
+            target_x = cmd.x;
+            target_y = cmd.y;
+            float dx = target_x - current_x_;
+            float dy = target_y - current_y_;
+            length = std::sqrt(dx*dx + dy*dy);
+        }
+
+        float feed_rate = cmd.has_f ? cmd.f : 0.1f;
+        if (feed_rate > 0.5f) feed_rate = 0.5f;
+        if (feed_rate <= 0.0f)
+        {
+            logi.log_r("Line %d: Invalid G2 F=%.3f\n", cmd.line_number, feed_rate);
+            return;
+        }
+
+        float time_sec = (length > 0.0f) ? (length / feed_rate) : 0.0f;
+        current_x_ = target_x;
+        current_y_ = target_y;
+        total_time_sec_ += time_sec;
 
         SCommand command;
-        command.mode = 2;       // Задаем режим
-        command.len = cmd.l;    // Длинна вектора движения
-        command.velLen = cmd.f; // Скорость движения
+        command.mode = 2;
+        command.len = length;
+        command.velLen = feed_rate;
         commandArray.push_back(command);
-        ROS_INFO("    executeG2 mode= %i len= %f velLen=%f ", command.mode, command.len, command.velLen); // Вывод лога                                                                   // Публикуем
+
+        logi.log_b("    AFTER:  X=%.3f, Y=%.3f, A=%.3f°\n", current_x_, current_y_, current_a_);
+        logi.log_b("    DURATION: %.3f sec (TOTAL: %.3f sec)\n", time_sec, total_time_sec_);
     }
 
-    void executeG3(const GCodeCommand &cmd) // Выполняет G3: движение по дуге с R, F, D
-    {
-        std::stringstream ss;                        // Поток для лога
-        float radius = cmd.has_r ? cmd.r : 100.0;    // Радиус дуги
-        float feed_rate = cmd.has_f ? cmd.f : 100.0; // Скорость подачи
-        float direction = cmd.has_d ? cmd.d : 0.0;   // Направление (0 — против часовой, 1 — по часовой)
-        float time = cmd.has_t ? cmd.t : 0.0;        // Время (опционально)
-
-        if (!cmd.has_r || !cmd.has_f || !cmd.has_d) // Проверяем параметры
-        {
-            ROS_ERROR("Line %d: Invalid G3 parameters: must specify R, F, D in command '%s'", cmd.line_number, cmd.raw_line.c_str()); // Ошибка
-            return;
-        }
-        if (radius <= 0.0) // Проверяем радиус
-        {
-            ROS_ERROR("Line %d: Invalid G3 radius: R=%.2f in command '%s'", cmd.line_number, radius, cmd.raw_line.c_str()); // Ошибка
-            return;
-        }
-        if (feed_rate <= 0.0) // Проверяем скорость
-        {
-            ROS_ERROR("Line %d: Invalid G3 feed rate: F=%.2f in command '%s'", cmd.line_number, feed_rate, cmd.raw_line.c_str()); // Ошибка
-            return;
-        }
-        if (direction != 0.0 && direction != 1.0) // Проверяем направление
-        {
-            ROS_ERROR("Line %d: Invalid G3 direction: D=%.2f, must be 0 or 1 in command '%s'", cmd.line_number, direction, cmd.raw_line.c_str()); // Ошибка
-            return;
-        }
-        if (cmd.has_t && time <= 0.0) // Проверяем время
-        {
-            ROS_ERROR("Line %d: Invalid G3 time: T=%.2f in command '%s'", cmd.line_number, time, cmd.raw_line.c_str()); // Ошибка
-            return;
-        }
-
-        float omega = feed_rate / radius; // Угловая скорость
-        if (direction == 1.0)
-            omega = -omega;                                                                                                         // По часовой — отрицательная ω
-        float theta = cmd.has_t ? omega * time : 2.0 * M_PI;                                                                        // Угол дуги (полный круг, если T не указано)
-        time = cmd.has_t ? time : std::abs(theta / omega);                                                                          // Вычисляем время, если не указано
-        float center_x = current_x_ + radius * std::cos((current_a_ + (omega > 0 ? 90.0 : -90.0)) * M_PI / 180.0);                  // x центра дуги
-        float center_y = current_y_ + radius * std::sin((current_a_ + (omega > 0 ? 90.0 : -90.0)) * M_PI / 180.0);                  // y центра дуги
-        current_x_ = center_x + radius * std::cos((current_a_ + (omega > 0 ? 90.0 : -90.0) + theta * 180.0 / M_PI) * M_PI / 180.0); // Обновляем x
-        current_y_ = center_y + radius * std::sin((current_a_ + (omega > 0 ? 90.0 : -90.0) + theta * 180.0 / M_PI) * M_PI / 180.0); // Обновляем y
-        current_a_ += theta * 180.0 / M_PI;                                                                                         // Обновляем угол
-
-        ss << "G3: Arc move, R=" << radius << " F=" << feed_rate << " T=" << time << " D=" << (direction == 1.0 ? "clockwise" : "counterclockwise"); // Формируем сообщение
-        if (!cmd.comment.empty())
-            ss << " (" << cmd.comment << ")";                                                                         // Добавляем комментарий
-        ROS_INFO("Line %d: %s", cmd.line_number, ss.str().c_str());                                                   // Логируем с номером строки
-        ROS_INFO("Line %d: End position: X=%.2f Y=%.2f A=%.2f", cmd.line_number, current_x_, current_y_, current_a_); // Логируем позицию
-        publishMessage(ss.str());                                                                                     // Публикуем
-    }
-
-    // Выполнение G4 (пауза)
     void executeG4(const GCodeCommand &cmd)
     {
-        std::stringstream ss;                     // Для формирования лога
-        float pause_ms = cmd.has_p ? cmd.p : 0.0; // Длительность паузы в мс
-        ss << "G4: Pause for " << pause_ms << " ms";
-        if (!cmd.comment.empty())
-            ss << " (" << cmd.comment << ")";     // Добавление комментария
-        ROS_INFO("%s", ss.str().c_str());         // Вывод лога
-        // ros::Duration(pause_ms / 1000.0).sleep(); // Ожидание
-        publishMessage(ss.str());                 // Публикация
+        logi.log_b("\n>>> EXECUTING: %s\n", cmd.raw_line.c_str());
+        logi.log_b("    BEFORE: X=%.3f, Y=%.3f, A=%.3f°\n", current_x_, current_y_, current_a_);
 
-        executePause(cmd.p); // Добавляем паузу перед любой операцией для стабилизации робота в ключевых точках.
+        float pause_ms = cmd.has_p ? cmd.p : 0.0f;
+        float time_sec = pause_ms / 1000.0f;
+        total_time_sec_ += time_sec;
+
+        SCommand temp;
+        temp.mode = 4;
+        temp.duration = pause_ms;
+        commandArray.push_back(temp);
+
+        logi.log_b("    AFTER:  X=%.3f, Y=%.3f, A=%.3f°\n", current_x_, current_y_, current_a_);
+        logi.log_b("    DURATION: %.3f sec (TOTAL: %.3f sec)\n", time_sec, total_time_sec_);
     }
 
-    // // Выполнение G5 (Вращение колесами  определенное время по часовой)
-    // void executeG5(const GCodeCommand &cmd)
-    // {
-    //     std::stringstream ss;                     // Для формирования лога
-    //     float pause_ms = cmd.has_p ? cmd.p : 0.0; // Длительность паузы в мс
-    //     ss << "G5: Rotate for " << cmd.f << " vel " << pause_ms << " ms";
-    //     if (!cmd.comment.empty())
-    //         ss << " (" << cmd.comment << ")"; // Добавление комментария
-    //     ROS_INFO("%s", ss.str().c_str());     // Вывод лога
-    //     // ros::Duration(pause_ms / 1000.0).sleep(); // Ожидание
-    //     // publishMessage(ss.str());                 // Публикация
-
-    //     SCommand temp;
-    //     temp.mode = 1;
-    //     temp.velL = cmd.f;
-    //     temp.velR = -cmd.f;
-    //     temp.duration = cmd.p;
-    //     commandArray.push_back(temp);
-    //     ROS_INFO("    executeG5 mode= %i velL= %f velR= %f duration=%f ", temp.mode, temp.velL, temp.velR, temp.duration); // Вывод лога
-    // }
-    // // Выполнение G6 (Вращение колесами  определенное время против часовой)
-    // void executeG6(const GCodeCommand &cmd)
-    // {
-    //     std::stringstream ss;                     // Для формирования лога
-    //     float pause_ms = cmd.has_p ? cmd.p : 0.0; // Длительность паузы в мс
-    //     ss << "G6: Rotate for " << cmd.f << " vel " << pause_ms << " ms";
-    //     if (!cmd.comment.empty())
-    //         ss << " (" << cmd.comment << ")"; // Добавление комментария
-    //     ROS_INFO("%s", ss.str().c_str());     // Вывод лога
-    //     // ros::Duration(pause_ms / 1000.0).sleep(); // Ожидание
-    //     // publishMessage(ss.str());                 // Публикация
-
-    //     SCommand temp;
-    //     temp.mode = 1;
-    //     temp.velL = -cmd.f;
-    //     temp.velR = cmd.f;
-    //     temp.duration = cmd.p;
-    //     commandArray.push_back(temp);
-    //     ROS_INFO("    executeG6 mode= %i velL= %f velR= %f duration=%f ", temp.mode, temp.velL, temp.velR, temp.duration); // Вывод лога
-    // }
-    // // Выполнение G7 (Движение вперед определенное время)
-    // void executeG7(const GCodeCommand &cmd)
-    // {
-    //     std::stringstream ss;                     // Для формирования лога
-    //     float pause_ms = cmd.has_p ? cmd.p : 0.0; // Длительность паузы в мс
-    //     ss << "G7: Drive for " << cmd.f << " vel " << pause_ms << " ms";
-    //     if (!cmd.comment.empty())
-    //         ss << " (" << cmd.comment << ")"; // Добавление комментария
-    //     ROS_INFO("%s", ss.str().c_str());     // Вывод лога
-    //     // ros::Duration(pause_ms / 1000.0).sleep(); // Ожидание
-    //     // publishMessage(ss.str());                 // Публикация
-
-    //     SCommand temp;
-    //     temp.mode = 1;
-    //     temp.velL = cmd.f;
-    //     temp.velR = cmd.f;
-    //     temp.duration = cmd.p;
-    //     commandArray.push_back(temp);
-    //     ROS_INFO("    executeG7 mode= %i velL= %f velR= %f duration=%f ", temp.mode, temp.velL, temp.velR, temp.duration); // Вывод лога
-    // }
-    // // Выполнение G8 (Движение назад определенное время)
-    // void executeG8(const GCodeCommand &cmd)
-    // {
-    //     std::stringstream ss;                     // Для формирования лога
-    //     float pause_ms = cmd.has_p ? cmd.p : 0.0; // Длительность паузы в мс
-    //     ss << "G8: Drive for " << cmd.f << " vel " << pause_ms << " ms";
-    //     if (!cmd.comment.empty())
-    //         ss << " (" << cmd.comment << ")"; // Добавление комментария
-    //     ROS_INFO("%s", ss.str().c_str());     // Вывод лога
-    //     // ros::Duration(pause_ms / 1000.0).sleep(); // Ожидание
-    //     // publishMessage(ss.str());                 // Публикация
-
-    //     SCommand temp;
-    //     temp.mode = 1;
-    //     temp.velL = -cmd.f;
-    //     temp.velR = -cmd.f;
-    //     temp.duration = cmd.p;
-    //     commandArray.push_back(temp);
-    //     ROS_INFO("    executeG8 mode= %i velL= %f velR= %f duration=%f ", temp.mode, temp.velL, temp.velR, temp.duration); // Вывод лога
-    // }
-
-    // Выполнение G9 (Переход в начало. Зацикливание программы)
     void executeG9(const GCodeCommand &cmd)
     {
-        std::stringstream ss;                     // Для формирования лога
-        float pause_ms = cmd.has_p ? cmd.p : 0.0; // Длительность паузы в мс
-        ss << "G9: Cicle...";
-        if (!cmd.comment.empty())
-            ss << " (" << cmd.comment << ")"; // Добавление комментария
-        ROS_INFO("%s", ss.str().c_str());     // Вывод лога
-
+        logi.log_b("\n>>> EXECUTING: %s\n", cmd.raw_line.c_str());
+        logi.log_b("    STATE: X=%.3f, Y=%.3f, A=%.3f°\n", current_x_, current_y_, current_a_);
         SCommand temp;
         temp.mode = 9;
         commandArray.push_back(temp);
-        ROS_INFO("    executeG9 mode= %i ", temp.mode); // Вывод лога
     }
 
-    // Выполнение G28 (возврат домой)
-    void executeG28(const GCodeCommand &cmd)
-    {
-        std::stringstream ss; // Для формирования лога
-        current_x_ = 0.0;     // Сброс X
-        current_y_ = 0.0;     // Сброс Y
-        current_a_ = 0.0;     // Сброс A
-        ss << "G28: Return to home position (0, 0)";
-        if (!cmd.comment.empty())
-            ss << " (" << cmd.comment << ")"; // Добавление комментария
-        ROS_INFO("%s", ss.str().c_str());     // Вывод лога
-        publishMessage(ss.str());             // Публикация
-    }
-
-    // Выполнение G90 (абсолютный режим)
-    void executeG90(const GCodeCommand &cmd)
-    {
-        std::stringstream ss;  // Для формирования лога
-        absolute_mode_ = true; // Установка абсолютного режима
-        ss << "G90: Absolute coordinate mode";
-        if (!cmd.comment.empty())
-            ss << " (" << cmd.comment << ")"; // Добавление комментария
-        ROS_INFO("%s", ss.str().c_str());     // Вывод лога
-        publishMessage(ss.str());             // Публикация
-    }
-
-    // Выполнение G91 (относительный режим)
-    void executeG91(const GCodeCommand &cmd)
-    {
-        std::stringstream ss;   // Для формирования лога
-        absolute_mode_ = false; // Установка относительного режима
-        ss << "G91: Relative coordinate mode";
-        if (!cmd.comment.empty())
-            ss << " (" << cmd.comment << ")"; // Добавление комментария
-        ROS_INFO("%s", ss.str().c_str());     // Вывод лога
-        publishMessage(ss.str());             // Публикация
-    }
-
-    // Выполнение M3 (включение модуля печати)
     void executeM3(const GCodeCommand &cmd)
     {
-        std::stringstream ss; // Для формирования лога
-        ss << "M3: Turn on print module";
-        if (!cmd.comment.empty())
-            ss << " (" << cmd.comment << ")"; // Добавление комментария
-        ROS_INFO("%s", ss.str().c_str());     // Вывод лога
-        publishMessage(ss.str());             // Публикация
+        logi.log_b("\n>>> EXECUTING: %s\n", cmd.raw_line.c_str());
+        logi.log_b("    STATE: X=%.3f, Y=%.3f, A=%.3f°\n", current_x_, current_y_, current_a_);
     }
 
-    // Выполнение M5 (выключение модуля печати)
     void executeM5(const GCodeCommand &cmd)
     {
-        std::stringstream ss; // Для формирования лога
-        ss << "M5: Turn off print module";
-        if (!cmd.comment.empty())
-            ss << " (" << cmd.comment << ")"; // Добавление комментария
-        ROS_INFO("%s", ss.str().c_str());     // Вывод лога
-        publishMessage(ss.str());             // Публикация
+        logi.log_b("\n>>> EXECUTING: %s\n", cmd.raw_line.c_str());
+        logi.log_b("    STATE: X=%.3f, Y=%.3f, A=%.3f°\n", current_x_, current_y_, current_a_);
     }
 
 public:
-    // Конструктор
-    GCodeParser() : nh_("~"), pub_(nh_.advertise<std_msgs::String>("robot_position", 10)),
-                    absolute_mode_(true), current_x_(0.0), current_y_(0.0), current_a_(0.0),
-                    gcode_file_("gcode/my_custom_gcode.gcode")
+    GCodeParser()
+        : nh_("~"),
+          current_x_(0.0f), current_y_(0.0f), current_a_(0.0f),
+          total_time_sec_(0.0f),
+          gcode_file_("gcode/my_custom_gcode.gcode")
     {
-        pub_ = nh_.advertise<std_msgs::String>("robot_position", 10);                                // Инициализируем Publisher для топика /robot_position
-        nh_.param<std::string>("gcode_file", gcode_file_, "$(find pb)/gcode/my_custom_gcode.gcode"); // Читаем путь к G-code файлу
-        ROS_INFO("GCodeParser initialized with file: %s", gcode_file_.c_str());                      // Логируем инициализацию
-
-        // Чтение параметра gcode_file
-        if (nh_.getParam("gcode_file", gcode_file_))
+        nh_.param<std::string>("gcode_file", gcode_file_, "$(find pb)/gcode/my_custom_gcode.gcode");
+        logi.log_b("GCodeParser init: %s\n", gcode_file_.c_str());
+        if (!nh_.getParam("gcode_file", gcode_file_))
         {
-            ROS_INFO("Successfully read parameter 'gcode_file': %s", gcode_file_.c_str()); // Успешное чтение
-        }
-        else
-        {
-            ROS_WARN("Failed to read parameter 'gcode_file', using default: %s", gcode_file_.c_str()); // Предупреждение
+            logi.log_w("Using default gcode_file: %s\n", gcode_file_.c_str());
         }
     }
 
-    // Основной метод для выполнения
-    void run() // Основной метод для чтения и выполнения G-code
+    void run()
     {
-        std::ifstream file(gcode_file_.c_str()); // Открываем файл G-code
-        if (!file.is_open())                     // Проверяем, удалось ли открыть файл
+        logi.log_b("INITIAL STATE: X=%.3f, Y=%.3f, A=%.3f°\n", current_x_, current_y_, current_a_);
+
+        std::ifstream file(gcode_file_.c_str());
+        if (!file.is_open())
         {
-            ROS_ERROR("Failed to open file: %s", gcode_file_.c_str()); // Логируем ошибку
+            logi.log_r("Failed to open G-code file: %s\n", gcode_file_.c_str());
             return;
         }
 
-        std::string line;                // Переменная для хранения строки файла
-        int line_number = 0;             // Счётчик строк
-        while (std::getline(file, line)) // Читаем построчно
+        std::string line;
+        int line_number = 0;
+        while (std::getline(file, line))
         {
-            ++line_number;     // Увеличиваем номер строки
-            line = trim(line); // Удаляем пробелы
-            if (line.empty() || line[0] == '%')
-                continue;                               // Пропускаем пустые строки и %
-            GCodeCommand cmd;                           // Создаём структуру команды
-            if (parseGCodeLine(line, cmd, line_number)) // Парсим строку с номером
+            ++line_number;
+            line = trim(line);
+            if (line.empty() || line[0] == '%') continue;
+
+            GCodeCommand cmd;
+            if (parseGCodeLine(line, cmd, line_number))
             {
-                commands_.push_back(cmd);                   // Добавляем команду
-                std::string log = "Added command: " + line; // Формируем лог
-                if (!cmd.comment.empty())
-                    log += " (" + cmd.comment + ")";               // Добавляем комментарий
-                ROS_INFO("Line %d: %s", line_number, log.c_str()); // Логируем с номером строки
+                commands_.push_back(cmd);
+                std::string log = "Added: " + line;
+                if (!cmd.comment.empty()) log += " (" + cmd.comment + ")";
+                logi.log_b("Line %d: %s\n", line_number, log.c_str());
             }
             else
             {
-                ROS_WARN("Line %d: Invalid line: %s", line_number, line.c_str()); // Логируем ошибку
+                logi.log_w("Line %d: Invalid line\n", line_number);
             }
         }
-        file.close(); // Закрываем файл
+        file.close();
+        logi.log_b("Total parsed commands: %zu\n", commands_.size());
 
-        ROS_INFO("Parsed G-code commands:");          // Логируем начало вывода команд
-        for (size_t i = 0; i < commands_.size(); ++i) // Перебираем все команды
+        for (const auto &cmd : commands_)
         {
-            const GCodeCommand &cmd = commands_[i];       // Текущая команда
-            std::stringstream ss;                         // Поток для лога
-            ss << "Command " << i << ": " << cmd.command; // Формируем начало сообщения
-            if (cmd.has_l)
-                ss << " L=" << cmd.l; // Добавляем L длинна пути
-            if (cmd.has_a)
-                ss << " A=" << cmd.a; // Добавляем A угол поворота
-            if (cmd.has_f)
-                ss << " F=" << cmd.f; // Добавляем F скорость
-            if (cmd.has_p)
-                ss << " P=" << cmd.p; // Добавляем P время паузы
-            if (cmd.has_r)
-                ss << " R=" << cmd.r; // Добавляем R радиус поворота
-            if (cmd.has_t)
-                ss << " T=" << cmd.t; // Добавляем T длительность
-            if (cmd.has_f_l)
-                ss << " F_L=" << cmd.f_l; // Добавляем F_L скорость левого
-            if (cmd.has_f_r)
-                ss << " F_R=" << cmd.f_r; // Добавляем F_R правого скорость
-            if (cmd.has_d)
-                ss << " D=" << cmd.d; // Добавляем D направление по часовой 1 против 0
-            if (!cmd.comment.empty())
-                ss << " ; " << cmd.comment;   // Добавляем комментарий
-            ROS_INFO("%s", ss.str().c_str()); // Логируем команду
-        }
-        ROS_INFO("Total commands: %zu", commands_.size()); // Логируем общее число команд
-
-        ros::Rate loop_rate(10);           // Устанавливаем частоту цикла (3 Гц)
-        for (const auto &cmd : commands_) // Перебираем команды для выполнения
-        {
-            if (cmd.command == "G0")
-                executeG0(cmd); // Выполняем G0
-            else if (cmd.command == "G1")
-                executeG1(cmd); // Выполняем G1
-            else if (cmd.command == "G2")
-                executeG2(cmd); // Выполняем G2
-            else if (cmd.command == "G3")
-                executeG3(cmd); // Выполняем G3
-            else if (cmd.command == "G4")
-                executeG4(cmd); // Выполняем G4
-            else if (cmd.command == "G9")
-                executeG9(cmd); // Выполняем G9
-            else if (cmd.command == "G28")
-                executeG28(cmd); // Выполняем G28
-            else if (cmd.command == "G90")
-                executeG90(cmd); // Выполняем G90
-            else if (cmd.command == "G91")
-                executeG91(cmd); // Выполняем G91
-            else if (cmd.command == "M3")
-                executeM3(cmd); // Выполняем M3
-            else if (cmd.command == "M5")
-                executeM5(cmd); // Выполняем M5
+            if (cmd.command == "G0") executeG0(cmd);
+            else if (cmd.command == "G1") executeG1(cmd);
+            else if (cmd.command == "G2") executeG2(cmd);
+            else if (cmd.command == "G4") executeG4(cmd);
+            else if (cmd.command == "G9") executeG9(cmd);
+            else if (cmd.command == "M3") executeM3(cmd);
+            else if (cmd.command == "M5") executeM5(cmd);
             else
-                ROS_WARN("Unknown command: %s (%s)", cmd.command.c_str(), cmd.comment.c_str()); // Логируем неизвестную команду
-            ros::spinOnce();                                                                    // Обрабатываем ROS-сообщения
-            loop_rate.sleep();                                                                  // Задержка для соблюдения частоты
+                logi.log_w("Unknown command: %s\n", cmd.command.c_str());
         }
 
-        ROS_INFO("All commands executed"); // Логируем завершение
-
-        // Вывод массива commands_ в консоль через ROS_INFO
-        ROS_INFO(" \n commandArray commands:");
-        for (size_t i = 0; i < commandArray.size(); ++i)
+        std::string separator(60, '=');
+        logi.log_b("\n%s\n", separator.c_str());
+        logi.log_b("FINAL STATE:\n");
+        logi.log_b("  X = %.3f mm\n", current_x_);
+        logi.log_b("  Y = %.3f mm\n", current_y_);
+        logi.log_b("  A = %.3f°\n", current_a_);
+        logi.log_b("TOTAL CALCULATED TIME: %.3f seconds", total_time_sec_);
+        if (total_time_sec_ >= 60.0f)
         {
-            const SCommand &cmd = commandArray[i];
-            std::stringstream ss;
-            ss << "Command " << i << "= ";
-            ss << " mode= " << cmd.mode;
-            ss << " duration= " << cmd.duration;
-            ss << " velL= " << cmd.velL;
-            ss << " velR= " << cmd.velR;
-
-            ss << " angle= " << cmd.angle;
-            ss << " velAngle= " << cmd.velAngle;
-
-            ss << " len= " << cmd.len;
-            ss << " velLen= " << cmd.velLen;
-            ROS_INFO("%s", ss.str().c_str()); // Вывод в одну строку
+            logi.log_b(" (%.1f minutes)", total_time_sec_ / 60.0f);
         }
-        ROS_INFO("Total commandArray: %zu \n", commandArray.size()); // Общее количество команд
+        logi.log_b("\n%s\n", separator.c_str());
 
-        if (commandArray.empty())
-            ROS_WARN(" <commandArray> NULL!");
-        else
-            ROS_INFO("Count <commandArray>: %zu", commandArray.size());
+        logi.log_b("Execution complete. commandArray size: %zu\n", commandArray.size());
+        if (!commandArray.empty())
+        {
+            for (size_t i = 0; i < commandArray.size(); ++i)
+            {
+                const SCommand &c = commandArray[i];
+                logi.log("Cmd[%zu]: mode=%d, dur=%.1f, vL=%.3f, vR=%.3f, "
+                        "Δ=%.3f, vA=%.3f, len=%.3f, vL=%.3f\n",
+                        i, c.mode, c.duration, c.velL, c.velR,
+                        c.angle, c.velAngle, c.len, c.velLen);
+            }
+        }
     }
+
+    const std::vector<SCommand>& getCommandArray() const { return commandArray; }
+    float getCurrentX() const { return current_x_; }
+    float getCurrentY() const { return current_y_; }
+    float getCurrentA() const { return current_a_; }
+    float getTotalTimeSec() const { return total_time_sec_; }
 };
 
-#endif
+#endif // GCODEPARSER_H
 
 /*
-G0: Задаём скорости левого и правого колёс (F_L, F_R, мм/с) и время движения (T, с). Робот движется (прямо или по дуге) в течение времени T с заданными скоростями.
-G1: Задаём угол поворота A (градусы) и скорость поворота F (градусы/с). Робот вращается на месте на угол A с направлением,
-    определяемым знаком A (положительный — против часовой стрелки, отрицательный — по часовой).
-G2: Задаём длину пути L (мм) и скорость подачи F (мм/с). Робот движется по прямой на расстояние L с заданной скоростью, время вычисляется как T = L/F.
-G3: Задаём радиус дуги R (мм), скорость подачи F (мм/с) и направление D (0 — против часовой, 1 — по часовой). Робот движется по дуге радиусом R с линейной скоростью F, время T опционально (по умолчанию — полный круг).
+===============================================================================
+                    G-CODE СПРАВКА (для робота с диф. приводом)
+===============================================================================
 
-Команда G0:Параметры: F_L, F_R, T.
-Кинематика:Линейная скорость: v = (F_L + F_R) / 2.
-Угловая скорость: ω = (F_R - F_L) / L, где L — ширина базы (200 мм).
-Прямое движение (ω ≈ 0): длина пути L = v * T.
-Дуга (ω ≠ 0): радиус R = v / |ω|, угол θ = ω * T.
+Общие правила:
+- Все углы — в градусах, в диапазоне [-180, +180)
+- Скорости по умолчанию: 0.1 (мм/с для движения, град/с для поворота)
+- Максимальная скорость: 0.5 (автоматически ограничивается)
+- Параметры чувствительны к регистру: используйте ЛАТИНСКИЕ буквы!
+- Комментарии после ';'
 
-Команда G1:Параметры: A, F (опционально).
-Поворот на месте: ω = F * π / 180, время T = |A| / F, направление по знаку A.
+-------------------------------------------------------------------------------
+G0 F_L<скорость> F_R<скорость> T<время_сек>
+    Управление колёсами напрямую.
+    Пример: G0 F_L50 F_R50 T2.0  → движение вперёд 2 сек со скоростью 50 мм/с
 
-Команда G2:Параметры: L, F.
-Время: T = L / F.
-Движение: (x = current_x_ + L * cos(current_a_), y = current_y_ + L * sin(current_a_)).
+G1 <режим> [F<скорость>]
+    Поворот на месте. Ровно ОДИН из режимов:
+    • A<угол>         — абсолютный поворот (например, A90)
+    • O<угол>         — относительный поворот (например, O-45)
+    • X<коорд> Y<коорд> — поворот лицом к точке (например, X100 Y0)
+    Примеры:
+        G1 A0 F0.05     → повернуться точно на 0°
+        G1 O90          → повернуться на +90° от текущего угла
+        G1 X0 Y-100     → повернуться вниз (к точке 0, -100)
 
-Команда G3:Параметры: R, F, D, T (опционально).
-Угловая скорость: ω = F / R (положительная для D=0, отрицательная для D=1).
-Угол: θ = ω * T или 2π (полный круг, если T не указан).
+G2 <режим> [F<скорость>]
+    Линейное движение. Ровно ОДИН из режимов:
+    • L<длина>        — движение вперёд на N мм
+    • X<коорд> Y<коорд> — движение прямо к точке
+    Примеры:
+        G2 L100 F0.2    → проехать 100 мм вперёд со скоростью 0.2 мм/с
+        G2 X0 Y0        → вернуться в начало координат
 
+G4 P<мс>
+    Пауза (в миллисекундах).
+    Пример: G4 P2000 → пауза на 2 секунды
+
+G9
+    Сигнал зацикливания (для контроллера).
+
+M3 / M5
+    Включение / выключение вспомогательного модуля (например, печати).
+
+-------------------------------------------------------------------------------
+ВАЖНО:
+- Используйте ЛАТИНСКУЮ букву 'O' (не кириллическую 'О') в G1 O...
+- Все команды выполняются последовательно.
+- Координаты и угол обновляются после каждой команды.
+- Общее время выполнения рассчитывается автоматически.
+
+Пример программы:
+    G1 A90 F0.1     ; повернуться на 90°
+    G2 L200 F0.2    ; проехать 200 мм вперёд
+    G1 X0 Y0        ; повернуться домой
+    G2 X0 Y0        ; вернуться домой
+    G4 P1000        ; подождать 1 сек
+    G9              ; зациклить
+
+===============================================================================
 */
