@@ -8,11 +8,38 @@
 #include <vector>
 #include <cmath>
 #include <exception>
+#include <iomanip>
+
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
 
+// Вспомогательная функция для красивого вывода чисел
+std::string fmt_float(float val) {
+    std::ostringstream oss;
+    oss << std::fixed << std::setprecision(4) << val;
+    std::string s = oss.str();
+    s.erase(s.find_last_not_of('0') + 1, std::string::npos);
+    if (!s.empty() && s.back() == '.') s.pop_back();
+    return s;
+}
+
+// struct SCommand
+// {
+//     int mode;
+//     float duration;    // мс
+//     float velL, velR;  // м/с
+//     float angle;       // градусы
+//     float velAngle;    // град/с
+//     float len;         // метры
+//     float velLen;      // м/с
+
+//     SCommand()
+//         : mode(0), duration(0.0f), velL(0.0f), velR(0.0f),
+//           angle(0.0f), velAngle(0.0f), len(0.0f), velLen(0.0f)
+//     {}
+// };
 
 struct GCodeCommand
 {
@@ -40,9 +67,9 @@ class GCodeParser
 {
 private:
     ros::NodeHandle nh_;
-    float current_x_, current_y_, current_a_;
+    float current_x_, current_y_, current_a_; // в метрах и градусах
     std::string gcode_file_;
-    float wheel_base_ = 200.0f;
+    const float wheel_base_m_ = 0.38f; // расстояние между колёсами в метрах
     std::vector<GCodeCommand> commands_;
     std::vector<SCommand> commandArray;
     float total_time_sec_ = 0.0f;
@@ -80,7 +107,6 @@ private:
             return false;
         }
         cmd.command = token;
-        logi.log_b("Line %d: Parsed command '%s'\n", line_number, token.c_str());
 
         while (ss >> token)
         {
@@ -88,7 +114,6 @@ private:
             {
                 std::getline(ss, cmd.comment);
                 cmd.comment = trim(cmd.comment);
-                logi.log_b("Line %d: Parsed comment '%s'\n", line_number, cmd.comment.c_str());
                 break;
             }
             if (token.length() < 2)
@@ -100,7 +125,7 @@ private:
             char param = token[0];
             float value;
 
-            // === ПРОВЕРКА НА КИРИЛЛИЧЕСКУЮ "О" ===
+            // === Проверка на кириллическую "О" ===
             if (token.length() >= 2 &&
                 static_cast<unsigned char>(token[0]) == 0xD0 &&
                 static_cast<unsigned char>(token[1]) == 0x9E)
@@ -126,13 +151,11 @@ private:
                     {
                         cmd.f_l = value;
                         cmd.has_f_l = true;
-                        logi.log_b("Line %d: Parsed F_L=%.3f\n", line_number, value);
                     }
                     else if (suffix == "R")
                     {
                         cmd.f_r = value;
                         cmd.has_f_r = true;
-                        logi.log_b("Line %d: Parsed F_R=%.3f\n", line_number, value);
                     }
                     else
                     {
@@ -156,7 +179,6 @@ private:
                                   line_number, param, static_cast<int>(param));
                         continue;
                     }
-                    logi.log_b("Line %d: Parsed %c=%.3f\n", line_number, param, value);
                 }
             }
             catch (const std::exception &e)
@@ -165,12 +187,28 @@ private:
                 continue;
             }
         }
+
+        // === КОМПАКТНЫЙ ЛОГ ПАРСИНГА В ОДНУ СТРОКУ ===
+        std::string parsed_params;
+        if (cmd.has_l) parsed_params += " L=" + fmt_float(cmd.l);
+        if (cmd.has_a) parsed_params += " A=" + fmt_float(cmd.a);
+        if (cmd.has_o) parsed_params += " O=" + fmt_float(cmd.o);
+        if (cmd.has_f && !cmd.has_f_l && !cmd.has_f_r) parsed_params += " F=" + fmt_float(cmd.f);
+        if (cmd.has_p) parsed_params += " P=" + fmt_float(cmd.p);
+        if (cmd.has_t) parsed_params += " T=" + fmt_float(cmd.t);
+        if (cmd.has_f_l) parsed_params += " F_L=" + fmt_float(cmd.f_l);
+        if (cmd.has_f_r) parsed_params += " F_R=" + fmt_float(cmd.f_r);
+        if (cmd.has_x) parsed_params += " X=" + fmt_float(cmd.x);
+        if (cmd.has_y) parsed_params += " Y=" + fmt_float(cmd.y);
+        if (!cmd.comment.empty()) parsed_params += " ; " + cmd.comment;
+
+        logi.log_b("Line %d: Parsed '%s'%s\n", line_number, cmd.command.c_str(), parsed_params.c_str());
         return true;
     }
 
     void executeG0(const GCodeCommand &cmd)
     {
-        logi.log_b("\n>>> EXECUTING: %s\n", cmd.raw_line.c_str());
+        logi.log_g(">>> EXECUTING Line %d: %s\n", cmd.line_number, cmd.raw_line.c_str());
         logi.log_b("    BEFORE: X=%.3f, Y=%.3f, A=%.3f°\n", current_x_, current_y_, current_a_);
 
         if (!cmd.has_f_l || !cmd.has_f_r || !cmd.has_t)
@@ -185,15 +223,15 @@ private:
             return;
         }
 
-        float v = (cmd.f_l + cmd.f_r) / 2.0f;
-        float omega = (cmd.f_r - cmd.f_l) / wheel_base_;
+        float v = (cmd.f_l + cmd.f_r) / 2.0f; // м/с
+        float omega = (cmd.f_r - cmd.f_l) / wheel_base_m_; // рад/с
         float time_sec = cmd.t;
 
         float start_x = current_x_;
         float start_y = current_y_;
         float start_a = current_a_;
 
-        if (std::abs(omega) < 0.001f)
+        if (std::abs(omega) < 1e-6f)
         {
             float length = v * time_sec;
             current_x_ += length * std::cos(start_a * M_PI / 180.0f);
@@ -226,7 +264,7 @@ private:
 
     void executeG1(const GCodeCommand &cmd)
     {
-        logi.log_b("\n>>> EXECUTING: %s\n", cmd.raw_line.c_str());
+        logi.log_g(">>> EXECUTING Line %d: %s\n", cmd.line_number, cmd.raw_line.c_str());
         logi.log_b("    BEFORE: X=%.3f, Y=%.3f, A=%.3f°\n", current_x_, current_y_, current_a_);
 
         int mode_count = (cmd.has_a ? 1 : 0) + (cmd.has_o ? 1 : 0) + ((cmd.has_x || cmd.has_y) ? 1 : 0);
@@ -248,28 +286,36 @@ private:
         {
             float dx = cmd.x - current_x_;
             float dy = cmd.y - current_y_;
-            target_angle = (std::abs(dx) < 1e-3f && std::abs(dy) < 1e-3f)
+            target_angle = (std::abs(dx) < 1e-6f && std::abs(dy) < 1e-6f)
                 ? current_a_
                 : normalizeAngle(static_cast<float>(atan2(dy, dx) * 180.0 / M_PI));
         }
 
         float angle_diff = normalizeAngle(target_angle - current_a_);
-        float feed_rate = cmd.has_f ? cmd.f : 0.1f;
-        if (feed_rate > 0.5f) feed_rate = 0.5f;
-        if (feed_rate <= 0.0f)
+
+        float wheel_speed = cmd.has_f ? cmd.f : 0.1f; // м/с
+        if (wheel_speed > 0.5f)
         {
-            logi.log_r("Line %d: Invalid G1 F=%.3f\n", cmd.line_number, feed_rate);
+            logi.log_w("G1: clamping wheel speed F=%.3f → 0.5 m/s\n", wheel_speed);
+            wheel_speed = 0.5f;
+        }
+        if (wheel_speed <= 0.0f)
+        {
+            logi.log_r("Line %d: Invalid G1 F=%.3f (must be > 0)\n", cmd.line_number, wheel_speed);
             return;
         }
 
-        float time_sec = std::abs(angle_diff) / feed_rate;
+        float omega_rad_per_sec = (2.0f * wheel_speed) / wheel_base_m_;
+        float omega_deg_per_sec = omega_rad_per_sec * (180.0f / M_PI);
+        float time_sec = std::abs(angle_diff) / omega_deg_per_sec;
+
         current_a_ = target_angle;
         total_time_sec_ += time_sec;
 
         SCommand command;
         command.mode = 1;
         command.angle = angle_diff;
-        command.velAngle = feed_rate;
+        command.velAngle = omega_deg_per_sec;
         commandArray.push_back(command);
 
         logi.log_b("    AFTER:  X=%.3f, Y=%.3f, A=%.3f°\n", current_x_, current_y_, current_a_);
@@ -278,7 +324,7 @@ private:
 
     void executeG2(const GCodeCommand &cmd)
     {
-        logi.log_b("\n>>> EXECUTING: %s\n", cmd.raw_line.c_str());
+        logi.log_g(">>> EXECUTING Line %d: %s\n", cmd.line_number, cmd.raw_line.c_str());
         logi.log_b("    BEFORE: X=%.3f, Y=%.3f, A=%.3f°\n", current_x_, current_y_, current_a_);
 
         bool has_length = cmd.has_l;
@@ -324,7 +370,7 @@ private:
             length = std::sqrt(dx*dx + dy*dy);
         }
 
-        float feed_rate = cmd.has_f ? cmd.f : 0.1f;
+        float feed_rate = cmd.has_f ? cmd.f : 0.1f; // м/с
         if (feed_rate > 0.5f) feed_rate = 0.5f;
         if (feed_rate <= 0.0f)
         {
@@ -349,7 +395,7 @@ private:
 
     void executeG4(const GCodeCommand &cmd)
     {
-        logi.log_b("\n>>> EXECUTING: %s\n", cmd.raw_line.c_str());
+        logi.log_g(">>> EXECUTING Line %d: %s\n", cmd.line_number, cmd.raw_line.c_str());
         logi.log_b("    BEFORE: X=%.3f, Y=%.3f, A=%.3f°\n", current_x_, current_y_, current_a_);
 
         float pause_ms = cmd.has_p ? cmd.p : 0.0f;
@@ -367,7 +413,7 @@ private:
 
     void executeG9(const GCodeCommand &cmd)
     {
-        logi.log_b("\n>>> EXECUTING: %s\n", cmd.raw_line.c_str());
+        logi.log_g(">>> EXECUTING Line %d: %s\n", cmd.line_number, cmd.raw_line.c_str());
         logi.log_b("    STATE: X=%.3f, Y=%.3f, A=%.3f°\n", current_x_, current_y_, current_a_);
         SCommand temp;
         temp.mode = 9;
@@ -376,13 +422,13 @@ private:
 
     void executeM3(const GCodeCommand &cmd)
     {
-        logi.log_b("\n>>> EXECUTING: %s\n", cmd.raw_line.c_str());
+        logi.log_g(">>> EXECUTING Line %d: %s\n", cmd.line_number, cmd.raw_line.c_str());
         logi.log_b("    STATE: X=%.3f, Y=%.3f, A=%.3f°\n", current_x_, current_y_, current_a_);
     }
 
     void executeM5(const GCodeCommand &cmd)
     {
-        logi.log_b("\n>>> EXECUTING: %s\n", cmd.raw_line.c_str());
+        logi.log_g(">>> EXECUTING Line %d: %s\n", cmd.line_number, cmd.raw_line.c_str());
         logi.log_b("    STATE: X=%.3f, Y=%.3f, A=%.3f°\n", current_x_, current_y_, current_a_);
     }
 
@@ -403,7 +449,7 @@ public:
 
     void run()
     {
-        logi.log_b("INITIAL STATE: X=%.3f, Y=%.3f, A=%.3f°\n", current_x_, current_y_, current_a_);
+        logi.log_g("INITIAL STATE: X=%.3f, Y=%.3f, A=%.3f°\n\n", current_x_, current_y_, current_a_);
 
         std::ifstream file(gcode_file_.c_str());
         if (!file.is_open())
@@ -424,13 +470,11 @@ public:
             if (parseGCodeLine(line, cmd, line_number))
             {
                 commands_.push_back(cmd);
-                std::string log = "Added: " + line;
-                if (!cmd.comment.empty()) log += " (" + cmd.comment + ")";
-                logi.log_b("Line %d: %s\n", line_number, log.c_str());
+                logi.log_b("Line %d: Added: %s\n\n", line_number, line.c_str());
             }
             else
             {
-                logi.log_w("Line %d: Invalid line\n", line_number);
+                logi.log_w("Line %d: Invalid line\n\n", line_number);
             }
         }
         file.close();
@@ -449,20 +493,24 @@ public:
                 logi.log_w("Unknown command: %s\n", cmd.command.c_str());
         }
 
+        // === ИТОГОВЫЙ ОТЧЁТ ===
         std::string separator(60, '=');
-        logi.log_b("\n%s\n", separator.c_str());
-        logi.log_b("FINAL STATE:\n");
-        logi.log_b("  X = %.3f mm\n", current_x_);
-        logi.log_b("  Y = %.3f mm\n", current_y_);
-        logi.log_b("  A = %.3f°\n", current_a_);
-        logi.log_b("TOTAL CALCULATED TIME: %.3f seconds", total_time_sec_);
+        logi.log_g("%s\n", separator.c_str());
+        logi.log_g("FINAL STATE:\n");
+        logi.log_g("  X = %.3f m\n", current_x_);
+        logi.log_g("  Y = %.3f m\n", current_y_);
+        logi.log_g("  A = %.3f°\n", current_a_);
         if (total_time_sec_ >= 60.0f)
         {
-            logi.log_b(" (%.1f minutes)", total_time_sec_ / 60.0f);
+            logi.log_g("TOTAL CALCULATED TIME: (%.1f minutes)\n", total_time_sec_ / 60.0f);
         }
-        logi.log_b("\n%s\n", separator.c_str());
+        else
+        {
+            logi.log_g("TOTAL CALCULATED TIME: %.3f seconds\n", total_time_sec_);
+        }
+        logi.log_g("%s\n", separator.c_str());
 
-        logi.log_b("Execution complete. commandArray size: %zu\n", commandArray.size());
+        logi.log_w("Execution complete. commandArray size: %zu\n\n", commandArray.size());
         if (!commandArray.empty())
         {
             for (size_t i = 0; i < commandArray.size(); ++i)
@@ -483,67 +531,51 @@ public:
     float getTotalTimeSec() const { return total_time_sec_; }
 };
 
-#endif // GCODEPARSER_H
-
 /*
 ===============================================================================
                     G-CODE СПРАВКА (для робота с диф. приводом)
 ===============================================================================
 
 Общие правила:
-- Все углы — в градусах, в диапазоне [-180, +180)
-- Скорости по умолчанию: 0.1 (мм/с для движения, град/с для поворота)
-- Максимальная скорость: 0.5 (автоматически ограничивается)
-- Параметры чувствительны к регистру: используйте ЛАТИНСКИЕ буквы!
-- Комментарии после ';'
+- Все координаты (X, Y, L) — в метрах
+- Все скорости (F, F_L, F_R) — в метрах/секунду
+- Углы (A, O) — в градусах, диапазон [-180, +180)
+- Скорость по умолчанию: 0.1 м/с
+- Максимальная скорость: 0.5 м/с (автоматически ограничивается)
+- Расстояние между колёсами: 0.38 м
+- Используйте ЛАТИНСКИЕ буквы (особенно 'O', а не кириллическую 'О')
 
--------------------------------------------------------------------------------
+Команды:
 G0 F_L<скорость> F_R<скорость> T<время_сек>
-    Управление колёсами напрямую.
-    Пример: G0 F_L50 F_R50 T2.0  → движение вперёд 2 сек со скоростью 50 мм/с
+    Прямое управление колёсами.
+    Пример: G0 F_L0.1 F_R0.1 T2.0
 
 G1 <режим> [F<скорость>]
-    Поворот на месте. Ровно ОДИН из режимов:
-    • A<угол>         — абсолютный поворот (например, A90)
-    • O<угол>         — относительный поворот (например, O-45)
-    • X<коорд> Y<коорд> — поворот лицом к точке (например, X100 Y0)
-    Примеры:
-        G1 A0 F0.05     → повернуться точно на 0°
-        G1 O90          → повернуться на +90° от текущего угла
-        G1 X0 Y-100     → повернуться вниз (к точке 0, -100)
+    Поворот на месте. F — скорость колеса (м/с), одно вперёд, другое назад.
+    Режимы:
+      A<угол>         — абсолютный угол
+      O<угол>         — относительный поворот
+      X<коорд> Y<коорд> — повернуться к точке
+    Пример: G1 A90 F0.1
 
 G2 <режим> [F<скорость>]
-    Линейное движение. Ровно ОДИН из режимов:
-    • L<длина>        — движение вперёд на N мм
-    • X<коорд> Y<коорд> — движение прямо к точке
-    Примеры:
-        G2 L100 F0.2    → проехать 100 мм вперёд со скоростью 0.2 мм/с
-        G2 X0 Y0        → вернуться в начало координат
+    Линейное движение.
+    Режимы:
+      L<длина>        — вперёд на N метров
+      X<коорд> Y<коорд> — к точке
+    Пример: G2 L1.5 F0.2
 
-G4 P<мс>
-    Пауза (в миллисекундах).
-    Пример: G4 P2000 → пауза на 2 секунды
+G4 P<мс>            — пауза в миллисекундах
+G9                  — зацикливание
+M3 / M5             — вкл/выкл модуля
 
-G9
-    Сигнал зацикливания (для контроллера).
-
-M3 / M5
-    Включение / выключение вспомогательного модуля (например, печати).
-
--------------------------------------------------------------------------------
-ВАЖНО:
-- Используйте ЛАТИНСКУЮ букву 'O' (не кириллическую 'О') в G1 O...
-- Все команды выполняются последовательно.
-- Координаты и угол обновляются после каждой команды.
-- Общее время выполнения рассчитывается автоматически.
-
-Пример программы:
+Пример:
     G1 A90 F0.1     ; повернуться на 90°
-    G2 L200 F0.2    ; проехать 200 мм вперёд
+    G2 L1.0 F0.2    ; проехать 1 метр
     G1 X0 Y0        ; повернуться домой
     G2 X0 Y0        ; вернуться домой
-    G4 P1000        ; подождать 1 сек
-    G9              ; зациклить
 
 ===============================================================================
 */
+
+#endif // GCODEPARSER_H
