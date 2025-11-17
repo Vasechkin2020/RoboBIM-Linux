@@ -534,7 +534,8 @@ public:
         {
             ++line_number;
             line = trim(line);
-            if (line.empty() || line[0] == '%') continue;
+            // Пропускаем пустые строки, % и ПОЛНОСТЬЮ закомментированные строки
+            if (line.empty() || line[0] == '%' || line[0] == ';') continue;
 
             GCodeCommand cmd;
             if (parseGCodeLine(line, cmd, line_number))
