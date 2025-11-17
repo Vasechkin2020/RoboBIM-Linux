@@ -10,6 +10,7 @@
 #include <exception>
 #include <iomanip>
 
+extern AsyncFileLogger logi;
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -25,21 +26,7 @@ std::string fmt_float(float val) {
     return s;
 }
 
-// struct SCommand
-// {
-//     int mode;
-//     float duration;    // мс
-//     float velL, velR;  // м/с
-//     float angle;       // градусы
-//     float velAngle;    // град/с
-//     float len;         // метры
-//     float velLen;      // м/с
 
-//     SCommand()
-//         : mode(0), duration(0.0f), velL(0.0f), velR(0.0f),
-//           angle(0.0f), velAngle(0.0f), len(0.0f), velLen(0.0f)
-//     {}
-// };
 
 struct GCodeCommand
 {
@@ -71,7 +58,6 @@ private:
     std::string gcode_file_;
     const float wheel_base_m_ = 0.38f; // расстояние между колёсами в метрах
     std::vector<GCodeCommand> commands_;
-    std::vector<SCommand> commandArray;
     float total_time_sec_ = 0.0f;
 
     std::string trim(const std::string &str)
@@ -223,30 +209,31 @@ private:
             return;
         }
 
+        // Сохраняем состояние ДО
+        float before_x = current_x_;
+        float before_y = current_y_;
+        float before_a = current_a_;
+
         float v = (cmd.f_l + cmd.f_r) / 2.0f; // м/с
         float omega = (cmd.f_r - cmd.f_l) / wheel_base_m_; // рад/с
         float time_sec = cmd.t;
 
-        float start_x = current_x_;
-        float start_y = current_y_;
-        float start_a = current_a_;
-
         if (std::abs(omega) < 1e-6f)
         {
             float length = v * time_sec;
-            current_x_ += length * std::cos(start_a * M_PI / 180.0f);
-            current_y_ += length * std::sin(start_a * M_PI / 180.0f);
+            current_x_ += length * std::cos(before_a * M_PI / 180.0f);
+            current_y_ += length * std::sin(before_a * M_PI / 180.0f);
         }
         else
         {
             float radius = v / std::abs(omega);
             float theta = omega * time_sec;
             float sign = (omega > 0) ? 1.0f : -1.0f;
-            float center_x = start_x + radius * std::cos((start_a + sign * 90.0f) * M_PI / 180.0f);
-            float center_y = start_y + radius * std::sin((start_a + sign * 90.0f) * M_PI / 180.0f);
-            current_x_ = center_x + radius * std::cos((start_a + sign * 90.0f + theta * 180.0f / M_PI) * M_PI / 180.0f);
-            current_y_ = center_y + radius * std::sin((start_a + sign * 90.0f + theta * 180.0f / M_PI) * M_PI / 180.0f);
-            current_a_ = normalizeAngle(start_a + theta * 180.0f / M_PI);
+            float center_x = before_x + radius * std::cos((before_a + sign * 90.0f) * M_PI / 180.0f);
+            float center_y = before_y + radius * std::sin((before_a + sign * 90.0f) * M_PI / 180.0f);
+            current_x_ = center_x + radius * std::cos((before_a + sign * 90.0f + theta * 180.0f / M_PI) * M_PI / 180.0f);
+            current_y_ = center_y + radius * std::sin((before_a + sign * 90.0f + theta * 180.0f / M_PI) * M_PI / 180.0f);
+            current_a_ = normalizeAngle(before_a + theta * 180.0f / M_PI);
         }
 
         total_time_sec_ += time_sec;
@@ -256,6 +243,13 @@ private:
         command.duration = cmd.t * 1000.0f;
         command.velL = cmd.f_l;
         command.velR = cmd.f_r;
+        // Сохраняем траекторию
+        command.point_A_x = before_x;
+        command.point_A_y = before_y;
+        command.point_A_a = before_a;
+        command.point_B_x = current_x_;
+        command.point_B_y = current_y_;
+        command.point_B_a = current_a_;
         commandArray.push_back(command);
 
         logi.log_b("    AFTER:  X=%.3f, Y=%.3f, A=%.3f°\n", current_x_, current_y_, current_a_);
@@ -291,8 +285,12 @@ private:
                 : normalizeAngle(static_cast<float>(atan2(dy, dx) * 180.0 / M_PI));
         }
 
-        float angle_diff = normalizeAngle(target_angle - current_a_);
+        // Сохраняем состояние ДО
+        float before_x = current_x_;
+        float before_y = current_y_;
+        float before_a = current_a_;
 
+        float angle_diff = normalizeAngle(target_angle - before_a);
         float wheel_speed = cmd.has_f ? cmd.f : 0.1f; // м/с
         if (wheel_speed > 0.5f)
         {
@@ -314,8 +312,15 @@ private:
 
         SCommand command;
         command.mode = 1;
-        command.angle = angle_diff;
-        command.velAngle = omega_deg_per_sec;
+        command.angle = target_angle;
+        command.velAngle = wheel_speed;
+        // Сохраняем траекторию
+        command.point_A_x = before_x;
+        command.point_A_y = before_y;
+        command.point_A_a = before_a;
+        command.point_B_x = current_x_;
+        command.point_B_y = current_y_;
+        command.point_B_a = current_a_;
         commandArray.push_back(command);
 
         logi.log_b("    AFTER:  X=%.3f, Y=%.3f, A=%.3f°\n", current_x_, current_y_, current_a_);
@@ -346,8 +351,13 @@ private:
             return;
         }
 
-        float target_x = current_x_;
-        float target_y = current_y_;
+        // Сохраняем состояние ДО
+        float before_x = current_x_;
+        float before_y = current_y_;
+        float before_a = current_a_;
+
+        float target_x = before_x;
+        float target_y = before_y;
         float length = 0.0f;
 
         if (has_length)
@@ -358,15 +368,15 @@ private:
                 return;
             }
             length = cmd.l;
-            target_x = current_x_ + length * std::cos(current_a_ * M_PI / 180.0f);
-            target_y = current_y_ + length * std::sin(current_a_ * M_PI / 180.0f);
+            target_x = before_x + length * std::cos(before_a * M_PI / 180.0f);
+            target_y = before_y + length * std::sin(before_a * M_PI / 180.0f);
         }
         else if (has_point)
         {
             target_x = cmd.x;
             target_y = cmd.y;
-            float dx = target_x - current_x_;
-            float dy = target_y - current_y_;
+            float dx = target_x - before_x;
+            float dy = target_y - before_y;
             length = std::sqrt(dx*dx + dy*dy);
         }
 
@@ -387,6 +397,13 @@ private:
         command.mode = 2;
         command.len = length;
         command.velLen = feed_rate;
+        // Сохраняем траекторию
+        command.point_A_x = before_x;
+        command.point_A_y = before_y;
+        command.point_A_a = before_a;
+        command.point_B_x = current_x_;
+        command.point_B_y = current_y_;
+        command.point_B_a = current_a_;
         commandArray.push_back(command);
 
         logi.log_b("    AFTER:  X=%.3f, Y=%.3f, A=%.3f°\n", current_x_, current_y_, current_a_);
@@ -396,18 +413,28 @@ private:
     void executeG4(const GCodeCommand &cmd)
     {
         logi.log_g(">>> EXECUTING Line %d: %s\n", cmd.line_number, cmd.raw_line.c_str());
-        logi.log_b("    BEFORE: X=%.3f, Y=%.3f, A=%.3f°\n", current_x_, current_y_, current_a_);
+
+        // Сохраняем состояние ДО (и ПОСЛЕ — оно не меняется)
+        float before_x = current_x_;
+        float before_y = current_y_;
+        float before_a = current_a_;
 
         float pause_ms = cmd.has_p ? cmd.p : 0.0f;
         float time_sec = pause_ms / 1000.0f;
         total_time_sec_ += time_sec;
 
         SCommand temp;
-        temp.mode = 4;
+        temp.mode = 0;
         temp.duration = pause_ms;
+        // Сохраняем траекторию (без изменений)
+        temp.point_A_x = before_x;
+        temp.point_A_y = before_y;
+        temp.point_A_a = before_a;
+        temp.point_B_x = before_x;
+        temp.point_B_y = before_y;
+        temp.point_B_a = before_a;
         commandArray.push_back(temp);
 
-        logi.log_b("    AFTER:  X=%.3f, Y=%.3f, A=%.3f°\n", current_x_, current_y_, current_a_);
         logi.log_b("    DURATION: %.3f sec (TOTAL: %.3f sec)\n", time_sec, total_time_sec_);
     }
 
@@ -415,8 +442,16 @@ private:
     {
         logi.log_g(">>> EXECUTING Line %d: %s\n", cmd.line_number, cmd.raw_line.c_str());
         logi.log_b("    STATE: X=%.3f, Y=%.3f, A=%.3f°\n", current_x_, current_y_, current_a_);
+
         SCommand temp;
         temp.mode = 9;
+        // Сохраняем текущее состояние как траекторию
+        temp.point_A_x = current_x_;
+        temp.point_A_y = current_y_;
+        temp.point_A_a = current_a_;
+        temp.point_B_x = current_x_;
+        temp.point_B_y = current_y_;
+        temp.point_B_a = current_a_;
         commandArray.push_back(temp);
     }
 
@@ -424,12 +459,32 @@ private:
     {
         logi.log_g(">>> EXECUTING Line %d: %s\n", cmd.line_number, cmd.raw_line.c_str());
         logi.log_b("    STATE: X=%.3f, Y=%.3f, A=%.3f°\n", current_x_, current_y_, current_a_);
+
+        SCommand temp;
+        temp.mode = 5; // M3
+        temp.point_A_x = current_x_;
+        temp.point_A_y = current_y_;
+        temp.point_A_a = current_a_;
+        temp.point_B_x = current_x_;
+        temp.point_B_y = current_y_;
+        temp.point_B_a = current_a_;
+        commandArray.push_back(temp);
     }
 
     void executeM5(const GCodeCommand &cmd)
     {
         logi.log_g(">>> EXECUTING Line %d: %s\n", cmd.line_number, cmd.raw_line.c_str());
         logi.log_b("    STATE: X=%.3f, Y=%.3f, A=%.3f°\n", current_x_, current_y_, current_a_);
+
+        SCommand temp;
+        temp.mode = 6; // M5
+        temp.point_A_x = current_x_;
+        temp.point_A_y = current_y_;
+        temp.point_A_a = current_a_;
+        temp.point_B_x = current_x_;
+        temp.point_B_y = current_y_;
+        temp.point_B_a = current_a_;
+        commandArray.push_back(temp);
     }
 
 public:
@@ -447,8 +502,23 @@ public:
         }
     }
 
+    // НОВЫЙ МЕТОД: задать начальную позу
+    void setInitialPose(float x, float y, float a_deg)
+    {
+        current_x_ = x;
+        current_y_ = y;
+        current_a_ = normalizeAngle(a_deg);
+        total_time_sec_ = 0.0f;
+        commandArray.clear();
+        logi.log_b("Initial pose set: X=%.3f, Y=%.3f, A=%.3f°\n", x, y, current_a_);
+    }
+
     void run()
     {
+        // Очищаем предыдущие команды (но сохраняем текущую позу!)
+        commands_.clear();
+        // commandArray и total_time_sec_ уже учтены в setInitialPose
+
         logi.log_g("INITIAL STATE: X=%.3f, Y=%.3f, A=%.3f°\n\n", current_x_, current_y_, current_a_);
 
         std::ifstream file(gcode_file_.c_str());
@@ -517,9 +587,12 @@ public:
             {
                 const SCommand &c = commandArray[i];
                 logi.log("Cmd[%zu]: mode=%d, dur=%.1f, vL=%.3f, vR=%.3f, "
-                        "Δ=%.3f, vA=%.3f, len=%.3f, vL=%.3f\n",
+                        "Δ=%.3f, vA=%.3f, len=%.3f, vL=%.3f | "
+                        "A(%.3f,%.3f,%.3f) → B(%.3f,%.3f,%.3f)\n",
                         i, c.mode, c.duration, c.velL, c.velR,
-                        c.angle, c.velAngle, c.len, c.velLen);
+                        c.angle, c.velAngle, c.len, c.velLen,
+                        c.point_A_x, c.point_A_y, c.point_A_a,
+                        c.point_B_x, c.point_B_y, c.point_B_a);
             }
         }
     }
@@ -545,35 +618,24 @@ public:
 - Расстояние между колёсами: 0.38 м
 - Используйте ЛАТИНСКИЕ буквы (особенно 'O', а не кириллическую 'О')
 
+Новые возможности:
+- Задайте начальную позу: parser.setInitialPose(x, y, angle_deg);
+- Каждая команда в commandArray содержит:
+    point_A_* — состояние ДО выполнения
+    point_B_* — состояние ПОСЛЕ выполнения
+
 Команды:
 G0 F_L<скорость> F_R<скорость> T<время_сек>
-    Прямое управление колёсами.
-    Пример: G0 F_L0.1 F_R0.1 T2.0
-
 G1 <режим> [F<скорость>]
-    Поворот на месте. F — скорость колеса (м/с), одно вперёд, другое назад.
-    Режимы:
-      A<угол>         — абсолютный угол
-      O<угол>         — относительный поворот
-      X<коорд> Y<коорд> — повернуться к точке
-    Пример: G1 A90 F0.1
-
 G2 <режим> [F<скорость>]
-    Линейное движение.
-    Режимы:
-      L<длина>        — вперёд на N метров
-      X<коорд> Y<коорд> — к точке
-    Пример: G2 L1.5 F0.2
-
-G4 P<мс>            — пауза в миллисекундах
-G9                  — зацикливание
-M3 / M5             — вкл/выкл модуля
+G4 P<мс>
+G9
+M3 / M5
 
 Пример:
-    G1 A90 F0.1     ; повернуться на 90°
-    G2 L1.0 F0.2    ; проехать 1 метр
-    G1 X0 Y0        ; повернуться домой
-    G2 X0 Y0        ; вернуться домой
+    GCodeParser parser;
+    parser.setInitialPose(1.0, -0.5, 30.0); // Старт из (1.0, -0.5) с углом 30°
+    parser.run();
 
 ===============================================================================
 */

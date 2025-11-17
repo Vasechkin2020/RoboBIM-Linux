@@ -607,6 +607,7 @@ void workAngle(float angle_, u_int64_t &time_, float velAngle_)
 
 	float angleFact = msg_Pose.th.odom;			// Угол который отслеживаем
 	angleMistake = angle_ - RAD2DEG(angleFact); // Смотрим какой угол.// Смотрим куда нам надо Считаем ошибку по углу и включаем колеса в нужную сторону с учетом ошибки по углу и максимально заданой скорости на колесах
+	angleMistake = normalizeAngle180(angleMistake); // Нормализуем +-180
 	ROS_INFO_THROTTLE(0.1, "    angle_ = %6.3f angleFact = %6.3f angleMistake = %6.3f", angle_, RAD2DEG(angleFact), angleMistake);
 
 	if (flagAngleFirst)

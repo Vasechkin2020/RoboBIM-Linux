@@ -15,7 +15,7 @@ float angleNow = 0; // Текущий угол из топика
 int main(int argc, char **argv)
 {
     ROS_FATAL("\n");
-    logi.log_r("*** Control_node PrintBIM ROS 1.0 Raspberry Pi 4B  ver 1.0001 \n");
+    logi.log_r("*** Control_node PrintBIM ROS 1.0 Raspberry Pi 4B  ver 1.03 \n");
     logi.log("--------------------------------------------------------\n");
 
     logi.logf("Это сообщение попадёт ТОЛЬКО в файл.\n");                // 1) Только в файл
@@ -55,20 +55,18 @@ int main(int argc, char **argv)
     // u_int64_t timeMil = millis();
     int i = 0;
 
-
-
     // std::list<int> numbers{1, 2, 3, 4, 5};
     // std::list<SCommand> listok;
     // list int listok;
 
     ROS_WARN("End Setup. Start loop.\n");
-    ros::Duration(100).sleep(); // Подождем пока
+    ros::Duration(1).sleep(); // Подождем пока
 
     while (ros::ok())
     {
         timeNow = ros::Time::now(); // Захватываем текущий момент времени начала цикла
-        // ROS_INFO(""); // С новой строки в логе новый цикл
-        ros::spinOnce(); // Опрашиваем ядро ROS и по этой команде наши срабатывают колбеки. Нужно только для подписки на топики
+        // ROS_INFO("loop \n");        // С новой строки в логе новый цикл
+        ros::spinOnce();            // Опрашиваем ядро ROS и по этой команде наши срабатывают колбеки. Нужно только для подписки на топики
 
         if (flagCommand)
         {
@@ -92,12 +90,11 @@ int main(int argc, char **argv)
                 point_A.y = msg_Pose.y.odom;
                 point_B = calculate_new_coordinates(point_A, msg_Pose.th.odom, commandArray[i].len); // Посчитали конечные координаты точки В
 
-
                 time = millis() + 999999; // Огромное время ставим
                 flagVector = true;        // Флаг что теперь отслеживаем длину вектора
                 ROS_INFO("    Vector Start. len = %f", commandArray[i].len);
                 break;
-            }
+            }  
         }
 
         if (flagAngle) // Отслеживание угла
