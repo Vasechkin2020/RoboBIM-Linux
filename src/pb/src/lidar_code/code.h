@@ -8,12 +8,15 @@
 #include "topic.h" // Файл для функций для формирования топиков в нужном виде и формате
 
 sensor_msgs::LaserScan::ConstPtr msg_lidar; // Перемеенная в которую сохраняем данные лидара из сообщения
+pb_msgs::Struct_PoseBase msg_Pose; // Перемеенная в которую сохраняем данные позиции из сообщения
+
 int keep_running = 1;                       // Переменная для остановки программы по Ctrl+C
 SPose g_transformGlobal2Local; // Система трансформации из одной позиции в другую
 
 
 //**************************** ОБЬЯВЛЕНИЕ ПРОЦЕДУР и ФУНКЦИЙ **********************************
 void callback_Lidar(sensor_msgs::LaserScan::ConstPtr msg);                             //
+void callback_Pose(pb_msgs::Struct_PoseBase msg);                             //
 void timeCycle(ros::Time timeStart_, ros::Time timeNow_);                              // Выводим справочно время работы цикла
 void readParam(SPose &startPose, SPoint *startPillar);                                 // Считывание переменных параметров из лаунч файла при запуске. Там офсеты и режимы работы
 static void stopProgram(int signal);                                                   // Функция, которая срабатывает при нажатии Ctrl+C
@@ -30,6 +33,11 @@ void callback_Lidar(sensor_msgs::LaserScan::ConstPtr msg)
     flag_msgLidar = true;
 }
 
+void callback_Pose(pb_msgs::Struct_PoseBase msg)
+{
+	msg_Pose = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
+	flag_msgPose = true;
+}
 
 
 // Выводим справочно время работы цикла

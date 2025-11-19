@@ -30,6 +30,8 @@
 #include <pb_msgs/Struct_Driver2Data.h>
 #include <pb_msgs/Struct_Modul2Data.h>
 
+#include <pb_msgs/Struct_PoseBase.h>
+
 #include <pb_msgs/PillarOut.h>
 #include <pb_msgs/pillar.h>
 #include <pb_msgs/topicPillar.h>
@@ -64,6 +66,7 @@ float offsetAngle = 0.0; // Ошибка для азимута. Прибавля
 
 bool flag_msgPillar = false; // Флаг что пришло сообщение в топик и можно его парсить
 bool flag_msgLidar = false;  // Флаг что пришло сообщение в топик и можно его парсить
+bool flag_msgPose = false;  // Флаг что пришло сообщение в топик и можно его парсить
 
 bool flag_dataPillar = false; // Флаг что разобрали данные по координатам столбов и можно обсчитывать дальше
 bool flag_startPose = false;  // Флаг что разобрали данные по координатам машины и можно обсчитывать дальше

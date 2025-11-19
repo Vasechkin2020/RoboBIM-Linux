@@ -15,14 +15,13 @@ AsyncFileLogger logi("/home/pi/RoboBIM-Linux/src/pb/log/", "lidar_node");
 #include "lidar_code/trilaterationSolver.h"
 #include "lidar_code/topic.h" // Файл для функций для формирования топиков в нужном виде и формате
 
-
 SPoseLidar g_poseLidar; // Позиции лидара по расчетам Центральная система координат
 
 int main(int argc, char **argv) // Главная функция программы
 {
     signal(SIGINT, stopProgram);         // Настраиваем обработку Ctrl+C
     ros::init(argc, argv, "lidar_node"); // Инициализируем ROS с именем узла "lidar_node"
-    
+
     ROS_FATAL("\n");
     logi.log("***  lidar_node *** ver. 1.01 *** printBIM.ru *** 2025 ***\n");
     logi.log("--------------------------------------------------------\n");
@@ -36,7 +35,8 @@ int main(int argc, char **argv) // Главная функция програм�
 
     ros::NodeHandle nh;
     ros::Subscriber subscriber_Lidar = nh.subscribe<sensor_msgs::LaserScan>("/scan", 1000, callback_Lidar); // Подписка на данные лидара
-    ros::Duration(1).sleep();                                                                               // Подождем пока все обьявится и инициализируется внутри ROS
+    ros::Subscriber subscriber_Pose = nh.subscribe<pb_msgs::Struct_PoseBase>("pb/Pos/PoseBase", 1, callback_Pose);
+    ros::Duration(1).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
 
     nh.param<double>("/pb_config/lidar/bias", lidar_bias, 0.0); // Считываем bias, по умолчанию 0
     logi.log_b("--- Start node with parametrs: /pb_config/lidar/bias = %+8.3f deg \n", lidar_bias);
@@ -85,23 +85,37 @@ int main(int argc, char **argv) // Главная функция програм�
     std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", formattedTime);
     logi.log_b("TIME START NODE current time: %s \n", buffer); // Выводим в консоль
 
-    ros::Rate loop_rate(100);          // Создаём цикл с частотой 10 Гц
+    SPose PoseCalc;
+
+    ros::Rate loop_rate(100);         // Создаём цикл с частотой 10 Гц
     while (ros::ok() && keep_running) // Пока ROS работает и не нажат Ctrl+C
     {
         timeLoop = ros::Time::now(); // Захватываем текущий момент времени начала цикла
         ros::spinOnce();             // Вызываем колбеки
 
-        // Выполняется 10 Hz как ЛИДАР ПРИШЛЕТ ***************************************************************************************************************************************************
+        // Выполняется 100 Hz
+        if (flag_msgPose) // Если пришло сообщение в топик от расчета позиции то уточняем позицию и от нее уже все расчеты. Если нет уточнения то считаем от своего прошлого измерения
+        {
+            PoseCalc.x = msg_Pose.x.main; // Записываем из переменной топика в местную переменную
+            PoseCalc.y = msg_Pose.y.main;
+            PoseCalc.th = msg_Pose.th.main;
+            logi.log_g("    correct poseMain x= %+8.3f y= %+8.3f th= %+8.3f \n",PoseCalc.x,PoseCalc.y,PoseCalc.th);
+        }
+
+        // Выполняется 10 Hz как ЛИДАР ПРИШЛЕТ
         if (flag_msgLidar) // Если пришло сообщение в топик от лидара и мы уже разобрали данные по координатам машинки, а значит можем грубо посчитать где стоят столбы.  И знаем где истинные столбы
         {
             logi.log_w("------------       flag_msgLidar    -------------\n");
             flag_msgLidar = false;
+
+            PoseCalc = g_poseLidar.mnkFused; // Позиция относительно которой ищем и распознаем столбы. Это или что посчитали по измерения в прошлый раз или уточненная позиция полученная main
+
             // ROS_INFO("=== %+8.3f %+8.3f | %+8.3f %+8.3f | %+8.3f %+8.3f",g_poseLidar.modeDist.x, g_poseLidar.mode.x, g_poseLidar.modeDist.y, g_poseLidar.mode.y, g_poseLidar.modeDist.th, g_poseLidar.mode.th);
-            pillar.searchPillars(msg_lidar, g_poseLidar.mnkFused); // Разбираем пришедшие данные и ищем там столбы.
-            pillar.comparisonPillar();                             // Сопоставляем столбы
+            pillar.searchPillars(msg_lidar, PoseCalc); // Разбираем пришедшие данные и ищем там столбы.
+            pillar.comparisonPillar();                 // Сопоставляем столбы
             // topic.publicationPillarAll(pillar);                // Публикуем всю обобщенную информацию по столб
 
-            detector.scanCallback(msg_lidar, g_poseLidar.mnkFused);
+            detector.scanCallback(msg_lidar, PoseCalc);
             // topic.visualizeClasters(detector.cluster_info_list); // Большой обьем данных. Лучше отключать
             // topic.visualizePillars(detector.pillars); // Визуализация найденых столбов
             // topic.visualizeLidar();
@@ -120,8 +134,8 @@ int main(int argc, char **argv) // Главная функция програм�
             g_poseLidar.modeFused.y = g_poseLidar.modeDist.y * 0.8 + g_poseLidar.modeAngle.y * 0.2 + g_poseLidar.modeClaster.y * 0.0;
             // g_poseLidar.modeFused.th = g_poseLidar.modeDist.th * 0.8 + g_poseLidar.modeAngle.th * 0.2 + g_poseLidar.modeClaster.th * 0.0;
 
-            float alpha = 0.8; // Коефициент смешивания
-            g_poseLidar.modeFused.th = weighted_angle_blend(g_poseLidar.modeDist.th,g_poseLidar.modeAngle.th,alpha); // Весовое смешение углов по правилам
+            float alpha = 0.8;                                                                                         // Коефициент смешивания
+            g_poseLidar.modeFused.th = weighted_angle_blend(g_poseLidar.modeDist.th, g_poseLidar.modeAngle.th, alpha); // Весовое смешение углов по правилам
 
             try
             {
@@ -244,6 +258,7 @@ int main(int argc, char **argv) // Главная функция програм�
                 g_poseLidar.mnkFused.x = g_poseLidar.mnkFused.x * k_mnk + CQ_found.A.x * (1 - k_mnk);
                 g_poseLidar.mnkFused.y = g_poseLidar.mnkFused.y * k_mnk + CQ_found.A.y * (1 - k_mnk);
                 g_poseLidar.quality_mknFused = g_poseLidar.quality_mknFused * k_mnk + CQ_found.quality * (1 - k_mnk);
+
                 logi.log_b("======================================== 4  ==========================================\n");
 
                 std::vector<SPoint> orientation_beacons; // Вектор координат маяков
@@ -337,7 +352,7 @@ int main(int argc, char **argv) // Главная функция програм�
             timeCycle(timeStart, timeLoop); // Выводим справочно время работы цикла и время с начала работы программы
         }
 
-        loop_rate.sleep();              // Ждём, чтобы поддерживать частоту 10 Гц
+        loop_rate.sleep(); // Ждём, чтобы поддерживать частоту 10 Гц
     }
 
     logi.log_b("Program stopped \n");
