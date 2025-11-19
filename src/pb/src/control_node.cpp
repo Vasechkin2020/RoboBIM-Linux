@@ -8,6 +8,9 @@ AsyncFileLogger logi("/home/pi/RoboBIM-Linux/src/pb/log/", "control_node");
 #include "control_code/code.h"
 #include "control_code/gCodeParser.h"
 #include "control_code/c_joy.h"
+#include "control_code/l1Controller.h" //Класс для контроллера управления
+
+
 CJoy joy(0.5, 0.5); // Обьявляем экземпляр класса в нем вся обработка джойстика
 
 float angleNow = 0; // Текущий угол из топика
