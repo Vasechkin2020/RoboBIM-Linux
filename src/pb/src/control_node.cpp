@@ -97,6 +97,22 @@ int main(int argc, char **argv)
                 flagVector = true;        // Флаг что теперь отслеживаем длину вектора
                 ROS_INFO("    Vector Start. len = %f", commandArray[i].len);
                 break;
+            case 3:                                                 // Напечатать
+                controlPrint.id++;
+                controlPrint.controlPrint.mode = 0; // 0 - работать по командам
+                controlPrint.controlPrint.status = 1; // 1- печатать 0- не печатать
+                controlPrint.controlPrint.torque = 0.5; // Вручную задаю силу прижатия маркера к полу
+                time = millis() + commandArray[i].duration;
+                ROS_INFO("    Print Start");
+                break;
+            case 5:                                                 // Отменить печать
+                controlPrint.id++;
+                controlPrint.controlPrint.mode = 0; // 0 - работать по командам
+                controlPrint.controlPrint.status = 0; // 1- печатать 0- не печатать
+                controlPrint.controlPrint.torque = -1.5; // Вручную задаю силу с которой отводим маркер в течении 50 милисекунд
+                time = millis() + commandArray[i].duration;
+                ROS_INFO("    Print Cancel");
+                break;
             }  
         }
 
@@ -114,16 +130,19 @@ int main(int argc, char **argv)
         {
             flagCommand = true;
             i++;
-            if (i >= commandArray.size())
-            {
-                ros::shutdown();
-            }
+            ROS_INFO("    i = %i => mode = %i ", i,commandArray[i].mode );
 
             if (commandArray[i].mode == 9)
             {
                 ROS_INFO("New loop");
                 i = 0;
             }
+            if (i >= commandArray.size())
+            {
+                ROS_INFO("    commandArray.size shutdown.");
+                ros::shutdown();
+            }
+
             ROS_INFO("    Start new step i = %i ", i);
         }
 
@@ -142,6 +161,7 @@ int main(int argc, char **argv)
         // }
 
         topic.publicationControlDriver(); // Формируем и Публикуем команды для управления Driver
+        topic.publicationControlPrint(); // Формируем и Публикуем команды для управления Print
 
         //============================================================================================================================
 

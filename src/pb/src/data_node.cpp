@@ -32,10 +32,9 @@ int main(int argc, char **argv)
     ros::Rate r(RATE);
 
     ros::Subscriber sub_ControlModul = nh.subscribe("pb/Pos/ControlModul", 16, callback_ControlModul, ros::TransportHints().tcpNoDelay(true));        // Это мы подписываемся на то что публигует Main для Modul
-    ros::Subscriber sub_ControlPrint = nh.subscribe("pb/Write/Write2Print", 16, callback_ControlPrint, ros::TransportHints().tcpNoDelay(true));       // Это мы подписываемся на то что публигует Main для Print
+    ros::Subscriber sub_ControlPrint = nh.subscribe("pb/Control/ControlPrint", 16, callback_ControlPrint, ros::TransportHints().tcpNoDelay(true));    // Это мы подписываемся на то что публигует Main для Print
     ros::Subscriber sub_ControlDriver = nh.subscribe("pb/Control/ControlDriver", 16, callback_ControlDriver, ros::TransportHints().tcpNoDelay(true)); // Это мы подписываемся на то что публигует Main для Data
 
-    // sub_low_state = _nh.subscribe("/low_state", 1, &IOInterface::_lowStateCallback, this, ros::TransportHints().tcpNoDelay(true)); // От Максима пример
     //*****************
     readParam(); // Считывание переменных параметров из лаунч файла при запуске. Там офсеты и режимы работы
     //*****************
@@ -50,28 +49,28 @@ int main(int argc, char **argv)
     last_time = ros::Time::now();
     // double dt = (current_time - last_time).toSec();
 
-    logi.log_b("+++ test laser... Waiting 7 sec...\n");
     ros::Duration(1).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
+/*
+    logi.log_b("+++ test laser... Waiting 7 sec...\n");
 
     // Data2Modul.id++;                                       //= 0x1F1F1F1F;
     // Data2Modul.controlMotor.mode = 0;                      // Ручной вариант проверка
     // Data2Modul.cheksum = measureCheksum(Data2Modul);       // Считаем контрольную сумму отправляемой структуры// тут нужно посчитать контрольную сумму структуры
     // sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
     // ros::Duration(1).sleep();                      // Подождем пока все обьявится и инициализируется внутри ROS
-
     Data2Modul.id++;                                       //= 0x1F1F1F1F;
     Data2Modul.controlMotor.mode = 9;                      // Ручной вариант проверка
     Data2Modul.controlLaser.mode = 0;                      // Ручной вариант проверка
     Data2Modul.cheksum = measureCheksum(Data2Modul);       // Считаем контрольную сумму отправляемой структуры// тут нужно посчитать контрольную сумму структуры
     sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
     ros::Duration(7).sleep();                              // Подождем пока все обьявится и инициализируется внутри ROS
-
+*/
     // Data2Modul.id++;                                       //= 0x1F1F1F1F;
     // Data2Modul.controlMotor.mode = 1;                      // Ручной вариант проверка
     // Data2Modul.cheksum = measureCheksum(Data2Modul);       // Считаем контрольную сумму отправляемой структуры// тут нужно посчитать контрольную сумму структуры
     // sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
     // ros::Duration(1).sleep();                              // Подождем пока все обьявится и инициализируется внутри ROS
-    logi.log("--- test laser\n");
+    // logi.log("--- test laser\n");
 
     uint64_t timeWork = millis(); // Время работы ноды
     logi.log_w("+++ End Setup. Start loop.\n");
@@ -135,6 +134,7 @@ int main(int argc, char **argv)
         controlLed();   // Функция управления несколькими светодиодами которые отведены для прямого управления нодой data
         setModeModul(); // Установка режима работы - колибровки модуля на основании переменной из лаунч файла
 
+/*
         // --------------------------- ОТПРАВКА ДАННЫХ на нижний уровень и разборка и публикация данных полученных с нижнего уровня---------------------------------------------------------------------
         Data2Modul.id++;                                 //= 0x1F1F1F1F;
         Data2Modul.cheksum = measureCheksum(Data2Modul); // Считаем контрольную сумму отправляемой структуры// тут нужно посчитать контрольную сумму структуры
@@ -159,14 +159,15 @@ int main(int argc, char **argv)
             // СДЕЛАТЬ СКОРОСТЬ ПУБЛИКАЦИИ ЕСЛИ БУДЕТ 100Герц то нафига так часто визуализацию публиковать
             topic.processing_Modul2Data(); // Обрабатываем данные
         }
+*/
         //----------------------------
-        // Data2Print.id++;                                                  //= 0x1F1F1F1F;
-        // Data2Print.cheksum = measureCheksum(Data2Print);                  // Считаем контрольную сумму отправляемой структуры// тут нужно посчитать контрольную сумму структуры
-        // rezPrint = sendData2Print(SPI_CHANNAL_0, Print2Data, Data2Print); //  Отправляем данные на нижний уровень
-        // if (rezPrint)                                                     // Если пришли хорошие данные то обрабатываем их и публикуем данные в ROS
-        // {
-        //     topic.processing_Print2Data(); // Обработанные данные записываем их в структуру для публикации в топике и публикуем
-        // }
+        Data2Print.id++;                                                  //= 0x1F1F1F1F;
+        Data2Print.cheksum = measureCheksum(Data2Print);                  // Считаем контрольную сумму отправляемой структуры// тут нужно посчитать контрольную сумму структуры
+        rezPrint = sendData2Print(SPI_CHANNAL_0, Print2Data, Data2Print); //  Отправляем данные на нижний уровень
+        if (rezPrint)                                                     // Если пришли хорошие данные то обрабатываем их и публикуем данные в ROS
+        {
+            topic.processing_Print2Data(); // Обработанные данные записываем их в структуру для публикации в топике и публикуем
+        }
         //----------------------------
         Data2Driver.id++;                                                   //= 0x1F1F1F1F; Считаем каждый раз сколько отправляем, даже если не было изменений в данных ни от джойстика ни от топика от Head
         Data2Driver.cheksum = measureCheksum(Data2Driver);                  // Пересчитываем  контрольную сумму отправляемой структуры

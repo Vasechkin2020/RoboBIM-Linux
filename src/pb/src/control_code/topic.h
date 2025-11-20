@@ -13,12 +13,14 @@ public:
     ~CTopic();
     //**************************** ОБЬЯВЛЕНИЕ ПРОЦЕДУР **********************************
     void publicationControlDriver(); // Публикация данных для управления Driver
+    void publicationControlPrint();// Публикация данных для управления Print
 
 private:
     ros::NodeHandle _nh;
     ros::Time ros_time; // Время ROS
 
     ros::Publisher pub_ControlDriver = _nh.advertise<pb_msgs::Struct_Data2Driver>("pb/Control/ControlDriver", 16); // Это мы публикуем структуру которую отправляем к исполнению на драйвер
+    ros::Publisher pub_ControlPrint = _nh.advertise<pb_msgs::Struct_Data2Print>("pb/Control/ControlPrint", 1); // Это мы публикуем структуру которую отправляем к исполнению на драйвер
 };
 
 CTopic::CTopic(/* args */)
@@ -48,6 +50,22 @@ void CTopic::publicationControlDriver()
     
     data.control = controlSpeed.control;
     pub_ControlDriver.publish(data);
+}
+
+// Публикация данных для управления Print
+void CTopic::publicationControlPrint()
+{
+    pb_msgs::Struct_Data2Print data;
+    data.id = controlPrint.id;
+    data.controlPrint.mode = controlPrint.controlPrint.mode;
+    data.controlPrint.status = controlPrint.controlPrint.status;
+    data.controlPrint.intensity = 0;
+    data.controlPrint.speed = 0;
+    data.controlPrint.position = 0;
+    data.controlPrint.velocity =  0;
+    data.controlPrint.torque =  controlPrint.controlPrint.torque;
+    pub_ControlPrint.publish(data);
+    // printf("    publicationControlPrint id= %i \n",data.id);
 }
 
 #endif

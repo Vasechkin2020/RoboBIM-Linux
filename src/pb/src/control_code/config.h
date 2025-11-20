@@ -17,6 +17,9 @@
 
 #include <pb_msgs/Struct_Data2Driver.h>
 
+#include <pb_msgs/Struct_Data2Print.h>
+#include <pb_msgs/Struct_Print2Data.h>
+
 #include <sensor_msgs/Joy.h>
 #include <pb_msgs/SJoy.h>
 
@@ -31,7 +34,9 @@
 #include <pb_msgs/SSetSpeed.h>
 #include <list>
 
-pb_msgs::Struct_Data2Driver controlSpeed;
+pb_msgs::Struct_Data2Driver controlSpeed; // Переменная в которую записываем данные из массива команд после gcode
+pb_msgs::Struct_Data2Print controlPrint; // Переменная в которую записываем данные из массива команд после gcode
+
 sensor_msgs::Joy msg_joy; // Переменная в которую записываем пришедшее сообщение а колбеке
 
 #define DISTANCE_WHEELS 0.38 // Растояние между колесами робота. подобрал экспериментально Влияет на правильность круга

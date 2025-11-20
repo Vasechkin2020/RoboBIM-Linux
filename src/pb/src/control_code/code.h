@@ -126,9 +126,9 @@ void timeCycle(ros::Time timeStart_, ros::Time timeNow_)
 	double dtEnd = durationEnd.toSec() * 1000;			// Получаем количество милисекунд
 	double dtStart = durationStart.toSec();				// Получаем количество секунд
 	if (dtEnd > 5)										// Если цикл занял бользе 5 милисекунд значит что не уложились в 200 Нz
-		ROS_INFO("    !!! cycle = %8.3f msec", dtEnd);	// Время цикла в милисекундах
-	else
-		ROS_INFO_THROTTLE(1, "    dtStart = %7.0f sec | last cycle = %8.3f msec", dtStart, dtEnd); // Время цикла в милисекундах
+		logi.log_r("    !!! cycle = %8.3f msec \n", dtEnd);	// Время цикла в милисекундах
+	// else
+	// 	logi.log("    dtStart = %7.0f sec | last cycle = %8.3f msec \n", dtStart, dtEnd); // Время цикла в милисекундах
 }
 
 /**
