@@ -268,11 +268,11 @@ float calculate_max_safe_speed(float distance_to_stop, float max_deceleration)
  * @param angle_rad Угол направления в радианах
  * @param distance Пройденное расстояние
  */
-SPoint calculate_new_coordinates(SPoint point_A_, float angle_rad, float distance)
+SPoint calculate_new_coordinates(SPoint point_A_, float angle_rad, float signed_distance)
 {
 	// Расчет приращения по осям
-	float dx = distance * std::cos(angle_rad);
-	float dy = distance * std::sin(angle_rad);
+	float dx = signed_distance * std::cos(angle_rad);
+	float dy = signed_distance * std::sin(angle_rad);
 
 	SPoint point_B; // Новые координаты
 	point_B.x = point_A_.x + dx;
@@ -281,7 +281,7 @@ SPoint calculate_new_coordinates(SPoint point_A_, float angle_rad, float distanc
 	// Используем "%.4f" для вывода чисел с плавающей точкой с точностью до 4 знаков после запятой
 	printf("--- Calculation Result ---\n");
 	printf("Initial Position point_A (X, Y): (%.4f, %.4f)\n", point_A_.x, point_A_.y);
-	printf("Movement Vector (Distance, Angle rad): (%.4f, %.4f)\n", distance, angle_rad);
+	printf("Movement Vector (signed_distance, Angle rad): (%.4f, %.4f)\n", signed_distance, angle_rad);
 	printf("Delta Position (dX, dY): (%.4f, %.4f)\n", dx, dy);
 	printf("New Position point_B (X', Y'): (%.4f, %.4f)\n", point_B.x, point_B.y);
 	printf("--------------------------\n");
@@ -309,6 +309,10 @@ void workVector(float len_, SPoint point_A_, SPoint point_B_, u_int64_t &time_, 
 	// float vectorFact = vectorLen(point_A_, point_C_); // Находим длину вектора который отслеживаем. Насколько уехали от точки старта
 	// vectorMistake = abs(len_) - vectorFact;				   // Смотрим какое растояние еще надо проехать  Считаем ошибку по длине и включаем колеса в нужную сторону с учетом ошибки максимально заданой скорости на колесах
 
+        // F теперь используется для задания скорости И направления.
+    float signed_velLen = velLen_;        // Скорость со знаком (F).
+    float abs_velLen = std::abs(velLen_); // Абсолютная скорость для расчета .
+
 	vectorMistake = vectorLen(point_C_, point_B_); // Находим длину вектора который отслеживаем. Сколько осталось до конечной точки
 
 	// ROS_INFO_THROTTLE(0.1, "    vectorMistake = %7.3f", vectorMistake);
@@ -332,35 +336,33 @@ void workVector(float len_, SPoint point_A_, SPoint point_B_, u_int64_t &time_, 
 	else
 	{
 		float V_max = calculate_max_safe_speed(vectorMistake, max_deceleration); // Считаем максимальную скорость с которой успеем остановиться
-		// ROS_INFO_THROTTLE(0.1, "    workVector V_max = %f", V_max);
 
 		if (V_max <= speedCurrent) // Если наша скорость больше чем допустимо то снижаем до допустимой  ЭТО ТОРМОЖЕНИЕ
 			speedCurrent = V_max;
 		else // ЭТО УСКОРЕНИЕ
 		{
 			speedCurrent = speedCurrent + accel; // Ускорение.Увеличиваем скорость
-			if (speedCurrent > velLen_)			 // Максимальная скорость
+			if (speedCurrent > abs_velLen)			 // Максимальная скорость
 			{
-				// ROS_INFO("   MAX speedCurrent = %f velLen_ = %f ", speedCurrent, velLen_);
-				speedCurrent = velLen_; // Если стала больше то ровняем
+				speedCurrent = abs_velLen; // Если стала больше то ровняем
 			}
 		}
 
 		// static float vectorKoef = 3.0;		   // P коефициент пид регулятора
 		// float speedCurrent = abs(vectorMistake * vectorKoef); // Это простейший вариант с ПИД регулировнаием по Р
-		// ROS_INFO_THROTTLE(0.1, "    speedCurrent vectorKoef = %f", speedCurrent);
-
+//------------
 		// ЭТО УПРАВЛЕНИЕ ПО ТРАЕКТОРИИ. СТРАЕМСЯ ЕХАТЬ НА ТОЧКУ D, лежащуу на отрезке АВ
 		float L = 0.1;
 		double steering = 0; // Длинна в метрах
 		// point_D = findNearestSPointD(point_A, point_B, point_C, L);				 // Находим точку D на прямой между точками А и В и на расстоянии L от точки робота С
 		// steering = calculateSteering(point_C, msg_Pose.th.odom, point_D, dt); //  Расчет управляющего сигнала
-
 		steering = 0;						   // пока обнулим
+//------------
+
 		if ((speedCurrent - steering) < 0.005) // Минимальная скорость
 			speedCurrent = 0.005 + steering;   // Если получается что меньше то берет так чтобы одно колесо было минимум а другое нет
 
-		if (len_ > 0) // Если длина положительная то вращается в одну сторону или в другую
+		if (signed_velLen > 0) // Если скорость положительная то вращается в одну сторону или в другую
 		{
 			controlSpeed.control.speedL = speedCurrent + steering; // Скороть должна увеличивать до заданой или максимальной с учетом алогритма в data_node  а уменьшать будет по коефициету по ошибке
 			controlSpeed.control.speedR = speedCurrent - steering;

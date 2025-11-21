@@ -197,7 +197,7 @@ private:
                     {
                         cmd.y = value;
                         cmd.has_y = true;
-                    }    // Параметр Y (координата Y).
+                    } // Параметр Y (координата Y).
                     else // Неизвестный параметр.
                     {
                         logi.log_w("Line %d: Unknown parameter '%c' (code=%d)\n", // Логируем ошибку неизвестного параметра.
@@ -389,7 +389,7 @@ private:
         logi.log_b("    DURATION: %.3f sec (TOTAL: %.3f sec)\n", time_sec, total_time_sec_);     // Выводим длительность.
     } // Конец функции executeG1.
 
-    void executeG2(const GCodeCommand &cmd) // Обработка команды G2 (линейное движение на L или к X/Y).
+    void executeG2(const GCodeCommand &cmd)
     {
         logi.log_g(">>> EXECUTING Line %d: %s\n", cmd.line_number, cmd.raw_line.c_str());        // Логируем команду.
         logi.log_b("    BEFORE: X=%.3f, Y=%.3f, A=%.3f°\n", current_x_, current_y_, current_a_); // Выводим текущую позу.
@@ -412,6 +412,12 @@ private:
             logi.log_r("Line %d: G2 must have L or X/Y\n", cmd.line_number); // Логируем ошибку.
             return;                                                          // Прерываем выполнение.
         }
+        // Проверка, что F задана для движения.
+        if (!cmd.has_f)
+        {
+            logi.log_r("Line %d: G2 requires F (feed rate) to determine direction and speed.\n", cmd.line_number); // Логируем ошибку.
+            return;                                                                                                // Прерываем выполнение.
+        }
 
         // Сохраняем состояние ДО
         float before_x = current_x_; // Сохраняем X до движения.
@@ -420,48 +426,70 @@ private:
 
         float target_x = before_x; // Целевая X.
         float target_y = before_y; // Целевая Y.
-        float length = 0.0f;       // Длина пройденного пути.
+        float length = 0.0f;       // Абсолютная длина пути.
+
+        // F теперь используется для задания скорости И направления.
+        float signed_feed_rate = cmd.f;        // Скорость со знаком (F).
+        float abs_feed_rate = std::abs(cmd.f); // Абсолютная скорость для расчета времени.
+
+        if (abs_feed_rate > 0.5f) // Ограничение максимальной абсолютной скорости.
+        {
+            abs_feed_rate = 0.5f;                                                        // Ограничиваем абсолютное значение.
+            signed_feed_rate = (cmd.f < 0.0f) ? -0.5f : 0.5f;                            // Восстанавливаем знак.
+            logi.log_w("G2: clamping feed rate |F|=%.3f -> 0.5 m/s\n", std::abs(cmd.f)); // Логируем ограничение.
+        }
+
+        if (abs_feed_rate < 1e-6f) // Проверка на нулевую скорость.
+        {
+            logi.log_r("Line %d: Invalid G2 F=%.3f (must be non-zero)\n", cmd.line_number, cmd.f); // Логируем ошибку.
+            return;                                                                                // Прерываем выполнение.
+        }
 
         if (has_length) // Движение на заданную длину L.
         {
-            if (cmd.l <= 0.0f) // Длина должна быть положительной.
+            if (cmd.l <= 0.0f) // Длина L должна быть строго положительной (абсолютное расстояние!).
             {
-                logi.log_r("Line %d: Invalid G2 L=%.3f\n", cmd.line_number, cmd.l); // Логируем ошибку.
-                return;                                                             // Прерываем выполнение.
+                logi.log_r("Line %d: Invalid G2 L=%.3f. L must be strictly positive (absolute distance).\n", cmd.line_number, cmd.l); // Логируем ошибку.
+                return;                                                                                                               // Прерываем выполнение.
             }
-            length = cmd.l; // Сохраняем длину.
-            // Расчет конечных координат исходя из текущего угла (движение прямо).
-            target_x = before_x + length * std::cos(before_a * M_PI / 180.0f);
-            target_y = before_y + length * std::sin(before_a * M_PI / 180.0f);
+            length = cmd.l; // Сохраняем длину (положительную).
+
+            // Расчет конечных координат. Используем ЗНАК F через знак signed_feed_rate:
+            float direction = (signed_feed_rate >= 0.0f) ? 1.0f : -1.0f; // 1.0 для вперед, -1.0 для назад.
+
+            // Смещение равно L, умноженному на направление.
+            float signed_length = length * direction;
+
+            // Расчет конечных координат исходя из текущего угла.
+            target_x = before_x + signed_length * std::cos(before_a * M_PI / 180.0f);
+            target_y = before_y + signed_length * std::sin(before_a * M_PI / 180.0f);
         }
-        else if (has_point) // Движение к заданной точке X/Y.
+        else if (has_point) // Движение к заданной точке X/Y. Здесь предполагается F всегда положительна.
         {
             target_x = cmd.x;                      // Целевая X.
             target_y = cmd.y;                      // Целевая Y.
             float dx = target_x - before_x;        // Смещение по X.
             float dy = target_y - before_y;        // Смещение по Y.
-            length = std::sqrt(dx * dx + dy * dy); // Вычисляем длину пути.
+            length = std::sqrt(dx * dx + dy * dy); // Вычисляем длину пути (всегда положительная).
+
+            // NOTE: Если X/Y используется, мы игнорируем знак F. Движение всегда "вперед" к точке.
+            if (signed_feed_rate < 0.0f)
+            {
+                logi.log_w("Line %d: G2 X/Y ignores negative F=%.3f. Assuming forward motion to target.\n", cmd.line_number, cmd.f); // Предупреждение о знаке F.
+                signed_feed_rate = abs_feed_rate;
+            }
         }
 
-        float feed_rate = cmd.has_f ? cmd.f : 0.1f; // Скорость движения (м/с).
-        if (feed_rate > 0.5f)
-            feed_rate = 0.5f;  // Ограничение максимальной скорости.
-        if (feed_rate <= 0.0f) // Проверка на положительную скорость.
-        {
-            logi.log_r("Line %d: Invalid G2 F=%.3f\n", cmd.line_number, feed_rate); // Логируем ошибку.
-            return;                                                                 // Прерываем выполнение.
-        }
-
-        float time_sec = (length > 0.0f) ? (length / feed_rate) : 0.0f; // Время выполнения.
-        current_x_ = target_x;                                          // Обновляем X.
-        current_y_ = target_y;                                          // Обновляем Y.
+        float time_sec = (length > 0.0f) ? (length / abs_feed_rate) : 0.0f; // Время выполнения (длина/абс.скорость).
+        current_x_ = target_x;                                              // Обновляем X.
+        current_y_ = target_y;                                              // Обновляем Y.
         // current_a_ не меняется.
         total_time_sec_ += time_sec; // Обновляем общее время.
 
-        SCommand command;           // Создаем команду для массива.
-        command.mode = 2;           // Режим G2 (линейное движение).
-        command.len = length;       // Длина пути.
-        command.velLen = feed_rate; // Скорость движения.
+        SCommand command;                  // Создаем команду для массива.
+        command.mode = 2;                  // Режим G2 (линейное движение).
+        command.len = length;              // Длина пути (абсолютная).
+        command.velLen = signed_feed_rate; // Скорость движения (со знаком F для направления!).
         // Сохраняем траекторию
         command.point_A_x = before_x;    // Начальная координата X.
         command.point_A_y = before_y;    // Начальная координата Y.

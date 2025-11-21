@@ -74,6 +74,7 @@ int main(int argc, char **argv)
         if (flagCommand)
         {
             flagCommand = false;
+            float signed_distance; // Для учета направления движения
             ROS_INFO("    command Array i= %i Mode = %i", i, commandArray[i].mode);
             switch (commandArray[i].mode)
             {
@@ -91,7 +92,11 @@ int main(int argc, char **argv)
             case 2:                          // Режим где движемся по координатам. даигаемся по длинне вектора.
                 point_A.x = msg_Pose.x.odom; // Запоминаем те координаты которые были в момент начала движения
                 point_A.y = msg_Pose.y.odom;
-                point_B = calculate_new_coordinates(point_A, msg_Pose.th.odom, commandArray[i].len); // Посчитали конечные координаты точки В
+                signed_distance = commandArray[i].len;
+                if (commandArray[i].velLen < 0) // Если скорость орицательная то надо учитывать при расчетах
+                    signed_distance = -commandArray[i].len;
+
+                point_B = calculate_new_coordinates(point_A, msg_Pose.th.odom, signed_distance); // Посчитали конечные координаты точки В
 
                 time = millis() + 999999; // Огромное время ставим
                 flagVector = true;        // Флаг что теперь отслеживаем длину вектора
