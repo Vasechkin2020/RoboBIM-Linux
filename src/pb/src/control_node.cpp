@@ -114,7 +114,7 @@ int main(int argc, char **argv)
                 controlPrint.id++;
                 controlPrint.controlPrint.mode = 0; // 0 - работать по командам
                 controlPrint.controlPrint.status = 0; // 1- печатать 0- не печатать
-                controlPrint.controlPrint.torque = -1.5; // Вручную задаю силу с которой отводим маркер в течении 50 милисекунд
+                controlPrint.controlPrint.torque = -2.0; // Вручную задаю силу с которой отводим маркер в течении 50 милисекунд
                 time = millis() + commandArray[i].duration;
                 ROS_INFO("    Print Cancel");
                 break;
