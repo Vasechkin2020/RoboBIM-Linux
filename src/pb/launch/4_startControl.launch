@@ -8,7 +8,7 @@
     <!--param name="gcode_file" value="$(find pb)/gcode/zigZag.gcode" /-->
     <!--param name="gcode_file" value="$(find pb)/gcode/tudaSuda.gcode" /-->
     <!--param name="gcode_file" value="$(find pb)/gcode/kvadrat05.gcode" /-->
-    <param name="gcode_file" value="$(find pb)/gcode/ugol.gcode" />
+    <param name="gcode_file" value="$(find pb)/gcode/konvert_xy.gcode" />
 
   </node>
 </launch> 
