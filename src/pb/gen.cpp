@@ -1,169 +1,207 @@
-#define _USE_MATH_DEFINES // Для M_PI в Windows
-#include <iostream>       // Ввод-вывод
-#include <fstream>        // Работа с файлами
-#include <vector>         // Динамические массивы
-#include <cmath>          // Математика (sin, cos, atan2)
-#include <string>         // Строки
-#include <cstdio>         // printf, fprintf
+/*
+ * File: gen.cpp
+ * Version: 2.7 (2025-11-22)
+ * Changes:
+ * - RESTORED: Input file (input_lines.txt) is **created with sample data IF it does not exist**. If it exists, it is read normally.
+ * - Output G-code file (output_filename) **always overwrites** any existing file (fopen mode "w").
+ * - Full input_lines.txt content (including filename) is appended to G-code.
+ * - Dynamic output filename based on the first line of input_lines.txt.
+ * - Added code history section at the top of the file.
+ */
 
-// === НАСТРОЙКИ РОБОТА ===
-const float MARKER_OFFSET = 0.045f; // Смещение маркера вперед от центра (метры)
-const float SPEED_DRAW    = 0.10f;  // Скорость рисования (м/с)
-const float SPEED_MOVE    = 0.10f;  // Скорость холостого хода (м/с)
-const float SPEED_TURN    = 0.05f;  // Скорость поворота (м/с)
-const float SPEED_BACKUP  = -0.10f; // Скорость отката (отрицательная!)
+#define _USE_MATH_DEFINES
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <cmath>
+#include <string>
+#include <cstdio>
+#include <sstream>
 
-// Структура для хранения одной линии
+// === НАСТРОЙКИ ===
+const double MARKER_OFFSET = 0.045; // Смещение маркера (double для точности)
+const double SPEED_DRAW    = 0.10; // Скорость рисования (мм/с)
+const double SPEED_MOVE    = 0.10; // Скорость холостого хода (мм/с)
+const double SPEED_TURN    = 0.05; // Скорость поворота
+const double SPEED_BACKUP  = -0.10; // Скорость отката
+// Новая константа для имени файла по умолчанию
+const char* DEFAULT_OUTPUT_FILENAME = "output_default.gcode"; 
+
 struct Line {
-    float x1, y1; // Начало
-    float x2, y2; // Конец
+    double x1, y1;
+    double x2, y2;
 };
 
-// Вспомогательная функция для перевода градусов в радианы
-float to_rad(float deg) {
-    return deg * M_PI / 180.0f;
+// Перевод в градусы
+double to_deg(double rad) {
+    return rad * 180.0 / M_PI;
 }
 
-// Вспомогательная функция для перевода радиан в градусы
-float to_deg(float rad) {
-    return rad * 180.0f / M_PI;
-}
-
-// Класс для генерации G-кода
 class GCodeGenerator {
 private:
-    FILE* fp;             // Указатель на файл
-    float current_x;      // Текущая X координата Центра Вращения (ЦВ)
-    float current_y;      // Текущая Y координата ЦВ
-    float current_angle;  // Текущий угол робота (градусы)
+    FILE* fp;
 
 public:
-    GCodeGenerator(const char* filename) {
-        fp = fopen(filename, "w"); // Открываем файл для записи
-        // Начальное состояние робота (как в GCodeParser)
-        current_x = 0.0f;
-        current_y = 0.0f;
-        current_angle = 0.0f; 
-        
+    // Конструктор
+    GCodeGenerator(const char* filename) 
+    {
+        // Всегда открываем файл в режиме "w" (запись), что гарантирует перезапись
+        fp = fopen(filename, "w"); 
+
         if (fp) {
-            fprintf(fp, "; === GENERATED G-CODE ===\n");
-            fprintf(fp, "; Marker Offset: %.3f\n", MARKER_OFFSET);
-            fprintf(fp, "M5 T1000 ; Start with pen UP\n");
-            // Инициализация: откат, чтобы маркер встал в 0,0 (если робот стартует в 0,0)
-            fprintf(fp, "G1 A0.000 F%.2f\n", SPEED_TURN);
-            fprintf(fp, "G2 L%.3f F%.2f ; Initial align to 0,0\n\n", MARKER_OFFSET, SPEED_BACKUP);
-            // После этого отката ЦВ находится в (-0.045, 0.0)
-            current_x = -MARKER_OFFSET;
+            fprintf(fp, "; === GENERATED G-CODE (Debug Version) ===\n"); // Заголовок
+            fprintf(fp, "; Output Filename: %s\n", filename); // Добавили имя файла в заголовок
+            fprintf(fp, "; Marker Offset: %.4f\n", MARKER_OFFSET); // Смещение маркера
+            fprintf(fp, "M5 T1000 ; Pen UP\n"); // Поднять инструмент
+            fprintf(fp, "G1 A0.000 F%.2f\n", SPEED_TURN); // Установить угол 0
+            fprintf(fp, "G2 L%.3f F%.2f ; Initial align\n\n", MARKER_OFFSET, SPEED_BACKUP); // Начальный откат
+        } else {
+             // Сообщаем об ошибке, если не удалось открыть файл для записи
+            printf("Critical Error: Could not open output file %s for writing.\n", filename);
         }
     }
 
     ~GCodeGenerator() {
         if (fp) {
-            fprintf(fp, "\n; === END OF PROGRAM ===\n");
-            // Возврат домой (опционально)
-            fprintf(fp, "M5 T1000\n");
-            fprintf(fp, "G2 X0.000 Y0.000 F%.2f ; Park Center at 0,0\n", SPEED_MOVE);
-            fclose(fp);
+            // Закрытие файла перенесено в finalize()
         }
     }
+    
+    // Функция для проверки, был ли файл успешно открыт
+    bool is_ready() const {
+        return fp != nullptr; // Возвращает true, если fp не нулевой указатель
+    }
 
-    // Основная функция обработки линии
     void processLine(Line l) {
         if (!fp) return;
 
-        fprintf(fp, "; --- Processing Line: (%.3f, %.3f) -> (%.3f, %.3f) ---\n", l.x1, l.y1, l.x2, l.y2);
+        double dx = l.x2 - l.x1;
+        double dy = l.y2 - l.y1;
+        double angle_rad = std::atan2(dy, dx);
+        double angle_deg = to_deg(angle_rad);
 
-        // 1. ПРОВЕРКА: Нужно ли ехать к началу линии?
-        // Маркер находится там, где закончилась предыдущая линия.
-        // Координата маркера сейчас = current_x + offset * cos(angle), но проще проверить разрыв.
-        // Для простоты: мы всегда выполняем процедуру поворота в вершине.
+        fprintf(fp, "; >>> Line: (%.3f, %.3f) -> (%.3f, %.3f) | Angle: %.2f\n", 
+                l.x1, l.y1, l.x2, l.y2, angle_deg); // Комментарий о текущей линии
+
+        // 1. Едем центром к вершине НАЧАЛА линии
+        fprintf(fp, "M5 T1000 ; Pen UP\n"); // Поднять инструмент
+        fprintf(fp, "G2 X%.3f Y%.3f F%.2f ; Center to Start Vertex\n", l.x1, l.y1, SPEED_MOVE); // Переместить центр к начальной точке
+
+        // 2. Поворот
+        fprintf(fp, "G4 P200\n"); // Пауза
+        fprintf(fp, "G1 A%.3f F%.2f\n", angle_deg, SPEED_TURN); // Поворот
+        fprintf(fp, "G4 P200\n"); // Пауза
+
+        // 3. Откат назад (L)
+        fprintf(fp, "G2 L%.3f F%.2f ; Back up\n", MARKER_OFFSET, SPEED_BACKUP); // Откат для позиционирования маркера
+
+        // 4. Расчет целевой точки ЦЕНТРА для конца линии
+        double off_x = MARKER_OFFSET * std::cos(angle_rad); // Смещение по X
+        double off_y = MARKER_OFFSET * std::sin(angle_rad); // Смещение по Y
         
-        // Вычисляем угол линии
-        float dx = l.x2 - l.x1;
-        float dy = l.y2 - l.y1;
-        float line_angle_rad = std::atan2(dy, dx);
-        float line_angle_deg = to_deg(line_angle_rad);
-        float line_len = std::sqrt(dx*dx + dy*dy);
+        double target_x = l.x2 - off_x; // Целевая координата X центра
+        double target_y = l.y2 - off_y; // Целевая координата Y центра
 
-        // === МАНЕВР В НАЧАЛЕ ЛИНИИ (Поворот и Откат) ===
+        // Отладочный комментарий в G-code
+        fprintf(fp, "; Math: V(%.3f,%.3f) - Off(%.3f,%.3f) = C(%.3f,%.3f)\n", 
+                l.x2, l.y2, off_x, off_y, target_x, target_y); // Подробный расчет в комментарии
+
+        // 5. Рисование
+        fprintf(fp, "M3 T1000 ; Pen DOWN\n"); // Опустить инструмент
+        fprintf(fp, "G2 X%.3f Y%.3f F%.2f\n\n", target_x, target_y, SPEED_DRAW); // Рисование линии
+    }
+    
+    // Функция для добавления исходного файла
+    void appendInputFile(const char* input_filename) {
+        if (!fp) return;
         
-        // Сначала доезжаем ЦВ до точки старта линии (l.x1, l.y1)
-        // Если мы рисуем непрерывно, мы уже почти там, но нужно довести ЦВ точно в вершину.
-        // Если это разрыв (новая линия далеко), эта команда довезет нас туда (с поднятым маркером).
+        std::ifstream infile(input_filename); // Открыть исходный файл
+        std::string line; // Строка для чтения
         
-        fprintf(fp, "M5 T1000 ; Pen UP\n");
-        fprintf(fp, "G2 X%.3f Y%.3f F%.2f ; Move Center to Start Vertex\n", l.x1, l.y1, SPEED_MOVE);
+        fprintf(fp, "\n; === ORIGINAL INPUT LINES START ===\n"); // Заголовок секции
         
-        // Теперь ЦВ стоит в (x1, y1). Поворачиваемся на угол линии.
-        fprintf(fp, "G4 P200\n");
-        fprintf(fp, "G1 A%.3f F%.2f ; Turn to Line Angle\n", line_angle_deg, SPEED_TURN);
-        fprintf(fp, "G4 P200\n");
-
-        // Теперь делаем ОТКАТ НАЗАД, чтобы Маркер встал в (x1, y1).
-        // Используем L и отрицательную скорость.
-        fprintf(fp, "G2 L%.3f F%.2f ; Back up to place Marker at Start\n", MARKER_OFFSET, SPEED_BACKUP);
-
-        // === РИСОВАНИЕ ЛИНИИ ===
+        // Чтение файла построчно, включая первую строку (имя файла)
+        while (std::getline(infile, line)) {
+            // Запись в G-code с префиксом комментария
+            fprintf(fp, "; %s\n", line.c_str()); 
+        }
         
-        // Рассчитываем, где должен остановиться ЦВ, чтобы Маркер оказался в конце линии (l.x2, l.y2).
-        // Target_COR = Target_Marker - Offset_Vector
-        float target_cor_x = l.x2 - MARKER_OFFSET * std::cos(line_angle_rad);
-        float target_cor_y = l.y2 - MARKER_OFFSET * std::sin(line_angle_rad);
-
-        fprintf(fp, "M3 T1000 ; Pen DOWN\n");
-        // Едем по координатам ЦВ. Драйвер сам посчитает расстояния.
-        fprintf(fp, "G2 X%.3f Y%.3f F%.2f ; Draw Line\n\n", target_cor_x, target_cor_y, SPEED_DRAW);
-
-        // Обновляем текущее состояние программы (где мы находимся сейчас)
-        current_x = target_cor_x;
-        current_y = target_cor_y;
-        current_angle = line_angle_deg;
+        fprintf(fp, "; === ORIGINAL INPUT LINES END ===\n"); // Конец секции
+        infile.close();
+    }
+    
+    // Функция для завершения G-code (парковки) и закрытия файла
+    void finalize() {
+        if (!fp) return;
+        fprintf(fp, "\n; === END PROGRAM ===\n"); // Конец программы
+        fprintf(fp, "M5 T1000\n"); // Поднять инструмент
+        fprintf(fp, "G2 X0.000 Y0.000 F%.2f ; Park\n", SPEED_MOVE); // Парковка в (0,0)
+        fclose(fp); // Закрыть файл
+        fp = nullptr; // Сбросить указатель
     }
 };
 
 int main() {
-    /*
-    // 1. Создаем пример файла с линиями, если его нет
-    // Формат: x1 y1 x2 y2 (Конверт 2х1 с клапаном)
-    std::ofstream outfile("input_lines.txt");
-    if (outfile.is_open()) {
-        outfile << "0.0 0.0 2.0 0.0" << std::endl; // Низ
-        outfile << "2.0 0.0 2.0 1.0" << std::endl; // Право
-        outfile << "2.0 1.0 0.0 0.0" << std::endl; // Диагональ 1
-        outfile << "0.0 0.0 0.0 1.0" << std::endl; // Лево
-        outfile << "0.0 1.0 2.0 1.0" << std::endl; // Верх
-        outfile << "2.0 1.0 1.0 2.0" << std::endl; // Клапан Право
-        outfile << "1.0 2.0 0.0 1.0" << std::endl; // Клапан Лево
-        outfile << "0.0 1.0 2.0 0.0" << std::endl; // Диагональ 2
-        outfile.close();
-        printf("Created 'input_lines.txt' with sample envelope data.\n");
-    }
-    */
-    // 2. Открываем файл на чтение
-    std::ifstream infile("input_lines.txt");
+    const char* INPUT_FILENAME = "input_lines.txt";
+    std::string output_filename; 
+    
+    // 1. ПРОВЕРКА и СОЗДАНИЕ input_lines.txt (если нет)
+    std::ifstream infile(INPUT_FILENAME); // Попытка открыть для чтения
     if (!infile.is_open()) {
-        printf("Error: Could not open input_lines.txt\n");
-        return 1;
+        // Если файл не существует, создаем его
+        printf("Info: Input file %s not found. Creating sample file.\n", INPUT_FILENAME); // Информационное сообщение
+        std::ofstream outfile(INPUT_FILENAME); 
+        if (outfile.is_open()) {
+            outfile << "output_sample.gcode" << std::endl; // <-- Имя выходного файла
+            outfile << "0.0 0.0 2.0 0.0" << std::endl;
+            outfile << "2.0 0.0 2.0 1.0" << std::endl;
+            outfile << "2.0 1.0 0.0 0.0" << std::endl;
+            outfile.close();
+        }
+        // После создания, пытаемся снова открыть его для чтения
+        infile.open(INPUT_FILENAME); 
+        if (!infile.is_open()) {
+            printf("Critical Error: Failed to open or create input file %s.\n", INPUT_FILENAME);
+            return 1;
+        }
+    }
+    // Если файл существовал, infile уже открыт.
+    
+    // 2. Чтение имени выходного файла из input_lines.txt
+    std::string first_line;
+    if (std::getline(infile, first_line) && !first_line.empty()) {
+        output_filename = first_line; 
+    } else {
+        output_filename = DEFAULT_OUTPUT_FILENAME; 
+        printf("Warning: First line of %s is empty. Using default output filename: %s\n", INPUT_FILENAME, DEFAULT_OUTPUT_FILENAME); // Предупреждение
     }
 
-    // 3. Запускаем генератор
-    GCodeGenerator gen("output_drawing.gcode");
+    // 3. Генерация G-code
+    GCodeGenerator gen(output_filename.c_str()); 
     
-    float x1, y1, x2, y2;
-    int count = 0;
+    if (!gen.is_ready()) { 
+        infile.close(); // Закрываем входной файл
+        return 1; // Завершаем работу, если не удалось открыть файл для записи
+    }
+    
+    // Возвращаем указатель в начало файла, чтобы пропустить имя файла
+    infile.seekg(0, std::ios::beg); // Перемещаем указатель в начало файла
 
-    printf("Reading lines and generating G-code...\n");
-    
-    // Читаем координаты построчно
+    // Снова считываем первую строку, чтобы пропустить ее и начать чтение координат
+    std::getline(infile, first_line); 
+
+    double x1, y1, x2, y2;
+    // Считывание координат, начиная со второй строки (после имени файла)
     while (infile >> x1 >> y1 >> x2 >> y2) {
-        Line l = {x1, y1, x2, y2};
-        gen.processLine(l); // Генерируем код для линии
-        count++;
+        gen.processLine({x1, y1, x2, y2});
     }
 
-    infile.close();
-    printf("Done! Processed %d lines. Output saved to 'output_drawing.gcode'.\n", count);
-    printf("You can now upload 'output_drawing.gcode' to your robot.\n");
+    infile.close(); 
 
+    // 4. Добавление исходного кода и завершение
+    gen.appendInputFile(INPUT_FILENAME); 
+    gen.finalize(); 
+
+    printf("Done. G-code generated (and overwritten) into %s\n", output_filename.c_str());
     return 0;
 }
