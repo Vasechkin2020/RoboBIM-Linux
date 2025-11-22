@@ -15,7 +15,7 @@ AsyncFileLogger logi("/home/pi/RoboBIM-Linux/src/pb/log/", "data_node");
 int main(int argc, char **argv)
 {
 
-    logi.log_b("*** Data_Node *** ver. 1.5 16-11-25 *** printBIM.ru *** 2025 ***\n");
+    logi.log_b("*** Data_Node *** ver. 1.5 22-11-25 *** printBIM.ru *** 2025 ***\n");
     logi.log_b("-------------------------------------------------------- \n");
 
     logi.logf("Это сообщение попадёт ТОЛЬКО в файл.\n");                // 1) Только в файл

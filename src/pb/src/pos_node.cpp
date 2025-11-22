@@ -43,7 +43,7 @@ int main(int argc, char **argv)
     log4cxx::MDC::put("node", "|pos_node|"); // Установка дополнительных данных в контекст
 
     ROS_FATAL("\n");
-    logi.log("***  pos_node *** ver. 1.59 *** printBIM.ru *** 2025 ***\n");
+    logi.log("***  pos_node *** ver. 1.59 *** printBIM.ru 22/11/25 *** 2025 ***\n");
     logi.log("--------------------------------------------------------\n");
 
     logi.logf("Это сообщение попадёт ТОЛЬКО в файл.\n");                // 1) Только в файл

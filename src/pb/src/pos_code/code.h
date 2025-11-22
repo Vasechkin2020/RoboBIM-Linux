@@ -399,7 +399,7 @@ STwistDt calcTwistFromWheel(pb_msgs::SSetSpeed msg_Speed_)
 	STwistDt ret;
 	ret.vx = 0.5 * (msg_Speed_.speedR + msg_Speed_.speedL);
 	ret.vy = 0.0; // По оси у мы не смещаемся, поэтому ноль.
-	ret.vth = (msg_Speed_.speedR - msg_Speed_.speedL) / DISTANCE_WHEELS;
+	ret.vth = (msg_Speed_.speedR - msg_Speed_.speedL) / DISTANCE_WHEELS; // Расчет угловой скорости по одометрии
 	ret.dt = dt;
 
 	msg_LinAngVel.vx.wheel = ret.vx;

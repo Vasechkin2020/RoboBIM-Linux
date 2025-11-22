@@ -310,15 +310,14 @@ int main()
     double robot_heading = M_PI / 6.0; // Текущий курс (30 градусов)
     double V_cmd = 0.8;             // Линейная скорость V (м/с) - Команда!
     double L_lookahead = 15.0;      // Дистанция упреждения L
-    double W_track_width = 0.4;     // База W
     double dt = 0.1;                // Шаг времени симуляции (секунды)
 
     // --- 2. ИНИЦИАЛИЗАЦИЯ КОНТРОЛЛЕРА ---
     
     // Создание контроллера: (L, W, MaxOmega)
-    L1GuidanceController controller(L_lookahead, W_track_width);
+    L1GuidanceController controller(L_lookahead, DISTANCE_WHEELS);
     
-    printf("L1 Guidance Controller Test (V=%.2f, L=%.2f, W=%.2f)\n", V_cmd, L_lookahead, W_track_width);
+    printf("L1 Guidance Controller Test (V=%.2f, L=%.2f, W=%.2f)\n", V_cmd, L_lookahead, DISTANCE_WHEELS);
     printf("----------------------------------------------------------\n");
     
     // --- 3. ЗАПУСК СИМУЛЯЦИИ И ТЕСТИРОВАНИЕ ОБОИХ ВАРИАНТОВ ---

@@ -18,7 +18,7 @@ float angleNow = 0; // Текущий угол из топика
 int main(int argc, char **argv)
 {
     ROS_FATAL("\n");
-    logi.log_r("*** Control_node PrintBIM ROS 1.0 Raspberry Pi 4B  ver 1.03 \n");
+    logi.log_r("*** Control_node PrintBIM ROS 1.0 Raspberry Pi 4B 22/11/25 ver 1.03 \n");
     logi.log("--------------------------------------------------------\n");
 
     logi.logf("Это сообщение попадёт ТОЛЬКО в файл.\n");                // 1) Только в файл
