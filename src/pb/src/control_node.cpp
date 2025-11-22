@@ -42,8 +42,8 @@ int main(int argc, char **argv)
     ros::Rate r(100);         // Частота в Герцах - задержка
     ros::Duration(1).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
 
-    ROS_WARN("Start Setup.");
-    readParam(); // Считывание переменных параметров из лаунч файла при запуске. Там офсеты и режимы работы
+    logi.log_w("Start Setup.");
+    // readParam(); // Считывание переменных параметров из лаунч файла при запуске. Там офсеты и режимы работы
     // initCommandArray(verComand); // Заполнение маасива команд
 
     GCodeParser parser; // Создание объекта парсера
@@ -62,7 +62,7 @@ int main(int argc, char **argv)
     // std::list<SCommand> listok;
     // list int listok;
 
-    ROS_WARN("End Setup. Start loop.\n");
+    logi.log_w("End Setup. Start loop.\n");
     ros::Duration(1).sleep(); // Подождем пока
 
     while (ros::ok())
@@ -75,19 +75,19 @@ int main(int argc, char **argv)
         {
             flagCommand = false;
             float signed_distance; // Для учета направления движения
-            ROS_INFO("    command Array i= %i Mode = %i", i, commandArray[i].mode);
+            logi.log("    command Array i= %i Mode = %i \n", i, commandArray[i].mode);
             switch (commandArray[i].mode)
             {
             case 0:                                                 // Режим где управляем только скоростями колес отдельно каждым и временем сколько выполняется
                 controlSpeed.control.speedL = commandArray[i].velL; //
                 controlSpeed.control.speedR = commandArray[i].velR;
                 time = millis() + commandArray[i].duration;
-                ROS_INFO("    Time Start");
+                logi.log_b("    Start Time \n");
                 break;
             case 1:                       // Режим где управляем только углом и добиваемся что в него повернули. Время не учитываем.
                 time = millis() + 999999; // Огромное время ставим
                 flagAngle = true;         // Флаг что теперь отслеживаем угол
-                ROS_INFO("    Angle Start");
+                logi.log_b("    Start Angle \n");
                 break;
             case 2:                          // Режим где движемся по координатам. даигаемся по длинне вектора.
                 point_A.x = msg_Pose.x.odom; // Запоминаем те координаты которые были в момент начала движения
@@ -100,7 +100,7 @@ int main(int argc, char **argv)
 
                 time = millis() + 999999; // Огромное время ставим
                 flagVector = true;        // Флаг что теперь отслеживаем длину вектора
-                ROS_INFO("    Vector Start. len = %f", commandArray[i].len);
+                logi.log_b("    Start Vector. len = %f \n", commandArray[i].len);
                 break;
             case 3:                                                 // Напечатать
                 controlPrint.id++;
@@ -108,7 +108,7 @@ int main(int argc, char **argv)
                 controlPrint.controlPrint.status = 1; // 1- печатать 0- не печатать
                 controlPrint.controlPrint.torque = 0.5; // Вручную задаю силу прижатия маркера к полу
                 time = millis() + commandArray[i].duration;
-                ROS_INFO("    Print Start");
+                logi.log_b("    Print Start \n");
                 break;
             case 5:                                                 // Отменить печать
                 controlPrint.id++;
@@ -116,7 +116,7 @@ int main(int argc, char **argv)
                 controlPrint.controlPrint.status = 0; // 1- печатать 0- не печатать
                 controlPrint.controlPrint.torque = -2.0; // Вручную задаю силу с которой отводим маркер в течении 50 милисекунд
                 time = millis() + commandArray[i].duration;
-                ROS_INFO("    Print Cancel");
+                logi.log_b("    Print Cancel \n");
                 break;
             }  
         }
@@ -135,20 +135,20 @@ int main(int argc, char **argv)
         {
             flagCommand = true;
             i++;
-            ROS_INFO("    i = %i => mode = %i ", i,commandArray[i].mode );
+            logi.log("    i = %i => mode = %i \n", i,commandArray[i].mode );
 
             if (commandArray[i].mode == 9)
             {
-                ROS_INFO("New loop");
+                logi.log_r("New loop\n");
                 i = 0;
             }
             if (i >= commandArray.size())
             {
-                ROS_INFO("    commandArray.size shutdown.");
+                logi.log_r("    commandArray.size shutdown.\n");
                 ros::shutdown();
             }
 
-            ROS_INFO("    Start new step i = %i ", i);
+            logi.log_r("    Start new step i = %i \n", i);
         }
 
         if (flag_msgSpeed) // Флаг что пришло сообщение от ноды Data по Speed.
@@ -185,7 +185,7 @@ int main(int argc, char **argv)
     controlSpeed.control.speedL = 0; //
     controlSpeed.control.speedR = 0;
     topic.publicationControlDriver(); // Формируем и Публикуем команды для управления Driver
-    printf("сontrol_node STOP \n");
+    logi.log_r("--- сontrol_node STOP \n");
     return 0;
 }
 

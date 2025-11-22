@@ -102,7 +102,6 @@ void initCommandArray(int verCommand_)
 
 		commandArray[18].mode = 9;
 	}
-
 }
 
 void readParam() // Считывание переменных параметров из лаунч файла при запуске. Там офсеты и режимы работы
@@ -120,15 +119,15 @@ void readParam() // Считывание переменных параметро
 // Выводим справочно время работы цикла
 void timeCycle(ros::Time timeStart_, ros::Time timeNow_)
 {
-	ros::Time timeEnd = ros::Time::now();				// Захватываем конечный момент времени
-	ros::Duration durationEnd = timeEnd - timeNow_;		// Находим разницу между началом и концом
-	ros::Duration durationStart = timeEnd - timeStart_; // Находим разницу между началом и концом
-	double dtEnd = durationEnd.toSec() * 1000;			// Получаем количество милисекунд
-	double dtStart = durationStart.toSec();				// Получаем количество секунд
-	if (dtEnd > 5)										// Если цикл занял бользе 5 милисекунд значит что не уложились в 200 Нz
-		logi.log_r("    !!! cycle = %8.3f msec \n", dtEnd);	// Время цикла в милисекундах
-	// else
-	// 	logi.log("    dtStart = %7.0f sec | last cycle = %8.3f msec \n", dtStart, dtEnd); // Время цикла в милисекундах
+	ros::Time timeEnd = ros::Time::now();					// Захватываем конечный момент времени
+	ros::Duration durationEnd = timeEnd - timeNow_;			// Находим разницу между началом и концом
+	ros::Duration durationStart = timeEnd - timeStart_;		// Находим разницу между началом и концом
+	double dtEnd = durationEnd.toSec() * 1000;				// Получаем количество милисекунд
+	double dtStart = durationStart.toSec();					// Получаем количество секунд
+	if (dtEnd > 5)											// Если цикл занял бользе 5 милисекунд значит что не уложились в 200 Нz
+		logi.log_r("    !!! cycle = %8.3f msec \n", dtEnd); // Время цикла в милисекундах
+															// else
+															// 	logi.log("    dtStart = %7.0f sec | last cycle = %8.3f msec \n", dtStart, dtEnd); // Время цикла в милисекундах
 }
 
 /**
@@ -174,16 +173,15 @@ void workAngle(float angle_, u_int64_t &time_, float velAngle_)
 	time = time_now;
 	float accel = max_deceleration * dt; // Ускорение/замедление
 
-	float angleFact = msg_Pose.th.odom;			// Угол который отслеживаем
-	angleMistake = angle_ - RAD2DEG(angleFact); // Смотрим какой угол.// Смотрим куда нам надо Считаем ошибку по углу и включаем колеса в нужную сторону с учетом ошибки по углу и максимально заданой скорости на колесах
+	float angleFact = msg_Pose.th.odom;				// Угол который отслеживаем
+	angleMistake = angle_ - RAD2DEG(angleFact);		// Смотрим какой угол.// Смотрим куда нам надо Считаем ошибку по углу и включаем колеса в нужную сторону с учетом ошибки по углу и максимально заданой скорости на колесах
 	angleMistake = normalizeAngle180(angleMistake); // Нормализуем +-180
-	ROS_INFO_THROTTLE(0.1, "    angle_ = %6.3f angleFact = %6.3f angleMistake = %6.3f", angle_, RAD2DEG(angleFact), angleMistake);
 
 	if (flagAngleFirst)
 	{
 		accel = 0; // Первый запуск
 		flagAngleFirst = false;
-		ROS_INFO("    Angle Start angleMistake = %f metr", angleMistake);
+		logi.log_b("    Angle Start angleMistake = %f metr \n", angleMistake);
 	}
 
 	if (abs(angleMistake) <= minAngleMistake) // Когда ошибка по углу будет меньше заданной считаем что приехали и включаем время что-бы выйти из данного этапа алгоритма
@@ -194,7 +192,7 @@ void workAngle(float angle_, u_int64_t &time_, float velAngle_)
 		flagAngle = false;
 		flagAngleFirst = true;
 		time_ = millis();
-		ROS_INFO("    Angle Final angleMistake = %f gradus", angleMistake);
+		logi.log_w("    Angle Final angleMistake = %f gradus \n", angleMistake);
 	}
 	else
 	{
@@ -204,7 +202,6 @@ void workAngle(float angle_, u_int64_t &time_, float velAngle_)
 
 		float V_max_ang = calculate_max_safe_angular_speed_degrees(angleMistake, max_angular_acceleration_degs2); // Считаем максимальную скорость с которой успеем остановиться
 		float V_max_lin = convert_angular_speed_to_linear_wheel_speed(V_max_ang, DISTANCE_WHEELS);				  // Преобразует угловую скорость робота (град/с) в линейную скорость колес (м/с).
-		ROS_INFO_THROTTLE(0.1, "    workAngle V_max_ang = %f  speedCurrent V_max_lin = %f", V_max_ang, V_max_lin);
 
 		speedCurrent = speedCurrent + accel; // Ускорение.Увеличиваем скорость
 
@@ -231,7 +228,8 @@ void workAngle(float angle_, u_int64_t &time_, float velAngle_)
 			controlSpeed.control.speedL = speedCurrent;
 			controlSpeed.control.speedR = -speedCurrent;
 		}
-		ROS_INFO_THROTTLE(0.1, "    speedCurrent real L = %f R = %f ", controlSpeed.control.speedL, controlSpeed.control.speedR);
+		logi.log("    workAngle angle = %6.3f angleFact = %6.3f angleMistake = %6.3f | V_max_ang = %f  speedCurrent V_max_lin = %f | speedCurrent real L = %f R = %f \n",
+				 angle_, RAD2DEG(angleFact), angleMistake, V_max_ang, V_max_lin, controlSpeed.control.speedL, controlSpeed.control.speedR);
 	}
 }
 
@@ -279,12 +277,10 @@ SPoint calculate_new_coordinates(SPoint point_A_, float angle_rad, float signed_
 	point_B.y = point_A_.y + dy;
 	// Вывод результатов с использованием printf
 	// Используем "%.4f" для вывода чисел с плавающей точкой с точностью до 4 знаков после запятой
-	printf("--- Calculation Result ---\n");
-	printf("Initial Position point_A (X, Y): (%.4f, %.4f)\n", point_A_.x, point_A_.y);
-	printf("Movement Vector (signed_distance, Angle rad): (%.4f, %.4f)\n", signed_distance, angle_rad);
-	printf("Delta Position (dX, dY): (%.4f, %.4f)\n", dx, dy);
-	printf("New Position point_B (X', Y'): (%.4f, %.4f)\n", point_B.x, point_B.y);
-	printf("--------------------------\n");
+	logi.log_g("Initial Position point_A (X, Y): (%.4f, %.4f)\n", point_A_.x, point_A_.y);
+	logi.log("Movement Vector (signed_distance, Angle rad): (%.4f, %.4f)\n", signed_distance, angle_rad);
+	logi.log("Delta Position (dX, dY): (%.4f, %.4f)\n", dx, dy);
+	logi.log_g("New Position point_B (X', Y'): (%.4f, %.4f)\n", point_B.x, point_B.y);
 	return point_B;
 }
 
@@ -309,9 +305,9 @@ void workVector(float len_, SPoint point_A_, SPoint point_B_, u_int64_t &time_, 
 	// float vectorFact = vectorLen(point_A_, point_C_); // Находим длину вектора который отслеживаем. Насколько уехали от точки старта
 	// vectorMistake = abs(len_) - vectorFact;				   // Смотрим какое растояние еще надо проехать  Считаем ошибку по длине и включаем колеса в нужную сторону с учетом ошибки максимально заданой скорости на колесах
 
-        // F теперь используется для задания скорости И направления.
-    float signed_velLen = velLen_;        // Скорость со знаком (F).
-    float abs_velLen = std::abs(velLen_); // Абсолютная скорость для расчета .
+	// F теперь используется для задания скорости И направления.
+	float signed_velLen = velLen_;		  // Скорость со знаком (F).
+	float abs_velLen = std::abs(velLen_); // Абсолютная скорость для расчета .
 
 	vectorMistake = vectorLen(point_C_, point_B_); // Находим длину вектора который отслеживаем. Сколько осталось до конечной точки
 
@@ -321,7 +317,7 @@ void workVector(float len_, SPoint point_A_, SPoint point_B_, u_int64_t &time_, 
 	{
 		accel = 0; // Первый запуск
 		flagVectorFirst = false;
-		logi.log_w("    Vector Start vectorMistake = %f metr (%+6.3f, %+6.3f -> %+6.3f, %+6.3f\n)", vectorMistake, point_C_.x, point_C_.y, point_B_.x, point_B_.y);
+		logi.log_w("    Vector Start vectorMistake = %f metr (%+6.3f, %+6.3f -> %+6.3f, %+6.3f \n", vectorMistake, point_C_.x, point_C_.y, point_B_.x, point_B_.y);
 	}
 	if (abs(vectorMistake) <= minVectorMistake) // Когда ошибка по длине будет меньше заданной считаем что приехали и включаем время что-бы выйти из данного этапа алгоритма
 	{
@@ -331,7 +327,7 @@ void workVector(float len_, SPoint point_A_, SPoint point_B_, u_int64_t &time_, 
 		flagVector = false;
 		flagVectorFirst = true;
 		time_ = millis();
-		logi.log_w("    Vector Final vectorMistake = %f metr (%+6.3f, %+6.3f -> %+6.3f, %+6.3f\n)", vectorMistake, point_C_.x, point_C_.y, point_B_.x, point_B_.y);
+		logi.log_w("    Vector Final vectorMistake = %f metr (%+6.3f, %+6.3f -> %+6.3f, %+6.3f \n", vectorMistake, point_C_.x, point_C_.y, point_B_.x, point_B_.y);
 	}
 	else
 	{
@@ -342,7 +338,7 @@ void workVector(float len_, SPoint point_A_, SPoint point_B_, u_int64_t &time_, 
 		else // ЭТО УСКОРЕНИЕ
 		{
 			speedCurrent = speedCurrent + accel; // Ускорение.Увеличиваем скорость
-			if (speedCurrent > abs_velLen)			 // Максимальная скорость
+			if (speedCurrent > abs_velLen)		 // Максимальная скорость
 			{
 				speedCurrent = abs_velLen; // Если стала больше то ровняем
 			}
@@ -350,14 +346,14 @@ void workVector(float len_, SPoint point_A_, SPoint point_B_, u_int64_t &time_, 
 
 		// static float vectorKoef = 3.0;		   // P коефициент пид регулятора
 		// float speedCurrent = abs(vectorMistake * vectorKoef); // Это простейший вариант с ПИД регулировнаием по Р
-//------------
+		//------------
 		// ЭТО УПРАВЛЕНИЕ ПО ТРАЕКТОРИИ. СТРАЕМСЯ ЕХАТЬ НА ТОЧКУ D, лежащуу на отрезке АВ
 		float L = 0.1;
 		double steering = 0; // Длинна в метрах
 		// point_D = findNearestSPointD(point_A, point_B, point_C, L);				 // Находим точку D на прямой между точками А и В и на расстоянии L от точки робота С
 		// steering = calculateSteering(point_C, msg_Pose.th.odom, point_D, dt); //  Расчет управляющего сигнала
-		steering = 0;						   // пока обнулим
-//------------
+		steering = 0; // пока обнулим
+					  //------------
 
 		if ((speedCurrent - steering) < 0.005) // Минимальная скорость
 			speedCurrent = 0.005 + steering;   // Если получается что меньше то берет так чтобы одно колесо было минимум а другое нет
@@ -372,8 +368,8 @@ void workVector(float len_, SPoint point_A_, SPoint point_B_, u_int64_t &time_, 
 			controlSpeed.control.speedL = -speedCurrent + steering;
 			controlSpeed.control.speedR = -speedCurrent - steering;
 		}
-		ROS_INFO_THROTTLE(0.1, "    workVector vectorMistake = %7.3f (%+6.3f, %+6.3f -> %+6.3f, %+6.3f) | V_max = %f | fact speedL = %f speedR = %f | dt = %f  accel = %f",
-						  vectorMistake, point_C_.x, point_C_.y, point_B_.x, point_B_.y, V_max, controlSpeed.control.speedL, controlSpeed.control.speedR, dt, accel);
+		logi.log("    workVector mistake = %7.3f (%+6.3f, %+6.3f -> %+6.3f, %+6.3f) | V_max = %f | fact speedL = %f speedR = %f | dt = %f  accel = %f \n",
+				 vectorMistake, point_C_.x, point_C_.y, point_B_.x, point_B_.y, V_max, controlSpeed.control.speedL, controlSpeed.control.speedR, dt, accel);
 	}
 }
 
