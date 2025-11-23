@@ -119,9 +119,9 @@ public:
         fprintf(fp, "G2 X%.3f Y%.3f F%.2f ; Center to Start\n", l.x1, l.y1, SPEED_MOVE);
 
         // 2. Поворот
-        fprintf(fp, "G4 P200\n");
+        fprintf(fp, "G4 P2000\n");
         fprintf(fp, "G1 A%.3f F%.2f\n", angle_deg, SPEED_TURN);
-        fprintf(fp, "G4 P200\n");
+        fprintf(fp, "G4 P2000\n");
 
         // 3. Откат
         fprintf(fp, "G2 L%.3f F%.2f ; Back up\n", MARKER_OFFSET, SPEED_BACKUP);
