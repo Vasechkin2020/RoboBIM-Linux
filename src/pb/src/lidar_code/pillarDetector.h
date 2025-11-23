@@ -130,7 +130,7 @@ public:
         lidar_y = poseLidar_.y;
         lidar_theta = DEG2RAD(poseLidar_.th) + M_PI;
         // ROS_INFO("    Lidar theta START = %+8.3f rad (%+8.3f deg)", lidar_theta, RAD2DEG(lidar_theta));
-        logi.log("    IN PoseLidar x= %+8.3f y= %+8.3f  th= %.4f (rad)  th= %+8.3f (grad)", lidar_x, lidar_y, lidar_theta, RAD2DEG(lidar_theta));
+        logi.log("    IN PoseLidar x= %+8.3f y= %+8.3f  th= %.4f (rad)  th= %+8.3f (grad)\n", lidar_x, lidar_y, lidar_theta, RAD2DEG(lidar_theta));
 
         findPillars();  // Ищем столбы в этих кластерах
         matchPillars(); // // Сопоставляем столбы с известными координатами и вычисляем позицию и ориентацию лидара
