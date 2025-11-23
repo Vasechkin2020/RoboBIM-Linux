@@ -1,7 +1,8 @@
-; === GENERATED G-CODE (v3.6) ===
+; === GENERATED G-CODE (v3.8) ===
 ; Output Filename: kvadratL.gcode
-; Robot Position on Map: X=0.000, Y=0.000, Angle=0.0
+; Robot System Coordinate Origin on Map: X=0.000, Y=0.000, Angle=0.0
 ; Marker Offset: 0.0450
+G10 X1.000 Y2.000 A0.000 ; Initial required start point and angle in robot's local coordinates
 M5 T1000 ; Pen UP
 G1 A0.000 F0.05
 G2 L0.045 F-0.10 ; Initial align
@@ -11,9 +12,9 @@ G2 L0.045 F-0.10 ; Initial align
 ; ROBOT: (1.000, 2.000) -> (2.000, 2.000) | Ang: 0.00
 M5 T1000
 G2 X1.000 Y2.000 F0.10 ; Center to Start
-G4 P2000
+G4 P200
 G1 A0.000 F0.05
-G4 P2000
+G4 P200
 G2 L0.045 F-0.10 ; Back up
 M3 T1000
 G2 X1.955 Y2.000 F0.10
@@ -23,9 +24,9 @@ G2 X1.955 Y2.000 F0.10
 ; ROBOT: (2.000, 2.000) -> (2.000, 3.000) | Ang: 90.00
 M5 T1000
 G2 X2.000 Y2.000 F0.10 ; Center to Start
-G4 P2000
+G4 P200
 G1 A90.000 F0.05
-G4 P2000
+G4 P200
 G2 L0.045 F-0.10 ; Back up
 M3 T1000
 G2 X2.000 Y2.955 F0.10
