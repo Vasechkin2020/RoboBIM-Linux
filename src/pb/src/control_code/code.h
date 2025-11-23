@@ -327,7 +327,7 @@ void workVector(float len_, SPoint point_A_, SPoint point_B_, u_int64_t &time_, 
 		flagVector = false;
 		flagVectorFirst = true;
 		time_ = millis();
-		logi.log_w("    Vector Final vectorMistake = %f metr (%+6.3f, %+6.3f -> %+6.3f, %+6.3f \n", vectorMistake, point_C_.x, point_C_.y, point_B_.x, point_B_.y);
+		logi.log_w("    Vector Final vectorMistake = %f metr (%+6.3f, %+6.3f -> %+6.3f, %+6.3f) \n", vectorMistake, point_C_.x, point_C_.y, point_B_.x, point_B_.y);
 	}
 	else
 	{
