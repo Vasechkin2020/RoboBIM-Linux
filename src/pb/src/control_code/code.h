@@ -59,7 +59,7 @@ void callback_Speed(pb_msgs::SSetSpeed msg)
 }
 void callback_Pose(pb_msgs::Struct_PoseRotation msg)
 {
-	msg_Pose = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
+	msg_PoseRotation = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
 	flag_msgPose = true;
 }
 
@@ -173,7 +173,7 @@ void workAngle(float angle_, u_int64_t &time_, float velAngle_)
 	time = time_now;
 	float accel = max_deceleration * dt; // Ускорение/замедление
 
-	float angleFact = msg_Pose.th.odom;				// Угол который отслеживаем
+	float angleFact = msg_PoseRotation.th.odom;				// Угол который отслеживаем
 	angleMistake = angle_ - RAD2DEG(angleFact);		// Смотрим какой угол.// Смотрим куда нам надо Считаем ошибку по углу и включаем колеса в нужную сторону с учетом ошибки по углу и максимально заданой скорости на колесах
 	angleMistake = normalizeAngle180(angleMistake); // Нормализуем +-180
 
@@ -181,7 +181,7 @@ void workAngle(float angle_, u_int64_t &time_, float velAngle_)
 	{
 		accel = 0; // Первый запуск
 		flagAngleFirst = false;
-		logi.log_b("    Angle Start angleMistake = %f metr \n", angleMistake);
+		logi.log_b("    Angle Start angleMistake = %f gradus \n", angleMistake);
 	}
 
 	if (abs(angleMistake) <= minAngleMistake) // Когда ошибка по углу будет меньше заданной считаем что приехали и включаем время что-бы выйти из данного этапа алгоритма
@@ -299,8 +299,8 @@ void workVector(float len_, SPoint point_A_, SPoint point_B_, u_int64_t &time_, 
 	time = time_now;
 	float accel = max_deceleration * dt; // Ускорение
 
-	point_C_.x = msg_Pose.x.odom; // Текущие координаты робота
-	point_C_.y = msg_Pose.y.odom;
+	point_C_.x = msg_PoseRotation.x.odom; // Текущие координаты робота
+	point_C_.y = msg_PoseRotation.y.odom;
 
 	// float vectorFact = vectorLen(point_A_, point_C_); // Находим длину вектора который отслеживаем. Насколько уехали от точки старта
 	// vectorMistake = abs(len_) - vectorFact;				   // Смотрим какое растояние еще надо проехать  Считаем ошибку по длине и включаем колеса в нужную сторону с учетом ошибки максимально заданой скорости на колесах
