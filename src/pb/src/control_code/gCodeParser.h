@@ -551,18 +551,17 @@ private:
     void executeG10(const GCodeCommand &cmd) // Обработка команды G10 (Установка начальной позиции).
     {
 
-        logi.log_w(">>> EXECUTING Line %d: %s\n", cmd.line_number, cmd.raw_line.c_str());                                                      // Логируем команду.
-        logi.log_b("    BEFORE: X=%.3f, Y=%.3f, A=%.3f°\n", current_x_, current_y_, current_a_);                                               // Выводим позу до изменения.
-        
-        
-        ///------------- БЛОК где я должен приехать в точку откуда буду рисовать. Чтобы потом в ней передать управление по gcode 
+        logi.log_w(">>> EXECUTING Line %d: %s\n", cmd.line_number, cmd.raw_line.c_str());        // Логируем команду.
+        logi.log_b("    BEFORE: X=%.3f, Y=%.3f, A=%.3f°\n", current_x_, current_y_, current_a_); // Выводим позу до изменения.
 
-        logi.log_b("    REAL CURRENT: X=%.3f, Y=%.3f, A=%.3f°\n", msg_PoseRotation.x.main, msg_PoseRotation.y.main, msg_PoseRotation.th.main); // Считываем реальную позицию
+        ///------------- БЛОК где я должен приехать в точку откуда буду рисовать. Чтобы потом в ней передать управление по gcode
+        // ros::Duration(10).sleep(); // Подождем пока
+        current_x_ = msg_PoseRotation.x.main;           // Заменяем координаты для правильного расчета
+        current_y_ = msg_PoseRotation.y.main;           // Заменяем координаты для правильного расчета
+        current_a_ = RAD2DEG(msg_PoseRotation.th.main); // Заменяем координаты для правильного расчета
+
+        logi.log_b("    REAL CURRENT: X=%.3f, Y=%.3f, A=%.3f°\n", current_x_, current_y_, current_a_);  // Считываем реальную позицию
         logi.log_b("    TARGET POINT: X=%.3f, Y=%.3f, A=%.3f°\n", cmd.x, cmd.y, normalizeAngle(cmd.a)); // Считываем реальную позицию
-
-        current_x_ = msg_PoseRotation.x.main;  // Заменяем координаты для правильного расчета
-        current_y_ = msg_PoseRotation.y.main;  // Заменяем координаты для правильного расчета
-        current_a_ = msg_PoseRotation.th.main; // Заменяем координаты для правильного расчета
 
         GCodeCommand cmd_temp;
         cmd_temp.command = "M5"; // Поворот на угол в точку откуда рисовать
@@ -572,19 +571,19 @@ private:
         cmd_temp.has_t = true;
         executeM5(cmd_temp); // Выполняем M5. Родбем маркера перед любым движением
 
-        cmd_temp = {}; // Сброс значений
+        cmd_temp = {};           // Сброс значений
         cmd_temp.command = "G1"; // Поворот на угол в точку откуда рисовать
         cmd_temp.comment = "Manual command G1 for rotate to start point";
         cmd_temp.raw_line = "G1 Manual command G1 for rotate to start point";
-        cmd_temp.f = 0.05;    // Параметр F (общая скорость).
+        cmd_temp.f = 0.05; // Параметр F (общая скорость).
         cmd_temp.has_f = true;
         cmd_temp.x = cmd.x; // Параметр X (координата X).
         cmd_temp.has_x = true;
         cmd_temp.y = cmd.y; // Параметр Y (координата Y).
         cmd_temp.has_y = true;
         executeG1(cmd_temp); // Выполняем G1. Тут должен повернуться в точку откуда надо будет рисовать из своей текущей позиции
-        
-        cmd_temp = {}; // Сброс значений
+
+        cmd_temp = {};           // Сброс значений
         cmd_temp.command = "G4"; // Пауза
         cmd_temp.comment = "Manual command G4 Pause";
         cmd_temp.raw_line = "G4 Manual command G4 Pause";
@@ -592,11 +591,11 @@ private:
         cmd_temp.has_p = true;
         executeG4(cmd_temp); // Выполняем G4.
 
-        cmd_temp = {}; // Сброс значений
+        cmd_temp = {};           // Сброс значений
         cmd_temp.command = "G2"; // Движение в точку откуда рисовать
         cmd_temp.comment = "Manual command G2 for run to start point";
         cmd_temp.raw_line = "G2 Manual command G2 for run to start point";
-        cmd_temp.f = 0.20;    // Параметр F (общая скорость).
+        cmd_temp.f = 0.20; // Параметр F (общая скорость).
         cmd_temp.has_f = true;
         cmd_temp.x = cmd.x; // Параметр X (координата X).
         cmd_temp.has_x = true;
@@ -604,7 +603,7 @@ private:
         cmd_temp.has_y = true;
         executeG2(cmd_temp); // Выполняем G1. Тут должен поехать в точку откуда надо будет рисовать из своей текущей позиции
 
-        cmd_temp = {}; // Сброс значений
+        cmd_temp = {};           // Сброс значений
         cmd_temp.command = "G4"; // Пауза
         cmd_temp.comment = "Manual command G4 Pause";
         cmd_temp.raw_line = "G4 Manual command G4 Pause";
@@ -612,11 +611,11 @@ private:
         cmd_temp.has_p = true;
         executeG4(cmd_temp); // Выполняем G4.
 
-        cmd_temp = {}; // Сброс значений
+        cmd_temp = {};           // Сброс значений
         cmd_temp.command = "G1"; // Поворот в угол 0
         cmd_temp.comment = "Manual command G1 for rotate to 0 gradus";
         cmd_temp.raw_line = "G1 Manual command G1 for rotate to 0 gradus";
-        cmd_temp.f = 0.05;    // Параметр F (общая скорость).
+        cmd_temp.f = 0.05; // Параметр F (общая скорость).
         cmd_temp.has_f = true;
         cmd_temp.a = 0;
         cmd_temp.has_a = true;

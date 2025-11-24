@@ -4,8 +4,7 @@
 
   <include file="$(find rplidar_ros)/launch/rplidar_s2.launch" />
   <!--include file="$(find rplidar_ros)/launch/rplidar_a3.launch" /-->
-  <node pkg="pb" type="lidar_node" name="lidar_node" output ="screen">
-  
-  </node>
+  <node pkg="pb" type="lidar_node" name="lidar_node" output ="screen"/>
+  <!--node pkg="pb" type="pos_node" name="pos_node" output ="screen"/-->
   
 </launch> 

@@ -228,7 +228,7 @@ void workAngle(float angle_, u_int64_t &time_, float velAngle_)
 			controlSpeed.control.speedL = speedCurrent;
 			controlSpeed.control.speedR = -speedCurrent;
 		}
-		logi.log("    workAngle angle = %6.3f angleFact = %6.3f angleMistake = %6.3f | V_max_ang = %f  speedCurrent V_max_lin = %f | speedCurrent real L = %f R = %f \n",
+		logi.log("    workAngle target = %+8.3f real = %+8.3f mistake = %+8.3f | V_max_ang = %+8.3f  speedCurrent V_max_lin = %+8.3f | real L = %+8.3f R = %+8.3f \n",
 				 angle_, RAD2DEG(angleFact), angleMistake, V_max_ang, V_max_lin, controlSpeed.control.speedL, controlSpeed.control.speedR);
 	}
 }

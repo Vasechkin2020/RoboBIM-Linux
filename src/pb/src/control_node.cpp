@@ -45,8 +45,11 @@ int main(int argc, char **argv)
     logi.log_w("Start Setup.");
     // readParam(); // Считывание переменных параметров из лаунч файла при запуске. Там офсеты и режимы работы
     // initCommandArray(verComand); // Заполнение маасива команд
+    
 
     GCodeParser parser; // Создание объекта парсера
+    
+    ros::spinOnce();            // Опрашиваем ядро ROS и по этой команде наши срабатывают колбеки. Нужно только для подписки на топики
     parser.run();       // Запуск обработки
 
     // static ros::Time time = ros::Time::now();      // Захватываем начальный момент времени

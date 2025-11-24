@@ -51,7 +51,7 @@ public:
         // Изменение координат столба
         KNOWN_PILLARS[i].first = first_;   // Новое значение x
         KNOWN_PILLARS[i].second = second_; // Новое значение y
-        ROS_INFO("setKnownPillars %i x= %+8.3f y= %+8.3f", i, KNOWN_PILLARS[i].first, KNOWN_PILLARS[i].second);
+        logi.log("    setKnownPillars %i x= %+8.3f y= %+8.3f \n", i, KNOWN_PILLARS[i].first, KNOWN_PILLARS[i].second);
     }
     // Метод изменения положения лидара
     void setPoseLidar(float x_, float y_, float th_)
@@ -59,7 +59,7 @@ public:
         lidar_x = x_;                             // Координата x лидара в глобальной системе
         lidar_y = y_;                             // Координата y лидара в глобальной системе
         lidar_theta = (th_ + 180) / (180 / M_PI); // Угол ориентации лидара в глобальной системе (рад)
-        ROS_INFO("setPoseLidar x= %+8.3f y= %+8.3f  th= %.4f (rad) th= %+8.3f (grad)", lidar_x, lidar_y, lidar_theta, th_);
+        logi.log_b("    setPoseLidar x= %+8.3f y= %+8.3f  th= %.4f (rad) th= %+8.3f (grad) \n", lidar_x, lidar_y, lidar_theta, th_);
     }
 
     // Структура для точки с координатами x и y
