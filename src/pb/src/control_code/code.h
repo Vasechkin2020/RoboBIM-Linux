@@ -6,6 +6,7 @@
 #include <iostream>
 #include <algorithm>
 #include <iomanip>
+#include <cstddef> // Для size_t
 
 // #include "pillar.h"
 //**************************** ОБЬЯВЛЕНИЕ ПРОЦЕДУР **********************************
@@ -44,6 +45,170 @@ SPoint calculate_new_coordinates(SPoint point_A_, float angle_rad, float distanc
 // 	msg_Driver2Data = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
 // 	flag_msgDriver = true;
 // }
+#include <cstddef> // Для size_t
+
+class StepBuffer 
+{
+public:
+    // Конструктор: задаём глубину истории (N шагов назад)
+    StepBuffer(size_t N) 
+    {
+        if (N == 0) 
+        {
+            N_ = 1; // Защита от N=0
+        } 
+        else 
+        {
+            N_ = N; // Устанавливаем заданную глубину истории
+        }
+        
+        buffer_ = new double[N_]; // Динамически выделяем память под буфер
+        
+        reset(); // Инициализируем буфер, индекс и счетчик
+    }
+
+    // Деструктор: освобождаем память
+    ~StepBuffer() 
+    {
+        delete[] buffer_; // Освобождаем память
+    }
+
+    // Сброс буфера: обнуляет все переменные и содержимое массива
+    void 
+    reset() 
+    {
+        index_ = 0; // Сбрасываем индекс для записи на начало
+        count_ = 0; // Сбрасываем счетчик записанных значений
+        
+        for (size_t i = 0; i < N_; ++i) 
+        {
+            buffer_[i] = 0.0; // Заполняем буфер нулями
+        }
+    }
+
+    // Основная функция: Принимает текущее значение, возвращает старое
+    double 
+    putAndGetOld(double current) 
+    {
+        double oldValue; // Переменная для хранения возвращаемого значения
+        size_t index_to_overwrite = index_; // Индекс самого старого значения
+
+        if (count_ < N_) 
+        {
+            // Буфер не полон
+            if (count_ == 0)
+            {
+                // Шаг 1: Возвращает текущее значение, которое будет записано (E_i)
+                oldValue = current; 
+            }
+            else
+            {
+                // Шаги 2...N: Возвращаем первое сохраненное значение (E_1)
+                oldValue = buffer_[0]; 
+            }
+        } 
+        else 
+        {
+            // Буфер полон (count_ >= N_). 
+            // Возвращаем значение N шагов назад (E_{i-N})
+            oldValue = buffer_[index_to_overwrite]; 
+        }
+
+        // 1. Сохраняем новое значение
+        buffer_[index_to_overwrite] = current; // Записываем текущее значение
+        
+        // 2. Обновляем счетчики
+        index_ = (index_ + 1) % N_; // Смещаем индекс
+        
+        if (count_ < N_) 
+        {
+            count_++; // Инкрементируем счетчик до заполнения
+        }
+
+        return oldValue; // Возвращаем значение
+    }
+    
+private:
+    size_t N_; // Глубина истории (N)
+    size_t index_; // Текущий индекс для записи
+    size_t count_; // Количество записанных элементов
+    double* buffer_; // Динамически выделенный массив
+};
+
+
+const size_t HISTORY_DEPTH = 10; // Глубина истории N=10
+StepBuffer history(HISTORY_DEPTH); // Создаем объект тут мы считаем и выдвем знаяение которые было у ошибке N шагов назад
+
+#include <cstddef> // Для size_t
+#include <limits>  // Для numeric_limits
+
+class RisingTrendChecker 
+{
+public:
+    // Конструктор: задаём требуемое количество последовательных ростов (N)
+    RisingTrendChecker(size_t N) 
+    {
+        if (N == 0) 
+        {
+            N_required_ = 1; // Защита от N=0, минимум 1 рост
+        } 
+        else 
+        {
+            N_required_ = N; // Устанавливаем требуемую глубину роста
+        }
+        
+        reset(); // Инициализируем состояние
+    }
+
+    // Функция для сброса состояния
+    void 
+    reset() 
+    {
+        // Начинаем с очень большого отрицательного числа.
+        // Это гарантирует, что первое реальное значение (ошибка > 0)
+        // всегда будет больше предыдущего.
+        previous_value_ = std::numeric_limits<double>::lowest(); // Инициализируем минимально возможным значением double
+        
+        consecutive_rises_ = 0; // Сбрасываем счетчик последовательных ростов
+    }
+
+    // Основная функция: Принимает текущее значение ошибки.
+    // Возвращает true, если значение возрастало N_required_ раз подряд.
+    bool 
+    check_for_rising_trend(double current_value) 
+    {
+        // 1. Проверяем условие роста: текущее значение строго больше предыдущего
+        if (current_value > previous_value_) 
+        {
+            // Условие выполнено: был рост
+            consecutive_rises_++; // Увеличиваем счетчик последовательных ростов
+        } 
+        else 
+        {
+            // Условие не выполнено: произошло снижение или плато
+            consecutive_rises_ = 0; // Сбрасываем счетчик, тренд прерван
+        }
+
+        // 2. Запоминаем текущее значение для следующего шага
+        previous_value_ = current_value; // Обновляем предыдущее значение
+        
+        // 3. Проверяем условие остановки: достигнут ли требуемый порог ростов?
+        if (consecutive_rises_ >= N_required_) 
+        {
+            return true; // Возвращаем true, тренд подтвержден
+        }
+        
+        return false; // Возвращаем false, условие не достигнуто
+    }
+    
+private:
+    size_t N_required_; // Требуемое количество последовательных ростов
+    size_t consecutive_rises_; // Счетчик последовательных ростов
+    double previous_value_; // Последнее переданное значение
+};
+
+const size_t N_GROWTH = 3; // Требуем 3 последовательных роста
+RisingTrendChecker checker(N_GROWTH); // Создаем объект
 
 // Функция обраьтного вызова по подписке на топик джойстика nh.subscribe("joy", 16, callback_Joy);
 void callback_Joy(sensor_msgs::Joy msg)
@@ -173,7 +338,11 @@ void workAngle(float angle_, u_int64_t &time_, float velAngle_)
 	time = time_now;
 	float accel = max_deceleration * dt; // Ускорение/замедление
 
-	float angleFact = msg_PoseRotation.th.odom;				// Угол который отслеживаем
+	float angleFact = msg_PoseRotation.th.odom; // Угол который отслеживаем
+	// logi.log("    angleFact odom alfa= %+8.3f\n", angleFact);
+	angleFact = msg_PoseRotation.th.main; // Угол который отслеживаем
+	// logi.log("    angleFact main alfa= %+8.3f\n", angleFact);
+
 	angleMistake = angle_ - RAD2DEG(angleFact);		// Смотрим какой угол.// Смотрим куда нам надо Считаем ошибку по углу и включаем колеса в нужную сторону с учетом ошибки по углу и максимально заданой скорости на колесах
 	angleMistake = normalizeAngle180(angleMistake); // Нормализуем +-180
 
@@ -181,10 +350,10 @@ void workAngle(float angle_, u_int64_t &time_, float velAngle_)
 	{
 		accel = 0; // Первый запуск
 		flagAngleFirst = false;
-		logi.log_b("    Angle Start angleMistake = %f gradus \n", angleMistake);
+		logi.log_r("    Angle Start angleMistake = %f gradus \n", angleMistake);
 	}
 
-	if (abs(angleMistake) <= minAngleMistake) // Когда ошибка по углу будет меньше заданной считаем что приехали и включаем время что-бы выйти из данного этапа алгоритма
+	if ((abs(angleMistake) <= minAngleMistake)) // Когда ошибка по углу будет меньше заданной считаем что приехали и включаем время что-бы выйти из данного этапа алгоритма
 	{
 		speedCurrent = 0;
 		controlSpeed.control.speedL = 0;
@@ -289,9 +458,12 @@ void workVector(float len_, SPoint point_A_, SPoint point_B_, u_int64_t &time_, 
 {
 	static float minVectorMistake = 0.001; // Минимальная ошибка по вектору в метрах 1 мм
 	static float vectorMistake = 0;		   // Текущая ошибка по длине в местрах
+	// static float pred_vectorMistake = 0;   // Текущая ошибка по длине в местрах
 	static float max_deceleration = 0.2;   // Ускорение/замедление метры в секунду
 	static SPoint point_C_;
 	static float speedCurrent; // Текущая скорость
+
+	
 
 	static unsigned long time = micros();		 // Время предыдущего расчета// Функция из WiringPi.// Замеряем интервалы по времени между запросами данных
 	unsigned long time_now = micros();			 // Время в которое делаем расчет
@@ -299,27 +471,43 @@ void workVector(float len_, SPoint point_A_, SPoint point_B_, u_int64_t &time_, 
 	time = time_now;
 	float accel = max_deceleration * dt; // Ускорение
 
-	point_C_.x = msg_PoseRotation.x.odom; // Текущие координаты робота
-	point_C_.y = msg_PoseRotation.y.odom;
+	// point_C_.x = msg_PoseRotation.x.odom; // Текущие координаты робота
+	// point_C_.y = msg_PoseRotation.y.odom;
+	// logi.log("    point C odom    x = %+8.3f y = %+8.3f \n", point_C.x, point_C.y);
 
-	// float vectorFact = vectorLen(point_A_, point_C_); // Находим длину вектора который отслеживаем. Насколько уехали от точки старта
-	// vectorMistake = abs(len_) - vectorFact;				   // Смотрим какое растояние еще надо проехать  Считаем ошибку по длине и включаем колеса в нужную сторону с учетом ошибки максимально заданой скорости на колесах
+	point_C_.x = msg_PoseRotation.x.main; // Текущие координаты робота
+	point_C_.y = msg_PoseRotation.y.main; // Текущие координаты робота
+	// logi.log("    point C main    x = %+8.3f y = %+8.3f \n", point_C.x, point_C.y);
 
 	// F теперь используется для задания скорости И направления.
 	float signed_velLen = velLen_;		  // Скорость со знаком (F).
 	float abs_velLen = std::abs(velLen_); // Абсолютная скорость для расчета .
 
-	vectorMistake = vectorLen(point_C_, point_B_); // Находим длину вектора который отслеживаем. Сколько осталось до конечной точки
+	// float k = 0.9;														   // Коефициент фильтрации
+	// pred_vectorMistake = pred_vectorMistake * k + vectorMistake * (1 - k); // Запоминаем какая была ошибка в прошлый раз с сглаживанием
 
-	// ROS_INFO_THROTTLE(0.1, "    vectorMistake = %7.3f", vectorMistake);
+	vectorMistake = vectorLen(point_C_, point_B_);						   // Находим длину вектора который отслеживаем. Сколько осталось до конечной точки. Новая ошибка.
+	// pred_vectorMistake = history.putAndGetOld(vectorMistake); // Добавляем и получаем старое
 
 	if (flagVectorFirst)
 	{
-		accel = 0; // Первый запуск
+		accel = 0;								  // Первый запуск
+		// pred_vectorMistake = vectorMistake; // Добавляем и получаем старое
 		flagVectorFirst = false;
-		logi.log_w("    Vector Start vectorMistake = %f metr (%+6.3f, %+6.3f -> %+6.3f, %+6.3f \n", vectorMistake, point_C_.x, point_C_.y, point_B_.x, point_B_.y);
+		logi.log_r("    Vector Start vectorMistake = %f metr (%+9.5f, %+9.5f -> %+6.3f, %+6.3f) \n", vectorMistake, point_C_.x, point_C_.y, point_B_.x, point_B_.y);
 	}
-	if (abs(vectorMistake) <= minVectorMistake) // Когда ошибка по длине будет меньше заданной считаем что приехали и включаем время что-бы выйти из данного этапа алгоритма
+	// logi.log("    vectorMistake ago= %+10.6f  new= %+10.6f \n", pred_vectorMistake, vectorMistake);
+
+	bool flagMistake = checker.check_for_rising_trend(abs(vectorMistake)); // Добавляем и получаем логическое true усли есть 3 значения подряд растет ошибка 
+	logi.log("    flagMistake= %d \n", flagMistake);
+
+	// if ((abs(pred_vectorMistake) < abs(vectorMistake)))
+	// {
+	// 	flagMistake = true;
+	// 	// logi.log_w("--- vectorMistake UP !!! %+9.5f == %+9.5f \n", pred_vectorMistake, vectorMistake);
+	// }
+
+	if ((abs(vectorMistake) <= minVectorMistake) || flagMistake) // Когда ошибка по длине будет меньше заданной или начнет увеличиваться считаем что приехали и включаем время что-бы выйти из данного этапа алгоритма
 	{
 		speedCurrent = 0; // Все скорости обнуляем
 		controlSpeed.control.speedL = 0;
@@ -327,6 +515,8 @@ void workVector(float len_, SPoint point_A_, SPoint point_B_, u_int64_t &time_, 
 		flagVector = false;
 		flagVectorFirst = true;
 		time_ = millis();
+		if(flagMistake)
+		logi.log_r("+++ STOP on flagMistake +++ \n")
 		logi.log_w("    Vector Final vectorMistake = %f metr (%+6.3f, %+6.3f -> %+6.3f, %+6.3f) \n", vectorMistake, point_C_.x, point_C_.y, point_B_.x, point_B_.y);
 	}
 	else
@@ -368,7 +558,7 @@ void workVector(float len_, SPoint point_A_, SPoint point_B_, u_int64_t &time_, 
 			controlSpeed.control.speedL = -speedCurrent + steering;
 			controlSpeed.control.speedR = -speedCurrent - steering;
 		}
-		logi.log("    workVector mistake = %7.3f (%+6.3f, %+6.3f -> %+6.3f, %+6.3f) | V_max = %f | fact speedL = %f speedR = %f | dt = %f  accel = %f \n",
+		logi.log("    workVector mistake = %8.5f (%+9.5f, %+9.5f -> %+6.3f, %+6.3f) | V_max = %f | fact speedL = %f speedR = %f | dt = %f  accel = %f \n",
 				 vectorMistake, point_C_.x, point_C_.y, point_B_.x, point_B_.y, V_max, controlSpeed.control.speedL, controlSpeed.control.speedR, dt, accel);
 	}
 }
@@ -458,5 +648,6 @@ void workVector(float len_, SPoint point_A_, SPoint point_B_, u_int64_t &time_, 
 //     //INFO ROS_INFO("-------------- ");
 //     //-----------------------------------------------------------
 // }
+
 
 #endif

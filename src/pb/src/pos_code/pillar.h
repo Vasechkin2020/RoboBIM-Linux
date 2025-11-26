@@ -474,7 +474,7 @@ int CPillar::getCrossing(SCircle c1_, SCircle c2_, SPose pose_, SPoint &pointX_,
     (vl1 < vl2) ? pointX_ = p4 : pointX_ = p5; // Находим центр какой окружности ближе к последним координатам
     float vl3 = vectorLen(pointX_, p0);
     if (isnan(vl3))
-        ROS_ERROR("NAN vl3");
+        ROS_ERROR("NAN vl3 \n");
     if (vl3 > len_ || isnan(vl3)) // Если меньший вектор больше минимального заданного то пересечения не подходят или
     {
         ret = -2;      // Нет подходящих пересечений

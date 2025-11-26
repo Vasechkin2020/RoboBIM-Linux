@@ -41,7 +41,7 @@ bool sendData2Print(int channel_, Struct_Print2Data &structura_receive_, Struct_
 
 	if (cheksum_receive != structura_receive_temp.cheksum || structura_receive_temp.cheksum == 0) // Если наша чек сумма совпадает с последним байтом где чексума переданных данных
 	{
-		printf(" in chek= %#x local chek = %#x\n", structura_receive_temp.cheksum, cheksum_receive);
+		// printf(" in chek= %#x local chek = %#x\n", structura_receive_temp.cheksum, cheksum_receive);
 		data_print_bed++;
 		return false;
 	}

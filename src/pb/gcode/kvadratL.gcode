@@ -36,6 +36,7 @@ G2 X2.000 Y2.955 F0.10
 M5 T1000
 G1 A0.000 F0.05 ; Final rotation to 0 degrees (Safe finish in place)
 
+;G9 ;
 ; === ORIGINAL INPUT LINES START (Input backup) ===
 ; kvadratL.gcode; Имя выходного файла
 ; 0.0 0.0 0.0 ; Смещение системы координат робота от системы координат чертежа. Где стоит ноль робота на чертеже.
