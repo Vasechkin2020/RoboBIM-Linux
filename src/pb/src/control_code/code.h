@@ -458,12 +458,9 @@ void workVector(float len_, SPoint point_A_, SPoint point_B_, u_int64_t &time_, 
 {
 	static float minVectorMistake = 0.001; // Минимальная ошибка по вектору в метрах 1 мм
 	static float vectorMistake = 0;		   // Текущая ошибка по длине в местрах
-	// static float pred_vectorMistake = 0;   // Текущая ошибка по длине в местрах
 	static float max_deceleration = 0.2;   // Ускорение/замедление метры в секунду
 	static SPoint point_C_;
 	static float speedCurrent; // Текущая скорость
-
-	
 
 	static unsigned long time = micros();		 // Время предыдущего расчета// Функция из WiringPi.// Замеряем интервалы по времени между запросами данных
 	unsigned long time_now = micros();			 // Время в которое делаем расчет
@@ -483,29 +480,17 @@ void workVector(float len_, SPoint point_A_, SPoint point_B_, u_int64_t &time_, 
 	float signed_velLen = velLen_;		  // Скорость со знаком (F).
 	float abs_velLen = std::abs(velLen_); // Абсолютная скорость для расчета .
 
-	// float k = 0.9;														   // Коефициент фильтрации
-	// pred_vectorMistake = pred_vectorMistake * k + vectorMistake * (1 - k); // Запоминаем какая была ошибка в прошлый раз с сглаживанием
-
 	vectorMistake = vectorLen(point_C_, point_B_);						   // Находим длину вектора который отслеживаем. Сколько осталось до конечной точки. Новая ошибка.
-	// pred_vectorMistake = history.putAndGetOld(vectorMistake); // Добавляем и получаем старое
 
 	if (flagVectorFirst)
 	{
 		accel = 0;								  // Первый запуск
-		// pred_vectorMistake = vectorMistake; // Добавляем и получаем старое
 		flagVectorFirst = false;
 		logi.log_r("    Vector Start vectorMistake = %f metr (%+9.5f, %+9.5f -> %+6.3f, %+6.3f) \n", vectorMistake, point_C_.x, point_C_.y, point_B_.x, point_B_.y);
 	}
-	// logi.log("    vectorMistake ago= %+10.6f  new= %+10.6f \n", pred_vectorMistake, vectorMistake);
 
 	bool flagMistake = checker.check_for_rising_trend(abs(vectorMistake)); // Добавляем и получаем логическое true усли есть 3 значения подряд растет ошибка 
-	logi.log("    flagMistake= %d \n", flagMistake);
-
-	// if ((abs(pred_vectorMistake) < abs(vectorMistake)))
-	// {
-	// 	flagMistake = true;
-	// 	// logi.log_w("--- vectorMistake UP !!! %+9.5f == %+9.5f \n", pred_vectorMistake, vectorMistake);
-	// }
+	// logi.log("    flagMistake= %d \n", flagMistake);
 
 	if ((abs(vectorMistake) <= minVectorMistake) || flagMistake) // Когда ошибка по длине будет меньше заданной или начнет увеличиваться считаем что приехали и включаем время что-бы выйти из данного этапа алгоритма
 	{
@@ -516,8 +501,8 @@ void workVector(float len_, SPoint point_A_, SPoint point_B_, u_int64_t &time_, 
 		flagVectorFirst = true;
 		time_ = millis();
 		if(flagMistake)
-		logi.log_r("+++ STOP on flagMistake +++ \n")
-		logi.log_w("    Vector Final vectorMistake = %f metr (%+6.3f, %+6.3f -> %+6.3f, %+6.3f) \n", vectorMistake, point_C_.x, point_C_.y, point_B_.x, point_B_.y);
+		logi.log_r("+++ STOP on flagMistake +++ \n");
+		logi.log_w("    Vector Final vectorMistake = %+6.3f metr (%+6.3f, %+6.3f -> %+6.3f, %+6.3f) \n", vectorMistake, point_C_.x, point_C_.y, point_B_.x, point_B_.y);
 	}
 	else
 	{
