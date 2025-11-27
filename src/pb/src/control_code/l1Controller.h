@@ -11,19 +11,6 @@
 #define M_PI 3.14159265358979323846 // Число Пи
 
 // ====================================================================
-// СТРУКТУРЫ
-// ====================================================================
-
-/**
- * @brief Структура для представления точки (x, y)
- */
-struct Point
-{ // Начало структуры Point
-    double x; // Координата X
-    double y; // Координата Y
-}; // Конец структуры Point
-
-// ====================================================================
 // КЛАСС L1GUIDANCECONTROLLER
 // ====================================================================
 
@@ -38,6 +25,7 @@ private:
     double m_lookahead_L; // Дистанция упреждения L (радиус окружности для Pure Pursuit)
     double m_track_width_W; // Трековая ширина W (база робота для обратной кинематики)
     double m_max_omega; // Максимально допустимая угловая скорость (рад/с)
+    double m_max_steering_ratio; // Максимально допустимый коэффициент поворота |S|
 
     // ====================================================================
     // 1. ВСПОМОГАТЕЛЬНЫЕ ГЕОМЕТРИЧЕСКИЕ ФУНКЦИИ
@@ -46,7 +34,7 @@ private:
     /**
      * @brief Вспомогательная функция для расчета квадрата расстояния.
      */
-    double distanceSq(const Point& p1, const Point& p2) const
+    double distanceSq(const SPoint& p1, const SPoint& p2) const
     { // Начало функции distanceSq
         return std::pow(p1.x - p2.x, 2) + std::pow(p1.y - p2.y, 2); // (dx^2 + dy^2)
     } // Конец функции distanceSq
@@ -75,7 +63,7 @@ private:
     /**
      * @brief Функция для вычисления угла (направления) от точки C до точки D.
      */
-    double angleBetweenPoints(const Point& C, const Point& D) const
+    double angleBetweenPoints(const SPoint& C, const SPoint& D) const
     { // Начало функции angleBetweenPoints
         // Используем atan2(dy, dx) для получения угла
         return std::atan2(D.y - C.y, D.x - C.x); // Угол в радианах (angle(C -> D))
@@ -89,7 +77,7 @@ public:
      * @param W Трековая ширина W (track width) робота.
      * @param max_omega Максимальная угловая скорость.
      */
-    L1GuidanceController(double L, double W, double max_omega = 5.0)
+    L1GuidanceController(double L, double W, double max_omega = 0.050)
     { // Начало конструктора
         m_lookahead_L = L; // Установка дистанции упреждения
         m_track_width_W = W; // Установка базы робота
@@ -106,7 +94,7 @@ public:
      * Если пересечений нет, возвращает ближайшую точку (проекцию) на отрезке.
      * ГЕОМЕТРИЧЕСКИ БОЛЕЕ КОРРЕКТЕН для L1-контроллера.
      */
-    Point findNearestPointD_Exact(const Point &A, const Point &B, const Point &C) const
+    SPoint findNearestPointD_Exact(const SPoint &A, const SPoint &B, const SPoint &C) const
     { // Начало функции findNearestPointD_Exact
         // 1. ПРОВЕРКА B: Если B внутри или на границе окружности L
         const double LSq = m_lookahead_L * m_lookahead_L; // Квадрат радиуса (L^2)
@@ -175,7 +163,7 @@ public:
      * Находит точку D на отрезке, откладывая L от проекции робота на путь.
      * ПРОЩЕ, но ГЕОМЕТРИЧЕСКИ НЕ СООТВЕТСТВУЕТ исходному предположению L1.
      */
-    Point findNearestPointD_2var(const Point &A, const Point &B, const Point &C) const
+    SPoint findNearestPointD_2var(const SPoint &A, const SPoint &B, const SPoint &C) const
     { // Начало функции findNearestPointD_2var
         // Вектор AB
         const double dx = B.x - A.x; // Вектор пути X
@@ -208,7 +196,7 @@ public:
             target_dist_from_A = ab_len; // Берем точку B, если L выходит за пределы
 
         // Искомая точка D = A + u * (target_dist_from_A)
-        Point D; // Объект точки D
+        SPoint D; // Объект точки D
         D.x = A.x + ux * target_dist_from_A; // Вычисление X
         D.y = A.y + uy * target_dist_from_A; // Вычисление Y
 
@@ -231,9 +219,9 @@ public:
      * @param VR OUT: Скорость правого колеса (м/с).
      */
     void calculateControlCommands(
-        const Point& C,     
+        const SPoint& C,     
         double heading_rad,
-        const Point& D,       
+        const SPoint& D,       
         double V,   
         double& omega,              
         double& VL,                 
@@ -268,6 +256,53 @@ public:
         VL = V - rotational_component; // Скорость левого колеса (VL = V - ωW/2)
     } // Конец функции calculateControlCommands
 
+    /**
+     * @brief НОВАЯ ФУНКЦИЯ: Рассчитывает управляющий коэффициент (S) и абсолютные скорости колес (VL, VR).
+     * Использует ограничение m_max_steering_ratio.
+     * @param V Линейная скорость.
+     * @param S OUT: Управляющий коэффициент S (от -1.0 до 1.0).
+     * @param VL OUT: Скорость левого колеса (м/с).
+     * @param VR OUT: Скорость правого колеса (м/с).
+     */
+    void calculateControlCommands_Ratio(
+        const SPoint& C,     
+        double heading_rad,
+        const SPoint& D,       
+        double V,   
+        double& S,              
+        double& VL,                 
+        double& VR                  
+    ) const
+    { // Начало функции calculateControlCommands_Ratio (формат S)
+        // 1. Находим угол ошибки (Эта / eta)
+        double target_angle_rad = angleBetweenPoints(C, D); // Направление к D
+        double angle_error_rad = normalizeAngle(target_angle_rad - heading_rad); // Угол упреждения η
+        
+        // 2. L1-КОНТРОЛЛЕР: Расчет управляющего коэффициента S
+        // Формула: S = (W / L) * sin(η)
+        
+        double S_raw = 0.0; // Инициализация сырого коэффициента
+
+        if (m_lookahead_L > 1e-6)
+        { // Начало блока if
+            S_raw = (m_track_width_W / m_lookahead_L) * std::sin(angle_error_rad); // Расчет S
+        } // Конец блока if
+        
+        // 3. ОГРАНИЧЕНИЕ КОЭФФИЦИЕНТА S
+        S = S_raw; // Устанавливаем S
+        
+        if (std::abs(S) > m_max_steering_ratio) // Ограничиваем максимальное значение S
+        { // Начало блока if
+            S = (S > 0) ? m_max_steering_ratio : -m_max_steering_ratio; // Clamp S
+        } // Конец блока if
+
+        // 4. ОБРАТНАЯ КИНЕМАТИКА: Конвертация V и S в скорости колес
+        // VR = V * (1 + S)
+        // VL = V * (1 - S)
+        VR = V * (1.0 + S); // Скорость правого колеса
+        VL = V * (1.0 - S); // Скорость левого колеса
+    } // Конец функции calculateControlCommands_Ratio (формат S)
+
     // ====================================================================
     // 4. МЕТОДЫ НАСТРОЙКИ (Сеттеры)
     // ====================================================================
@@ -287,6 +322,16 @@ public:
     { // Начало функции setMaxOmega
         m_max_omega = max_omega; // Установка ограничения ω
     } // Конец функции setMaxOmega
+
+    /**
+     * @brief Устанавливает новый максимальный управляющий коэффициент.
+     */
+    void setMaxSteeringRatio(double max_ratio)
+    { // Начало функции setMaxSteeringRatio
+        m_max_steering_ratio = max_ratio; // Установка ограничения S
+    } // Конец функции setMaxSteeringRatio
+
+
 }; // Конец класса L1GuidanceController
 
 /*
@@ -302,11 +347,11 @@ int main()
     // --- 1. ПАРАМЕТРЫ СИМУЛЯЦИИ ---
     
     // Исходные данные траектории (один сегмент от A до B)
-    Point A = {0.0, 0.0};    // Начальная точка отрезка
-    Point B = {100.0, 50.0}; // Конечная точка отрезка
+    SPoint A = {0.0, 0.0};    // Начальная точка отрезка
+    SPoint B = {100.0, 50.0}; // Конечная точка отрезка
     
     // Параметры робота и симуляции
-    Point robot_pos = {2.0, -5.0};  // Текущая позиция робота
+    SPoint robot_pos = {2.0, -5.0};  // Текущая позиция робота
     double robot_heading = M_PI / 6.0; // Текущий курс (30 градусов)
     double V_cmd = 0.8;             // Линейная скорость V (м/с) - Команда!
     double L_lookahead = 15.0;      // Дистанция упреждения L
@@ -324,7 +369,7 @@ int main()
 
     // Объявляем переменные для вывода результатов
     double omega, VL, VR;
-    Point point_D;
+    SPoint point_D;
     
     // Тест Варианта 1 (Точная геометрия)
     printf("--- TESTING VARIANT 1: Exact Geometry (findNearestPointD_Exact) ---\n");

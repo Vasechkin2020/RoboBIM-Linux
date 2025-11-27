@@ -63,10 +63,10 @@ int main(int argc, char **argv)
     CTopic topic; // Экземпляр класса для всех публикуемых топиков
 
     //----------------------------- ПОДПИСКИ НА ТОПИКИ -------НЕ УБИРАЮ В КЛАСС ТАК КАК НУЖНЫ ГЛОБАЛЬНЫЕ КОЛБЕКИ И ПРОЧАЯ ХЕРНЯ --------
-    ros::Subscriber subscriber_Lidar = nh.subscribe<pb_msgs::Struct_PoseLidar>("pb/Lidar/Pose", 1, callback_Measurement); // Измеренная позиция по лидару лазеру
-    ros::Subscriber subscriber_Modul = nh.subscribe<pb_msgs::Struct_Modul2Data>("pb/Data/Modul", 1, callback_Modul);
-    ros::Subscriber subscriber_Driver = nh.subscribe<pb_msgs::Struct_Driver2Data>("pb/Data/Driver", 1, callback_Driver);
-    ros::Subscriber subscriber_Speed = nh.subscribe<pb_msgs::SSetSpeed>("pb/Data/Speed", 1, callback_Speed);
+    ros::Subscriber subscriber_Lidar = nh.subscribe<pb_msgs::Struct_PoseLidar>("pb/Lidar/Pose", 1, callback_Measurement, ros::TransportHints().tcpNoDelay(true)); // Измеренная позиция по лидару лазеру
+    ros::Subscriber subscriber_Modul = nh.subscribe<pb_msgs::Struct_Modul2Data>("pb/Data/Modul", 1, callback_Modul, ros::TransportHints().tcpNoDelay(true));
+    ros::Subscriber subscriber_Driver = nh.subscribe<pb_msgs::Struct_Driver2Data>("pb/Data/Driver", 1, callback_Driver, ros::TransportHints().tcpNoDelay(true));
+    ros::Subscriber subscriber_Speed = nh.subscribe<pb_msgs::SSetSpeed>("pb/Data/Speed", 1, callback_Speed, ros::TransportHints().tcpNoDelay(true));
     //---------------------------------------------------------------------------------------------------------------------------
 
     read_Param_StartPose(); // Считывание переменных параметров из лаунч файла при запуске. Там офсеты и режимы работы

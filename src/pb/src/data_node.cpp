@@ -31,9 +31,9 @@ int main(int argc, char **argv)
     CTopic topic; // Экземпляр класса для всех публикуемых топиков
     ros::Rate r(RATE);
 
-    ros::Subscriber sub_ControlModul = nh.subscribe("pb/Pos/ControlModul", 16, callback_ControlModul, ros::TransportHints().tcpNoDelay(true));        // Это мы подписываемся на то что публигует Main для Modul
-    ros::Subscriber sub_ControlPrint = nh.subscribe("pb/Control/ControlPrint", 16, callback_ControlPrint, ros::TransportHints().tcpNoDelay(true));    // Это мы подписываемся на то что публигует Main для Print
-    ros::Subscriber sub_ControlDriver = nh.subscribe("pb/Control/ControlDriver", 16, callback_ControlDriver, ros::TransportHints().tcpNoDelay(true)); // Это мы подписываемся на то что публигует Main для Data
+    ros::Subscriber sub_ControlModul = nh.subscribe("pb/Pos/ControlModul", 1, callback_ControlModul, ros::TransportHints().tcpNoDelay(true));        // Это мы подписываемся на то что публигует Main для Modul
+    ros::Subscriber sub_ControlPrint = nh.subscribe("pb/Control/ControlPrint", 1, callback_ControlPrint, ros::TransportHints().tcpNoDelay(true));    // Это мы подписываемся на то что публигует Main для Print
+    ros::Subscriber sub_ControlDriver = nh.subscribe("pb/Control/ControlDriver", 1, callback_ControlDriver, ros::TransportHints().tcpNoDelay(true)); // Это мы подписываемся на то что публигует Main для Data
 
     //*****************
     readParam(); // Считывание переменных параметров из лаунч файла при запуске. Там офсеты и режимы работы
@@ -101,7 +101,7 @@ int main(int argc, char **argv)
         //-----------------------------------------------------------------------------------------------------------------------------------
         if (flag_msgControlModul) // Если пришло сообщение в топике и сработал колбек
         {
-            flag_msgControlModul = false;
+            flag_msgControlModul = false; 
             collect_Data2Modul(1); // Обрабатываем пришедшие данные и пишем в перемнные для передачи на нижний уровень
         }
         if (flag_msgControlPrint) // Если пришло сообщение в топике и сработал колбек
@@ -127,7 +127,7 @@ int main(int argc, char **argv)
         g_factSpeed.speedR = g_desiredSpeed.speedR; //
 
         if (g_factSpeed.speedL != 0 || g_factSpeed.speedR != 0)
-            logi.log("g_factSpeed.L = %f g_factSpeed.R= %f \n", g_factSpeed.speedL, g_factSpeed.speedR);
+            logi.log("   g_factSpeed    L = %+6.3f R= %+6.3f \n", g_factSpeed.speedL, g_factSpeed.speedR);
 
         Data2Driver.control = speedToRps(g_factSpeed); // Конвертация скорости из метров в секунду в обороты в секунду для передачи на нижний уровень
         // printf("Data2Driver.controlL = %f Data2Driver.controlR= %f \n \n",Data2Driver.control.speedL,Data2Driver.control.speedR);

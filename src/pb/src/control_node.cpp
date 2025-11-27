@@ -8,7 +8,7 @@ AsyncFileLogger logi("/home/pi/RoboBIM-Linux/src/pb/log/", "control_node");
 #include "control_code/code.h"
 #include "control_code/gCodeParser.h"
 #include "control_code/c_joy.h"
-#include "control_code/l1Controller.h" //Класс для контроллера управления
+
 
 
 CJoy joy(0.5, 0.5); // Обьявляем экземпляр класса в нем вся обработка джойстика
@@ -34,10 +34,10 @@ int main(int argc, char **argv)
     CTopic topic; // Экземпляр класса для всех публикуемых топиков
 
     //----------------------------- ПОДПИСКИ НА ТОПИКИ -------НЕ УБИРАЮ В КЛАСС ТАК КАК НУЖНЫ ГЛОБАЛЬНЫЕ КОЛБЕКИ И ПРОЧАЯ ХЕРНЯ --------
-    // ros::Subscriber subscriber_Driver = nh.subscribe<pb_msgs::Struct_Driver2Data>("pbData/Driver", 1000, callback_Driver);
-    ros::Subscriber subscriber_Speed = nh.subscribe<pb_msgs::SSetSpeed>("pb/Data/Speed", 1000, callback_Speed);
-    ros::Subscriber subscriber_Pose = nh.subscribe<pb_msgs::Struct_PoseRotation>("pb/Pos/PoseRotation", 1000, callback_Pose);
-    ros::Subscriber subscriber_Joy = nh.subscribe("joy", 16, callback_Joy); // Это мы подписываемся на то что публикует нода джойстика
+    // ros::Subscriber subscriber_Driver = nh.subscribe<pb_msgs::Struct_Driver2Data>("pbData/Driver", 1, callback_Driver);
+    ros::Subscriber subscriber_Speed = nh.subscribe<pb_msgs::SSetSpeed>("pb/Data/Speed", 1, callback_Speed, ros::TransportHints().tcpNoDelay(true));
+    ros::Subscriber subscriber_Pose = nh.subscribe<pb_msgs::Struct_PoseRotation>("pb/Pos/PoseRotation", 1, callback_Pose, ros::TransportHints().tcpNoDelay(true));
+    ros::Subscriber subscriber_Joy = nh.subscribe("joy", 1, callback_Joy, ros::TransportHints().tcpNoDelay(true)); // Это мы подписываемся на то что публикует нода джойстика
 
     ros::Rate r(100);         // Частота в Герцах - задержка
     ros::Duration(1).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
@@ -93,7 +93,7 @@ int main(int argc, char **argv)
                 flagAngleFirst = true;
                 history.reset(); // СБРОС БУФЕРА
                 checker.reset();// СБРОС БУФЕРА
-                logi.log_b("    Start Angle \n");
+                logi.log_b("    Start Angle \n"); 
                 break;
             case 2:                          // Режим где движемся по координатам. даигаемся по длинне вектора.
                 point_A.x = msg_PoseRotation.x.odom; // Запоминаем те координаты которые были в момент начала движения
@@ -113,6 +113,10 @@ int main(int argc, char **argv)
                 point_B.x = commandArray[i].point_B_x;
                 point_B.y = commandArray[i].point_B_y;
                 logi.log("    point B-new  x = %+8.3f y = %+8.3f \n",commandArray[i].point_B_x,commandArray[i].point_B_y);
+
+                point_C.x = msg_PoseRotation.x.main; // Запоминаем те координаты которые были в момент начала движения
+                point_C.y = msg_PoseRotation.y.main;
+                logi.log("    'point C      x = %+8.3f y = %+8.3f '\n",point_C.x,point_C.y);
 
                 time = millis() + 999999; // Огромное время ставим
                 flagVector = true;        // Флаг что теперь отслеживаем длину вектора

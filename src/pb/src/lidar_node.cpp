@@ -34,8 +34,8 @@ int main(int argc, char **argv) // Главная функция програм�
     logi.log_b("Синий лог — информационное сообщение.\n");
 
     ros::NodeHandle nh;
-    ros::Subscriber subscriber_Lidar = nh.subscribe<sensor_msgs::LaserScan>("/scan", 1000, callback_Lidar); // Подписка на данные лидара
-    ros::Subscriber subscriber_Pose = nh.subscribe<pb_msgs::Struct_PoseBase>("pb/Pos/PoseBase", 1, callback_Pose);
+    ros::Subscriber subscriber_Lidar = nh.subscribe("/scan", 1, callback_Lidar, ros::TransportHints().tcpNoDelay(true)); // Подписка на данные лидара
+    ros::Subscriber subscriber_Pose = nh.subscribe<pb_msgs::Struct_PoseBase>("pb/Pos/PoseBase", 1, callback_Pose, ros::TransportHints().tcpNoDelay(true));
     ros::Duration(1).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
 
 

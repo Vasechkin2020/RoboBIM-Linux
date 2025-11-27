@@ -82,6 +82,7 @@ void collect_Data2Driver(int data_)
 		g_desiredSpeed.speedR = 0;
 
 	}
+	// logi.log("msg_ControlDriver L = %+6.3f R= %+6.3f \n", msg_ControlDriver.control.speedL, msg_ControlDriver.control.speedR);
 }
 
 #endif
