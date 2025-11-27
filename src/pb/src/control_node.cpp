@@ -93,30 +93,34 @@ int main(int argc, char **argv)
                 flagAngleFirst = true;
                 history.reset(); // СБРОС БУФЕРА
                 checker.reset();// СБРОС БУФЕРА
+                
+                point_C.x = msg_PoseRotation.x.main; // Запоминаем те координаты которые были в момент начала движения
+                point_C.y = msg_PoseRotation.y.main;
+                logi.log("    'point C main  x = %+8.3f y = %+8.3f th = %+8.3f '\n",point_C.x,point_C.y, RAD2DEG(msg_PoseRotation.th.main));
+
                 logi.log_b("    Start Angle \n"); 
                 break;
             case 2:                          // Режим где движемся по координатам. даигаемся по длинне вектора.
-                point_A.x = msg_PoseRotation.x.odom; // Запоминаем те координаты которые были в момент начала движения
-                point_A.y = msg_PoseRotation.y.odom;
-                logi.log("    point A odom    x = %+8.3f y = %+8.3f \n",point_A.x,point_A.y);
+                // point_A.x = msg_PoseRotation.x.odom; // Запоминаем те координаты которые были в момент начала движения
+                // point_A.y = msg_PoseRotation.y.odom;
+                // logi.log("    point A odom    x = %+8.3f y = %+8.3f \n",point_A.x,point_A.y);
                 point_A.x = commandArray[i].point_A_x;
                 point_A.y = commandArray[i].point_A_y;
-                logi.log("    point A2     x = %+8.3f y = %+8.3f \n",commandArray[i].point_A_x,commandArray[i].point_A_y);
+                logi.log("    point A table  x = %+8.3f y = %+8.3f \n",commandArray[i].point_A_x,commandArray[i].point_A_y);
 
-                signed_distance = commandArray[i].len;
-                if (commandArray[i].velLen < 0) // Если скорость орицательная то надо учитывать при расчетах
-                    signed_distance = -commandArray[i].len;
-
-                point_B = calculate_new_coordinates(point_A, msg_PoseRotation.th.odom, signed_distance); // Посчитали конечные координаты точки В
-                logi.log("    point B calc x = %+8.3f y = %+8.3f \n", point_B.x,point_B.y);
+                // signed_distance = commandArray[i].len;
+                // if (commandArray[i].velLen < 0) // Если скорость орицательная то надо учитывать при расчетах
+                //     signed_distance = -commandArray[i].len;
+                // point_B = calculate_new_coordinates(point_A, msg_PoseRotation.th.odom, signed_distance); // Посчитали конечные координаты точки В
+                // logi.log("    point B calc x = %+8.3f y = %+8.3f \n", point_B.x,point_B.y);
                 
                 point_B.x = commandArray[i].point_B_x;
                 point_B.y = commandArray[i].point_B_y;
-                logi.log("    point B-new  x = %+8.3f y = %+8.3f \n",commandArray[i].point_B_x,commandArray[i].point_B_y);
+                logi.log("    point B table  x = %+8.3f y = %+8.3f \n",commandArray[i].point_B_x,commandArray[i].point_B_y);
 
                 point_C.x = msg_PoseRotation.x.main; // Запоминаем те координаты которые были в момент начала движения
                 point_C.y = msg_PoseRotation.y.main;
-                logi.log("    'point C      x = %+8.3f y = %+8.3f '\n",point_C.x,point_C.y);
+                logi.log("    'point C main  x = %+8.3f y = %+8.3f th = %+8.3f '\n",point_C.x,point_C.y, RAD2DEG(msg_PoseRotation.th.main));
 
                 time = millis() + 999999; // Огромное время ставим
                 flagVector = true;        // Флаг что теперь отслеживаем длину вектора

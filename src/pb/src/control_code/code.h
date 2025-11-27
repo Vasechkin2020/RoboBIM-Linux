@@ -339,7 +339,8 @@ void workAngle(float angle_, u_int64_t &time_, float velAngle_)
 	time = time_now;
 	float accel = max_deceleration * dt; // Ускорение/замедление
 
-	float angleFact = msg_PoseRotation.th.odom; // Угол который отслеживаем
+	float angleFact; // Угол который отслеживаем
+	// angleFact = msg_PoseRotation.th.odom;
 	// logi.log("    angleFact odom alfa= %+8.3f\n", angleFact);
 	angleFact = msg_PoseRotation.th.main; // Угол который отслеживаем
 	// logi.log("    angleFact main alfa= %+8.3f\n", angleFact);
@@ -398,8 +399,12 @@ void workAngle(float angle_, u_int64_t &time_, float velAngle_)
 			controlSpeed.control.speedL = speedCurrent;
 			controlSpeed.control.speedR = -speedCurrent;
 		}
-		logi.log("    workAngle target = %+8.3f real = %+8.3f mistake = %+8.3f | V_max_ang = %+8.3f  speedCurrent V_max_lin = %+8.3f | real L = %+8.3f R = %+8.3f \n",
-				 angle_, RAD2DEG(angleFact), angleMistake, V_max_ang, V_max_lin, controlSpeed.control.speedL, controlSpeed.control.speedR);
+
+		point_C.x = msg_PoseRotation.x.main; // Запоминаем те координаты которые были в момент начала движения
+        point_C.y = msg_PoseRotation.y.main;
+
+		logi.log("    point C=' %+8.3f %+8.3f ' real= ' %+8.3f ' target= %+8.3f  mistake= %+8.3f | V_max_ang= %+8.3f  speedCurrent V_max_lin= %+8.3f | real L= %+8.3f R= %+8.3f \n",
+				 point_C.x, point_C.y, RAD2DEG(angleFact), angle_,  angleMistake, V_max_ang, V_max_lin, controlSpeed.control.speedL, controlSpeed.control.speedR);
 	}
 }
 
@@ -524,20 +529,28 @@ void workVector(float len_, SPoint point_A_, SPoint point_B_, u_int64_t &time_, 
 		double speedL = 0; // OUT скорости колес ЛЕВОГО
 		double speedR = 0; // OUT скорости колес ПРАВОГО
 		double omega = 0;  // OUT: Угловая скорость (рад/с).
-						  // Создание контроллера: (L, W, MaxOmega)
-		double L_lookahead = 0.25; // Дистанция упреждения L
+		double angle_error_rad = 0; // OUT: Угловая ошибка рад. По ней считается все управление.
+		double target_angle_rad =0;
+		double heading_used_rad = 0; // Выходные данные (для отладки)
+
+		// Создание контроллера:
+		double L_lookahead = 0.50; // Дистанция упреждения L
 		static L1GuidanceController controller(L_lookahead, DISTANCE_WHEELS);
+    	controller.setMaxOmega(0.10);
+    	controller.setMaxSteeringRatio(1.0);
+
 
 		SPoint point_D = controller.findNearestPointD_Exact(point_A_, point_B_, point_C_);												// Находим точку D на прямой между точками А и В
 		SPoint point_D2 = controller.findNearestPointD_2var(point_A_, point_B_, point_C_);												// Находим точку D на прямой между точками А и В
-		controller.calculateControlCommands(point_C_, DEG2RAD(msg_PoseRotation.th.main), point_D, speedCurrent, omega, speedL, speedR); //  Расчет управляющего сигнала
+		controller.calculateControlCommands(point_C_, msg_PoseRotation.th.main, point_D, point_B_, speedCurrent, omega, speedL, speedR, angle_error_rad,target_angle_rad,heading_used_rad); //  Расчет управляющего сигнала
 		
 		//A= (%+8.3f %+8.3f ) B= (%+8.3f %+8.3f ) point_A_.x, point_A_.y, 							point_B_.x, point_B_.y, 
 		//D2= ( %+8.3f %+8.3f )point_D2.x, point_D2.y,
-		logi.log("    point C=' %+8.3f %+8.3f 'D= %+8.3f %+8.3f | speedCurrent= %+8.3f speed L= %+8.3f R= %+8.3f {%= %+5.0f } 'omega= %+8.3f' \n", 
-							point_C_.x, point_C_.y, 
+		logi.log("    pose C=' %+8.3f %+8.3f %+8.3f 'D= %+8.3f %+8.3f | Vel= %+8.3f | speed L= %+8.3f R= %+8.3f | ' %= %+6.1f ' omega= %+8.3f | heading= %+8.3f target_angle= %+8.3f angle_error= %+8.3f \n", 
+							point_C_.x, point_C_.y, RAD2DEG(msg_PoseRotation.th.main),
 							point_D.x, point_D.y,
-							speedCurrent, speedL, speedR, (speedL/speedR)*100, omega);
+							speedCurrent, speedL, speedR, (speedL/speedR)*100, omega, 
+							RAD2DEG(heading_used_rad), RAD2DEG(target_angle_rad),RAD2DEG(angle_error_rad));
 
 		// static float vectorKoef = 3.0;		   // P коефициент пид регулятора
 		// float speedCurrent = abs(vectorMistake * vectorKoef); // Это простейший вариант с ПИД регулировнаием по Р
