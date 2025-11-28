@@ -1,10 +1,15 @@
 ; Пробел перед точкой с запятой обязателен!!! это разделитель перед комментарием
 G10 X2.000 Y2.000 A0.000 ; Initial required start point and angle in robot's local coordinates
 
+G4 P10000 ;  
+G1 X4.0 Y3.00 F0.05 ;  
 G4 P2000 ;  
-G1 X3.0 Y3.00 F0.05 ;  
+G2 X4.0 Y3.00 F0.2; 
+
+G4 P10000 ;  
+G1 X2.0 Y1.00 F0.05 ;  
 G4 P2000 ;  
-G2 X3.0 Y3.00 F0.1; 
+G2 X2.0 Y1.00 F0.2; 
 
 
 

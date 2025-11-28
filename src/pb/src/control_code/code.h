@@ -18,8 +18,6 @@ const double PI = 3.14159265358979323846;
 const double DEG_TO_RAD = PI / 180.0;
 const double RAD_TO_DEG = 180.0 / PI;
 
-int g_controlMode = 0; // Выбор режима управления 0- по одометрии 1- по слиянию main
-SPose g_poseC; // Тут храним текущую позицию от которой все считаем в зависимости от режима controlMode
 void readParam(); // Считывание переменных параметров из лаунч файла при запуске. Там офсеты и режимы работы
 
 void initCommandArray(int verCommand_); // Заполнение маасива команд
@@ -210,7 +208,7 @@ private:
 	double previous_value_;	   // Последнее переданное значение
 };
 
-const size_t N_GROWTH = 3;			  // Требуем 3 последовательных роста
+const size_t N_GROWTH = 5;			  // Требуем 3 последовательных роста
 RisingTrendChecker checker(N_GROWTH); // Создаем объект
 
 // Функция обраьтного вызова по подписке на топик джойстика nh.subscribe("joy", 16, callback_Joy);
@@ -274,15 +272,7 @@ void initCommandArray(int verCommand_)
 
 void readParam() // Считывание переменных параметров из лаунч или yaml файла при запуске. Там офсеты и режимы работы
 {
-	// ros::NodeHandle nh_private("~");
-	// // Имя можно с палкой или без, смотря как в лаунч файле параметры обявлены. связано с видимостью глобальной или локальной. относительным поиском переменной как сказал Максим
-	// if (!nh_private.getParam("verComand", verComand))
-	// 	verComand = 999;
-
-	// ROS_INFO("--- Start node with parametrs:");
-	// ROS_INFO("verComand = %i", verComand);
-	// ROS_INFO("---");
-	ros::NodeHandle nh_global; // <--- Используется для доступа к /pb_config/ // Создаем ГЛОБАЛЬНЫЙ обработчик, который ищет параметры, начиная с корня (/).
+	ros::NodeHandle nh_global;										   // <--- Используется для доступа к /pb_config/ // Создаем ГЛОБАЛЬНЫЙ обработчик, который ищет параметры, начиная с корня (/).
 	nh_global.param<int>("/pb_config/control_mode", g_controlMode, 0); // # Режим работы управления. Если 0 то по колесам одометрии, 1 управление по скомплеменированному с измерением main
 	logi.log_b("+++ Start node with parametrs: controlMode = %i\n", g_controlMode);
 	// ros::Duration(10).sleep(); // Подождем пока
@@ -348,7 +338,7 @@ void workAngle(float angle_, u_int64_t &time_, float velAngle_)
 	float angleFact; // Угол который отслеживаем
 	// angleFact = msg_PoseRotation.th.odom;
 	// logi.log("    angleFact odom alfa= %+8.3f\n", angleFact);
-	angleFact = msg_PoseRotation.th.main; // Угол который отслеживаем
+	angleFact = g_poseC.th; // Угол который отслеживаем
 	// logi.log("    angleFact main alfa= %+8.3f\n", angleFact);
 
 	angleMistake = angle_ - RAD2DEG(angleFact);		// Смотрим какой угол.// Смотрим куда нам надо Считаем ошибку по углу и включаем колеса в нужную сторону с учетом ошибки по углу и максимально заданой скорости на колесах
@@ -406,11 +396,11 @@ void workAngle(float angle_, u_int64_t &time_, float velAngle_)
 			controlSpeed.control.speedR = -speedCurrent;
 		}
 
-		point_C.x = msg_PoseRotation.x.main; // Запоминаем те координаты которые были в момент начала движения
-        point_C.y = msg_PoseRotation.y.main;
+		point_C.x = g_poseC.x; //
+		point_C.y = g_poseC.y;
 
 		logi.log("    point C=' %+8.3f %+8.3f ' real= ' %+8.3f ' target= %+8.3f  mistake= %+8.3f | V_max_ang= %+8.3f  speedCurrent V_max_lin= %+8.3f | real L= %+8.3f R= %+8.3f \n",
-				 point_C.x, point_C.y, RAD2DEG(angleFact), angle_,  angleMistake, V_max_ang, V_max_lin, controlSpeed.control.speedL, controlSpeed.control.speedR);
+				 point_C.x, point_C.y, RAD2DEG(angleFact), angle_, angleMistake, V_max_ang, V_max_lin, controlSpeed.control.speedL, controlSpeed.control.speedR);
 	}
 }
 
@@ -484,8 +474,8 @@ void workVector(float len_, SPoint point_A_, SPoint point_B_, u_int64_t &time_, 
 	// point_C_.y = msg_PoseRotation.y.odom;
 	// logi.log("    point C odom    x = %+8.3f y = %+8.3f \n", point_C.x, point_C.y);
 
-	point_C_.x = msg_PoseRotation.x.main; // Текущие координаты робота
-	point_C_.y = msg_PoseRotation.y.main; // Текущие координаты робота
+	point_C_.x = g_poseC.x; // Текущие координаты робота
+	point_C_.y = g_poseC.y; // Текущие координаты робота
 	// logi.log("    point C main    x = %+8.3f y = %+8.3f \n", point_C.x, point_C.y);
 
 	// F теперь используется для задания скорости И направления.
@@ -518,11 +508,11 @@ void workVector(float len_, SPoint point_A_, SPoint point_B_, u_int64_t &time_, 
 	}
 	else
 	{
+		// ============================================== ЭТО УПРАВЛЕНИЕ ОБЩЕЙ СКОРОСТЬ  =================================================
 		float V_max = calculate_max_safe_speed(vectorMistake, max_deceleration); // Считаем максимальную скорость с которой успеем остановиться
-
-		if (V_max <= speedCurrent) // Если наша скорость больше чем допустимо то снижаем до допустимой  ЭТО ТОРМОЖЕНИЕ
-			speedCurrent = V_max;
-		else // ЭТО УСКОРЕНИЕ
+		if (V_max <= speedCurrent)												 // Если наша скорость больше чем допустимо то снижаем до допустимой
+			speedCurrent = V_max;												 // ЭТО ТОРМОЖЕНИЕ
+		else																	 // ЭТО УСКОРЕНИЕ
 		{
 			speedCurrent = speedCurrent + accel; // Ускорение.Увеличиваем скорость
 			if (speedCurrent > abs_velLen)		 // Максимальная скорость
@@ -531,62 +521,57 @@ void workVector(float len_, SPoint point_A_, SPoint point_B_, u_int64_t &time_, 
 			}
 		}
 
-		// ============================================== ЭТО УПРАВЛЕНИЕ ПО ТРАЕКТОРИИ. СТРАЕМСЯ ЕХАТЬ НА ТОЧКУ D, лежащуу на отрезке АВ =================================================
-		double speedL = 0; // OUT скорости колес ЛЕВОГО
-		double speedR = 0; // OUT скорости колес ПРАВОГО
-		double omega = 0;  // OUT: Угловая скорость (рад/с).
-		double angle_error_rad = 0; // OUT: Угловая ошибка рад. По ней считается все управление.
-		double target_angle_rad =0;
-		double heading_used_rad = 0; // Выходные данные (для отладки)
+			// ============================================== ЭТО УПРАВЛЕНИЕ ПО ТРАЕКТОРИИ. СТРАЕМСЯ ЕХАТЬ НА ТОЧКУ D, лежащуу на отрезке АВ =================================================
+			double speedL = 0;			// OUT скорости колес ЛЕВОГО
+			double speedR = 0;			// OUT скорости колес ПРАВОГО
+			double omega = 0;			// OUT: Угловая скорость (рад/с).
+			double angle_error_rad = 0; // OUT: Угловая ошибка рад. По ней считается все управление.
+			double target_angle_rad = 0; // Выходные данные (для отладки)
+			double heading_used_rad = 0; // Выходные данные (для отладки)
+			SPoint point_D;
+			SPoint point_D2;
 
-		// Создание контроллера:
-		double L_lookahead = 0.50; // Дистанция упреждения L
-		static L1GuidanceController controller(L_lookahead, DISTANCE_WHEELS);
-    	controller.setMaxOmega(0.10);
-    	controller.setMaxSteeringRatio(1.0);
-
-
-		SPoint point_D = controller.findNearestPointD_Exact(point_A_, point_B_, point_C_);												// Находим точку D на прямой между точками А и В
-		SPoint point_D2 = controller.findNearestPointD_2var(point_A_, point_B_, point_C_);												// Находим точку D на прямой между точками А и В
-		controller.calculateControlCommands(point_C_, msg_PoseRotation.th.main, point_D, point_B_, speedCurrent, omega, speedL, speedR, angle_error_rad,target_angle_rad,heading_used_rad); //  Расчет управляющего сигнала
-		
-		//A= (%+8.3f %+8.3f ) B= (%+8.3f %+8.3f ) point_A_.x, point_A_.y, 							point_B_.x, point_B_.y, 
-		//D2= ( %+8.3f %+8.3f )point_D2.x, point_D2.y,
-		logi.log("    pose C=' %+8.3f %+8.3f %+8.3f 'D= %+8.3f %+8.3f | Vel= %+8.3f | speed L= %+8.3f R= %+8.3f | ' %= %+6.1f ' omega= %+8.3f | heading= %+8.3f target_angle= %+8.3f angle_error= %+8.3f \n", 
-							point_C_.x, point_C_.y, RAD2DEG(msg_PoseRotation.th.main),
-							point_D.x, point_D.y,
-							speedCurrent, speedL, speedR, (speedL/speedR)*100, omega, 
-							RAD2DEG(heading_used_rad), RAD2DEG(target_angle_rad),RAD2DEG(angle_error_rad));
-
-		// static float vectorKoef = 3.0;		   // P коефициент пид регулятора
-		// float speedCurrent = abs(vectorMistake * vectorKoef); // Это простейший вариант с ПИД регулировнаием по Р
-		//------------
-		// ЭТО УПРАВЛЕНИЕ ПО ТРАЕКТОРИИ. СТРАЕМСЯ ЕХАТЬ НА ТОЧКУ D, лежащуу на отрезке АВ
-		float L = 0.1;
-		double steering = 0; // Длинна в метрах
-		// point_D = findNearestSPointD(point_A, point_B, point_C, L);				 // Находим точку D на прямой между точками А и В и на расстоянии L от точки робота С
-		// steering = calculateSteering(point_C, msg_Pose.th.odom, point_D, dt); //  Расчет управляющего сигнала
-		steering = 0; // пока обнулим
-					  //------------
-
-		if ((speedCurrent - steering) < 0.005) // Минимальная скорость
-			speedCurrent = 0.005 + steering;   // Если получается что меньше то берет так чтобы одно колесо было минимум а другое нет
-
-		if (signed_velLen > 0) // Если скорость положительная то вращается в одну сторону или в другую
+		if (g_controlMode) // Тут управление колесами. Берем общую скорость как основу и по расчету притормаживаем одно и ускоряем другое колесо.
 		{
-			controlSpeed.control.speedL = speedCurrent + steering; // Скороть должна увеличивать до заданой или максимальной с учетом алогритма в data_node  а уменьшать будет по коефициету по ошибке
-			controlSpeed.control.speedR = speedCurrent - steering;
+			double L_lookahead = 0.4; // Дистанция упреждения L
+			static L1GuidanceController controller(L_lookahead, DISTANCE_WHEELS);// Создание контроллера:
+			controller.setMaxOmega(0.10);
+			controller.setMaxSteeringRatio(1.0);
+
+			point_D = controller.findNearestPointD_Exact(point_A_, point_B_, point_C_);																						// Находим точку D на прямой между точками А и В
+			point_D2 = controller.findNearestPointD_2var(point_A_, point_B_, point_C_);																						// Находим точку D на прямой между точками А и В
+			controller.calculateControlCommands(point_C_, g_poseC.th, point_D, point_B_, speedCurrent, omega, speedL, speedR, angle_error_rad, target_angle_rad, heading_used_rad); //  Расчет управляющего сигнала
+
 		}
-		else
+		else // Тут без управления. Просто скорость на колеса со знаком
 		{
-			controlSpeed.control.speedL = -speedCurrent + steering;
-			controlSpeed.control.speedR = -speedCurrent - steering;
+
+			if ((speedCurrent) < 0.005) // Минимальная скорость
+				speedCurrent = 0.005;	// Если получается что меньше то берет так чтобы одно колесо было минимум а другое нет
+
+			if (signed_velLen > 0) // Если скорость положительная то вращается в одну сторону или в другую
+			{
+				controlSpeed.control.speedL = speedCurrent; // Скороть должна увеличивать до заданой или максимальной с учетом алогритма в data_node  а уменьшать будет по коефициету по ошибке
+				controlSpeed.control.speedR = speedCurrent;
+			}
+			else
+			{
+				controlSpeed.control.speedL = -speedCurrent;
+				controlSpeed.control.speedR = -speedCurrent;
+			}
 		}
+			// A= (%+8.3f %+8.3f ) B= (%+8.3f %+8.3f ) point_A_.x, point_A_.y, 							point_B_.x, point_B_.y,
+			// D2= ( %+8.3f %+8.3f )point_D2.x, point_D2.y,
+			logi.log("    pose C=' %+8.3f %+8.3f %+8.3f 'D= %+8.3f %+8.3f Mistake= %+8.5f |Vel= %+8.3f |speed L= %+8.3f R= %+8.3f '|%= %+6.1f ' omega= %+8.3f |heading= %+8.3f target_angle= %+8.3f angle_error= %+8.3f \n",
+					 point_C_.x, point_C_.y, RAD2DEG(g_poseC.th),
+					 point_D.x, point_D.y,
+					 vectorMistake, speedCurrent, 
+					 speedL, speedR, (speedL / speedR) * 100, omega,
+					 RAD2DEG(heading_used_rad), RAD2DEG(target_angle_rad), RAD2DEG(angle_error_rad));
+			controlSpeed.control.speedL = speedL;
+			controlSpeed.control.speedR = speedR;
 		// logi.log("    workVector mistake = %8.5f (%+9.5f, %+9.5f -> %+6.3f, %+6.3f) | V_max = %f | fact speedL = %f speedR = %f | dt = %f  accel = %f \n",
 		// 		 vectorMistake, point_C_.x, point_C_.y, point_B_.x, point_B_.y, V_max, controlSpeed.control.speedL, controlSpeed.control.speedR, dt, accel);
-
-		controlSpeed.control.speedL = speedL;
-		controlSpeed.control.speedR = speedR;
 	}
 }
 

@@ -31,9 +31,9 @@ int main(int argc, char **argv)
     CTopic topic; // Экземпляр класса для всех публикуемых топиков
     ros::Rate r(RATE);
 
-    ros::Subscriber sub_ControlModul = nh.subscribe("pb/Pos/ControlModul", 1, callback_ControlModul, ros::TransportHints().tcpNoDelay(true));        // Это мы подписываемся на то что публигует Main для Modul
-    ros::Subscriber sub_ControlPrint = nh.subscribe("pb/Control/ControlPrint", 1, callback_ControlPrint, ros::TransportHints().tcpNoDelay(true));    // Это мы подписываемся на то что публигует Main для Print
-    ros::Subscriber sub_ControlDriver = nh.subscribe("pb/Control/ControlDriver", 1, callback_ControlDriver, ros::TransportHints().tcpNoDelay(true)); // Это мы подписываемся на то что публигует Main для Data
+    ros::Subscriber sub_ControlModul = nh.subscribe("pb/Pos/ControlModul", 3, callback_ControlModul, ros::TransportHints().tcpNoDelay(true));        // Это мы подписываемся на то что публигует Main для Modul
+    ros::Subscriber sub_ControlPrint = nh.subscribe("pb/Control/ControlPrint", 3, callback_ControlPrint, ros::TransportHints().tcpNoDelay(true));    // Это мы подписываемся на то что публигует Main для Print
+    ros::Subscriber sub_ControlDriver = nh.subscribe("pb/Control/ControlDriver", 3, callback_ControlDriver, ros::TransportHints().tcpNoDelay(true)); // Это мы подписываемся на то что публигует Main для Data
 
     //*****************
     readParam(); // Считывание переменных параметров из лаунч файла при запуске. Там офсеты и режимы работы
@@ -87,6 +87,7 @@ int main(int argc, char **argv)
         ros::Duration duration = now_time - start_cicle_time; // Находим разницу между началом и концом
         double dt = duration.toSec();                   // Получаем количество секунд
         start_cicle_time = now_time;                          // Запоминаем на будущий расчет
+        
         ros::spinOnce(); // Обновление в данных в ядре ROS, по этой команде происходит вызов функции обратного вызова
 
         static double time_print = current_time_sec; // Переменная для периодической печати

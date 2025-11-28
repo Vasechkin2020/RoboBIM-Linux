@@ -107,9 +107,9 @@ int main(int argc, char **argv)
                 history.reset(); // СБРОС БУФЕРА
                 checker.reset();// СБРОС БУФЕРА
                 
-                point_C.x = msg_PoseRotation.x.main; // Запоминаем те координаты которые были в момент начала движения
-                point_C.y = msg_PoseRotation.y.main;
-                logi.log("    'point C main  x = %+8.3f y = %+8.3f th = %+8.3f '\n",point_C.x,point_C.y, RAD2DEG(msg_PoseRotation.th.main));
+                point_C.x = g_poseC.x; // Запоминаем те координаты которые были в момент начала движения
+                point_C.y = g_poseC.y;
+                logi.log("    'point C x = %+8.3f y = %+8.3f th = %+8.3f '\n",point_C.x,point_C.y, RAD2DEG(g_poseC.th));
 
                 logi.log_b("    Start Angle \n"); 
                 break;
@@ -131,9 +131,9 @@ int main(int argc, char **argv)
                 point_B.y = commandArray[i].point_B_y;
                 logi.log("    point B table  x = %+8.3f y = %+8.3f \n",commandArray[i].point_B_x,commandArray[i].point_B_y);
 
-                point_C.x = msg_PoseRotation.x.main; // Запоминаем те координаты которые были в момент начала движения
-                point_C.y = msg_PoseRotation.y.main;
-                logi.log("    'point C main  x = %+8.3f y = %+8.3f th = %+8.3f '\n",point_C.x,point_C.y, RAD2DEG(msg_PoseRotation.th.main));
+                point_C.x = g_poseC.x; // Запоминаем те координаты которые были в момент начала движения
+                point_C.y = g_poseC.y;
+                logi.log("    'point C main  x = %+8.3f y = %+8.3f th = %+8.3f '\n",point_C.x,point_C.y, RAD2DEG(g_poseC.th));
 
                 time = millis() + 999999; // Огромное время ставим
                 flagVector = true;        // Флаг что теперь отслеживаем длину вектора
@@ -158,15 +158,6 @@ int main(int argc, char **argv)
             }  
         }
 
-        if (flagAngle) // Отслеживание угла
-        {
-            workAngle(commandArray[i].angle, time, commandArray[i].velAngle); // Тут отрабатываем алгоритм отслеживания угла при повороте
-        }
-
-        if (flagVector) // Отслеживание длины вектора
-        {
-            workVector(commandArray[i].len, point_A, point_B, time, commandArray[i].velLen); // Тут отрабатываем алгоритм отслеживания длины вектора при движении прямо
-        }
 
         if (time < millis())
         {
@@ -188,14 +179,24 @@ int main(int argc, char **argv)
             logi.log_r("    Start new step i = %i \n", i);
         }
 
-        if (flag_msgSpeed) // Флаг что пришло сообщение от ноды Data по Speed.
+        if (flagAngle) // Отслеживание угла
         {
-            flag_msgSpeed = false;
+            workAngle(commandArray[i].angle, time, commandArray[i].velAngle); // Тут отрабатываем алгоритм отслеживания угла при повороте
         }
-        if (flag_msgPose) // Флаг что пришло сообщение от ноды Pose
+
+        if (flagVector) // Отслеживание длины вектора
         {
-            flag_msgPose = false;
+            workVector(commandArray[i].len, point_A, point_B, time, commandArray[i].velLen); // Тут отрабатываем алгоритм отслеживания длины вектора при движении прямо
         }
+
+        // if (flag_msgSpeed) // Флаг что пришло сообщение от ноды Data по Speed.
+        // {
+        //     flag_msgSpeed = false;
+        // }
+        // if (flag_msgPose) // Флаг что пришло сообщение от ноды Pose
+        // {
+        //     flag_msgPose = false;
+        // }
 
         // if (flag_msgDriver) // Флаг что пришло сообщение от ноды Data по Driver. Тут пишем какую-то обработку данных если нужно.
         // {
@@ -219,10 +220,7 @@ int main(int argc, char **argv)
         timeCycle(timeStart, timeNow); // Выводим справочно время работы цикла и время с начала работы программы
         r.sleep();                     // Интеллектуальная задержка на указанную частоту
     }
-    controlSpeed.control.speedL = 0; //
-    controlSpeed.control.speedR = 0;
-    topic.publicationControlDriver(); // Формируем и Публикуем команды для управления Driver
-    logi.log_r("--- сontrol_node STOP \n");
+    logi.log_r("=== сontrol_node shutdown = STOP \n");
     return 0;
 }
 

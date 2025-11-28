@@ -70,6 +70,9 @@ static SPoint point_B;
 static SPoint point_C;
 static SPoint point_D;
 
+int g_controlMode = 0; // Выбор режима управления 0- по одометрии 1- по слиянию main
+SPose g_poseC; // Тут храним текущую позицию от которой все считаем в зависимости от режима controlMode
+
 pb_msgs::Struct_Data2Driver Data2Driver;      // Структура с командами которую публикуем и которую потом Driver исполняет
 pb_msgs::Struct_Data2Driver Data2Driver_prev; // Структура с командами которую публикуем и которую потом Driver исполняет предыдущее состоние
 
