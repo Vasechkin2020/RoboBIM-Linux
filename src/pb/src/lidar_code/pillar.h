@@ -137,7 +137,7 @@ SPose CPillar::getLocationmodeDist(SDistDirect *distDirect, SPose pose_, float a
 
         // poseLidar.th = 90 - getTheta(poseLidar, 1); // Получаем угол куда смотрит нос лидара в системе "odom" + 90 так как сиcтема координат повернута относительно /odom/
         poseLidar.th = -getTheta(poseLidar, 1); // Получаем угол куда смотрит нос лидара в системе "odom" + 90 так как сиcтема координат повернута относительно /odom/
-        logi.log_g("    modeDist pose.x= %+8.3f y= %+8.3f theta= %+8.3f count_poseLidarmodeDist = %i  \n", poseLidar.x, poseLidar.y, poseLidar.th, count_poseLidarmodeDist);
+        logi.log_g("    'modeDist pose.x= %+8.3f y= %+8.3f theta= %+8.3f ' count_poseLidarmodeDist = %i  \n", poseLidar.x, poseLidar.y, poseLidar.th, count_poseLidarmodeDist);
         // return poseLidar;
         poseReturn_ = poseLidar;
     }
@@ -277,7 +277,7 @@ SPose CPillar::getLocationmodeAngle(SDistDirect *distDirect, SPose pose_, float 
     g_poseLidar.countCrossCircle = count_poseLidarmodeAngle;
     if (count_poseLidarmodeAngle > 100)
     {
-        logi.log_r("count_poseLidarmodeAngle ERROR !!!! \n");
+        logi.log_r("    --- count_poseLidarmodeAngle ERROR !!!! \n");
         return pose_;
     }
     if (count_poseLidarmodeAngle > 2) // Если есть хотя бы 2 значения то считаем и усредняем.Иначе возвращаем что и было.
@@ -294,7 +294,7 @@ SPose CPillar::getLocationmodeAngle(SDistDirect *distDirect, SPose pose_, float 
         poseLidar.y = poseLidar.y / count_poseLidarmodeAngle;
         // poseLidar.th = 90 - getTheta(poseLidar, 2); // Получаем угол куда смотрит нос лидара в системе "odom"
         poseLidar.th = -getTheta(poseLidar, 2); // Получаем угол куда смотрит нос лидара в системе "odom"
-        logi.log_w("    modeAngle pose.x= %+8.3f y= %+8.3f theta= %+8.3f  \n", poseLidar.x, poseLidar.y, poseLidar.th);
+        logi.log_g("    'modeAngle pose.x= %+8.3f y= %+8.3f theta= %+8.3f  '\n", poseLidar.x, poseLidar.y, poseLidar.th);
         return poseLidar;
         // // Находим куда смотрит лидар на основе полученного положения и результтов с лидара фактических
         // float gamma = 0;
@@ -311,7 +311,7 @@ SPose CPillar::getLocationmodeAngle(SDistDirect *distDirect, SPose pose_, float 
     }
     else
     {
-        logi.log_r("modeAngle ERROR count_poseLidarmodeAngle <= 2 \n");
+        logi.log_r("    --- modeAngle ERROR count_poseLidarmodeAngle <= 2 \n");
         return pose_; // Возвращаем что и было
     }
 

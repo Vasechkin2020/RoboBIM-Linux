@@ -452,11 +452,11 @@ SPoint_Q TrilaterationSolver::find_A_by_mnk_simple()
     AQ.used_measurements = 0;
 
     int N = all_circles.size();
-    logi.log("\n--- SOLVER: SIMPLE (Pass 1 of 1) (Total N=%d) Aprev x= %6.3f y= %6.3f ---\n", N, A_prev.x, A_prev.y); // Output solver start
+    logi.log("    SOLVER: SIMPLE (Pass 1 of 1) (Total N=%d) Aprev x= %6.3f y= %6.3f ---\n", N, A_prev.x, A_prev.y); // Output solver start
 
     if (N < 3)
     {
-        logi.log_r("Error: At least 3 circles are required.\n"); // Output error
+        logi.log_r("    --- ERROR: At least 3 circles are required.\n"); // Output error
         return AQ;
     }
 
@@ -508,7 +508,7 @@ SPoint_Q TrilaterationSolver::find_A_by_mnk_robust()
 
     if (N < 3)
     {
-        logi.log_r("Error: At least 3 circles are required.\n"); // Output error
+        logi.log_r("    --- ERROR: At least 3 circles are required.\n"); // Output error
         return AQ;
     }
 
@@ -607,7 +607,7 @@ double TrilaterationSolver::get_lidar_orientation(
 {
     if (beacons.size() != lidar_angles_deg.size() || beacons.empty()) // Проверка на соответствие и наличие данных
     {
-        logi.log("\n--- ORIENTATION CALCULATION SKIPPED ---\n");                      // Output skip header
+        logi.log("    --- ORIENTATION CALCULATION SKIPPED ---\n");                      // Output skip header
         logi.log_r("    Error: Missing or mismatched data for orientation calculation.\n"); // Output error
         return 0.0;                                                                 // Возвращаем 0.0, если данных нет
     }

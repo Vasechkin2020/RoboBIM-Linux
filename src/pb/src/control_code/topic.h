@@ -35,6 +35,8 @@ CTopic::~CTopic()
 void CTopic::publicationControlDriver()
 {
     pb_msgs::Struct_Data2Driver data;
+
+    data.id++;
     static unsigned long led_time = 0;
     static int color = 0;
 

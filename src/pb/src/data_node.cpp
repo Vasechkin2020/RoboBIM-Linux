@@ -128,7 +128,7 @@ int main(int argc, char **argv)
         g_factSpeed.speedR = g_desiredSpeed.speedR; //
 
         if (g_factSpeed.speedL != 0 || g_factSpeed.speedR != 0)
-            logi.log("   g_factSpeed    L = %+6.3f R= %+6.3f \n", g_factSpeed.speedL, g_factSpeed.speedR);
+            logi.log("   g_factSpeed    L = %+6.3f R= %+6.3f | id= %d \n", g_factSpeed.speedL, g_factSpeed.speedR, msg_ControlDriver.id);
 
         Data2Driver.control = speedToRps(g_factSpeed); // Конвертация скорости из метров в секунду в обороты в секунду для передачи на нижний уровень
         // printf("Data2Driver.controlL = %f Data2Driver.controlR= %f \n \n",Data2Driver.control.speedL,Data2Driver.control.speedR);

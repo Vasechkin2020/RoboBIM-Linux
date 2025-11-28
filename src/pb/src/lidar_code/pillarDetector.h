@@ -477,7 +477,7 @@ private:
         {
             if (!used[j])
             {
-                logi.log_w("!!! Known pillar %zu (x=%.2f, y=%.2f) not matched to any detected pillar.\n", j, KNOWN_PILLARS[j].first, KNOWN_PILLARS[j].second);
+                logi.log_w("    --- Known pillar %zu (x=%.2f, y=%.2f) not matched to any detected pillar.\n", j, KNOWN_PILLARS[j].first, KNOWN_PILLARS[j].second);
             }
         }
 
@@ -535,7 +535,7 @@ private:
                 g_poseLidar.modeClaster.y = lidar_y + lidar_yY;
                 g_poseLidar.modeClaster.th = RAD2DEG(lidar_theta_T);
 
-                logi.log_w("    modeClaster pose.x= %+8.3f y= %+8.3f theta= %+8.3f \n", lidar_x + lidar_xX, lidar_y + lidar_yY, RAD2DEG(lidar_theta_T));
+                logi.log_g("    'modeClaster pose.x= %+8.3f y= %+8.3f theta= %+8.3f ' \n", lidar_x + lidar_xX, lidar_y + lidar_yY, RAD2DEG(lidar_theta_T));
                 // ROS_INFO("    Lidar theta END 22 = %+8.3f rad (%+8.3f deg)", lidar_theta_T, RAD2DEG(lidar_theta_T));
 
                 // lidar_x += lidar_xX;
