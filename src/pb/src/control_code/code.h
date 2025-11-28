@@ -18,6 +18,8 @@ const double PI = 3.14159265358979323846;
 const double DEG_TO_RAD = PI / 180.0;
 const double RAD_TO_DEG = 180.0 / PI;
 
+int g_controlMode = 0; // Выбор режима управления 0- по одометрии 1- по слиянию main
+SPose g_poseC; // Тут храним текущую позицию от которой все считаем в зависимости от режима controlMode
 void readParam(); // Считывание переменных параметров из лаунч файла при запуске. Там офсеты и режимы работы
 
 void initCommandArray(int verCommand_); // Заполнение маасива команд
@@ -270,16 +272,20 @@ void initCommandArray(int verCommand_)
 	}
 }
 
-void readParam() // Считывание переменных параметров из лаунч файла при запуске. Там офсеты и режимы работы
+void readParam() // Считывание переменных параметров из лаунч или yaml файла при запуске. Там офсеты и режимы работы
 {
-	ros::NodeHandle nh_private("~");
-	// Имя можно с палкой или без, смотря как в лаунч файле параметры обявлены. связано с видимостью глобальной или локальной. относительным поиском переменной как сказал Максим
-	if (!nh_private.getParam("verComand", verComand))
-		verComand = 999;
+	// ros::NodeHandle nh_private("~");
+	// // Имя можно с палкой или без, смотря как в лаунч файле параметры обявлены. связано с видимостью глобальной или локальной. относительным поиском переменной как сказал Максим
+	// if (!nh_private.getParam("verComand", verComand))
+	// 	verComand = 999;
 
-	ROS_INFO("--- Start node with parametrs:");
-	ROS_INFO("verComand = %i", verComand);
-	ROS_INFO("---");
+	// ROS_INFO("--- Start node with parametrs:");
+	// ROS_INFO("verComand = %i", verComand);
+	// ROS_INFO("---");
+	ros::NodeHandle nh_global; // <--- Используется для доступа к /pb_config/ // Создаем ГЛОБАЛЬНЫЙ обработчик, который ищет параметры, начиная с корня (/).
+	nh_global.param<int>("/pb_config/control_mode", g_controlMode, 0); // # Режим работы управления. Если 0 то по колесам одометрии, 1 управление по скомплеменированному с измерением main
+	logi.log_b("+++ Start node with parametrs: controlMode = %i\n", g_controlMode);
+	// ros::Duration(10).sleep(); // Подождем пока
 }
 
 // Выводим справочно время работы цикла

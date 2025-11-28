@@ -42,8 +42,8 @@ int main(int argc, char **argv)
     ros::Rate r(100);         // Частота в Герцах - задержка
     ros::Duration(1).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
 
-    logi.log_w("Start Setup.");
-    // readParam(); // Считывание переменных параметров из лаунч файла при запуске. Там офсеты и режимы работы
+    logi.log_w("Start Setup.\n");
+    readParam(); // Считывание переменных параметров из лаунч файла при запуске. Там офсеты и режимы работы
     // initCommandArray(verComand); // Заполнение маасива команд
     
 
@@ -73,6 +73,19 @@ int main(int argc, char **argv)
         timeNow = ros::Time::now(); // Захватываем текущий момент времени начала цикла
         // ROS_INFO("loop \n");        // С новой строки в логе новый цикл
         ros::spinOnce();            // Опрашиваем ядро ROS и по этой команде наши срабатывают колбеки. Нужно только для подписки на топики
+
+        if (g_controlMode) // В зависимости от режима из yaml файла заполняем перменную и далее все опирается на нее.
+        {
+            g_poseC.x = msg_PoseRotation.x.main;
+            g_poseC.y = msg_PoseRotation.y.main;
+            g_poseC.th = msg_PoseRotation.th.main;
+        }
+        else
+        {
+            g_poseC.x = msg_PoseRotation.x.odom;
+            g_poseC.y = msg_PoseRotation.y.odom;
+            g_poseC.th = msg_PoseRotation.th.main;
+        }
 
         if (flagCommand)
         {
