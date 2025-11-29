@@ -136,7 +136,7 @@ void calcDistDirect(SDistDirect *distDirect, CPillar pillar, PillarDetector dete
             g_poseLidar.azimut[i] = g_poseLidar.azimut[i] * COMPLEMENTARN + distDirect[i].direction * (1 - COMPLEMENTARN);
     }
     flagFirst = 1;
-    logi.log_w("    calcDistDirect -> sum = %i \n", sum);
+    logi.log_b("    calcDistDirect -> sum = %i \n", sum);
     g_poseLidar.countDistDirect = sum;
 }
 

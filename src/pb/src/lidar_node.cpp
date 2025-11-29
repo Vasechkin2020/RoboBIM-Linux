@@ -313,7 +313,7 @@ int main(int argc, char **argv) // Главная функция програм�
                 // g_poseLidar.mnkDist.th = solver.get_lidar_orientation(AQ_found.A, orientation_beacons, lidar_angles_deg); // Вывод углов без фильтрации
                 // g_poseLidar.mnkAngle.th = solver.get_lidar_orientation(BQ_found.A, orientation_beacons, lidar_angles_deg);
 
-                logi.log_w("    'mnkFused x= %+8.3f y= %+8.3f th= %+8.3f '\n", g_poseLidar.mnkFused.x, g_poseLidar.mnkFused.y, g_poseLidar.mnkFused.th);
+                logi.log_g("    'mnkFused x= %+8.3f y= %+8.3f th= %+8.3f '\n", g_poseLidar.mnkFused.x, g_poseLidar.mnkFused.y, g_poseLidar.mnkFused.th);
                 logi.log_b("======================================== END  ==========================================\n");
             }
             catch (const std::invalid_argument &e)
@@ -326,19 +326,19 @@ int main(int argc, char **argv) // Главная функция програм�
             if (g_poseLidar.quality_mknFused < 10) // Если соответствует качество по методу mnk
             {
                 PoseCalc = g_poseLidar.mnkFused; // Позиция относительно которой ищем и распознаем столбы. Это или что посчитали по измерения в прошлый раз или уточненная позиция полученная main
-                logi.log_g("=== 'PoseCalc = mnkFused' \n");
+                logi.log_w("=== 'PoseCalc = mnkFused' \n");
             }
             else
             {
                 if (g_poseLidar.countComparePillar > 2) // есть больше 2 сопоставленных столбов
                 {
                     PoseCalc = g_poseLidar.modeDist; // Позиция относительно которой ищем и распознаем столбы. Это или что посчитали по измерения в прошлый раз или уточненная позиция полученная main
-                    logi.log_g("=== 'PoseCalc = modeDist' \n");
+                    logi.log_w("=== 'PoseCalc = modeDist' \n");
                 }
                 else // В коайнем случае
                 {
                     PoseCalc = g_poseLidar.modeClaster; // Позиция относительно которой ищем и распознаем столбы. Это или что посчитали по измерения в прошлый раз или уточненная позиция полученная main
-                    logi.log_g("=== 'PoseCalc = modeClaster' \n");
+                    logi.log_w("=== 'PoseCalc = modeClaster' \n");
                 }
             }
 

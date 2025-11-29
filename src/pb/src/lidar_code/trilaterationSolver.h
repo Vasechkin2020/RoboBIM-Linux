@@ -189,12 +189,12 @@ void TrilaterationSolver::add_circle_from_distance(SPoint P_beacon, double dista
 {
     // printf("+++ add_circle_from_distance \n");
     // Отладочный вывод: Добавление измерения дальности
-    logi.log("    Add Dist: Beacon (%+8.3f, %+8.3f), R=%+8.3f, W=%.4f\n", // Output: Adding distance measurement
-           P_beacon.x,                                            // X-coordinate of beacon
-           P_beacon.y,                                            // Y-coordinate of beacon
-           distance,                                              // Measured distance
-           WEIGHT_DISTANCE_NORM                                   // Assigned weight
-    );                                                            // Выводим координаты, расстояние и вес
+    // logi.log("    Add Dist: Beacon (%+8.3f, %+8.3f), R=%+8.3f, W=%.4f\n", // Output: Adding distance measurement
+    //        P_beacon.x,                                            // X-coordinate of beacon
+    //        P_beacon.y,                                            // Y-coordinate of beacon
+    //        distance,                                              // Measured distance
+    //        WEIGHT_DISTANCE_NORM                                   // Assigned weight
+    // );                                                            // Выводим координаты, расстояние и вес
 
     // Вес дистанционного измерения ВСЕГДА 1.0 (наш эталон)
     all_circles.push_back({P_beacon.x, P_beacon.y, distance, WEIGHT_DISTANCE_NORM, true}); // Добавляем маяк с весом 1.0 и флагом active=true
@@ -202,7 +202,7 @@ void TrilaterationSolver::add_circle_from_distance(SPoint P_beacon, double dista
 
 void TrilaterationSolver::add_filtered_circle_from_angle(SPoint P1, SPoint P2, double angle_deg)
 {
-    logi.log("    ANGLE CIRCLE (P1=(%+7.3f, %+7.3f), P2=(%+7.3f, %+7.3f), Angle= %+8.3f) \n", P1.x, P1.y, P2.x, P2.y, angle_deg);
+    // logi.log("    ANGLE CIRCLE (P1=(%+7.3f, %+7.3f), P2=(%+7.3f, %+7.3f), Angle= %+8.3f) \n", P1.x, P1.y, P2.x, P2.y, angle_deg);
 
     double alpha_rad = DEG2RAD(angle_deg); // Угол в радианах
     double sin_alpha = sin(alpha_rad);     // Синус угла
@@ -259,7 +259,7 @@ void TrilaterationSolver::add_filtered_circle_from_angle(SPoint P1, SPoint P2, d
         dynamic_weight_norm = std::max(dynamic_weight_norm, MIN_WEIGHT_CLAMP);     // Ограничение снизу (1e-6)
     }
 
-    logi.log("    dynamic_weight_norm = %.6f (W_angle = %.6f, W_distance = %.6f) \n", dynamic_weight_norm, W_angle, W_distance); // Output calculated weight
+    // logi.log("    dynamic_weight_norm = %.6f (W_angle = %.6f, W_distance = %.6f) \n", dynamic_weight_norm, W_angle, W_distance); // Output calculated weight
     // --- КОНЕЦ БЛОКА ---
 
     // 2. Расчет геометрии окружности
@@ -302,7 +302,7 @@ void TrilaterationSolver::add_filtered_circle_from_angle(SPoint P1, SPoint P2, d
     }
 
     all_circles.push_back(chosen_circle);                                                                                                                  // Добавляем выбранную окружность
-    logi.log("    Added Circle: Center (%+7.3f, %+7.3f), R=%+7.3f, W=%+7.4f\n", chosen_circle.x, chosen_circle.y, chosen_circle.r, chosen_circle.weight_factor); // Output final circle parameters
+    // logi.log("    Added Circle: Center (%+7.3f, %+7.3f), R=%+7.3f, W=%+7.4f\n", chosen_circle.x, chosen_circle.y, chosen_circle.r, chosen_circle.weight_factor); // Output final circle parameters
 }
 
 // ------------------------------------------------------------------
@@ -555,7 +555,7 @@ SPoint_Q TrilaterationSolver::find_A_by_mnk_robust()
         }
     }
 
-    logi.log_b("    Total rejected measurements: %d \n", rejected_count); // Output rejected count
+    logi.log("    Total rejected measurements: %d \n", rejected_count); // Output rejected count
 
     // --- ПРОХОД 2: Финальный расчет ---
     SPoint A_final = A_prev;                // Результат для финализации

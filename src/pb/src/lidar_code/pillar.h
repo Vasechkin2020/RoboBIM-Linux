@@ -94,7 +94,7 @@ private:
 // Метод возврщает положение центра лидара усредненного по всем столбам по методу "растояние до столбов по лидару"
 SPose CPillar::getLocationmodeDist(SDistDirect *distDirect, SPose pose_, float accuracy_) // На вход подается последняя полученная/посчитанная позиция лидара
 {
-    logi.log("+++ getLocationmodeDist IN x= %+8.3f y= %+8.3f th= %+8.3f \n", pose_.x, pose_.y, pose_.th);
+    logi.log_b("+++ getLocationmodeDist IN x= %+8.3f y= %+8.3f th= %+8.3f \n", pose_.x, pose_.y, pose_.th);
     SPose poseReturn_;
     // logi.log("pose IN x= %+8.3f y= %+8.3f theta= %+8.3f ", pose_.x, pose_.y, pose_.theta);
     // logi.log("---"); //
@@ -220,7 +220,7 @@ float CPillar::getTheta(SPose poseLidar_, int mode_)
 // Метод возврщает положение центра лидара усредненного по всем столбам по методу "углы между столбами по лидару"
 SPose CPillar::getLocationmodeAngle(SDistDirect *distDirect, SPose pose_, float accuracy_) // На вход подается последняя полученная/посчитанная позиция лидара
 {
-    logi.log("+++ getLocationmodeAngle IN x= %+8.3f y= %+8.3f th= %+8.3f \n", pose_.x, pose_.y, pose_.th);
+    logi.log_b("+++ getLocationmodeAngle IN x= %+8.3f y= %+8.3f th= %+8.3f \n", pose_.x, pose_.y, pose_.th);
     SPoint p1, p2, p3;
     float a1, a2;
     SCircle2 c;
@@ -512,7 +512,7 @@ void CPillar::comparisonPillar()
     }
     float quality_ComparePillar = sum_hypotenuse / countComparisonPillar; // Для выводв в топик
     if (countComparisonPillar>2)
-        logi.log("    Comparison Pillar %i  => quality_ComparePillar %+8.3f \n", countComparisonPillar, quality_ComparePillar);
+        logi.log_b("    Comparison Pillar %i  => quality_ComparePillar %+8.3f \n", countComparisonPillar, quality_ComparePillar);
     else
         logi.log_r("    Comparison Pillar %i = > quality_ComparePillar %+8.3f \n", countComparisonPillar, quality_ComparePillar);
     g_poseLidar.countComparePillar = countComparisonPillar; // Для выводв в топик
@@ -643,7 +643,7 @@ void CPillar::searchPillars(const sensor_msgs::LaserScan::ConstPtr &scan, SPose 
             distance_pred = lidarData[i].distance; // запоминаем для следующего сравнения
         }
     }
-    logi.log("    Found Pillar from Lidar= %i  \n", countPillarLidar);
+    logi.log_b("    Found Pillar from Lidar= %i  \n", countPillarLidar);
     g_poseLidar.countFindPillar = countPillarLidar; // Для выводв в топик
     // logi.log("--- searchPillars \n");
 }
