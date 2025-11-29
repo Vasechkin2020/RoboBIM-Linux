@@ -1,9 +1,11 @@
 /*
- * Версия: 3.7
+ * Версия: 3.9
  * Дата: 2025-11-29
- * Описание: Переход на float-версию Eigen (Vector2f) для данных скана.
- * - Изменены все типы Vector2d на Vector2f (кроме p.global и матриц Umeyama).
- * - Используется Eigen::aligned_allocator для всех std::vector<Eigen::Vector2f>.
+ * Описание: ИСПРАВЛЕНИЕ: Неверное использование паблишеров Marker/MarkerArray.
+ * - Удалена старая publishPointsAsMarker.
+ * - Введена createPointsMarker (возвращает Marker).
+ * - Введена publishMarkerInArray (оборачивает Marker в MarkerArray).
+ * - processPipeline и fuseCandidates обновлены для использования новой логики публикации.
  */
 
 #include <ros/ros.h>                                       // Подключение основной библиотеки ROS
@@ -17,7 +19,8 @@
 #include <Eigen/Dense>                                     // Обязательно: библиотека линейной алгебры
 
 // --- Заголовки для RViz (Только стандартные ROS) ---
-#include <visualization_msgs/MarkerArray.h>            // Для публикации маркеров (столбы)
+#include <visualization_msgs/MarkerArray.h>            // Для публикации MarkerArray
+#include <visualization_msgs/Marker.h>                 // Для публикации одиночного Marker
 #include <geometry_msgs/Point.h>                       // Для точек внутри маркеров
 
 // Константа для математических вычислений (pi)
@@ -29,7 +32,7 @@
 // 1. Вспомогательные классы и структуры
 // --------------------------------------------------------------------------------------
 
-// ВНЕШНЕЕ ОБЪЯВЛЕНИЕ ЛОГГЕРА (v3.4)
+// ВНЕШНЕЕ ОБЪЯВЛЕНИЕ ЛОГГЕРА
 class AsyncFileLogger;                                     // Предварительное объявление класса
 extern AsyncFileLogger logi;                               // Объявление, что logi определен где-то еще
 
@@ -56,7 +59,7 @@ struct FinalPillar
 // Тип для выровненного вектора Eigen::Vector2f
 using AlignedVector2f = std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f>>; // Alias для Vector2f с аллокатором
 
-// Класс математических утилит (v3.7: Изменены сигнатуры на Vector2f)
+// Класс математических утилит
 class MathUtils
 {
 public:
@@ -138,10 +141,10 @@ private:
     ros::Subscriber scan_sub;                              // Подписчик на лидар
     ros::Timer publish_timer_;                             // Таймер для публикации результатов
 
-    ros::Publisher pub_filtered_scan;                      // Публикатор для отфильтрованного скана
-    ros::Publisher pub_method_clusters;                    // Публикатор для кластеров по методам
-    ros::Publisher pub_fused_pillars;                      // Публикатор для центров слияния
-    ros::Publisher pub_final_markers;                      // Публикатор финальных маркеров
+    ros::Publisher pub_filtered_scan;                      // Публикатор для отфильтрованного скана (Marker)
+    ros::Publisher pub_method_clusters;                    // Публикатор для кластеров по методам (MarkerArray)
+    ros::Publisher pub_fused_pillars;                      // Публикатор для центров слияния (Marker)
+    ros::Publisher pub_final_markers;                      // Публикатор финальных маркеров (MarkerArray)
 
     // --- Параметры ---
     double pillar_diam_;
@@ -159,8 +162,7 @@ private:
     double fusion_group_radius;
     double w_method[4];                                    // Веса для методов (индекс 1-3)
     
-    // ИЗМЕНЕНО: Член класса теперь использует Vector2f
-    AlignedVector2f reference_centers_;                     // Эталонные центры (Vector2f для единообразия)
+    AlignedVector2f reference_centers_;                     // Эталонные центры
 
     // --- Калибровка и данные ---
     int scans_collected;
@@ -175,11 +177,17 @@ private:
     // 3. ПРИВАТНЫЕ МЕТОДЫ
     // ----------------------------------------------------------------------------------
 
-    // Публикация точек как Marker::POINTS (v3.7: Изменена сигнатура на Vector2f)
-    void publishPointsAsMarker(const AlignedVector2f& points, ros::Publisher& pub, const std::string& frame_id, const std::string& ns, int id, float r, float g, float b, float scale)
+    // НОВАЯ ФУНКЦИЯ: Публикация одиночного Marker в топик MarkerArray
+    void publishMarkerInArray(const visualization_msgs::Marker& marker, ros::Publisher& pub)
     {
-        if (points.empty()) return;
+        visualization_msgs::MarkerArray marker_array;      // Создаем массив маркеров
+        marker_array.markers.push_back(marker);            // Добавляем одиночный маркер в массив
+        pub.publish(marker_array);                         // Публикуем массив маркеров
+    }
 
+    // ИЗМЕНЕНА: Формирование Marker::POINTS (теперь возвращает Marker)
+    visualization_msgs::Marker createPointsMarker(const AlignedVector2f& points, const std::string& frame_id, const std::string& ns, int id, float r, float g, float b, float scale)
+    {
         visualization_msgs::Marker marker;                      // Инициализация маркера
         marker.header.frame_id = frame_id;                     
         marker.header.stamp = ros::Time::now();
@@ -205,10 +213,10 @@ private:
             marker.points.push_back(pt);                       
         }
 
-        pub.publish(marker);
+        return marker;                                     // Возвращаем объект Marker
     }
     
-    // Метод для публикации маркеров финальных столбов (v3.7: Работает с Vector2f и Vector2d)
+    // Метод для публикации маркеров финальных столбов (Работает с MarkerArray)
     void publishFinalMarkers(const std::vector<FinalPillar>& pillars)
     {
         if (pillars.empty()) return;
@@ -271,7 +279,7 @@ private:
         pub_final_markers.publish(marker_array);
     }
     
-    // Callback таймера для периодической публикации (v3.2)
+    // Callback таймера для периодической публикации
     void publishResultsTimerCallback(const ros::TimerEvent& event)
     {
         if (calibration_done_ && !final_pillars_results_.empty())
@@ -280,7 +288,7 @@ private:
         }
     }
 
-    // Обработка одного кластера (v3.7: Изменена сигнатура на Vector2f)
+    // Обработка одного кластера
     void processCluster(const AlignedVector2f& cluster, int method_id, 
                         std::vector<PillarCandidate>& out, AlignedVector2f& out_cluster_points)
     {
@@ -316,7 +324,7 @@ private:
         }
     }
 
-    // Детекция на основе разрыва/плотности (v3.7: Изменена сигнатура на Vector2f)
+    // Детекция на основе разрыва/плотности
     std::vector<PillarCandidate> detectGenericClustering(const AlignedVector2f& pts, double threshold, int method_id, 
                                                          AlignedVector2f& out_cluster_points)
     {
@@ -340,7 +348,7 @@ private:
         return results;
     }
 
-    // Детекция на основе локальных минимумов дальности (v3.7: Изменена сигнатура на Vector2f)
+    // Детекция на основе локальных минимумов дальности
     std::vector<PillarCandidate> detectLocalMinima(const AlignedVector2f& pts, int method_id,
                                                    AlignedVector2f& out_cluster_points)
     {
@@ -379,7 +387,7 @@ private:
         return results;
     }
 
-    // Логика слияния (Fusion) (v3.7: Изменена сигнатура на Vector2f)
+    // ИЗМЕНЕНА: Логика слияния (Fusion)
     std::vector<FinalPillar> fuseCandidates(const std::vector<PillarCandidate>& candidates)
     {
         std::vector<FinalPillar> final_pillars;
@@ -414,9 +422,9 @@ private:
 
         logi.log("Fusion: Found %lu unique pillars.\n", found_centers.size());
 
-        // Публикация отобранных центров
-        publishPointsAsMarker(found_centers, pub_fused_pillars, meta_scan.header.frame_id, 
-                              "fused_centers", 4, 0.0f, 1.0f, 0.0f, 0.15f);
+        // Публикация отобранных центров (pub_fused_pillars: Marker)
+        pub_fused_pillars.publish(createPointsMarker(found_centers, meta_scan.header.frame_id, 
+                              "fused_centers", 4, 0.0f, 1.0f, 0.0f, 0.15f));
 
         if (found_centers.size() != 4)
         {
@@ -441,7 +449,7 @@ private:
         return final_pillars;
     }
 
-    // Сохранение результатов в ROS Parameter Server (v3.2)
+    // Сохранение результатов в ROS Parameter Server
     void saveResults(const std::vector<FinalPillar>& pillars)
     {
         for (const auto& p : pillars)
@@ -460,16 +468,16 @@ private:
 public:
     PillarScanNode() : scans_collected(0), calibration_done_(false)
     {
-        logi.log("=== PillarScanNode v3.7 Started (Active Mode, Float Vectorized) ===\n");
+        logi.log("=== PillarScanNode v3.9 Started (Finalizing Publisher Logic) ===\n"); // Версия 3.9
         
         loadParameters();                                  // Загрузка параметров
         if (!ros::ok()) return;
 
-        // Инициализация паблишеров
-        pub_filtered_scan = nh.advertise<visualization_msgs::Marker>("/rviz/filtered_scan", 1);
-        pub_method_clusters = nh.advertise<visualization_msgs::MarkerArray>("/rviz/method_clusters", 1); 
-        pub_fused_pillars = nh.advertise<visualization_msgs::Marker>("/rviz/fused_pillars", 1);
-        pub_final_markers = nh.advertise<visualization_msgs::MarkerArray>("/rviz/final_pillars", 1);
+        // ИСПРАВЛЕНИЕ ТИПОВ ПАБЛИШЕРОВ (v3.8)
+        pub_filtered_scan = nh.advertise<visualization_msgs::Marker>("/rviz/filtered_scan", 1); // Marker
+        pub_method_clusters = nh.advertise<visualization_msgs::MarkerArray>("/rviz/method_clusters", 1); // MarkerArray
+        pub_fused_pillars = nh.advertise<visualization_msgs::Marker>("/rviz/fused_pillars", 1); // Marker
+        pub_final_markers = nh.advertise<visualization_msgs::MarkerArray>("/rviz/final_pillars", 1); // MarkerArray
         
         initReferenceSystem();                             // Расчет эталонной системы
 
@@ -499,7 +507,7 @@ public:
     }
 
     // ----------------------------------------------------------------------------------
-    // Загрузка параметров (v3.4)
+    // Загрузка параметров
     // ----------------------------------------------------------------------------------
     void loadParameters()
     {
@@ -563,7 +571,7 @@ public:
     }
 
     // ----------------------------------------------------------------------------------
-    // Инициализация эталона (v3.7: Использование Vector2f)
+    // Инициализация эталона
     // ----------------------------------------------------------------------------------
     void initReferenceSystem()
     {
@@ -596,7 +604,7 @@ public:
     }
 
     // ----------------------------------------------------------------------------------
-    // Callback скана (v3.2)
+    // Callback скана
     // ----------------------------------------------------------------------------------
     void scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan)
     {
@@ -628,7 +636,7 @@ public:
         }
     }
     
-    // Основной конвейер обработки (v3.7: Использование Vector2f)
+    // ИЗМЕНЕНА: Основной конвейер обработки
     void processPipeline()
     {
         logi.log("=== Starting Processing Pipeline (Median Filtered Scan) ===\n");
@@ -659,9 +667,9 @@ public:
         // 2. Статистическая фильтрация (упрощенный вариант)
         AlignedVector2f filtered_points = clean_points; 
 
-        // Публикация отфильтрованного скана
-        publishPointsAsMarker(filtered_points, pub_filtered_scan, meta_scan.header.frame_id, 
-                              "filtered_scan", 0, 0.8f, 0.8f, 0.8f, 0.05f); 
+        // Публикация отфильтрованного скана (pub_filtered_scan: Marker)
+        pub_filtered_scan.publish(createPointsMarker(filtered_points, meta_scan.header.frame_id, 
+                              "filtered_scan", 0, 0.8f, 0.8f, 0.8f, 0.05f)); 
 
         // 3. Детекция (3 метода)
         std::vector<PillarCandidate> all_candidates;
@@ -678,13 +686,13 @@ public:
         auto c3 = detectLocalMinima(filtered_points, 3, clusters_m3);
         all_candidates.insert(all_candidates.end(), c3.begin(), c3.end());
         
-        // Публикация кластеров
-        publishPointsAsMarker(clusters_m1, pub_method_clusters, meta_scan.header.frame_id, 
-                              "method_1_jump", 1, 1.0f, 0.0f, 0.0f, 0.08f); 
-        publishPointsAsMarker(clusters_m2, pub_method_clusters, meta_scan.header.frame_id, 
-                              "method_2_cluster", 2, 0.0f, 0.0f, 1.0f, 0.08f);
-        publishPointsAsMarker(clusters_m3, pub_method_clusters, meta_scan.header.frame_id, 
-                              "method_3_minima", 3, 1.0f, 1.0f, 0.0f, 0.08f);
+        // Публикация кластеров (pub_method_clusters: MarkerArray, ИСПОЛЬЗУЕМ ОБЕРТКУ)
+        publishMarkerInArray(createPointsMarker(clusters_m1, meta_scan.header.frame_id, 
+                              "method_1_jump", 1, 1.0f, 0.0f, 0.0f, 0.08f), pub_method_clusters); 
+        publishMarkerInArray(createPointsMarker(clusters_m2, meta_scan.header.frame_id, 
+                              "method_2_cluster", 2, 0.0f, 0.0f, 1.0f, 0.08f), pub_method_clusters);
+        publishMarkerInArray(createPointsMarker(clusters_m3, meta_scan.header.frame_id, 
+                              "method_3_minima", 3, 1.0f, 1.0f, 0.0f, 0.08f), pub_method_clusters);
 
         logi.log("Total candidates found: %lu (M1=%lu, M2=%lu, M3=%lu)\n", 
             all_candidates.size(), c1.size(), c2.size(), c3.size());
@@ -702,7 +710,7 @@ public:
     }
 
 
-    // --- 6. Калибровка: Полноценный Umeyama's Algorithm (SVD) (v3.7: Оставлена двойная точность) ---
+    // --- 6. Калибровка: Полноценный Umeyama's Algorithm (SVD) ---
     void performCalibration(std::vector<FinalPillar>& pillars)
     {
         if(pillars.size() != 4)
@@ -851,7 +859,7 @@ public:
             logi.log_w("High calibration error (%.1f cm)! Check pillars visibility and geometry.\n", final_rmse*100.0);
         }
         
-        // --- ХРАНЕНИЕ РЕЗУЛЬТАТОВ (v3.2) ---
+        // --- ХРАНЕНИЕ РЕЗУЛЬТАТОВ ---
         if (pillars.size() == 4)
         {
             final_pillars_results_ = pillars;               
@@ -881,5 +889,5 @@ int main(int argc, char** argv)
     logi.log("Node finished execution gracefully.\n");
     return 0;
 }
-// Число строк кода: 604
+// Число строк кода: 618
 */
