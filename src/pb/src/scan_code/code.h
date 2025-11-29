@@ -176,6 +176,8 @@ private:
     sensor_msgs::LaserScan::ConstPtr last_raw_scan_ptr_;
 
     // Глобальный счетчик для лучей, отброшенных по интенсивности за все 100 сканов (v4.7)
+    long long total_rays_removed_by_zero_intensity;
+    long long total_rays_removed_by_low_intensity;
     long long total_rays_removed_by_initial_intensity;
 
     bool calibration_done_;
@@ -584,112 +586,99 @@ private:
         logi.log_g("Results saved to rosparam.\n");
     }
 
-// --- ИЗМЕНЕНА: removeEdgeArtifacts (Полностью - v5.5) ---
-// Нумеровать версии кода сверху программы
-// v5.5
-
-// Удаление фантомных точек (хвостов) с помощью углового фильтра
-AlignedVector2f removeEdgeArtifacts(const AlignedVector2f& points, const std::vector<double>& intensities, int& points_removed_by_angle_filter)
-{
-    // Очищаем счетчик удаленных точек
-    points_removed_by_angle_filter = 0;
-    
-    // Получаем общее количество точек до фильтрации
-    size_t initial_point_count = points.size(); 
-    
-    // Проверка на минимальный размер скана
-    if (initial_point_count < 2) 
+    // --- ИЗМЕНЕНА: removeEdgeArtifacts (Полностью - v5.5) ---
+    // Удаление фантомных точек (хвостов) с помощью углового фильтра
+    AlignedVector2f removeEdgeArtifacts(const AlignedVector2f &points, const std::vector<double> &intensities, int &points_removed_by_angle_filter)
     {
-        return points;
-    }
+        // Очищаем счетчик удаленных точек
+        points_removed_by_angle_filter = 0;
 
-    AlignedVector2f clean_points;                                // Вектор для хранения очищенных точек
-    const double ANGLE_THRESHOLD_RAD = edge_angle_threshold;      // Порог угла в радианах (берется из params.yaml)
+        // Получаем общее количество точек до фильтрации
+        size_t initial_point_count = points.size();
 
-    // ВРЕМЕННЫЙ ЛОГ ЗАГОЛОВКА (v5.5)
-    logi.log("\n--- DETAILED ANGLE FILTER DEBUG LOG (Angle Threshold: %.1f deg) ---\n", edge_angle_threshold * 180.0 / M_PI);
-    logi.log("P_IDX | P_Curr_X | P_Curr_Y | Lidar_Ang | P_Next_X | P_Next_Y | Angle(deg) | ABS_Check_Ang | Decision\n"); 
-    logi.log("---------------------------------------------------------------------------------------------------\n");
-
-    // Всегда добавляем первую точку (points[0])
-    clean_points.push_back(points[0]); 
-
-    // Итерируем до предпоследней точки (points[N-2])
-    for (size_t i = 0; i < points.size() - 1; ++i)
-    {
-        const Eigen::Vector2f& P_curr = points[i];               // Текущая точка
-        const Eigen::Vector2f& P_next = points[i+1];             // Следующая точка
-        
-        Eigen::Vector2f V_ray = P_curr;                          // Вектор луча (от (0,0) до P_curr)
-        Eigen::Vector2f V_seg_next = P_next - P_curr;            // Вектор сегмента P_curr -> P_next
-        double angle_rad = M_PI;                                 // Исходный угол [0, 180]
-        double angle_check = M_PI / 2.0;                         // Угол для проверки параллельности [0, 90]
-
-        // Расчет угла между V_ray и V_seg_next
-        if (V_ray.norm() > 0.001 && V_seg_next.norm() > 0.001)
+        // Проверка на минимальный размер скана
+        if (initial_point_count < 2)
         {
-            double dot_prod = V_ray.normalized().dot(V_seg_next.normalized());       
-            angle_rad = std::acos(std::max(-1.0, std::min(dot_prod, 1.0))); 
-            
-            // Расчет угла, насколько сегмент параллелен лучу, независимо от направления (v5.3)
-            // Это решает проблему симметрии 0 градусов и 180 градусов
-            angle_check = std::min(angle_rad, M_PI - angle_rad); 
+            return points;
         }
 
-        double angle_deg = angle_rad * 180.0 / M_PI;                 
-        double angle_check_deg = angle_check * 180.0 / M_PI;         
-        
-        // Расчет абсолютного угла лидара для P_curr (v5.4)
-        double lidar_angle_rad = std::atan2(P_curr.y(), P_curr.x());
-        double lidar_angle_deg = lidar_angle_rad * 180.0 / M_PI;
-        
-        // --- УСЛОВИЕ ФАНТОМА (v5.3) ---
-        // Если угол параллельности меньше порога
-        if (std::abs(angle_check) < ANGLE_THRESHOLD_RAD) 
+        AlignedVector2f clean_points;                            // Вектор для хранения очищенных точек
+        const double ANGLE_THRESHOLD_RAD = edge_angle_threshold; // Порог угла в радианах (берется из params.yaml)
+
+        // ВРЕМЕННЫЙ ЛОГ ЗАГОЛОВКА (v5.5)
+        logi.log("\n--- DETAILED ANGLE FILTER DEBUG LOG (Angle Threshold: %.1f deg) ---\n", edge_angle_threshold * 180.0 / M_PI);
+        logi.log("P_IDX | P_Curr_X | P_Curr_Y | Lidar_Ang | P_Next_X | P_Next_Y | Angle(deg) | ABS_Check_Ang | Decision\n");
+        logi.log("---------------------------------------------------------------------------------------------------\n");
+
+        // Всегда добавляем первую точку (points[0])
+        clean_points.push_back(points[0]);
+
+        // Итерируем до предпоследней точки (points[N-2])
+        for (size_t i = 0; i < points.size() - 1; ++i)
         {
-            points_removed_by_angle_filter++;
-            
+            const Eigen::Vector2f &P_curr = points[i];     // Текущая точка
+            const Eigen::Vector2f &P_next = points[i + 1]; // Следующая точка
+
+            Eigen::Vector2f V_ray = P_curr;               // Вектор луча (от (0,0) до P_curr)
+            Eigen::Vector2f V_seg_next = P_next - P_curr; // Вектор сегмента P_curr -> P_next
+            double angle_rad = M_PI;                      // Исходный угол [0, 180]
+            double angle_check = M_PI / 2.0;              // Угол для проверки параллельности [0, 90]
+
+            // Расчет угла между V_ray и V_seg_next
+            if (V_ray.norm() > 0.001 && V_seg_next.norm() > 0.001)
+            {
+                double dot_prod = V_ray.normalized().dot(V_seg_next.normalized());
+                angle_rad = std::acos(std::max(-1.0, std::min(dot_prod, 1.0)));
+
+                // Расчет угла, насколько сегмент параллелен лучу, независимо от направления (v5.3)
+                // Это решает проблему симметрии 0 градусов и 180 градусов
+                angle_check = std::min(angle_rad, M_PI - angle_rad);
+            }
+
+            double angle_deg = angle_rad * 180.0 / M_PI;
+            double angle_check_deg = angle_check * 180.0 / M_PI;
+
+            // Расчет абсолютного угла лидара для P_curr (v5.4)
+            double lidar_angle_rad = std::atan2(P_curr.y(), P_curr.x());
+            double lidar_angle_deg = lidar_angle_rad * 180.0 / M_PI;
+
+            // --- УСЛОВИЕ ФАНТОМА (v5.3) ---
+            // Если угол параллельности меньше порога
+            if (std::abs(angle_check) < ANGLE_THRESHOLD_RAD)
+            {
+                points_removed_by_angle_filter++;
+
+                // ВРЕМЕННЫЙ ЛОГ ТЕКУЩЕЙ ИТЕРАЦИИ (v5.5)
+                logi.log("%5lu | %8.3f | %8.3f | %9.3f | %8.3f | %8.3f | %10.3f | %13.3f | %s\n",
+                         i + 1, P_curr.x(), P_curr.y(), lidar_angle_deg, P_next.x(), P_next.y(),
+                         angle_deg, angle_check_deg,
+                         "REMOVED_P_NEXT");
+
+                // Пропускаем P_next (удаляем ее)
+                i++;
+                continue;
+            }
+
+            // Если условие не сработало, P_next — валидная точка, добавляем ее.
+            clean_points.push_back(P_next);
+
             // ВРЕМЕННЫЙ ЛОГ ТЕКУЩЕЙ ИТЕРАЦИИ (v5.5)
-            logi.log("%5lu | %8.3f | %8.3f | %9.3f | %8.3f | %8.3f | %10.3f | %13.3f | %s\n", 
-                     i+1, P_curr.x(), P_curr.y(), lidar_angle_deg, P_next.x(), P_next.y(), 
-                     angle_deg, angle_check_deg, 
-                     "REMOVED_P_NEXT"); 
-            
-            // Пропускаем P_next (удаляем ее)
-            i++; 
-            continue;
+            logi.log("%5lu | %8.3f | %8.3f | %9.3f | %8.3f | %8.3f | %10.3f | %13.3f | %s\n",
+                     i + 1, P_curr.x(), P_curr.y(), lidar_angle_deg, P_next.x(), P_next.y(),
+                     angle_deg, angle_check_deg,
+                     "KEPT_P_NEXT");
         }
-        
-        // Если условие не сработало, P_next — валидная точка, добавляем ее.
-        clean_points.push_back(P_next);
-        
-        // ВРЕМЕННЫЙ ЛОГ ТЕКУЩЕЙ ИТЕРАЦИИ (v5.5)
-        logi.log("%5lu | %8.3f | %8.3f | %9.3f | %8.3f | %8.3f | %10.3f | %13.3f | %s\n", 
-                 i+1, P_curr.x(), P_curr.y(), lidar_angle_deg, P_next.x(), P_next.y(), 
-                 angle_deg, angle_check_deg,
-                 "KEPT_P_NEXT");
+
+        logi.log("--- END DETAILED ANGLE FILTER DEBUG LOG ---\n");
+
+        // Вывод статистики в конце функции (v5.5)
+        size_t final_point_count = clean_points.size();
+
+        logi.log_b("ANGLE FILTER STATS: Initial points: %lu. Removed: %d. Final points: %lu.\n",
+                   initial_point_count, points_removed_by_angle_filter, final_point_count);
+
+        return clean_points;
     }
-
-    logi.log("--- END DETAILED ANGLE FILTER DEBUG LOG ---\n");
-    
-    // Вывод статистики в конце функции (v5.5)
-    size_t final_point_count = clean_points.size(); 
-    
-    logi.log_b("ANGLE FILTER STATS: Initial points: %lu. Removed: %d. Final points: %lu.\n", 
-               initial_point_count, points_removed_by_angle_filter, final_point_count);
-
-    return clean_points;
-}
-
-
-
-
-
-
-
-
-
-
 
     // --- Калибровка: Полноценный Umeyama's Algorithm (Без изменений) ---
     void performCalibration(std::vector<FinalPillar> &pillars)
@@ -861,9 +850,12 @@ AlignedVector2f removeEdgeArtifacts(const AlignedVector2f& points, const std::ve
     // 4. ПУБЛИЧНЫЕ МЕТОДЫ
     // ----------------------------------------------------------------------------------
 public:
-    PillarScanNode() : scans_collected(0), calibration_done_(false), total_rays_removed_by_initial_intensity(0)
+    PillarScanNode() : scans_collected(0), calibration_done_(false),
+                       total_rays_removed_by_zero_intensity(0),   // <--- ОБНУЛЕНИЕ
+                       total_rays_removed_by_low_intensity(0),    // <--- ОБНУЛЕНИЕ
+                       total_rays_removed_by_initial_intensity(0) // <--- ОБНУЛЕНИЕ
     {
-        logi.log("=== PillarScanNode v4.7 Started (Pre-Median Intensity Filter) ===\n");
+        logi.log("=== PillarScanNode v5.2 Started (Intensity & Angle Debug) ===\n");
 
         loadParameters();
         if (!ros::ok())
@@ -1002,63 +994,69 @@ public:
         logi.log("  LB (3): [%.3f, %.3f]\n", reference_centers_[3].x(), reference_centers_[3].y());
     }
 
-    // ----------------------------------------------------------------------------------
-    // Callback скана (ИЗМЕНЕНА v4.7)
-    // ----------------------------------------------------------------------------------
-    void scanCallback(const sensor_msgs::LaserScan::ConstPtr &scan)
+    // МЕТОД: scanCallback
+    void scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan)
     {
-        // 1. ПРОВЕРКА
-        if (scans_collected >= SCANS_TO_COLLECT)
+        if (calibration_done_ || scans_collected >= SCANS_TO_COLLECT) 
         {
-            last_raw_scan_ptr_ = scan;
             return;
         }
 
-        if (scan->ranges.size() != accumulated_ranges.size())
+        if (scans_collected == 0)
         {
-            logi.log_w("Scan size changed! Skipping scan.\n");
-            return;
+            meta_scan = *scan;
+            accumulated_ranges.resize(scan->ranges.size());
+            accumulated_intensities.resize(scan->ranges.size());
+            logi.log("LiDAR initialized. Rays: %lu. Starting accumulation.\n", scan->ranges.size());
         }
+        
+        bool has_intensities = (scan->intensities.size() == scan->ranges.size()); 
 
-        last_raw_scan_ptr_ = scan;
-
-        bool has_intensities = (scan->intensities.size() == scan->ranges.size());
-
-        int removed_in_current_scan = 0; // Локальный счетчик отброшенных в текущем скане
+        int removed_by_zero_in_current_scan = 0;
+        int removed_by_low_in_current_scan = 0;
+        int current_scan_added_count = 0;
 
         for (size_t i = 0; i < scan->ranges.size(); ++i)
         {
             float r = scan->ranges[i];
-            float intensity = has_intensities ? scan->intensities[i] : 0.0f; // Берем интенсивность
+            float intensity = has_intensities ? scan->intensities[i] : 0.0f; 
 
-            // ФИЛЬТРАЦИЯ ПО ИНТЕНСИВНОСТИ (v4.7)
-            // Если есть интенсивность и она ниже порога, отбрасываем луч
-            if (has_intensities && intensity < intensity_min_threshold)
+            if (std::isinf(r) || std::isnan(r))
             {
-                removed_in_current_scan++;
-                total_rays_removed_by_initial_intensity++; // Увеличиваем общий счетчик
-                continue;                                  // Не добавляем в накопление
+                continue;
             }
 
-            if (std::isnan(r) || std::isinf(r))
-                continue;
-            if (r < min_range_filter || r > max_range_filter)
-                continue;
+            // ФИЛЬТРАЦИЯ ПО ИНТЕНСИВНОСТИ
+            if (has_intensities)
+            {
+                if (intensity == 0.0f)
+                {
+                    removed_by_zero_in_current_scan++;
+                    total_rays_removed_by_zero_intensity++;
+                    total_rays_removed_by_initial_intensity++; 
+                    continue;
+                }
+                
+                if (intensity < intensity_min_threshold)
+                {
+                    removed_by_low_in_current_scan++;
+                    total_rays_removed_by_low_intensity++;
+                    total_rays_removed_by_initial_intensity++;
+                    continue;
+                }
+            }
 
             accumulated_ranges[i].push_back(r);
-
-            // Сохраняем интенсивность, только если она прошла фильтр
             accumulated_intensities[i].push_back(intensity);
+            current_scan_added_count++;
         }
 
         scans_collected++;
-
-        // ЛОГИРОВАНИЕ СТАТИСТИКИ ПОСЛЕ КАЖДОГО СКАНА (v4.7)
-        if (scans_collected % 1 == 0)
-        {
-            logi.log("Collecting scans: %d/%d. Current scan removed: %d. Total removed by Intensity: %lld\n",
-                     scans_collected, SCANS_TO_COLLECT, removed_in_current_scan, total_rays_removed_by_initial_intensity);
-        }
+        
+        logi.log("Collecting scans: %d/%d. Kept: %d. Removed: Zero=%d, Low=%d. Total Intensity Removed: %lld\n", 
+                 scans_collected, SCANS_TO_COLLECT, current_scan_added_count,
+                 removed_by_zero_in_current_scan, removed_by_low_in_current_scan, 
+                 total_rays_removed_by_initial_intensity);
 
         if (scans_collected == SCANS_TO_COLLECT)
         {
@@ -1130,14 +1128,17 @@ public:
         // 2. ЛОГИРОВАНИЕ СЫРОГО СКАНА (v4.7)
         logRawScan();
 
-        // 3. ЛОГИРОВАНИЕ ИТОГОВОГО ОТФИЛЬТРОВАННОГО СКАНА (v4.7)
+        // 3. ЛОГИРОВАНИЕ ИТОГОВОГО ОТФИЛЬТРОВАННОГО СКАНА
         logFinalFilteredScan(filtered_scan_results_);
 
         logi.log("\n--- FILTERING STATISTICS ---\n");
         logi.log("1. Total rays in scan (max): %d\n", total_initial_rays); // Total rays in meta_scan
-        logi.log_b("2. Total rays removed by INITIAL Intensity (<%.2f) over %d scans: %lld\n",
-                   intensity_min_threshold, SCANS_TO_COLLECT, total_rays_removed_by_initial_intensity);
-        logi.log("3. Points remaining before Angle Filter: %lu\n", initial_points.size());
+        logi.log_r("2. Total rays removed by ZERO Intensity (I=0.0) over %d scans: %lld\n",
+                   SCANS_TO_COLLECT, total_rays_removed_by_zero_intensity); // <-- НОВЫЙ ВЫВОД
+        logi.log_b("3. Total rays removed by LOW Intensity (0.0 < I < %.2f) over %d scans: %lld\n",
+                   intensity_min_threshold, SCANS_TO_COLLECT, total_rays_removed_by_low_intensity);                         // <-- НОВЫЙ ВЫВОД
+        logi.log_b("4. Total accumulated intensity removed (Sum of 2+3): %lld\n", total_rays_removed_by_initial_intensity); // <-- ОБЩАЯ СУММА
+        logi.log("5. Points remaining before Angle Filter: %lu\n", initial_points.size());
 
         if (initial_points.empty())
         {
