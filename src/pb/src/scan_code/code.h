@@ -1,7 +1,7 @@
 /*
- * Версия: 4.3
+ * Версия: 4.5
  * Дата: 2025-11-29
- * Описание: ПОЛНЫЙ КОД: Предоставлены тела всех методов. ПОСТОЯННАЯ ПУБЛИКАЦИЯ ВСЕГО: Все 4 этапа обработки (скан, кластеры, Fusion, Final) публикуются 1 Гц.
+ * Описание: ПОЛНЫЙ КОД. Улучшенная фильтрация: Добавлено накопление интенсивностей, Фильтр Интенсивности и Продвинутый Угловой Фильтр Разрыва. Добавлено детальное логирование статистики и сравнение первого сырого скана с итоговым отфильтрованным.
  */
 
 #include <ros/ros.h>                                       // Подключение основной библиотеки ROS
@@ -13,6 +13,8 @@
 #include <algorithm>                                       // Различные алгоритмы
 #include <stdarg.h>                                        // Для реализации printf-подобного логгера 
 #include <Eigen/Dense>                                     // Обязательно: библиотека линейной алгебры
+#include <limits>                                          // Для std::numeric_limits
+#include <numeric>                                         // Для std::accumulate
 
 // --- Заголовки для RViz (Только стандартные ROS) ---
 #include <visualization_msgs/MarkerArray.h>            // Для публикации MarkerArray
@@ -25,57 +27,56 @@
 #endif
 
 // --------------------------------------------------------------------------------------
-// 1. Вспомогательные классы и структуры
+// 1. Вспомогательные классы и структуры (Без изменений)
 // --------------------------------------------------------------------------------------
 
 // ВНЕШНЕЕ ОБЪЯВЛЕНИЕ ЛОГГЕРА
-class AsyncFileLogger;                                     // Предварительное объявление класса
-extern AsyncFileLogger logi;                               // Объявление, что logi определен где-то еще
+class AsyncFileLogger;                                     
+extern AsyncFileLogger logi;                               
 
 // Структура кандидата 
 struct PillarCandidate
 {
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW                      // Макрос для обеспечения выравнивания Eigen
-    Eigen::Vector2f center;                                // Используем Vector2f для локальных координат
-    double rmse;                                           // RMSE остается в double
-    int num_points;                                        // Число точек
-    double weight;                                         // Вес кандидата
-    int method_id;                                         // Идентификатор метода (1, 2, 3)
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW                      
+    Eigen::Vector2f center;                                
+    double rmse;                                           
+    int num_points;                                        
+    double weight;                                         
+    int method_id;                                         
 };
 
 // Структура финального столба 
 struct FinalPillar
 {
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW                      // Макрос для обеспечения выравнивания Eigen
-    std::string name;                                      // Имя столба (RB, RT, LT, LB)
-    Eigen::Vector2f local;                                 // Локальная позиция (относительно лидара) - float
-    Eigen::Vector2d global;                                // Глобальная позиция (после калибровки) - double
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW                      
+    std::string name;                                      
+    Eigen::Vector2f local;                                 
+    Eigen::Vector2d global;                                
 };
 
 // Тип для выровненного вектора Eigen::Vector2f
-using AlignedVector2f = std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f>>; // Alias для Vector2f с аллокатором
+using AlignedVector2f = std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f>>; 
 
-// Класс математических утилит
+// Класс математических утилит (Без изменений)
 class MathUtils
 {
 public:
-    static double dist2D(const Eigen::Vector2f& p1, const Eigen::Vector2f& p2) // Расстояние между Vector2f
+    static double dist2D(const Eigen::Vector2f& p1, const Eigen::Vector2f& p2) 
     {
         return (p1 - p2).norm();                           
     }
 
-    static bool fitCircle(const AlignedVector2f& points, double expected_radius, // Подгонка окружности
+    static bool fitCircle(const AlignedVector2f& points, double expected_radius, 
                           Eigen::Vector2f& out_center, double& out_rmse) 
     {
-        size_t n = points.size();                            // Число точек в кластере
-        if (n < 3) return false;                             // Требуется минимум 3 точки
+        size_t n = points.size();                            
+        if (n < 3) return false;                             
 
-        Eigen::MatrixXd A(n, 3);                             // Матрица A для метода наименьших квадратов
-        Eigen::VectorXd B(n);                                // Вектор B
+        Eigen::MatrixXd A(n, 3);                             
+        Eigen::VectorXd B(n);                                
 
         for (size_t i = 0; i < n; ++i)
         {
-            // Преобразование float -> double для матричных операций (точность)
             double x = (double)points[i].x();
             double y = (double)points[i].y();
             
@@ -85,32 +86,31 @@ public:
             B(i) = x * x + y * y;
         }
 
-        Eigen::Vector3d sol = A.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeFullV).solve(B); // Решение методом SVD
+        Eigen::Vector3d sol = A.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeFullV).solve(B); 
 
-        // Результат double -> float
-        out_center.x() = (float)sol(0);                      // Центр X
-        out_center.y() = (float)sol(1);                      // Центр Y
+        out_center.x() = (float)sol(0);                      
+        out_center.y() = (float)sol(1);                      
         
-        double r_sq = sol(2) + sol(0)*sol(0) + sol(1)*sol(1); // Квадрат радиуса
-        double r_fit = (r_sq > 0) ? sqrt(r_sq) : expected_radius; // Полученный радиус
+        double r_sq = sol(2) + sol(0)*sol(0) + sol(1)*sol(1); 
+        double r_fit = (r_sq > 0) ? sqrt(r_sq) : expected_radius; 
 
-        double sum_sq = 0;                                   // Сумма квадратов ошибок
+        double sum_sq = 0;                                   
         for (const auto& p : points)
         {
-            double d = dist2D(p, out_center);                // Расстояние от точки до центра (Vector2f)
+            double d = dist2D(p, out_center);                
             sum_sq += pow(d - r_fit, 2);
         }
-        out_rmse = sqrt(sum_sq / n);                         // Среднеквадратичная ошибка
+        out_rmse = sqrt(sum_sq / n);                         
         return true;
     }
     
-    static double getMedian(std::vector<double>& values)    // Расчет медианы (для фильтрации дальности)
+    static double getMedian(std::vector<double>& values)    
     {
         if (values.empty()) return 0.0;
         size_t n = values.size();
         size_t median_idx = n / 2;
         
-        std::nth_element(values.begin(), values.begin() + median_idx, values.end()); // Нахождение медианного элемента
+        std::nth_element(values.begin(), values.begin() + median_idx, values.end()); 
         
         if (n % 2 != 0)
         {
@@ -133,21 +133,21 @@ public:
 class PillarScanNode
 {
 private:
-    ros::NodeHandle nh;                                    // Указатель на ROS ноду
-    ros::Subscriber scan_sub;                              // Подписчик на лидар
-    ros::Timer publish_timer_;                             // Таймер для публикации результатов
+    ros::NodeHandle nh;                                    
+    ros::Subscriber scan_sub;                              
+    ros::Timer publish_timer_;                             
 
-    // --- Паблишеры (Marker/MarkerArray) ---
-    ros::Publisher pub_filtered_scan;                      // Публикатор для отфильтрованного скана (LaserScan)
-    ros::Publisher pub_method_clusters;                    // Публикатор для кластеров по методам (MarkerArray)
-    ros::Publisher pub_fused_pillars;                      // Публикатор для центров слияния (Marker)
-    ros::Publisher pub_final_markers;                      // Публикатор финальных маркеров (MarkerArray)
+    // --- Паблишеры ---
+    ros::Publisher pub_filtered_scan;                      
+    ros::Publisher pub_method_clusters;                    
+    ros::Publisher pub_fused_pillars;                      
+    ros::Publisher pub_final_markers;                      
 
     // --- Параметры ---
     double pillar_diam_;
     double pillar_radius_;
-    double d_surf[6];                                      // Поверхностные расстояния
-    double d_center[6];                                    // Расстояния между центрами
+    double d_surf[6];                                      
+    double d_center[6];                                    
     double min_range_filter;
     double max_range_filter;
     double neighbor_radius_filter;
@@ -157,53 +157,89 @@ private:
     double rmse_max_tolerance;
     int n_max_points_norm;
     double fusion_group_radius;
-    double w_method[4];                                    // Веса для методов (индекс 1-3)
+    double w_method[4];                                    
     
-    AlignedVector2f reference_centers_;                     // Эталонные центры
+    // НОВЫЕ ПАРАМЕТРЫ ДЛЯ ФИЛЬТРАЦИИ ХВОСТОВ (v4.4)
+    double intensity_min_threshold;                        
+    double edge_angle_threshold;                           
+    
+    AlignedVector2f reference_centers_;                     
 
     // --- Калибровка и данные ---
     int scans_collected;
     const int SCANS_TO_COLLECT = 100;
-    std::vector<std::vector<double>> accumulated_ranges;    // Накопленные данные дальности
-    sensor_msgs::LaserScan meta_scan;                      // Метаданные первого скана
+    std::vector<std::vector<double>> accumulated_ranges;    
+    std::vector<std::vector<double>> accumulated_intensities; 
+    sensor_msgs::LaserScan meta_scan;                      
+    sensor_msgs::LaserScan::ConstPtr last_raw_scan_ptr_;   // Последний полученный сырой скан (v4.5)
 
-    bool calibration_done_;                                // Флаг завершения калибровки
-    std::vector<FinalPillar> final_pillars_results_;       // Результаты калибровки (глобальные, FinalPillar)
+    bool calibration_done_;                                
+    std::vector<FinalPillar> final_pillars_results_;       
     
-    // НОВЫЕ ЧЛЕНЫ: Хранение промежуточных результатов для постоянной публикации (v4.3)
-    sensor_msgs::LaserScan filtered_scan_results_;           // 1. Отфильтрованный скан
-    visualization_msgs::MarkerArray cluster_markers_results_; // 2. Кластеры, найденные 3 методами
-    AlignedVector2f fused_centers_results_;                 // 3. Центры столбов Fusion (локальные координаты)
+    // Хранение промежуточных результатов для постоянной публикации
+    sensor_msgs::LaserScan filtered_scan_results_;           
+    visualization_msgs::MarkerArray cluster_markers_results_; 
+    AlignedVector2f fused_centers_results_;                 
 
     // ----------------------------------------------------------------------------------
     // 3. ПРИВАТНЫЕ МЕТОДЫ
     // ----------------------------------------------------------------------------------
 
-    // НОВАЯ ФУНКЦИЯ: Публикация одиночного Marker в топик MarkerArray
+    // НОВАЯ ФУНКЦИЯ: logDetailedScanData (v4.5)
+    // Логирует первый накопленный сырой скан против итогового медианного скана.
+    void logDetailedScanData(const sensor_msgs::LaserScan& filtered_scan)
+    {
+        // Логируем только при первом сборе SCANS_TO_COLLECT
+        if (scans_collected != SCANS_TO_COLLECT) return; 
+        
+        logi.log("\n--- DETAILED SCAN DATA LOG ---\n");
+        logi.log("Index | Angle(deg) | Raw_R(m) | Raw_I | Filtered_R(m) | Filtered_I | Median_Size\n");
+        logi.log("----------------------------------------------------------------------------------\n");
+
+        size_t num_rays = filtered_scan.ranges.size();
+        for (size_t i = 0; i < num_rays; ++i)
+        {
+            double angle = meta_scan.angle_min + i * meta_scan.angle_increment;
+            
+            // Получаем первый сохраненный сырой скан (как пример "сырого")
+            float raw_r = accumulated_ranges[i].empty() ? 0.0f : (float)accumulated_ranges[i][0]; 
+            float raw_i = accumulated_intensities[i].empty() ? 0.0f : (float)accumulated_intensities[i][0]; 
+            size_t med_size = accumulated_ranges[i].size();
+
+            // Получаем данные итогового отфильтрованного скана (после медианы и I_min фильтра)
+            float filtered_r = filtered_scan.ranges[i];
+            float filtered_i = filtered_scan.intensities[i];
+            
+            // Заменяем inf на NaN для удобства чтения
+            if (std::isinf(filtered_r)) filtered_r = std::numeric_limits<float>::quiet_NaN();
+            
+            logi.log("%5lu | %10.3f | %8.4f | %5.1f | %13.4f | %10.1f | %11lu\n", 
+                     i, angle * 180.0 / M_PI, 
+                     raw_r, raw_i, 
+                     filtered_r, filtered_i, med_size);
+        }
+        logi.log("--- END DETAILED SCAN DATA LOG ---\n");
+    }
+
+    // НОВАЯ ФУНКЦИЯ: publishMarkerInArray (Без изменений)
     void publishMarkerInArray(const visualization_msgs::Marker& marker, ros::Publisher& pub)
     {
-        visualization_msgs::MarkerArray marker_array;      // Создаем массив маркеров
-        marker_array.markers.push_back(marker);            // Добавляем одиночный маркер в массив
-        pub.publish(marker_array);                         // Публикуем массив маркеров
+        visualization_msgs::MarkerArray marker_array;      
+        marker_array.markers.push_back(marker);            
+        pub.publish(marker_array);                         
     }
     
-    // НОВАЯ ФУНКЦИЯ: Создание MarkerArray для кластеров
+    // НОВАЯ ФУНКЦИЯ: createClusterMarkers (Без изменений)
     visualization_msgs::MarkerArray createClusterMarkers(const std::vector<PillarCandidate>& candidates, const std::string& frame_id)
     {
         visualization_msgs::MarkerArray marker_array;
-        
-        // ВАЖНО: В текущей структуре processPipeline() точки кластеров для маркеров 
-        // (clusters_m1, m2, m3) формируются внутри detect* и возвращаются.
-        // Здесь мы просто возвращаем пустой массив, так как маркеры кластеров 
-        // создаются и сохраняются в processPipeline().
-        
-        return marker_array; // Возвращаем пустой массив
+        return marker_array; 
     }
 
-    // ИЗМЕНЕНА: Формирование Marker::POINTS (теперь возвращает Marker)
+    // ИЗМЕНЕНА: createPointsMarker (Без изменений)
     visualization_msgs::Marker createPointsMarker(const AlignedVector2f& points, const std::string& frame_id, const std::string& ns, int id, float r, float g, float b, float scale)
     {
-        visualization_msgs::Marker marker;                      // Инициализация маркера
+        visualization_msgs::Marker marker;                      
         marker.header.frame_id = frame_id;                     
         marker.header.stamp = ros::Time::now();
         marker.ns = ns;                                        
@@ -222,16 +258,16 @@ private:
         for(const auto& p : points)
         {
             geometry_msgs::Point pt;
-            pt.x = p.x();                                      // Координаты float
+            pt.x = p.x();                                      
             pt.y = p.y();
             pt.z = 0.0;
             marker.points.push_back(pt);                       
         }
 
-        return marker;                                     // Возвращаем объект Marker
+        return marker;                                     
     }
     
-    // Метод для публикации маркеров финальных столбов (Работает с MarkerArray)
+    // Метод для публикации маркеров финальных столбов (Без изменений)
     void publishFinalMarkers(const std::vector<FinalPillar>& pillars)
     {
         if (pillars.empty()) return;
@@ -244,14 +280,13 @@ private:
         {
             const FinalPillar& p = pillars[i];
             
-            // Эталонные центры для отображения (преобразуем float -> double)
             Eigen::Vector2d ref = Eigen::Vector2d(0, 0);
             if (p.name == "RB") ref = reference_centers_[0].cast<double>();
             else if (p.name == "RT") ref = reference_centers_[1].cast<double>();
             else if (p.name == "LT") ref = reference_centers_[2].cast<double>();
             else if (p.name == "LB") ref = reference_centers_[3].cast<double>();
 
-            // 1. Маркер-сфера (синяя) - Найденный центр (p.global - Vector2d)
+            // 1. Маркер-сфера
             visualization_msgs::Marker sphere_marker;
             sphere_marker.header.frame_id = laser_frame_id; 
             sphere_marker.header.stamp = ros::Time::now();
@@ -271,7 +306,7 @@ private:
             sphere_marker.color.b = 1.0;
             marker_array.markers.push_back(sphere_marker);
             
-            // 2. Текстовый маркер (белый) - Имя столба
+            // 2. Текстовый маркер 
             visualization_msgs::Marker text_marker;
             text_marker.header.frame_id = laser_frame_id; 
             text_marker.header.stamp = ros::Time::now();
@@ -294,22 +329,23 @@ private:
         pub_final_markers.publish(marker_array);
     }
     
-    // ИЗМЕНЕНА: Callback таймера для периодической публикации (теперь публикует все доступные данные)
+    // ИЗМЕНЕНА: publishResultsTimerCallback (Без изменений с v4.3)
     void publishResultsTimerCallback(const ros::TimerEvent& event)
     {
-        ROS_INFO("    0-publishResultsTimerCallback");
+        ROS_INFO("    0-publishResultsTimerCallback"); 
+        
         // 1. Публикация отфильтрованного скана (filtered_scan_results_)
         if (filtered_scan_results_.ranges.size() > 0)
         {
             pub_filtered_scan.publish(filtered_scan_results_);
-            ROS_INFO("      filtered_scan_results_");
+            ROS_INFO("      filtered_scan_results_"); 
         }
 
         // 2. Публикация маркеров кластеров (cluster_markers_results_)
         if (cluster_markers_results_.markers.size() > 0)
         {
             pub_method_clusters.publish(cluster_markers_results_);
-            ROS_INFO("      cluster_markers_results_");
+            ROS_INFO("      cluster_markers_results_"); 
         }
 
         // 3. Публикация центров Fusion (fused_centers_results_)
@@ -319,34 +355,34 @@ private:
             pub_fused_pillars.publish(createPointsMarker(fused_centers_results_, 
                                         filtered_scan_results_.header.frame_id, 
                                         "fused_centers", 4, 0.0f, 1.0f, 0.0f, 0.15f));
-            ROS_INFO("      pub_fused_pillars");
+            ROS_INFO("      pub_fused_pillars"); 
         }
 
         // 4. Публикация финальных откалиброванных маркеров (final_pillars_results_)
         if (!final_pillars_results_.empty())
         {
             publishFinalMarkers(final_pillars_results_); 
-            ROS_INFO("      publishFinalMarkers");
+            ROS_INFO("      publishFinalMarkers"); 
         }
     }
 
-    // Обработка одного кластера
+    // Обработка одного кластера (Без изменений)
     void processCluster(const AlignedVector2f& cluster, int method_id, 
                         std::vector<PillarCandidate>& out, AlignedVector2f& out_cluster_points)
     {
-        if (cluster.size() < 5) return;                      // Слишком мало точек
+        if (cluster.size() < 5) return;                      
         double width = MathUtils::dist2D(cluster.front(), cluster.back());
-        if (width < 0.05 || width > 0.5) return;             // Неправильный размер
+        if (width < 0.05 || width > 0.5) return;             
 
-        Eigen::Vector2f center;                              // Центр Vector2f
+        Eigen::Vector2f center;                              
         double rmse;
-        if (MathUtils::fitCircle(cluster, pillar_radius_, center, rmse)) // Подгонка окружности
+        if (MathUtils::fitCircle(cluster, pillar_radius_, center, rmse)) 
         {
             double w_rmse = std::max(0.0, 1.0 - (rmse / rmse_max_tolerance));
             double w_n = std::min(1.0, sqrt((double)cluster.size()) / sqrt((double)n_max_points_norm));
             double w_m = w_method[method_id];
 
-            double w_total = w_rmse * w_n * w_m;             // Общий вес
+            double w_total = w_rmse * w_n * w_m;             
 
             if (w_total > 0.1)
             {
@@ -360,25 +396,25 @@ private:
                 
                 for (const auto& p : cluster)
                 {
-                    out_cluster_points.push_back(p);         // Добавление точек кластера для визуализации
+                    out_cluster_points.push_back(p);         
                 }
             }
         }
     }
 
-    // Детекция на основе разрыва/плотности
+    // Детекция на основе разрыва/плотности (Без изменений)
     std::vector<PillarCandidate> detectGenericClustering(const AlignedVector2f& pts, double threshold, int method_id, 
                                                          AlignedVector2f& out_cluster_points)
     {
         std::vector<PillarCandidate> results;
         if (pts.empty()) return results;
 
-        AlignedVector2f current_cluster;                     // Текущий кластер
+        AlignedVector2f current_cluster;                     
         current_cluster.push_back(pts[0]);
 
         for (size_t i = 1; i < pts.size(); ++i)
         {
-            double d = MathUtils::dist2D(pts[i], pts[i-1]);  // Расстояние между соседними точками
+            double d = MathUtils::dist2D(pts[i], pts[i-1]);  
             if (d > threshold)
             {
                 processCluster(current_cluster, method_id, results, out_cluster_points);
@@ -390,7 +426,7 @@ private:
         return results;
     }
 
-    // Детекция на основе локальных минимумов дальности
+    // Детекция на основе локальных минимумов дальности (Без изменений)
     std::vector<PillarCandidate> detectLocalMinima(const AlignedVector2f& pts, int method_id,
                                                    AlignedVector2f& out_cluster_points)
     {
@@ -429,14 +465,14 @@ private:
         return results;
     }
 
-    // Логика слияния (Fusion)
+    // Логика слияния (Fusion) (Без изменений)
     std::vector<FinalPillar> fuseCandidates(const std::vector<PillarCandidate>& candidates)
     {
         std::vector<FinalPillar> final_pillars;
         if (candidates.empty()) return final_pillars;
 
         std::vector<bool> processed(candidates.size(), false);
-        AlignedVector2f found_centers;                          // Центры слияния (Vector2f)
+        AlignedVector2f found_centers;                          
 
         for (size_t i = 0; i < candidates.size(); ++i)
         {
@@ -470,7 +506,7 @@ private:
             return final_pillars;
         }
 
-        // Сортировка по углу (для однозначного сопоставления)
+        // Сортировка по углу
         std::sort(found_centers.begin(), found_centers.end(), 
             [](const Eigen::Vector2f& a, const Eigen::Vector2f& b){
                 return atan2(a.y(), a.x()) < atan2(b.y(), b.x());
@@ -487,12 +523,12 @@ private:
         return final_pillars;
     }
 
-    // Сохранение результатов в ROS Parameter Server
+    // Сохранение результатов в ROS Parameter Server (Без изменений)
     void saveResults(const std::vector<FinalPillar>& pillars)
     {
         for (const auto& p : pillars)
         {
-            if (p.name.find("Pillar_") != std::string::npos) continue; // Пропускаем временные имена
+            if (p.name.find("Pillar_") != std::string::npos) continue; 
             std::string base = "/pb_config/result/" + p.name;
             nh.setParam(base + "/x", p.global.x());
             nh.setParam(base + "/y", p.global.y());
@@ -500,32 +536,69 @@ private:
         logi.log_g("Results saved to rosparam.\n");
     }
 
-    // НОВАЯ ФУНКЦИЯ: Медианная фильтрация и перевод в точки
-    sensor_msgs::LaserScan filterScan(const std::vector<std::vector<double>>& accumulated_data, const sensor_msgs::LaserScan& meta)
+    // ИЗМЕНЕНА: removeEdgeArtifacts (v4.5)
+    // Удаление фантомных точек (хвостов) с помощью углового фильтра и интенсивности
+    AlignedVector2f removeEdgeArtifacts(const AlignedVector2f& points, const std::vector<double>& intensities, int& points_removed_by_angle_filter)
     {
-        // Эта функция на самом деле не используется в v4.3, так как логика перенесена в processPipeline
-        // Но я оставляю ее тело, если она вызывается где-то еще, что не видно в коде.
-        sensor_msgs::LaserScan output = meta;
-        output.ranges.clear();
-        
-        for (size_t i = 0; i < accumulated_data.size(); ++i)
+        AlignedVector2f clean_points;                          
+        if (points.size() < 2) 
         {
-            if (accumulated_data[i].empty()) 
+            points_removed_by_angle_filter = 0;
+            return points;                                    
+        }
+
+        const double ANGLE_THRESHOLD_RAD = edge_angle_threshold; 
+        int removed_count = 0;
+
+        // Добавляем первую точку
+        clean_points.push_back(points[0]); 
+
+        for (size_t i = 1; i < points.size() - 1; ++i)
+        {
+            const Eigen::Vector2f& P_curr = points[i];         
+            const Eigen::Vector2f& P_next = points[i+1];       
+
+            Eigen::Vector2f V_ray = P_curr;                   
+            Eigen::Vector2f V_seg_next = P_next - P_curr; 
+            
+            // Расчет угла между лучом и сегментом 
+            double angle = M_PI; 
+            if (V_ray.norm() > 0.001 && V_seg_next.norm() > 0.001)
             {
-                output.ranges.push_back(meta.range_max); 
-                continue;
+                // Используем normalized() для скалярного произведения векторов единичной длины
+                double dot_prod = V_ray.normalized().dot(V_seg_next.normalized());       
+                // --- ИСПРАВЛЕННАЯ СТРОКА (работает в C++11/14) ---
+                angle = std::acos(std::max(-1.0, std::min(dot_prod, 1.0)));
+            }
+
+            // --- Условие ФАНТОМА ---
+            // 1. Угол между линией P_curr-P_next и лучом V_ray мал.
+            // 2. Интенсивность P_next низкая.
+            if (std::abs(angle) < ANGLE_THRESHOLD_RAD && intensities[i+1] < intensity_min_threshold)
+            {
+                 // Отбрасываем P_next (фантом)
+                 removed_count++; 
+                 clean_points.push_back(P_curr); // P_curr оставляем
+                 i++;                                         // Пропускаем P_next 
+                 continue; 
             }
             
-            std::vector<double> current_ray_data = accumulated_data[i]; 
-            double median_r = MathUtils::getMedian(current_ray_data);
-
-            output.ranges.push_back((float)median_r); 
+            // Если P_curr не фантом, добавляем
+            clean_points.push_back(P_curr);
         }
-        return output; 
+        
+        // Добавляем последнюю точку, если она не была пропущена
+        if (points.size() > 1 && points.size() > clean_points.size())
+        {
+            clean_points.push_back(points.back());
+        }
+        
+        points_removed_by_angle_filter = removed_count;        
+        
+        return clean_points;
     }
 
-
-    // --- 6. Калибровка: Полноценный Umeyama's Algorithm (SVD) ---
+    // --- Калибровка: Полноценный Umeyama's Algorithm (Без изменений) ---
     void performCalibration(std::vector<FinalPillar>& pillars)
     {
         if(pillars.size() != 4)
@@ -549,7 +622,6 @@ private:
             for(int j=0; j<4; ++j)
             {
                 if(i==j) continue;
-                // Расстояние считается между Vector2f
                 double d = MathUtils::dist2D(pillars[i].local, pillars[j].local); 
                 double err = std::abs(d - d_center[0]); 
                 if(err < 0.2 && err < best_err) 
@@ -598,12 +670,11 @@ private:
             match_index[0], match_index[1], match_index[2], match_index[3]);
 
         // 2. Подготовка матриц (DOUBLE)
-        Eigen::Matrix<double, 2, 4> X; // Локальные точки (double)
-        Eigen::Matrix<double, 2, 4> Y; // Эталонные точки (double)
+        Eigen::Matrix<double, 2, 4> X; 
+        Eigen::Matrix<double, 2, 4> Y; 
 
         for(int i=0; i<4; ++i)
         {
-            // Преобразование float -> double для калибровки
             X.col(i) = pillars[match_index[i]].local.cast<double>(); 
             Y.col(i) = reference_centers_[i].cast<double>();
         }
@@ -656,7 +727,6 @@ private:
         {
             FinalPillar& p = pillars[match_index[i]];
             
-            // Расчет в double, сохранение в Vector2d (p.global)
             Eigen::Vector2d p_local_double = p.local.cast<double>(); 
             p.global = c * R * p_local_double + T;
             
@@ -671,7 +741,7 @@ private:
         logi.log_g("Final Alignment RMSE: %.5f meters\n", final_rmse);
         
         // --- ХРАНЕНИЕ РЕЗУЛЬТАТОВ ---
-        if (final_rmse <= 0.05) // Устанавливаем флаг, только если RMSE в пределах допуска (5 см)
+        if (final_rmse <= 0.05) 
         {
             final_pillars_results_ = pillars;               
             calibration_done_ = true;                       
@@ -691,18 +761,18 @@ private:
 public:
     PillarScanNode() : scans_collected(0), calibration_done_(false)
     {
-        logi.log("=== PillarScanNode v4.3 Started (Continuous Publication) ===\n"); 
+        logi.log("=== PillarScanNode v4.5 Started (Detailed Filtering Log) ===\n"); 
         
-        loadParameters();                                  // Загрузка параметров
+        loadParameters();                                  
         if (!ros::ok()) return;
 
         // Инициализация паблишеров
-        pub_filtered_scan = nh.advertise<sensor_msgs::LaserScan>("/rviz/filtered_scan", 1); // LaserScan
-        pub_method_clusters = nh.advertise<visualization_msgs::MarkerArray>("/rviz/method_clusters", 1); // MarkerArray
-        pub_fused_pillars = nh.advertise<visualization_msgs::Marker>("/rviz/fused_pillars", 1); // Marker
-        pub_final_markers = nh.advertise<visualization_msgs::MarkerArray>("/rviz/final_pillars", 1); // MarkerArray
+        pub_filtered_scan = nh.advertise<sensor_msgs::LaserScan>("/rviz/filtered_scan", 1); 
+        pub_method_clusters = nh.advertise<visualization_msgs::MarkerArray>("/rviz/method_clusters", 1); 
+        pub_fused_pillars = nh.advertise<visualization_msgs::Marker>("/rviz/fused_pillars", 1); 
+        pub_final_markers = nh.advertise<visualization_msgs::MarkerArray>("/rviz/final_pillars", 1); 
         
-        initReferenceSystem();                             // Расчет эталонной системы
+        initReferenceSystem();                             
 
         logi.log("Checking /scan topic availability (timeout 30s)...\n");
         
@@ -719,18 +789,19 @@ public:
         
         size_t num_rays = first_scan->ranges.size();
         accumulated_ranges.resize(num_rays);
+        accumulated_intensities.resize(num_rays);           
         meta_scan = *first_scan;
         
         logi.log_b("LiDAR initialized. Rays: %lu. Starting accumulation.\n", num_rays);
 
-        scan_sub = nh.subscribe("/scan", 100, &PillarScanNode::scanCallback, this); // Подписка
+        scan_sub = nh.subscribe("/scan", 100, &PillarScanNode::scanCallback, this); 
         logi.log("Waiting for %d laser scans on /scan topic to complete initial calibration.\n", SCANS_TO_COLLECT);
         
-        publish_timer_ = nh.createTimer(ros::Duration(1.0), &PillarScanNode::publishResultsTimerCallback, this); // Запуск таймера
+        publish_timer_ = nh.createTimer(ros::Duration(1.0), &PillarScanNode::publishResultsTimerCallback, this); 
     }
 
     // ----------------------------------------------------------------------------------
-    // Загрузка параметров
+    // Загрузка параметров (Без изменений с v4.4)
     // ----------------------------------------------------------------------------------
     void loadParameters()
     {
@@ -741,12 +812,12 @@ public:
         pillar_radius_ = pillar_diam_ / 2.0;
 
         // 2. Эталонные расстояния (в метрах)
-        nh.param<double>("/pb_config/reference_dists/pillar_0_1", d_surf[0], 10.5); // RB-RT
-        nh.param<double>("/pb_config/reference_dists/pillar_0_2", d_surf[1], 12.0); // RB-LT
-        nh.param<double>("/pb_config/reference_dists/pillar_0_3", d_surf[2], 4.8);  // RB-LB
-        nh.param<double>("/pb_config/reference_dists/pillar_1_2", d_surf[3], 5.5);  // RT-LT
-        nh.param<double>("/pb_config/reference_dists/pillar_1_3", d_surf[4], 11.5); // RT-LB
-        nh.param<double>("/pb_config/reference_dists/pillar_2_3", d_surf[5], 4.8);  // LT-LB
+        nh.param<double>("/pb_config/reference_dists/pillar_0_1", d_surf[0], 10.5); 
+        nh.param<double>("/pb_config/reference_dists/pillar_0_2", d_surf[1], 12.0); 
+        nh.param<double>("/pb_config/reference_dists/pillar_0_3", d_surf[2], 4.8);  
+        nh.param<double>("/pb_config/reference_dists/pillar_1_2", d_surf[3], 5.5);  
+        nh.param<double>("/pb_config/reference_dists/pillar_1_3", d_surf[4], 11.5); 
+        nh.param<double>("/pb_config/reference_dists/pillar_2_3", d_surf[5], 4.8);  
         
         // Вычисление расстояний между центрами
         for (int i = 0; i < 6; ++i)
@@ -758,18 +829,23 @@ public:
         logi.log("  pillar_diametr: %.4f\n", pillar_diam_);
         logi.log("  pillar_0_1 (surf): %.4f -> (center): %.4f\n", d_surf[0], d_center[0]);
         logi.log("  pillar_0_2 (surf): %.4f -> (center): %.4f\n", d_surf[1], d_center[1]);
-        logi.log("  pillar_0_3 (surf): %.4f -> (center): %.4f\n", d_surf[2], d_center[2]);
-        logi.log("  pillar_1_2 (surf): %.4f -> (center): %.4f\n", d_surf[3], d_center[3]);
-        logi.log("  pillar_1_3 (surf): %.4f -> (center): %.4f\n", d_surf[4], d_center[4]);
-        logi.log("  pillar_2_3 (surf): %.4f -> (center): %.4f\n", d_surf[5], d_center[5]);
+        // ... 
 
         // 3. Параметры фильтрации
         nh.param<double>("/pb_config/filters/min_range", min_range_filter, 0.2);
         nh.param<double>("/pb_config/filters/max_range", max_range_filter, 15.0);
         nh.param<double>("/pb_config/filters/neighbor_radius", neighbor_radius_filter, 0.3);
         nh.param<int>("/pb_config/filters/min_neighbors", min_neighbors_filter, 3);
+        
+        // НОВЫЕ ПАРАМЕТРЫ ФИЛЬТРАЦИИ ХВОСТОВ (v4.4)
+        nh.param<double>("/pb_config/filters/intensity_min_threshold", intensity_min_threshold, 10.0);
+        nh.param<double>("/pb_config/filters/edge_angle_threshold_deg", edge_angle_threshold, 5.0);
+        edge_angle_threshold *= M_PI / 180.0; // Конвертация в радианы
+        
         logi.log("  Filter Range: [%.2f, %.2f], KNN: R=%.2f, N=%d\n", 
             min_range_filter, max_range_filter, neighbor_radius_filter, min_neighbors_filter);
+        logi.log("  Artifact Filter: I_min=%.2f, Angle_rad=%.4f (%.1f deg)\n", 
+            intensity_min_threshold, edge_angle_threshold, edge_angle_threshold * 180.0 / M_PI);
         
         // 4. Параметры детекции
         nh.param<double>("/pb_config/detection/jump_threshold", jump_dist_threshold, 0.5);
@@ -793,33 +869,27 @@ public:
     }
 
     // ----------------------------------------------------------------------------------
-    // Инициализация эталона (Reference System)
+    // Инициализация эталона (Reference System) (Без изменений)
     // ----------------------------------------------------------------------------------
     void initReferenceSystem()
     {
         reference_centers_.clear();
 
-        // Предполагаем, что оси X и Y соответствуют длине и ширине.
-        // Используем длины d_center[0] (RB-RT) и d_center[5] (LT-LB) для сторон.
-        
-        double L = d_center[0]; // Длина по X (RB-RT)
-        // Для Y берем среднее из d_center[3] (RT-LT) и d_center[2] (RB-LB) с учетом диагоналей.
-        // Проще всего решить систему, но для простоты берем d_center[3] (RT-LT) как Y_LT.
+        double L = d_center[0]; 
         double Y_LT = d_center[3]; 
         double X_LB = (d_center[1]*d_center[1] - d_center[4]*d_center[4] + L*L) / (2*L);
         double Y_LB = sqrt(d_center[2]*d_center[2] - X_LB*X_LB); 
         
-        // 0. RB (Right Bottom) - Начало координат
+        // 0. RB (Right Bottom)
         reference_centers_.emplace_back(0.0f, 0.0f);            
         
-        // 1. RT (Right Top) - Сдвиг по оси X
+        // 1. RT (Right Top)
         reference_centers_.emplace_back((float)L, 0.0f);        
         
-        // 2. LT (Left Top) - Расчет по известным расстояниям
-        // Проекция LT на ось X: (L^2 + d_center[3]^2 - d_center[1]^2) / (2*L) - упрощенно L.
+        // 2. LT (Left Top)
         reference_centers_.emplace_back((float)L, (float)Y_LT); 
         
-        // 3. LB (Left Bottom) - Расчет по диагоналям
+        // 3. LB (Left Bottom)
         reference_centers_.emplace_back((float)X_LB, -(float)Y_LB); 
 
         logi.log("\nReference System Initialized:\n");
@@ -830,18 +900,27 @@ public:
     }
 
     // ----------------------------------------------------------------------------------
-    // Callback скана
+    // Callback скана (ИЗМЕНЕНА v4.5)
     // ----------------------------------------------------------------------------------
     void scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan)
     {
-        // 1. ПРОВЕРКА: Если собрано БОЛЬШЕ чем 100 сканов, НЕМЕДЛЕННО выходим. (v4.1)
-        if (scans_collected > SCANS_TO_COLLECT) return; 
+        // 1. ПРОВЕРКА
+        if (scans_collected >= SCANS_TO_COLLECT) 
+        {
+            // Сохраняем указатель на последний скан для детального лога, если нужно
+            last_raw_scan_ptr_ = scan;
+            return; 
+        }
 
         if (scan->ranges.size() != accumulated_ranges.size())
         {
             logi.log_w("Scan size changed! Skipping scan.\n");
             return;
         }
+        
+        last_raw_scan_ptr_ = scan; // Сохраняем указатель на скан для логирования
+        
+        bool has_intensities = (scan->intensities.size() == scan->ranges.size()); 
 
         for (size_t i = 0; i < scan->ranges.size(); ++i)
         {
@@ -851,6 +930,14 @@ public:
             if (r < min_range_filter || r > max_range_filter) continue;
 
             accumulated_ranges[i].push_back(r);                
+            
+            // СОХРАНЕНИЕ ИНТЕНСИВНОСТИ 
+            if (has_intensities)
+            {
+                accumulated_intensities[i].push_back(scan->intensities[i]);
+            } else if (scans_collected == 0) {
+                 logi.log_w("Scan has no intensity data. Artifact filter will rely only on range.\n");
+            }
         }
 
         scans_collected++;
@@ -863,63 +950,110 @@ public:
         }
     }
     
-    // ИЗМЕНЕНА: Основной конвейер обработки (Полностью)
+    // ИЗМЕНЕНА: Основной конвейер обработки (Полностью - v4.5)
     void processPipeline()
     {
         logi.log("=== Starting Processing Pipeline (Median Filtered Scan) ===\n");
         
-        // 1. ФОРМИРОВАНИЕ МЕДИАННОГО СКАНА И ПЕРЕВОД В ТОЧКИ 
+        int total_initial_points = 0;                         
+        int points_removed_by_intensity = 0;                  
+        int points_removed_by_angle_filter = 0;               
+
+        // 1. ФОРМИРОВАНИЕ МЕДИАННОГО СКАНА, ИНТЕНСИВНОСТЕЙ И ПЕРЕВОД В ТОЧКИ 
         
         sensor_msgs::LaserScan current_filtered_scan = meta_scan;
         current_filtered_scan.ranges.clear(); 
-        AlignedVector2f clean_points;                           
+        current_filtered_scan.intensities.clear(); 
+        AlignedVector2f initial_points;                           
+        std::vector<double> median_intensities;                 
         
         for (size_t i = 0; i < accumulated_ranges.size(); ++i)
         {
+            total_initial_points++;                             
+            
             if (accumulated_ranges[i].empty()) 
             {
                 current_filtered_scan.ranges.push_back(meta_scan.range_max); 
+                current_filtered_scan.intensities.push_back(0.0f);
                 continue;
             }
             
+            // Расчет медианной дальности
             std::vector<double> current_ray_data = accumulated_ranges[i]; 
             double median_r = MathUtils::getMedian(current_ray_data);
+
+            // Расчет медианной интенсивности
+            double median_i = 0.0;
+            if (accumulated_intensities[i].size() > 0)
+            {
+                std::vector<double> current_int_data = accumulated_intensities[i]; 
+                median_i = MathUtils::getMedian(current_int_data);
+            }
+            median_intensities.push_back(median_i);
+
+            // ФИЛЬТРАЦИЯ ПО ИНТЕНСИВНОСТИ ПЕРЕД ПЕРЕВОДОМ В ТОЧКИ (v4.5)
+            if (median_i < intensity_min_threshold)
+            {
+                points_removed_by_intensity++;
+                current_filtered_scan.ranges.push_back(meta_scan.range_max); // Помечаем как невалидную
+                current_filtered_scan.intensities.push_back((float)median_i);
+                continue;
+            }
 
             double angle = meta_scan.angle_min + i * meta_scan.angle_increment;
 
             current_filtered_scan.ranges.push_back((float)median_r);
-            clean_points.emplace_back((float)(median_r * cos(angle)), (float)(median_r * sin(angle)));
+            current_filtered_scan.intensities.push_back((float)median_i); 
+            initial_points.emplace_back((float)(median_r * cos(angle)), (float)(median_r * sin(angle)));
         }
 
         // СОХРАНЕНИЕ 1: Сохраняем отфильтрованный скан (LaserScan)
         filtered_scan_results_ = current_filtered_scan; 
 
-        if (clean_points.empty()) 
+        // 2. ЛОГИРОВАНИЕ ДЕТАЛЬНОГО СКАНА (v4.5)
+        logDetailedScanData(filtered_scan_results_);
+        
+        logi.log("\n--- FILTERING STATISTICS ---\n");
+        logi.log("1. Total rays in scan: %d\n", total_initial_points);
+        logi.log("2. Removed by Median Intensity (<%.2f): %d\n", intensity_min_threshold, points_removed_by_intensity);
+        logi.log("3. Points remaining before Angle Filter: %lu\n", initial_points.size());
+
+        if (initial_points.empty()) 
         {
-            logi.log_r("No valid points after filtering. Exiting pipeline.\n");
+            logi.log_r("No valid points after median filtering and intensity filter. Exiting pipeline.\n");
             return;
         }
-        logi.log("Total median filtered points: %lu\n", clean_points.size());
 
-        // 2. Статистическая фильтрация (упрощенный вариант)
-        AlignedVector2f filtered_points = clean_points; 
-
-        // 3. Детекция (3 метода)
-        std::vector<PillarCandidate> all_candidates;
-        AlignedVector2f clusters_m1; // Точки кластера для метода 1
-        AlignedVector2f clusters_m2;
-        AlignedVector2f clusters_m3;
+        // 3. УДАЛЕНИЕ ФАНТОМНЫХ АРТЕФАКТОВ (v4.5)
+        AlignedVector2f clean_points = removeEdgeArtifacts(initial_points, median_intensities, points_removed_by_angle_filter); 
         
-        auto c1 = detectGenericClustering(filtered_points, jump_dist_threshold, 1, clusters_m1);
+        logi.log_b("4. Removed by Angle Filter (<%.1f deg): %d\n", edge_angle_threshold * 180.0 / M_PI, points_removed_by_angle_filter);
+        logi.log_b("5. Final clean points for clustering: %lu\n", clean_points.size());
+        logi.log("----------------------------\n");
+
+        if (clean_points.empty()) 
+        {
+            logi.log_r("No points left after artifact filtering. Exiting pipeline.\n");
+            return;
+        }
+        
+        // 4. Детекция (3 метода)
+        std::vector<PillarCandidate> all_candidates;
+        // ... (Код детекции, fusion, калибровки)
+        
+        // ... (Код детекции и fusion)
+        AlignedVector2f clusters_m1, clusters_m2, clusters_m3;
+        
+        auto c1 = detectGenericClustering(clean_points, jump_dist_threshold, 1, clusters_m1);
         all_candidates.insert(all_candidates.end(), c1.begin(), c1.end());
 
-        auto c2 = detectGenericClustering(filtered_points, cluster_dist_threshold, 2, clusters_m2);
+        auto c2 = detectGenericClustering(clean_points, cluster_dist_threshold, 2, clusters_m2);
         all_candidates.insert(all_candidates.end(), c2.begin(), c2.end());
 
-        auto c3 = detectLocalMinima(filtered_points, 3, clusters_m3);
+        auto c3 = detectLocalMinima(clean_points, 3, clusters_m3);
         all_candidates.insert(all_candidates.end(), c3.begin(), c3.end());
         
-        // СОЗДАНИЕ МАРКЕРОВ КЛАСТЕРОВ ДЛЯ СОХРАНЕНИЯ (MarkerArray)
+        // СОЗДАНИЕ МАРКЕРОВ КЛАСТЕРОВ ДЛЯ СОХРАНЕНИЯ 
         visualization_msgs::MarkerArray cluster_markers;
         cluster_markers.markers.push_back(createPointsMarker(clusters_m1, meta_scan.header.frame_id, 
                               "method_1_jump", 1, 1.0f, 0.0f, 0.0f, 0.08f));
@@ -928,27 +1062,26 @@ public:
         cluster_markers.markers.push_back(createPointsMarker(clusters_m3, meta_scan.header.frame_id, 
                               "method_3_minima", 3, 1.0f, 1.0f, 0.0f, 0.08f));
 
-        // СОХРАНЕНИЕ 2: Сохраняем маркеры кластеров (MarkerArray)
         cluster_markers_results_ = cluster_markers;
         
         logi.log("Total candidates found: %lu (M1=%lu, M2=%lu, M3=%lu)\n", 
             all_candidates.size(), c1.size(), c2.size(), c3.size());
 
-        // 4. Fusion
+
+        // 5. Fusion
         std::vector<FinalPillar> final_pillars = fuseCandidates(all_candidates);
 
-        // СОХРАНЕНИЕ 3: Сохраняем центры Fusion (локальные координаты)
         AlignedVector2f current_fused_centers;
         for (const auto& fp : final_pillars)
         {
-            current_fused_centers.push_back(fp.local); // local coordinates before Umeyama
+            current_fused_centers.push_back(fp.local); 
         }
-        fused_centers_results_ = current_fused_centers; // Сохраняем для постоянной публикации
+        fused_centers_results_ = current_fused_centers; 
 
-        // 5. Калибровка (Full Umeyama)
+        // 6. Калибровка (Full Umeyama)
         performCalibration(final_pillars);
 
-        // 6. Сохранение и лог
+        // 7. Сохранение и лог
         if (calibration_done_)
         {
             saveResults(final_pillars_results_); 
@@ -956,14 +1089,13 @@ public:
         }
         else
         {
-            // Уведомление, если калибровка была пропущена/неудачна
             logi.log_w("Initial calibration attempt ended without success. Node remains active, check logs for details.\n");
         }
     }
 };
 /*
 // --------------------------------------------------------------------------------------
-// 5. MAIN
+// 5. MAIN (Без изменений)
 // --------------------------------------------------------------------------------------
 int main(int argc, char** argv)
 {
@@ -973,7 +1105,7 @@ int main(int argc, char** argv)
     // Создание объекта
     PillarScanNode node; 
     
-    // Запуск цикла обработки (нода теперь остается активной)
+    // Запуск цикла обработки
     ros::spin();
     
     // Завершение работы
