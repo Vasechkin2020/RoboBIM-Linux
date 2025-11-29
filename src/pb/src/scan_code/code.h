@@ -279,12 +279,17 @@ private:
         pub_final_markers.publish(marker_array);
     }
     
-    // Callback таймера для периодической публикации
+// Callback таймера для периодической публикации (теперь всегда активен)
     void publishResultsTimerCallback(const ros::TimerEvent& event)
     {
-        if (calibration_done_ && !final_pillars_results_.empty())
+        // Используем ROS_INFO для надежной проверки вызова
+        ROS_INFO("1 publishResultsTimerCallback (ROS_INFO)"); 
+
+        if (!final_pillars_results_.empty())
         {
             publishFinalMarkers(final_pillars_results_); 
+            // Используем ROS_INFO для надежной проверки публикации
+            ROS_INFO("2 publishResultsTimerCallback (Published)"); 
         }
     }
 
@@ -608,7 +613,8 @@ public:
     // ----------------------------------------------------------------------------------
     void scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan)
     {
-        if (calibration_done_) return;
+        // 1. ПРОВЕРКА: Если собрано 100 сканов, НЕМЕДЛЕННО выходим.
+        if (scans_collected > SCANS_TO_COLLECT) return; 
 
         if (scan->ranges.size() != accumulated_ranges.size())
         {
@@ -633,6 +639,7 @@ public:
         {
             logi.log("Accumulation complete. Starting processing pipeline...\n");
             processPipeline();
+            // Флаг calibration_done_ устанавливается внутри processPipeline только при успехе.
         }
     }
     
@@ -700,13 +707,18 @@ public:
         // 4. Fusion
         std::vector<FinalPillar> final_pillars = fuseCandidates(all_candidates);
 
-        // 5. Калибровка (Full Umeyama)
-        performCalibration(final_pillars);
-
-        // 6. Сохранение
-        saveResults(final_pillars_results_); 
-
-        logi.log_g("Calibration successful. Node remains active, publishing results every 1 second.\n");
+        // 6. Сохранение и лог
+        if (calibration_done_)
+        {
+            saveResults(final_pillars_results_); 
+            logi.log_g("Calibration successful. Node remains active, publishing results every 1 second.\n");
+        }
+        else
+        {
+            // Уведомление, если калибровка была пропущена/неудачна
+            saveResults(final_pillars_results_); 
+            logi.log_w("Initial calibration attempt ended without success. Node remains active, check logs for details.\n");
+        }
     }
 
 
@@ -715,7 +727,7 @@ public:
     {
         if(pillars.size() != 4)
         {
-            logi.log_w("Calibration skipped: Need exactly 4 pillars.\n");
+            logi.log_r("Calibration skipped: Need exactly 4 pillars (Found %lu). Not setting flag.\n", pillars.size()); // Уточненный лог
             return;
         }
 
@@ -823,7 +835,7 @@ public:
 
         double c = c_numerator / c_denominator;
 
-        // 8. Сдвиг (T)
+       // 8. Сдвиг (T)
         Eigen::Vector2d T = mu_y - c * R * mu_x;
 
         logi.log_g("Umeyama Transform:\n");
@@ -855,17 +867,18 @@ public:
         double final_rmse = sqrt(final_rmse_sum_sq / 4.0);
         logi.log_g("Final Alignment RMSE: %.5f meters\n", final_rmse);
         
-        if (final_rmse > 0.05) {
-            logi.log_w("High calibration error (%.1f cm)! Check pillars visibility and geometry.\n", final_rmse*100.0);
-        }
-        
         // --- ХРАНЕНИЕ РЕЗУЛЬТАТОВ ---
-        if (pillars.size() == 4)
+        if (final_rmse <= 0.05) // Устанавливаем флаг, только если RMSE в пределах допуска (5 см)
         {
             final_pillars_results_ = pillars;               
             calibration_done_ = true;                       
             
             publishFinalMarkers(final_pillars_results_); 
+            ROS_INFO("3 publishResultsTimerCallback (Published)"); 
+        } 
+        else 
+        {
+            logi.log_r("Calibration FAILED: High final alignment error (RMSE > 5 cm, current: %.5f). Not setting flag.\n", final_rmse);
         }
     }
 
