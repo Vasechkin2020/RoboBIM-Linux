@@ -14,30 +14,33 @@
 // Твой класс логирования (предполагаю, что он уже есть в проекте)
 extern Logi logi;
 
-struct PillarCandidate {
-    double x, y;           // координаты центра в системе лидара
-    double radius;         // найденный радиус
-    double rms_error;      // RMSE подгонки круга
-    int num_points;        // количество точек
-    double angular_span;   // угловой охват, градусы
-    double confidence;     // итоговая уверенность [0..1]
-    int method_id;         // 1..4 — откуда пришёл
+struct PillarCandidate
+{
+    double x, y;         // координаты центра в системе лидара
+    double radius;       // найденный радиус
+    double rms_error;    // RMSE подгонки круга
+    int num_points;      // количество точек
+    double angular_span; // угловой охват, градусы
+    double confidence;   // итоговая уверенность [0..1]
+    int method_id;       // 1..4 — откуда пришёл
 };
 
-struct PillarGlobal {
+struct PillarGlobal
+{
     double x, y;
     double confidence;
 };
 
 // Глобальные параметры (считываются из rosparam)
-struct Config {
+struct Config
+{
     double pillar_diameter = 0.315;
     double pillar_radius = 0.1575;
     double gap_to_wall_min = 0.5;
     int median_filter_window = 9;
     double max_range = 25.0;
     // 6 расстояний между внешними краями столбов (из рулетки)
-    double edge_dist[6] = {0}; // 0-1, 0-2, 0-3, 1-2, 1-3, 2-3
+    double edge_dist[6] = {0};       // 0-1, 0-2, 0-3, 1-2, 1-3, 2-3
     int right_bottom_pillar_idx = 0; // какой столб — правый нижний (0..3)
 } cfg;
 
@@ -51,7 +54,8 @@ std::vector<PillarCandidate> all_candidates;
 // =============================================================================
 // БЛОК 1: Чтение конфигурации из rosparam (/pb_config/...)
 // =============================================================================
-void loadConfig(ros::NodeHandle& nh) {
+void loadConfig(ros::NodeHandle &nh)
+{
     logi.log("\n[LOAD CONFIG] Начало загрузки параметров из rosparam /pb_config");
 
     nh.param<double>("/pb_config/distance/pillar_diametr", cfg.pillar_diameter, 0.315);
@@ -69,8 +73,9 @@ void loadConfig(ros::NodeHandle& nh) {
     logi.log("\n[CONFIG] Диаметр столба: %.3f м (R=%.4f)", cfg.pillar_diameter, cfg.pillar_radius);
     logi.log("\n[CONFIG] Правый нижний столб: индекс %d", cfg.right_bottom_pillar_idx);
     logi.log("\n[CONFIG] Расстояния между краями (рулетка):");
-    const char* labels[6] = {"0-1", "0-2", "0-3", "1-2", "1-3", "2-3"};
-    for (int i = 0; i < 6; ++i) {
+    const char *labels[6] = {"0-1", "0-2", "0-3", "1-2", "1-3", "2-3"};
+    for (int i = 0; i < 6; ++i)
+    {
         if (cfg.edge_dist[i] > 0.1)
             logi.log("   %s: %.3f м", labels[i], cfg.edge_dist[i]);
     }
@@ -79,13 +84,15 @@ void loadConfig(ros::NodeHandle& nh) {
 // =============================================================================
 // БЛОК 2: Медианный фильтр по времени
 // =============================================================================
-sensor_msgs::LaserScan applyMedianFilter(const sensor_msgs::LaserScan& latest) {
+sensor_msgs::LaserScan applyMedianFilter(const sensor_msgs::LaserScan &latest)
+{
     sensor_msgs::LaserScan filtered = latest;
 
     int n = latest.ranges.size();
     std::vector<float> temp_ranges(n);
 
-    if (recent_ranges.size() < MAX_BUFFER) {
+    if (recent_ranges.size() < MAX_BUFFER)
+    {
         recent_ranges.push_back(latest.ranges);
         recent_intensities.push_back(latest.intensities);
         std::copy(latest.ranges.begin(), latest.ranges.end(), filtered.ranges.begin());
@@ -95,22 +102,28 @@ sensor_msgs::LaserScan applyMedianFilter(const sensor_msgs::LaserScan& latest) {
     // Добавляем новый скан
     recent_ranges.push_back(latest.ranges);
     recent_intensities.push_back(latest.intensities);
-    if (recent_ranges.size() > MAX_BUFFER) {
+    if (recent_ranges.size() > MAX_BUFFER)
+    {
         recent_ranges.erase(recent_ranges.begin());
         recent_intensities.erase(recent_intensities.begin());
     }
 
     // Медиана по каждому лучу
-    for (int i = 0; i < n; ++i) {
+    for (int i = 0; i < n; ++i)
+    {
         std::vector<float> values;
-        for (const auto& vec : recent_ranges) {
+        for (const auto &vec : recent_ranges)
+        {
             if (std::isfinite(vec[i]) && vec[i] > latest.range_min && vec[i] < cfg.max_range)
                 values.push_back(vec[i]);
         }
-        if (values.size() >= 3) {
+        if (values.size() >= 3)
+        {
             std::sort(values.begin(), values.end());
-            temp_ranges[i] = values[values.size()/2];
-        } else {
+            temp_ranges[i] = values[values.size() / 2];
+        }
+        else
+        {
             temp_ranges[i] = latest.ranges[i];
         }
     }
@@ -122,19 +135,23 @@ sensor_msgs::LaserScan applyMedianFilter(const sensor_msgs::LaserScan& latest) {
 // =============================================================================
 // БЛОК 3–6: Четыре метода детекции (заглушки → потом будем наполнять)
 // =============================================================================
-void method1_gapToWall(const sensor_msgs::LaserScan& scan) {
+void method1_gapToWall(const sensor_msgs::LaserScan &scan)
+{
     logi.log("\n[METHOD 1] Запуск: разрывы >= 0.5 м со стеной");
     // Реализация позже
 }
-void method2_clustering(const sensor_msgs::LaserScan& scan) {
+void method2_clustering(const sensor_msgs::LaserScan &scan)
+{
     logi.log("\n[METHOD 2] Запуск: кластеризация + хорда");
     // Реализация позже
 }
-void method3_symmetricArc(const sensor_msgs::LaserScan& scan) {
+void method3_symmetricArc(const sensor_msgs::LaserScan &scan)
+{
     logi.log("\n[METHOD 3] Запуск: симметричная дуга 180°");
     // Реализация позже
 }
-void method4_curvature(const sensor_msgs::LaserScan& scan) {
+void method4_curvature(const sensor_msgs::LaserScan &scan)
+{
     logi.log("\n[METHOD 4] Запуск: скользящая кривизна (three-point)");
     // Реализация позже
 }
@@ -142,7 +159,8 @@ void method4_curvature(const sensor_msgs::LaserScan& scan) {
 // =============================================================================
 // БЛОК 7: Fusion с весами (16 кандидатов → 4 центра)
 // =============================================================================
-std::vector<Eigen::Vector2d> fusionWithWeights() {
+std::vector<Eigen::Vector2d> fusionWithWeights()
+{
     logi.log("\n[FUSION] Старт слияния %d кандидатов", (int)all_candidates.size());
 
     // Простейший DBSCAN-подобный кластеризатор
@@ -150,24 +168,31 @@ std::vector<Eigen::Vector2d> fusionWithWeights() {
     std::vector<double> final_confidence;
     std::vector<bool> used(all_candidates.size(), false);
 
-    for (size_t i = 0; i < all_candidates.size(); ++i) {
-        if (used[i]) continue;
+    for (size_t i = 0; i < all_candidates.size(); ++i)
+    {
+        if (used[i])
+            continue;
 
-        Eigen::Vector2d sum_pos(0,0);
+        Eigen::Vector2d sum_pos(0, 0);
         double sum_weight = 0.0;
 
-        for (size_t j = i; j < all_candidates.size(); ++j) {
-            if (used[j]) continue;
+        for (size_t j = i; j < all_candidates.size(); ++j)
+        {
+            if (used[j])
+                continue;
             double dist = (Eigen::Vector2d(all_candidates[i].x, all_candidates[i].y) -
-                           Eigen::Vector2d(all_candidates[j].x, all_candidates[j].y)).norm();
-            if (dist < 0.12) { // 12 см — порог кластеризации
+                           Eigen::Vector2d(all_candidates[j].x, all_candidates[j].y))
+                              .norm();
+            if (dist < 0.12)
+            { // 12 см — порог кластеризации
                 double weight = std::pow(all_candidates[j].confidence, 2);
                 sum_pos += weight * Eigen::Vector2d(all_candidates[j].x, all_candidates[j].y);
                 sum_weight += weight;
                 used[j] = true;
             }
         }
-        if (sum_weight > 0.1) {
+        if (sum_weight > 0.1)
+        {
             Eigen::Vector2d center = sum_pos / sum_weight;
             final_centers.push_back(center);
             final_confidence.push_back(std::sqrt(sum_weight) / 4.0); // нормировка
@@ -181,7 +206,8 @@ std::vector<Eigen::Vector2d> fusionWithWeights() {
 // =============================================================================
 // БЛОК 8: Построение эталонной геометрии из 6 расстояний (края!)
 // =============================================================================
-std::vector<Eigen::Vector2d> buildGroundTruth() {
+std::vector<Eigen::Vector2d> buildGroundTruth()
+{
     std::vector<Eigen::Vector2d> Q(4);
     double R = cfg.pillar_radius;
 
@@ -190,12 +216,19 @@ std::vector<Eigen::Vector2d> buildGroundTruth() {
     Q[idx0] = Eigen::Vector2d(0, 0);
 
     // Находим столб, ближайший к 0 — ставим на ось X
-    int idx1 = -1; double min_d = 1e9;
-    for (int i = 0; i < 4; ++i) if (i != idx0) {
-        double d = cfg.edge_dist[i <= idx0 ? idx0*3+i : i*3+idx0]; // грубо, потом поправим
-        if (d > 0 && d < min_d) { min_d = d; idx1 = i; }
-    }
-    Q[idx1] = Eigen::Vector2d(cfg.edge_dist[0] - 2*R, 0); // пока так, потом точнее
+    int idx1 = -1;
+    double min_d = 1e9;
+    for (int i = 0; i < 4; ++i)
+        if (i != idx0)
+        {
+            double d = cfg.edge_dist[i <= idx0 ? idx0 * 3 + i : i * 3 + idx0]; // грубо, потом поправим
+            if (d > 0 && d < min_d)
+            {
+                min_d = d;
+                idx1 = i;
+            }
+        }
+    Q[idx1] = Eigen::Vector2d(cfg.edge_dist[0] - 2 * R, 0); // пока так, потом точнее
 
     logi.log("\n[GROUND TRUTH] Эталонные координаты будут построены (заглушка)");
     // Полная реализация trilateration + bundle adjustment — в следующем этапе
@@ -205,7 +238,8 @@ std::vector<Eigen::Vector2d> buildGroundTruth() {
 // =============================================================================
 // БЛОК 9: Umeyama калибровка (weighted)
 // =============================================================================
-void runUmeyamaAndPublish(const std::vector<Eigen::Vector2d>& lidar_centers) {
+void runUmeyamaAndPublish(const std::vector<Eigen::Vector2d> &lidar_centers)
+{
     auto gt = buildGroundTruth();
 
     // Здесь будет полноценный Weighted Umeyama
@@ -215,10 +249,11 @@ void runUmeyamaAndPublish(const std::vector<Eigen::Vector2d>& lidar_centers) {
     Eigen::Vector2d t(0.5, -0.3);
 
     logi.log("\n[UMEYAMA] Применяем калибровку (заглушка): scale=%.4f, rot=%.1f°, t=(%.3f,%.3f)",
-             scale, 0.1*180/M_PI, t.x(), t.y());
+             scale, 0.1 * 180 / M_PI, t.x(), t.y());
 
     ros::NodeHandle nh("~");
-    for (int i = 0; i < 4; ++i) {
+    for (int i = 0; i < 4; ++i)
+    {
         Eigen::Vector2d global = scale * R * lidar_centers[i] + t;
         std::string key = "/pb_config/pillar_" + std::to_string(i) + "_x";
         nh.setParam(key, global.x());
@@ -234,14 +269,17 @@ void runUmeyamaAndPublish(const std::vector<Eigen::Vector2d>& lidar_centers) {
 // =============================================================================
 // Callback от лидара
 // =============================================================================
-void scanCallback(const sensor_msgs::LaserScan::ConstPtr& msg) {
+void scanCallback(const sensor_msgs::LaserScan::ConstPtr &msg)
+{
     static int counter = 0;
-    if (++counter < 150) { // собираем 15 секунд при 10 Гц
+    if (++counter < 150)
+    { // собираем 15 секунд при 10 Гц
         logi.log("\n[SCAN] Получен скан #%d, ждём ещё...", counter);
         auto filtered = applyMedianFilter(*msg);
         return;
     }
-    if (counter != 150) return; // обработаем только один раз
+    if (counter != 150)
+        return; // обработаем только один раз
     counter = 151;
 
     logi.log("\n[MAIN] 150 сканов собрано → запускаем полную обработку");
@@ -257,10 +295,13 @@ void scanCallback(const sensor_msgs::LaserScan::ConstPtr& msg) {
     // Fusion
     auto lidar_centers = fusionWithWeights();
 
-    if (lidar_centers.size() == 4) {
+    if (lidar_centers.size() == 4)
+    {
         runUmeyamaAndPublish(lidar_centers);
         logi.log("\n[FINISH] КАЛИБРОВКА ЗАВЕРШЕНА УСПЕШНО!");
-    } else {
+    }
+    else
+    {
         logi.log("\n[ERROR] Не удалось надёжно найти 4 столба!");
     }
 }
@@ -268,7 +309,8 @@ void scanCallback(const sensor_msgs::LaserScan::ConstPtr& msg) {
 // =============================================================================
 // main
 // =============================================================================
-int main(int argc, char** argv) {
+int main(int argc, char **argv)
+{
     ros::init(argc, argv, "pillar_localization_node");
     ros::NodeHandle nh;
 

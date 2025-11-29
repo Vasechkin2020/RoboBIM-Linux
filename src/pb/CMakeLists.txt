@@ -163,6 +163,9 @@ target_link_libraries(write_node ${catkin_LIBRARIES} -lwiringPi -lpthread)
 add_executable(lidar_node src/lidar_node.cpp)
 target_link_libraries(lidar_node ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 
+add_executable(scan_node src/scan_node.cpp)
+target_link_libraries(scan_node ${catkin_LIBRARIES})
+
 #add_executable(chatgpt src/chatgpt.cpp)
 #target_link_libraries(chatgpt ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 

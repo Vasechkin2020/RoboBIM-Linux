@@ -17,12 +17,12 @@
 // 1. Вспомогательные структуры и классы
 // --------------------------------------------------------------------------------------
 
-// Эмуляция класса логгера пользователя. 
+// Эмуляция класса логгера пользователя.
 // В реальном проекте этот блок нужно заменить на подключение твоего реального класса.
 class LoggerWrapper
 {
 public:
-    void log(const char* format, ...)
+    void log(const char *format, ...)
     {
         va_list args;
         va_start(args, format);
@@ -43,19 +43,19 @@ struct Point2D
 // Структура найденного кандидата (столба) до объединения
 struct PillarCandidate
 {
-    Point2D center;      // Координаты центра в системе лидара
-    double rmse;         // Ошибка аппроксимации окружности
-    int num_points;      // Количество точек в кластере
-    double weight;       // Интегральный вес (0.0 - 1.0)
-    int method_id;       // ID метода, который нашел этот кандидат (1, 2 или 3)
+    Point2D center; // Координаты центра в системе лидара
+    double rmse;    // Ошибка аппроксимации окружности
+    int num_points; // Количество точек в кластере
+    double weight;  // Интегральный вес (0.0 - 1.0)
+    int method_id;  // ID метода, который нашел этот кандидат (1, 2 или 3)
 };
 
 // Структура финального столба
 struct FinalPillar
 {
-    std::string name;    // Имя: RB, RT, LT, LB
-    Point2D local_pos;   // Координаты в системе лидара (после усреднения)
-    Point2D global_pos;  // Координаты в глобальной системе (после калибровки)
+    std::string name;   // Имя: RB, RT, LT, LB
+    Point2D local_pos;  // Координаты в системе лидара (после усреднения)
+    Point2D global_pos; // Координаты в глобальной системе (после калибровки)
 };
 
 // Класс с математическими утилитами
@@ -79,16 +79,17 @@ public:
 
     // Аппроксимация окружности методом наименьших квадратов (Упрощенная алгебраическая версия)
     // Возвращает true, если успешно, и записывает центр и RMSE
-    static bool fitCircle(const std::vector<Point2D>& points, double expected_radius, Point2D& out_center, double& out_rmse)
+    static bool fitCircle(const std::vector<Point2D> &points, double expected_radius, Point2D &out_center, double &out_rmse)
     {
         size_t n = points.size();
-        if (n < 3) return false; // Нужно минимум 3 точки
+        if (n < 3)
+            return false; // Нужно минимум 3 точки
 
         // Здесь должна быть полная реализация (Kasa или Pratt метод).
         // Для примера (v1.0) мы просто берем среднее арифметическое (центроид),
         // но сдвигаем его "вглубь" от лидара на радиус. Это ЗАГЛУШКА для теста логики.
         // В следующей итерации напишем тут честный Least Squares.
-        
+
         double sum_x = 0, sum_y = 0;
         for (size_t i = 0; i < n; i++)
         {
@@ -99,7 +100,7 @@ public:
 
         // Внимание: это грубая оценка! Лидар видит дугу. Центр дуги дальше от лидара, чем центроид точек.
         // Пока оставим так, чтобы код собирался. Центр = центроид.
-        out_center = centroid; 
+        out_center = centroid;
 
         // Считаем RMSE (ошибка радиуса)
         double sum_sq_err = 0;
@@ -123,7 +124,7 @@ class PillarScanNode
 private:
     ros::NodeHandle nh;
     ros::Subscriber scan_sub;
-    
+
     // Параметры конфигурации
     double dist_p0_p1; // Расстояние между RB и RT (для примера)
     double pillar_diameter;
@@ -133,8 +134,8 @@ private:
     bool params_loaded;
     int scans_collected;
     const int SCANS_TO_COLLECT = 100;
-    std::vector<double> sum_ranges; // Накопитель сумм дальностей
-    std::vector<int> count_ranges;  // Счетчик валидных измерений на каждый луч
+    std::vector<double> sum_ranges;           // Накопитель сумм дальностей
+    std::vector<int> count_ranges;            // Счетчик валидных измерений на каждый луч
     sensor_msgs::LaserScan current_scan_meta; // Храним метаданные (углы и т.д.)
 
 public:
@@ -142,7 +143,7 @@ public:
     {
         // Конструктор: Инициализация
         logi.log("PillarScanNode: Запуск конструктора.\n");
-        
+
         // 1. Загрузка параметров
         loadParameters();
 
@@ -150,7 +151,7 @@ public:
         // scan_sub = nh.subscribe("/scan", 1000, &PillarScanNode::scanCallback, this); // В ROS1 обычно так
         // Но так как у тебя кастомный стиль, я пишу стандартно, а ты поправишь топик
         scan_sub = nh.subscribe("scan", 100, &PillarScanNode::scanCallback, this);
-        
+
         logi.log("PillarScanNode: Ожидание данных лидара...\n");
     }
 
@@ -181,12 +182,12 @@ public:
     }
 
     // Колбек обработки скана
-    void scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan)
+    void scanCallback(const sensor_msgs::LaserScan::ConstPtr &scan)
     {
         // Если мы уже все посчитали, игнорируем новые данные (или сбрасываем по команде)
-        if (scans_collected >= SCANS_TO_COLLECT) 
+        if (scans_collected >= SCANS_TO_COLLECT)
         {
-            return; 
+            return;
         }
 
         // Инициализация накопителей при первом скане
@@ -236,7 +237,7 @@ public:
 
         // Шаг 2: Детекция (Запуск 3 методов)
         std::vector<PillarCandidate> all_candidates;
-        
+
         // Метод 1: Разрыв
         std::vector<PillarCandidate> c1 = detectMethod1(avg_ranges);
         all_candidates.insert(all_candidates.end(), c1.begin(), c1.end());
@@ -271,7 +272,7 @@ public:
 
     // --- Методы детектирования (Заглушки логики) ---
 
-    std::vector<PillarCandidate> detectMethod1(const std::vector<double>& ranges)
+    std::vector<PillarCandidate> detectMethod1(const std::vector<double> &ranges)
     {
         std::vector<PillarCandidate> candidates;
         // ТУТ БУДЕТ РЕАЛИЗАЦИЯ ПОИСКА ПО РАЗРЫВУ (> 0.5м)
@@ -280,7 +281,7 @@ public:
         return candidates;
     }
 
-    std::vector<PillarCandidate> detectMethod2(const std::vector<double>& ranges)
+    std::vector<PillarCandidate> detectMethod2(const std::vector<double> &ranges)
     {
         std::vector<PillarCandidate> candidates;
         // ТУТ БУДЕТ РЕАЛИЗАЦИЯ ЕВКЛИДОВОЙ КЛАСТЕРИЗАЦИИ
@@ -288,7 +289,7 @@ public:
         return candidates;
     }
 
-    std::vector<PillarCandidate> detectMethod3(const std::vector<double>& ranges)
+    std::vector<PillarCandidate> detectMethod3(const std::vector<double> &ranges)
     {
         std::vector<PillarCandidate> candidates;
         // ТУТ БУДЕТ ПОИСК ЛОКАЛЬНЫХ МИНИМУМОВ
@@ -298,7 +299,7 @@ public:
 
     // --- Логика слияния ---
 
-    std::vector<FinalPillar> fuseAndIdentify(const std::vector<PillarCandidate>& candidates)
+    std::vector<FinalPillar> fuseAndIdentify(const std::vector<PillarCandidate> &candidates)
     {
         std::vector<FinalPillar> final_pillars;
         // 1. Группируем кандидаты, которые находятся близко друг к другу (например < 20 см)
@@ -306,14 +307,22 @@ public:
         // 3. Получаем список уникальных центров (в идеале их 4).
         // 4. Сравниваем расстояния между ними с эталонными (dist_p0_p1 и др.)
         // 5. Присваиваем имена (RB, RT...)
-        
+
         // Для примера создадим фейковые данные, чтобы код прошел дальше
         logi.log("Fusion: (Заглушка) Симуляция успешного слияния 4 столбов.\n");
-        
-        FinalPillar p1; p1.name = "RB"; p1.local_pos = {1.0, -1.0}; 
-        FinalPillar p2; p2.name = "RT"; p2.local_pos = {1.0, 1.0};
-        FinalPillar p3; p3.name = "LT"; p3.local_pos = {3.0, 1.0};
-        FinalPillar p4; p4.name = "LB"; p4.local_pos = {3.0, -1.0};
+
+        FinalPillar p1;
+        p1.name = "RB";
+        p1.local_pos = {1.0, -1.0};
+        FinalPillar p2;
+        p2.name = "RT";
+        p2.local_pos = {1.0, 1.0};
+        FinalPillar p3;
+        p3.name = "LT";
+        p3.local_pos = {3.0, 1.0};
+        FinalPillar p4;
+        p4.name = "LB";
+        p4.local_pos = {3.0, -1.0};
 
         final_pillars.push_back(p1);
         final_pillars.push_back(p2);
@@ -325,18 +334,20 @@ public:
 
     // --- Логика калибровки ---
 
-    void performCalibration(std::vector<FinalPillar>& pillars)
+    void performCalibration(std::vector<FinalPillar> &pillars)
     {
         logi.log("Запуск калибровки координат...\n");
 
         // 1. Находим RB и RT в списке
-        Point2D rb_local = {0,0};
-        Point2D rt_local = {0,0};
-        
-        for (const auto& p : pillars)
+        Point2D rb_local = {0, 0};
+        Point2D rt_local = {0, 0};
+
+        for (const auto &p : pillars)
         {
-            if (p.name == "RB") rb_local = p.local_pos;
-            if (p.name == "RT") rt_local = p.local_pos;
+            if (p.name == "RB")
+                rb_local = p.local_pos;
+            if (p.name == "RT")
+                rt_local = p.local_pos;
         }
 
         // 2. Вычисляем текущие параметры (как видит лидар)
@@ -344,29 +355,29 @@ public:
         double tx = -rb_local.x;
         double ty = -rb_local.y;
 
-        // Поворот (Rotation): 
+        // Поворот (Rotation):
         // Применяем сдвиг к RT
         double rt_x_shifted = rt_local.x + tx;
         double rt_y_shifted = rt_local.y + ty;
-        
+
         // Текущий угол вектора RB->RT
         double current_angle = atan2(rt_y_shifted, rt_x_shifted);
         // Целевой угол (мы договорились, что ось X идет к RT, значит угол д.б. 0)
-        double target_angle = 0.0; 
+        double target_angle = 0.0;
         double rotation_angle = target_angle - current_angle;
 
         // Масштаб (Scale):
         double measured_dist = sqrt(pow(rt_x_shifted, 2) + pow(rt_y_shifted, 2));
         // Реальное расстояние между центрами = дистанция "по воздуху" + диаметр
-        double real_dist_centers = dist_p0_p1 + pillar_diameter; 
-        
+        double real_dist_centers = dist_p0_p1 + pillar_diameter;
+
         double scale_factor = real_dist_centers / measured_dist;
 
-        logi.log("Параметры трансформации: Сдвиг[%.3f, %.3f], Поворот[%.3f rad], Масштаб[%.4f]\n", 
+        logi.log("Параметры трансформации: Сдвиг[%.3f, %.3f], Поворот[%.3f rad], Масштаб[%.4f]\n",
                  tx, ty, rotation_angle, scale_factor);
 
         // 3. Применяем трансформацию ко всем столбам
-        for (auto& p : pillars)
+        for (auto &p : pillars)
         {
             // Сдвиг
             double x1 = p.local_pos.x + tx;
@@ -386,9 +397,9 @@ public:
 
     // --- Сохранение ---
 
-    void saveResults(const std::vector<FinalPillar>& pillars)
+    void saveResults(const std::vector<FinalPillar> &pillars)
     {
-        for (const auto& p : pillars)
+        for (const auto &p : pillars)
         {
             // Формируем ключи для rosparam
             // Пример: /pb_config/result/RB/x
@@ -404,11 +415,11 @@ public:
 // Main
 // --------------------------------------------------------------------------------------
 
-int main(int argc, char** argv)
+int main(int argc, char **argv)
 {
     // Инициализация ROS
     ros::init(argc, argv, "scan_pillar_node");
-    
+
     logi.log("Запуск ноды scan_pillar_node v1.0\n");
 
     // Создание объекта ноды
