@@ -448,30 +448,81 @@ private:
         }
     }
 
-    // Детекция на основе разрыва/плотности (Без изменений)
-    std::vector<PillarCandidate> detectGenericClustering(const AlignedVector2f &pts, double threshold, int method_id,
-                                                         AlignedVector2f &out_cluster_points)
-    {
-        std::vector<PillarCandidate> results;
-        if (pts.empty())
-            return results;
-
-        AlignedVector2f current_cluster;
-        current_cluster.push_back(pts[0]);
-
-        for (size_t i = 1; i < pts.size(); ++i)
-        {
-            double d = MathUtils::dist2D(pts[i], pts[i - 1]);
-            if (d > threshold)
-            {
-                processCluster(current_cluster, method_id, results, out_cluster_points);
-                current_cluster.clear();
-            }
-            current_cluster.push_back(pts[i]);
-        }
-        processCluster(current_cluster, method_id, results, out_cluster_points);
+// ИЗМЕНЕНА: Детекция на основе разрыва/плотности (v5.8)
+// Исправлено: 1. Циклическая кластеризация. 2. Устранена ошибка инвалидации ссылок.
+std::vector<PillarCandidate> detectGenericClustering(const AlignedVector2f &pts, double threshold, int method_id,
+                                                    AlignedVector2f &out_cluster_points)
+{
+    std::vector<PillarCandidate> results;
+    // Минимальное число точек для надежной обработки кластеризации
+    if (pts.size() < 10) 
         return results;
+
+    // Вектор для временного хранения всех кластеров перед циклической проверкой
+    std::vector<AlignedVector2f> clusters;
+    AlignedVector2f current;
+    current.reserve(500); // Резервирование памяти для повышения эффективности
+
+    // === 1. Линейная кластеризация ===
+    current.push_back(pts[0]);
+    for (size_t i = 1; i < pts.size(); ++i)
+    {
+        // Проверка расстояния между соседними точками
+        if (MathUtils::dist2D(pts[i], pts[i-1]) > threshold)
+        {
+            // Фильтрация: сохраняем только кластеры, содержащие минимум 5 точек
+            if (current.size() >= 5)
+                clusters.push_back(std::move(current)); // Используем std::move
+                
+            current.clear(); // Начинаем новый кластер
+        }
+        current.push_back(pts[i]);
     }
+    // Сохраняем последний кластер
+    if (current.size() >= 5)
+        clusters.push_back(std::move(current));
+    current.clear();
+
+
+    // === 2. Циклическое замыкание ===
+    // Проверяем, можно ли объединить первый и последний кластеры.
+    if (clusters.size() >= 2)
+    {
+        // КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: КОПИРУЕМ КЛАСТЕРЫ, чтобы избежать INVALIDATION (невалидности ссылок)
+        const AlignedVector2f first = clusters.front(); // Копия первого кластера
+        const AlignedVector2f last  = clusters.back();  // Копия последнего кластера
+
+        // Проверяем расстояние между последней точкой последнего кластера и первой точкой первого кластера
+        if (MathUtils::dist2D(last.back(), first.front()) < threshold)
+        {
+            // Объединяем в новом векторе, сохраняя угловой порядок: (Последний + Первый)
+            AlignedVector2f merged;
+            merged.reserve(last.size() + first.size());
+            
+            // Добавляем точки последнего кластера (в правильном порядке)
+            merged.insert(merged.end(), last.begin(), last.end());
+            // Добавляем точки первого кластера (в правильном порядке)
+            merged.insert(merged.end(), first.begin(), first.end());
+
+            // Удаляем старые кластеры из списка
+            clusters.erase(clusters.begin()); // Удаляем первый
+            clusters.pop_back();              // Удаляем последний
+            
+            // Добавляем объединенный кластер (merged)
+            clusters.push_back(std::move(merged));
+        }
+    }
+
+    // === 3. Обработка и фильтрация кластеров ===
+    // Для каждого финального кластера запускаем processCluster
+    for (const auto& cluster : clusters)
+    {
+        // out_cluster_points добавляется только внутри processCluster, без дублирования.
+        processCluster(cluster, method_id, results, out_cluster_points);
+    }
+
+    return results;
+}
 
     // Детекция на основе локальных минимумов дальности (Без изменений)
     std::vector<PillarCandidate> detectLocalMinima(const AlignedVector2f &pts, int method_id,
