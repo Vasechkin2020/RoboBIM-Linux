@@ -2,10 +2,10 @@
 #include "genStruct.h" // Тут все общие структуры. Истользуются и Data и Main и Head
 // #include "scan_code/config.h"
 // #include "scan_code/topic.h" // Файл для функций для формирования топиков в нужном виде и формате
-#include "scan_code/code.h"
 
-#include "logi.h" //Класс для моего формата логов
-AsyncFileLogger logi("/home/pi/RoboBIM-Linux/src/pb/log/", "pose_node");
+AsyncFileLogger logi("/home/pi/RoboBIM-Linux/src/pb/log/", "scan_node");
+
+#include "scan_code/code.h"
 
 int main(int argc, char **argv)
 {
@@ -18,20 +18,31 @@ int main(int argc, char **argv)
     // CTopic topic; // Экземпляр класса для всех публикуемых топиков
 
     // log4cxx::MDC::put("node", "|scan_node|"); 
-    
+
     //----------------------------- ПОДПИСКИ НА ТОПИКИ -------
     // ros::Subscriber subscriber_Speed = nh.subscribe<pb_msgs::SSetSpeed>("pbData/Speed", 1000, callback_Speed);
 	// ros::Publisher subscriber_Print = nh.advertise<pb_msgs::Struct_Data2Print>("pb/Data/Print", 3); // Это мы создаем публикатор и определяем название топика в рос
 
     ros::Duration(1).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
    
-    ROS_WARN("End Setup. Start loop.\n");
-    while (ros::ok())   
-    {
-        ros::spinOnce(); // Опрашиваем ядро ROS и по этой команде наши срабатывают колбеки. Нужно только для подписки на топики
+    // ROS_WARN("End Setup. Start loop.\n");
+    // while (ros::ok())   
+    // {
+    //     ros::spinOnce(); // Опрашиваем ядро ROS и по этой команде наши срабатывают колбеки. Нужно только для подписки на топики
 
-        rate.sleep(); // Интеллектуальная задержка на указанную частоту
-    }
+    //     rate.sleep(); // Интеллектуальная задержка на указанную частоту
+    // }
+
+    // Создание объекта
+    PillarScanNode node; 
+    
+    // Запуск цикла обработки (нода теперь остается активной)
+    ros::spin();
+    
+    // Завершение работы
+    logi.log("Node finished execution gracefully.\n");
+
+
     printf("--- Scan_node STOP \n");
     return 0;
 }

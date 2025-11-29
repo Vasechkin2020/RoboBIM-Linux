@@ -130,6 +130,8 @@ CATKIN_DEPENDS rospack
 ###########
 ## Build ##
 ###########
+# Найдём Eigen3
+find_package(Eigen3 REQUIRED)
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
@@ -137,6 +139,7 @@ include_directories(
 # include
   ${catkin_INCLUDE_DIRS}
   ${PCL_INCLUDE_DIRS}
+  ${EIGEN3_INCLUDE_DIR}
 )
 
 # Указание путей к библиотекам PCL (иногда требуется явно)

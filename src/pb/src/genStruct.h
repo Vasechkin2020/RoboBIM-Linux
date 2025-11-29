@@ -11,6 +11,8 @@
 #include <cmath>                       // Математические функции (sin, cos, sqrt)
 #include <signal.h>                    // Для обработки Ctrl+C
 
+#include "logi.h" //Класс для моего формата логов
+
 static const double THROTTLE_PERIOD_1 = 1.0;  // секунды
 static const double THROTTLE_PERIOD_3 = 0.33; // секунды
 static const double THROTTLE_PERIOD_5 = 0.20; // секунды
