@@ -524,51 +524,148 @@ std::vector<PillarCandidate> detectGenericClustering(const AlignedVector2f &pts,
     return results;
 }
 
-    // Детекция на основе локальных минимумов дальности (Без изменений)
-    std::vector<PillarCandidate> detectLocalMinima(const AlignedVector2f &pts, int method_id,
-                                                   AlignedVector2f &out_cluster_points)
-    {
-        std::vector<PillarCandidate> results;
-        if (pts.size() < 10)
-            return results;
-
-        for (size_t i = 5; i < pts.size() - 5; ++i)
-        {
-            float r = pts[i].norm();
-            bool is_min = true;
-            for (int k = -5; k <= 5; ++k)
-            {
-                if (k == 0)
-                    continue;
-                if (pts[i + k].norm() < r)
-                    is_min = false;
-            }
-
-            if (is_min)
-            {
-                AlignedVector2f cluster;
-                cluster.push_back(pts[i]);
-
-                // Расширение кластера назад
-                for (int k = -1; i + k >= 0; --k)
-                {
-                    if (pts[i + k].norm() > r + 0.2 || MathUtils::dist2D(pts[i + k], pts[i + k + 1]) > 0.1)
-                        break;
-                    cluster.push_back(pts[i + k]);
-                }
-                // Расширение кластера вперед
-                for (size_t k = 1; i + k < pts.size(); ++k)
-                {
-                    if (pts[i + k].norm() > r + 0.2 || MathUtils::dist2D(pts[i + k], pts[i + k - 1]) > 0.1)
-                        break;
-                    cluster.push_back(pts[i + k]);
-                }
-                processCluster(cluster, method_id, results, out_cluster_points);
-                i += cluster.size();
-            }
-        }
+   
+  
+  // ----------------------------------------------------------------------------------
+// Детекция на основе локальных минимумов дальности (ОКОНЧАТЕЛЬНАЯ v5.13)
+// Внедрены: предвычисление радиусов, сравнение квадратов расстояний, защита от 
+// захвата уже обработанных лучей и улучшенные условия остановки.
+// ----------------------------------------------------------------------------------
+std::vector<PillarCandidate> detectLocalMinima(const AlignedVector2f &pts, int method_id,
+                                                      AlignedVector2f &out_cluster_points)
+{
+    std::vector<PillarCandidate> results;
+    size_t N = pts.size();
+    if (N < 10) 
         return results;
-    }
+
+    // Параметры
+    const int MAX_SEG_POINTS = 40;// Жесткий лимит точек в одном направлении
+    const float MAX_RADIAL_DEVIATION = 0.10f;// Макс отклонение по радиусу (м)
+    const float MAX_NEIGHBOR_DIST = 0.10f;// Порог разрыва между соседними точками (м)
+    
+    // Оптимизация: используем квадраты расстояний для избежания sqrt()
+    const float MAX_NEIGHBOR_DIST2 = MAX_NEIGHBOR_DIST * MAX_NEIGHBOR_DIST; 
+
+    // Вектор флагов для маркировки обработанных точек.
+    std::vector<char> processed_flags(N, 0);
+    const int WINDOW_SIZE = 5;
+
+    // Оптимизация: Предвычисляем все нормы (расстояния до лидара)
+    std::vector<float> r_vals(N);
+    for (size_t i = 0; i < N; ++i) r_vals[i] = pts[i].norm();
+
+    // Вспомогательная лямбда: квадрат расстояния между двумя точками
+    auto dist2_sq = [&](size_t a, size_t b) -> float {
+        float dx = pts[a].x() - pts[b].x();
+        float dy = pts[a].y() - pts[b].y();
+        return dx*dx + dy*dy;
+    };
+
+    // 1. Поиск локального минимума
+    for (size_t i = 0; i < N; ++i)
+    {
+        if (processed_flags[i]) continue;
+
+        float r = r_vals[i]; // Используем предвычисленное значение
+        bool is_min = true;
+
+        // Проверка локального минимума в циклическом окне
+        for (int k = -WINDOW_SIZE; k <= WINDOW_SIZE; ++k)
+        {
+            if (k == 0) continue;
+            size_t j = (i + k + N) % N;
+            // Сравнение дальностей
+            if (r_vals[j] < r) { is_min = false; break; } 
+        }
+        if (!is_min) continue;
+
+        // 2. Расширение: собираем только индексы
+        std::vector<size_t> back_idx;
+        back_idx.reserve(MAX_SEG_POINTS);
+        int back_count = 0;
+        
+        // Cегмент назад (от i-1)
+        for (int k = -1; k >= -((int)N); --k)
+        {
+            size_t cur = (i + k + N) % N;
+            size_t next = (i + k + 1 + N) % N;
+
+            // Условие 1: Не захватываем уже обработанные точки
+            if (processed_flags[cur]) break; 
+
+            // Условие 2: Жесткий лимит кол-ва точек
+            if (++back_count > MAX_SEG_POINTS) break;
+
+            // Условие 3: Радиальное условие (абсолютная разница)
+            if (std::fabs(r_vals[cur] - r) > MAX_RADIAL_DEVIATION) break;
+
+            // Условие 4: Разрыв между соседями (используем квадраты)
+            if (dist2_sq(cur, next) > MAX_NEIGHBOR_DIST2) break;
+
+            back_idx.push_back(cur);
+        }
+        // Переворачиваем, чтобы получить порядок от дальнего к ближнему
+        std::reverse(back_idx.begin(), back_idx.end());
+
+        // Cегмент вперед (от i+1)
+        std::vector<size_t> fwd_idx;
+        fwd_idx.reserve(MAX_SEG_POINTS);
+        int fwd_count = 0;
+        for (size_t k = 1; k < N; ++k)
+        {
+            size_t cur = (i + k) % N;
+            size_t prev = (i + k - 1 + N) % N;
+
+            // Условие 1: Не захватываем уже обработанные точки
+            if (processed_flags[cur]) break;
+
+            // Условие 2: Жесткий лимит кол-ва точек
+            if (++fwd_count > MAX_SEG_POINTS) break;
+
+            // Условие 3: Радиальное условие
+            if (std::fabs(r_vals[cur] - r) > MAX_RADIAL_DEVIATION) break;
+
+            // Условие 4: Разрыв между соседями
+            if (dist2_sq(cur, prev) > MAX_NEIGHBOR_DIST2) break;
+
+            fwd_idx.push_back(cur);
+        }
+
+        // Защита от захвата всего скана (back + center + fwd не должны превышать N)
+        // Обрезаем fwd, если превышен общий лимит (N)
+        if (back_idx.size() + 1 + fwd_idx.size() > N) {
+            size_t allowed = (N > 1) ? (N - 1 - back_idx.size()) : 0;
+            if (fwd_idx.size() > allowed) fwd_idx.resize(allowed);
+        }
+
+        // 3. Формируем кластер по индексам (гарантированная синхронизация)
+        AlignedVector2f cluster;
+        cluster.reserve(back_idx.size() + 1 + fwd_idx.size());
+        
+        // P_far_back ... P_i-1
+        for (size_t idx : back_idx) cluster.push_back(pts[idx]);
+        
+        cluster.push_back(pts[i]); // P_i (центр)
+        
+        // P_i+1 ... P_far_forward
+        for (size_t idx : fwd_idx) cluster.push_back(pts[idx]);
+
+        // 4. Обработка и маркировка
+        if (cluster.size() >= 5)
+        {
+            processCluster(cluster, method_id, results, out_cluster_points);
+
+            // Маркировка по индексам (синхронизированы с cluster)
+            for (size_t idx : back_idx) processed_flags[idx] = 1;
+            for (size_t idx : fwd_idx) processed_flags[idx] = 1;
+            processed_flags[i] = 1; // Маркируем центр
+        }
+    } // for i
+
+    return results;
+}
+
 
     // Логика слияния (Fusion) (Без изменений)
     std::vector<FinalPillar> fuseCandidates(const std::vector<PillarCandidate> &candidates)
@@ -582,7 +679,7 @@ std::vector<PillarCandidate> detectGenericClustering(const AlignedVector2f &pts,
 
         for (size_t i = 0; i < candidates.size(); ++i)
         {
-            if (processed[i])
+            if (processed[i])  
                 continue;
             double sum_w = 0;
             Eigen::Vector2f w_center(0.0f, 0.0f);
