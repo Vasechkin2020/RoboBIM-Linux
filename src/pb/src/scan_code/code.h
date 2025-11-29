@@ -1,7 +1,6 @@
 /*
- * Версия: 4.7
+ * Версия: 5.6
  * Дата: 2025-11-29
- * Описание: ПОЛНЫЙ КОД. Улучшенная фильтрация: Перенос фильтра интенсивности в scanCallback (до медианы). Добавлено детальное логирование СЫРОГО скана и ИТОГОВОГО отфильтрованного скана (без сравнения). Обновлена статистика фильтрации. Исправлена ошибка 'std::clamp'.
  */
 
 #include <ros/ros.h>               // Подключение основной библиотеки ROS
@@ -187,6 +186,7 @@ private:
     sensor_msgs::LaserScan filtered_scan_results_;
     visualization_msgs::MarkerArray cluster_markers_results_;
     AlignedVector2f fused_centers_results_;
+    AlignedVector2f clean_points_results_; // <-- НОВОЕ: Для сохранения точек после углового фильтра
 
     // ----------------------------------------------------------------------------------
     // 3. ПРИВАТНЫЕ МЕТОДЫ
@@ -364,16 +364,25 @@ private:
         pub_final_markers.publish(marker_array);
     }
 
-    // ИЗМЕНЕНА: publishResultsTimerCallback (Без изменений)
+    // ИЗМЕНЕНА: publishResultsTimerCallback (v5.6)
     void publishResultsTimerCallback(const ros::TimerEvent &event)
     {
         ROS_INFO("    0-publishResultsTimerCallback");
 
-        // 1. Публикация отфильтрованного скана (filtered_scan_results_)
-        if (filtered_scan_results_.ranges.size() > 0)
+        // 1. Публикация ЧИСТЫХ ТОЧЕК (clean_points_results_) как Marker::POINTS
+        if (clean_points_results_.size() > 0 && meta_scan.header.frame_id != "")
         {
-            pub_filtered_scan.publish(filtered_scan_results_);
-            ROS_INFO("      filtered_scan_results_");
+            // Создаем маркер POINTS из вектора 2D-точек clean_points_results_
+            // Используем pub_filtered_scan, но публикуем Marker вместо LaserScan
+            pub_filtered_scan.publish(createPointsMarker(clean_points_results_,
+                                                         meta_scan.header.frame_id,                    // Используем frame_id из meta_scan
+                                                         "clean_points", 0, 0.7f, 0.7f, 0.7f, 0.05f)); // Серый цвет, мелкие точки
+            ROS_INFO("      clean_points_results_ published as Marker::POINTS");
+        }
+        else if (filtered_scan_results_.ranges.size() > 0)
+        {
+            // Исходный LaserScan больше не публикуется
+            ROS_INFO("      NOTE: filtered_scan_results_ is no longer published as LaserScan.");
         }
 
         // 2. Публикация маркеров кластеров (cluster_markers_results_)
@@ -384,11 +393,11 @@ private:
         }
 
         // 3. Публикация центров Fusion (fused_centers_results_)
-        if (fused_centers_results_.size() > 0 && filtered_scan_results_.header.frame_id != "")
+        if (fused_centers_results_.size() > 0 && meta_scan.header.frame_id != "")
         {
             // Нужно пересоздать маркер, используя сохраненные данные и frame_id
             pub_fused_pillars.publish(createPointsMarker(fused_centers_results_,
-                                                         filtered_scan_results_.header.frame_id,
+                                                         meta_scan.header.frame_id, // Используем frame_id из meta_scan
                                                          "fused_centers", 4, 0.0f, 1.0f, 0.0f, 0.15f));
             ROS_INFO("      pub_fused_pillars");
         }
@@ -862,7 +871,7 @@ public:
             return;
 
         // Инициализация паблишеров
-        pub_filtered_scan = nh.advertise<sensor_msgs::LaserScan>("/rviz/filtered_scan", 1);
+        pub_filtered_scan = nh.advertise<visualization_msgs::Marker>("/rviz/filtered_scan", 1);
         pub_method_clusters = nh.advertise<visualization_msgs::MarkerArray>("/rviz/method_clusters", 1);
         pub_fused_pillars = nh.advertise<visualization_msgs::Marker>("/rviz/fused_pillars", 1);
         pub_final_markers = nh.advertise<visualization_msgs::MarkerArray>("/rviz/final_pillars", 1);
@@ -934,7 +943,7 @@ public:
 
         // НОВЫЕ ПАРАМЕТРЫ ФИЛЬТРАЦИИ ХВОСТОВ (v4.4)
         nh.param<double>("/pb_config/filters/intensity_min_threshold", intensity_min_threshold, 10.0);
-        nh.param<double>("/pb_config/filters/edge_angle_threshold_deg", edge_angle_threshold, 60.0);
+        nh.param<double>("/pb_config/filters/edge_angle_threshold_deg", edge_angle_threshold, 15.0);
         edge_angle_threshold *= M_PI / 180.0; // Конвертация в радианы
 
         logi.log("  Filter Range: [%.2f, %.2f], KNN: R=%.2f, N=%d\n",
@@ -995,9 +1004,9 @@ public:
     }
 
     // МЕТОД: scanCallback
-    void scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan)
+    void scanCallback(const sensor_msgs::LaserScan::ConstPtr &scan)
     {
-        if (calibration_done_ || scans_collected >= SCANS_TO_COLLECT) 
+        if (calibration_done_ || scans_collected >= SCANS_TO_COLLECT)
         {
             return;
         }
@@ -1009,8 +1018,8 @@ public:
             accumulated_intensities.resize(scan->ranges.size());
             logi.log("LiDAR initialized. Rays: %lu. Starting accumulation.\n", scan->ranges.size());
         }
-        
-        bool has_intensities = (scan->intensities.size() == scan->ranges.size()); 
+
+        bool has_intensities = (scan->intensities.size() == scan->ranges.size());
 
         int removed_by_zero_in_current_scan = 0;
         int removed_by_low_in_current_scan = 0;
@@ -1019,12 +1028,7 @@ public:
         for (size_t i = 0; i < scan->ranges.size(); ++i)
         {
             float r = scan->ranges[i];
-            float intensity = has_intensities ? scan->intensities[i] : 0.0f; 
-
-            if (std::isinf(r) || std::isnan(r))
-            {
-                continue;
-            }
+            float intensity = has_intensities ? scan->intensities[i] : 0.0f;
 
             // ФИЛЬТРАЦИЯ ПО ИНТЕНСИВНОСТИ
             if (has_intensities)
@@ -1033,10 +1037,10 @@ public:
                 {
                     removed_by_zero_in_current_scan++;
                     total_rays_removed_by_zero_intensity++;
-                    total_rays_removed_by_initial_intensity++; 
+                    total_rays_removed_by_initial_intensity++;
                     continue;
                 }
-                
+
                 if (intensity < intensity_min_threshold)
                 {
                     removed_by_low_in_current_scan++;
@@ -1045,17 +1049,20 @@ public:
                     continue;
                 }
             }
-
+            if (std::isinf(r) || std::isnan(r))
+                continue;
+            if (r < min_range_filter || r > max_range_filter)
+                continue;
             accumulated_ranges[i].push_back(r);
-            accumulated_intensities[i].push_back(intensity);
+            accumulated_intensities[i].push_back(intensity);  // Сохраняем  только если прошли фильтр
             current_scan_added_count++;
         }
 
         scans_collected++;
-        
-        logi.log("Collecting scans: %d/%d. Kept: %d. Removed: Zero=%d, Low=%d. Total Intensity Removed: %lld\n", 
+
+        logi.log("Collecting scans: %d/%d. Kept: %d. Removed: Zero=%d, Low=%d. Total Intensity Removed: %lld\n",
                  scans_collected, SCANS_TO_COLLECT, current_scan_added_count,
-                 removed_by_zero_in_current_scan, removed_by_low_in_current_scan, 
+                 removed_by_zero_in_current_scan, removed_by_low_in_current_scan,
                  total_rays_removed_by_initial_intensity);
 
         if (scans_collected == SCANS_TO_COLLECT)
@@ -1065,34 +1072,34 @@ public:
         }
     }
 
-    // ИЗМЕНЕНА: Основной конвейер обработки (Полностью - v4.9)
+    // ИЗМЕНЕНА: Основной конвейер обработки (Полностью - v5.6)
     void processPipeline()
     {
-        logi.log("=== Starting Processing Pipeline (Median Filtered Scan) ===\n");
+        logi.log("=== Starting Processing Pipeline (Median Filtered Scan) ===\n"); // Лог начала конвейера
 
-        int total_initial_rays = 0; // Общее число лучей в скане (фиксировано: 3585)
-        int points_removed_by_angle_filter = 0;
+        int total_initial_rays = 0;             // Общее число лучей в скане (фиксировано: 3585)
+        int points_removed_by_angle_filter = 0; // Счетчик точек, удаленных угловым фильтром
 
         // 1. ФОРМИРОВАНИЕ МЕДИАННОГО СКАНА И ПЕРЕВОД В ТОЧКИ
 
-        sensor_msgs::LaserScan current_filtered_scan = meta_scan;
-        current_filtered_scan.ranges.clear();
-        current_filtered_scan.intensities.clear();
-        AlignedVector2f initial_points;
-        std::vector<double> median_intensities;
+        sensor_msgs::LaserScan current_filtered_scan = meta_scan; // Копирование мета-данных скана
+        current_filtered_scan.ranges.clear();                     // Очистка дальностей
+        current_filtered_scan.intensities.clear();                // Очистка интенсивностей
+        AlignedVector2f initial_points;                           // Вектор 2D точек до углового фильтра
+        std::vector<double> median_intensities;                   // Вектор медианных интенсивностей
 
-        float nan_val = std::numeric_limits<float>::quiet_NaN(); // Значение NaN для невалидных лучей
+        float nan_val = std::numeric_limits<float>::quiet_NaN(); // Значение NaN
 
         for (size_t i = 0; i < accumulated_ranges.size(); ++i)
         {
             total_initial_rays++; // Считаем общее число лучей
 
-            if (accumulated_ranges[i].empty())
+            if (accumulated_ranges[i].empty()) // Если луч был полностью отфильтрован по интенсивности
             {
-                // ИСПРАВЛЕНО (v4.9): Устанавливаем NaN и для дальности, и для интенсивности
+                // Устанавливаем NaN и для дальности, и для интенсивности
                 current_filtered_scan.ranges.push_back(nan_val);
-                current_filtered_scan.intensities.push_back(nan_val); // <--- ИЗМЕНЕНО
-                continue;
+                current_filtered_scan.intensities.push_back(nan_val); // NaN для интенсивности
+                continue;                                             // Пропускаем итерацию
             }
 
             // Расчет медианной дальности
@@ -1106,104 +1113,105 @@ public:
                 std::vector<double> current_int_data = accumulated_intensities[i];
                 median_i = MathUtils::getMedian(current_int_data);
             }
-            median_intensities.push_back(median_i);
+            median_intensities.push_back(median_i); // Сохраняем медианную интенсивность
 
-            // ФИЛЬТРАЦИЯ ПО ИНТЕНСИВНОСТИ УДАЛЕНА. Теперь в scanCallback().
+            double angle = meta_scan.angle_min + i * meta_scan.angle_increment; // Угол луча
 
-            double angle = meta_scan.angle_min + i * meta_scan.angle_increment;
-
-            current_filtered_scan.ranges.push_back((float)median_r);
-            current_filtered_scan.intensities.push_back((float)median_i);
+            current_filtered_scan.ranges.push_back((float)median_r);      // Сохраняем медианную дальность
+            current_filtered_scan.intensities.push_back((float)median_i); // Сохраняем медианную интенсивность
 
             // Только если луч не NaN, переводим его в 2D точку для кластеризации (защита от NaN)
             if (!std::isnan(current_filtered_scan.ranges.back()))
             {
-                initial_points.emplace_back((float)(median_r * cos(angle)), (float)(median_r * sin(angle)));
+                initial_points.emplace_back((float)(median_r * cos(angle)), (float)(median_r * sin(angle))); // Перевод в 2D
             }
         }
 
         // СОХРАНЕНИЕ 1: Сохраняем отфильтрованный скан (LaserScan)
-        filtered_scan_results_ = current_filtered_scan;
+        filtered_scan_results_ = current_filtered_scan; // Сохраняем LaserScan (нужен для заголовка)
 
         // 2. ЛОГИРОВАНИЕ СЫРОГО СКАНА (v4.7)
-        logRawScan();
+        logRawScan(); // Логирование сырых данных
 
         // 3. ЛОГИРОВАНИЕ ИТОГОВОГО ОТФИЛЬТРОВАННОГО СКАНА
-        logFinalFilteredScan(filtered_scan_results_);
+        logFinalFilteredScan(filtered_scan_results_); // Логирование медианного скана
 
-        logi.log("\n--- FILTERING STATISTICS ---\n");
-        logi.log("1. Total rays in scan (max): %d\n", total_initial_rays); // Total rays in meta_scan
+        logi.log("\n--- FILTERING STATISTICS ---\n");                      // Логирование статистики
+        logi.log("1. Total rays in scan (max): %d\n", total_initial_rays); // Общее число лучей
         logi.log_r("2. Total rays removed by ZERO Intensity (I=0.0) over %d scans: %lld\n",
-                   SCANS_TO_COLLECT, total_rays_removed_by_zero_intensity); // <-- НОВЫЙ ВЫВОД
+                   SCANS_TO_COLLECT, total_rays_removed_by_zero_intensity); // Удалено I=0
         logi.log_b("3. Total rays removed by LOW Intensity (0.0 < I < %.2f) over %d scans: %lld\n",
-                   intensity_min_threshold, SCANS_TO_COLLECT, total_rays_removed_by_low_intensity);                         // <-- НОВЫЙ ВЫВОД
-        logi.log_b("4. Total accumulated intensity removed (Sum of 2+3): %lld\n", total_rays_removed_by_initial_intensity); // <-- ОБЩАЯ СУММА
-        logi.log("5. Points remaining before Angle Filter: %lu\n", initial_points.size());
+                   intensity_min_threshold, SCANS_TO_COLLECT, total_rays_removed_by_low_intensity);                         // Удалено I<I_min
+        logi.log_b("4. Total accumulated intensity removed (Sum of 2+3): %lld\n", total_rays_removed_by_initial_intensity); // Общая сумма
+        logi.log("5. Points remaining before Angle Filter: %lu\n", initial_points.size());                                  // Точки до углового фильтра
 
         if (initial_points.empty())
         {
-            logi.log_r("No valid points after median filtering. Exiting pipeline.\n");
+            logi.log_r("No valid points after median filtering. Exiting pipeline.\n"); // Выход, если нет точек
             return;
         }
 
         // 4. УДАЛЕНИЕ ФАНТОМНЫХ АРТЕФАКТОВ
-        AlignedVector2f clean_points = removeEdgeArtifacts(initial_points, median_intensities, points_removed_by_angle_filter);
+        AlignedVector2f clean_points = removeEdgeArtifacts(initial_points, median_intensities, points_removed_by_angle_filter); // Применение углового фильтра
 
-        logi.log_b("4. Removed by Angle Filter (<%.1f deg): %d\n", edge_angle_threshold * 180.0 / M_PI, points_removed_by_angle_filter);
-        logi.log_b("5. Final clean points for clustering: %lu\n", clean_points.size());
+        // СОХРАНЕНИЕ 2 (v5.6): Сохраняем чистые точки для постоянной публикации
+        clean_points_results_ = clean_points; // <--- НОВОЕ: Сохранение чистых точек
+
+        logi.log_b("4. Removed by Angle Filter (<%.1f deg): %d\n", edge_angle_threshold * 180.0 / M_PI, points_removed_by_angle_filter); // Лог удаленных
+        logi.log_b("5. Final clean points for clustering: %lu\n", clean_points.size());                                                  // Лог финального числа
         logi.log("----------------------------\n");
 
         if (clean_points.empty())
         {
-            logi.log_r("No points left after artifact filtering. Exiting pipeline.\n");
+            logi.log_r("No points left after artifact filtering. Exiting pipeline.\n"); // Выход, если нет точек
             return;
         }
 
         // 5. Детекция (3 метода)
-        std::vector<PillarCandidate> all_candidates;
+        std::vector<PillarCandidate> all_candidates; // Все кандидаты
         // ... (Код детекции и fusion)
-        AlignedVector2f clusters_m1, clusters_m2, clusters_m3;
+        AlignedVector2f clusters_m1, clusters_m2, clusters_m3; // Точки кластеров для RVIZ
 
-        auto c1 = detectGenericClustering(clean_points, jump_dist_threshold, 1, clusters_m1);
+        auto c1 = detectGenericClustering(clean_points, jump_dist_threshold, 1, clusters_m1); // Метод 1
         all_candidates.insert(all_candidates.end(), c1.begin(), c1.end());
 
-        auto c2 = detectGenericClustering(clean_points, cluster_dist_threshold, 2, clusters_m2);
+        auto c2 = detectGenericClustering(clean_points, cluster_dist_threshold, 2, clusters_m2); // Метод 2
         all_candidates.insert(all_candidates.end(), c2.begin(), c2.end());
 
-        auto c3 = detectLocalMinima(clean_points, 3, clusters_m3);
+        auto c3 = detectLocalMinima(clean_points, 3, clusters_m3); // Метод 3
         all_candidates.insert(all_candidates.end(), c3.begin(), c3.end());
 
         // СОЗДАНИЕ МАРКЕРОВ КЛАСТЕРОВ ДЛЯ СОХРАНЕНИЯ
         visualization_msgs::MarkerArray cluster_markers;
         cluster_markers.markers.push_back(createPointsMarker(clusters_m1, meta_scan.header.frame_id,
-                                                             "method_1_jump", 1, 1.0f, 0.0f, 0.0f, 0.08f));
+                                                             "method_1_jump", 1, 1.0f, 0.0f, 0.0f, 0.08f)); // Красные
         cluster_markers.markers.push_back(createPointsMarker(clusters_m2, meta_scan.header.frame_id,
-                                                             "method_2_cluster", 2, 0.0f, 0.0f, 1.0f, 0.08f));
+                                                             "method_2_cluster", 2, 0.0f, 0.0f, 1.0f, 0.08f)); // Синие
         cluster_markers.markers.push_back(createPointsMarker(clusters_m3, meta_scan.header.frame_id,
-                                                             "method_3_minima", 3, 1.0f, 1.0f, 0.0f, 0.08f));
+                                                             "method_3_minima", 3, 1.0f, 1.0f, 0.0f, 0.08f)); // Желтые
 
-        cluster_markers_results_ = cluster_markers;
+        cluster_markers_results_ = cluster_markers; // Сохранение маркеров
 
         logi.log("Total candidates found: %lu (M1=%lu, M2=%lu, M3=%lu)\n",
-                 all_candidates.size(), c1.size(), c2.size(), c3.size());
+                 all_candidates.size(), c1.size(), c2.size(), c3.size()); // Лог кандидатов
 
         // 6. Fusion
-        std::vector<FinalPillar> final_pillars = fuseCandidates(all_candidates);
+        std::vector<FinalPillar> final_pillars = fuseCandidates(all_candidates); // Слияние кандидатов
 
         AlignedVector2f current_fused_centers;
         for (const auto &fp : final_pillars)
         {
-            current_fused_centers.push_back(fp.local);
+            current_fused_centers.push_back(fp.local); // Сохранение центров
         }
-        fused_centers_results_ = current_fused_centers;
+        fused_centers_results_ = current_fused_centers; // Сохранение центров Fusion
 
         // 7. Калибровка (Full Umeyama)
-        performCalibration(final_pillars);
+        performCalibration(final_pillars); // Выполнение калибровки
 
         // 8. Сохранение и лог
         if (calibration_done_)
         {
-            saveResults(final_pillars_results_);
+            saveResults(final_pillars_results_); // Сохранение результатов
             logi.log_g("Calibration successful. Node remains active, publishing results every 1 second.\n");
         }
         else
