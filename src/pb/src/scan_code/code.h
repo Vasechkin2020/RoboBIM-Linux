@@ -14,7 +14,7 @@
 #include <Eigen/Dense>             // Обязательно: библиотека линейной алгебры
 #include <limits>                  // Для std::numeric_limits
 #include <numeric>                 // Для std::accumulate
-#include <deque> // Требуется для std::deque
+#include <deque>                   // Требуется для std::deque
 
 // --- Заголовки для RViz (Только стандартные ROS) ---
 #include <visualization_msgs/MarkerArray.h> // Для публикации MarkerArray
@@ -52,7 +52,7 @@ struct FinalPillar
     std::string name;
     Eigen::Vector2f local;
     Eigen::Vector2d global;
-    double total_weight = 0.0;   // ← добавляем
+    double total_weight = 0.0; // ← добавляем
 };
 
 // Тип для выровненного вектора Eigen::Vector2f
@@ -449,7 +449,7 @@ private:
     // ИЗМЕНЕНА: processCluster (v5.9)
     // Обработка одного кластера, фильтрация по количеству точек и физической ширине
     void processCluster(const AlignedVector2f &cluster, int method_id,
-                                        std::vector<PillarCandidate> &out, AlignedVector2f &out_cluster_points)
+                        std::vector<PillarCandidate> &out, AlignedVector2f &out_cluster_points)
     {
         // Фильтрация по минимальному количеству точек (ИЗМЕНЕНО: Используем параметр)
         if (cluster.size() < min_cluster_points_)
@@ -737,322 +737,223 @@ private:
     }
 
     // Логика слияния (Fusion) (Без изменений)
-   
-   // ИЗМЕНЕНА: fuseCandidates (v6.0 - Добавлено подробное логирование)
-// Логика слияния (Fusion)
-// Объединяет кандидатов, найденных разными методами, в единые уникальные столбы.
-// ИЗМЕНЕНА: fuseCandidates (v6.0 - Исправлена ошибка 'size', используется 'num_points')
-// Логика слияния (Fusion)
-// Объединяет кандидатов, найденных разными методами, в единые уникальные столбы.
 
-std::vector<FinalPillar> fuseCandidates(const std::vector<PillarCandidate> &candidates)
-// std::vector<FinalPillar> fuseCandidatesDBSCAN(const std::vector<PillarCandidate> &candidates)
-{
-    std::vector<FinalPillar> final_pillars;
-    if (candidates.empty())
+    // ИЗМЕНЕНА: fuseCandidates (v6.0 - Добавлено подробное логирование)
+    // Логика слияния (Fusion)
+    // Объединяет кандидатов, найденных разными методами, в единые уникальные столбы.
+    // ИЗМЕНЕНА: fuseCandidates (v6.0 - Исправлена ошибка 'size', используется 'num_points')
+    // Логика слияния (Fusion)
+    // Объединяет кандидатов, найденных разными методами, в единые уникальные столбы.
+
+    std::vector<FinalPillar> fuseCandidates(const std::vector<PillarCandidate> &candidates)
+    // std::vector<FinalPillar> fuseCandidatesDBSCAN(const std::vector<PillarCandidate> &candidates)
     {
-        logi.log("DBSCAN Fusion skipped: No candidates.\n");
-        return final_pillars;
-    }
-
-    logi.log("--- DBSCAN Fusion Start: %lu candidates ---\n", candidates.size());
-
-    // Параметры DBSCAN
-    const double eps = fusion_group_radius;      // радиус объединения кластеров (обычно 0.25–0.35 м)
-    const double eps2 = eps * eps;               // квадрат радиуса для оптимизации (избегаем sqrt)
-    // const int minPts = 2;                        // минимальное количество точек для образования кластера
-    // Заменить жестко заданное minPts = 2 на переменную:
-    const int minPts = min_dbscan_points_;
-
-    size_t N = candidates.size();
-    std::vector<int> labels(N, -1);              // -1 = непосещенная, -2 = шум, >=0 = ID кластера
-    int clusterId = 0;                           // счетчик кластеров
-
-    // Лямбда для вычисления квадрата расстояния между кандидатами
-    auto dist2 = [&](size_t a, size_t b)
-    {
-        return (candidates[a].center - candidates[b].center).squaredNorm();
-    };
-
-    // ---- Фаза 1: Алгоритм DBSCAN ----
-    for (size_t i = 0; i < N; ++i)
-    {
-        if (labels[i] != -1) continue;           // Пропускаем уже обработанные точки
-
-        // Поиск всех соседей в пределах eps
-        std::vector<size_t> neighbors;
-        neighbors.reserve(16);                   // Предварительное выделение памяти
-
-        for (size_t j = 0; j < N; ++j)
-            if (dist2(i, j) <= eps2)
-                neighbors.push_back(j);
-
-        // Проверка на core point: достаточно ли соседей?
-        if (neighbors.size() < minPts)
+        std::vector<FinalPillar> final_pillars;
+        if (candidates.empty())
         {
-            labels[i] = -2; // Помечаем как шум
-            continue;
+            logi.log("DBSCAN Fusion skipped: No candidates.\n");
+            return final_pillars;
         }
 
-        // Создание нового кластера
-        labels[i] = clusterId;
+        logi.log("--- DBSCAN Fusion Start: %lu candidates ---\n", candidates.size());
 
-        // Очередь для расширения кластера (начинаем с соседей seed точки)
-        std::deque<size_t> q(neighbors.begin(), neighbors.end());
+        // Параметры DBSCAN
+        const double eps = fusion_group_radius; // радиус объединения кластеров (обычно 0.25–0.35 м)
+        const double eps2 = eps * eps;          // квадрат радиуса для оптимизации (избегаем sqrt)
+        // const int minPts = 2;                        // минимальное количество точек для образования кластера
+        // Заменить жестко заданное minPts = 2 на переменную:
+        const int minPts = min_dbscan_points_;
 
-        // Расширение кластера
-        while (!q.empty())
+        size_t N = candidates.size();
+        std::vector<int> labels(N, -1); // -1 = непосещенная, -2 = шум, >=0 = ID кластера
+        int clusterId = 0;              // счетчик кластеров
+
+        // Лямбда для вычисления квадрата расстояния между кандидатами
+        auto dist2 = [&](size_t a, size_t b)
         {
-            size_t n = q.front();
-            q.pop_front();
+            return (candidates[a].center - candidates[b].center).squaredNorm();
+        };
 
-            if (labels[n] == -2)   // Если точка была шумом - переклассифицируем в кластер
-                labels[n] = clusterId;
+        // ---- Фаза 1: Алгоритм DBSCAN ----
+        for (size_t i = 0; i < N; ++i)
+        {
+            if (labels[i] != -1)
+                continue; // Пропускаем уже обработанные точки
 
-            if (labels[n] != -1)   // Пропускаем уже посещенные точки
-                continue;
+            // Поиск всех соседей в пределах eps
+            std::vector<size_t> neighbors;
+            neighbors.reserve(16); // Предварительное выделение памяти
 
-            labels[n] = clusterId; // Помечаем как принадлежащую текущему кластеру
+            for (size_t j = 0; j < N; ++j)
+                if (dist2(i, j) <= eps2)
+                    neighbors.push_back(j);
 
-            // Поиск соседей для текущей точки
-            std::vector<size_t> neigh2;
-            neigh2.reserve(16);
-
-            for (size_t k = 0; k < N; ++k)
-                if (dist2(n, k) <= eps2)
-                    neigh2.push_back(k);
-
-            // Если точка является core point - добавляем ее соседей в очередь
-            if (neigh2.size() >= minPts)
+            // Проверка на core point: достаточно ли соседей?
+            if (neighbors.size() < minPts)
             {
-                for (size_t x : neigh2)
-                    if (labels[x] == -1 || labels[x] == -2) // Добавляем только непосещенные или шумовые
-                        q.push_back(x);
+                labels[i] = -2; // Помечаем как шум
+                continue;
+            }
+
+            // Создание нового кластера
+            labels[i] = clusterId;
+
+            // Очередь для расширения кластера (начинаем с соседей seed точки)
+            std::deque<size_t> q(neighbors.begin(), neighbors.end());
+
+            // Расширение кластера
+            while (!q.empty())
+            {
+                size_t n = q.front();
+                q.pop_front();
+
+                if (labels[n] == -2) // Если точка была шумом - переклассифицируем в кластер
+                    labels[n] = clusterId;
+
+                if (labels[n] != -1) // Пропускаем уже посещенные точки
+                    continue;
+
+                labels[n] = clusterId; // Помечаем как принадлежащую текущему кластеру
+
+                // Поиск соседей для текущей точки
+                std::vector<size_t> neigh2;
+                neigh2.reserve(16);
+
+                for (size_t k = 0; k < N; ++k)
+                    if (dist2(n, k) <= eps2)
+                        neigh2.push_back(k);
+
+                // Если точка является core point - добавляем ее соседей в очередь
+                if (neigh2.size() >= minPts)
+                {
+                    for (size_t x : neigh2)
+                        if (labels[x] == -1 || labels[x] == -2) // Добавляем только непосещенные или шумовые
+                            q.push_back(x);
+                }
+            }
+
+            clusterId++; // Переходим к следующему кластеру
+        }
+
+        // Подсчет и логирование шумовых точек
+        int noise_count = 0;
+        for (size_t i = 0; i < N; ++i)
+            if (labels[i] == -2)
+                noise_count++;
+        logi.log("DBSCAN: %d noise points filtered out.\n", noise_count);
+
+        if (clusterId == 0)
+        {
+            logi.log_w("DBSCAN: No clusters found.\n");
+            return final_pillars;
+        }
+
+        logi.log("DBSCAN: %d initial clusters detected.\n", clusterId);
+
+        // ---- Фаза 2: Аккумуляторы веса для кластеров ----
+        struct Acc
+        {
+            double wsum = 0.0;        // Суммарный вес кластера
+            std::vector<size_t> idxs; // Индексы кандидатов в кластере
+        };
+
+        std::vector<Acc> acc(clusterId); // Аккумуляторы для каждого кластера
+
+        // Сбор статистики по кластерам
+        for (size_t i = 0; i < N; ++i)
+        {
+            int cid = labels[i];
+            if (cid >= 0) // Игнорируем шумовые точки (cid = -2)
+            {
+                acc[cid].wsum += candidates[i].weight;
+                acc[cid].idxs.push_back(i);
             }
         }
 
-        clusterId++; // Переходим к следующему кластеру
-    }
-
-    // Подсчет и логирование шумовых точек
-    int noise_count = 0;
-    for (size_t i = 0; i < N; ++i) 
-        if (labels[i] == -2) noise_count++;
-    logi.log("DBSCAN: %d noise points filtered out.\n", noise_count);
-
-    if (clusterId == 0)
-    {
-        logi.log_w("DBSCAN: No clusters found.\n");
-        return final_pillars;
-    }
-
-    logi.log("DBSCAN: %d initial clusters detected.\n", clusterId);
-
-    // ---- Фаза 2: Аккумуляторы веса для кластеров ----
-    struct Acc
-    {
-        double wsum = 0.0;                       // Суммарный вес кластера
-        std::vector<size_t> idxs;                // Индексы кандидатов в кластере
-    };
-
-    std::vector<Acc> acc(clusterId);             // Аккумуляторы для каждого кластера
-
-    // Сбор статистики по кластерам
-    for (size_t i = 0; i < N; ++i)
-    {
-        int cid = labels[i];
-        if (cid >= 0) // Игнорируем шумовые точки (cid = -2)
+        // ---- Фаза 3: Формируем центры кластеров взвешенным усреднением ----
+        for (int cid = 0; cid < clusterId; ++cid)
         {
-            acc[cid].wsum += candidates[i].weight;
-            acc[cid].idxs.push_back(i);
-        }
-    }
+            if (acc[cid].idxs.size() < 1) // Пропускаем пустые кластеры
+                continue;
 
-    // ---- Фаза 3: Формируем центры кластеров взвешенным усреднением ----
-    for (int cid = 0; cid < clusterId; ++cid)
-    {
-        if (acc[cid].idxs.size() < 1)            // Пропускаем пустые кластеры
-            continue;
+            Eigen::Vector2f c(0, 0); // Взвешенный центр
+            double w = 0.0;          // Сумма весов
 
-        Eigen::Vector2f c(0, 0);                 // Взвешенный центр
-        double w = 0.0;                          // Сумма весов
+            // Вычисление взвешенного центра
+            for (size_t k : acc[cid].idxs)
+            {
+                c += candidates[k].center * (float)candidates[k].weight;
+                w += candidates[k].weight;
+            }
 
-        // Вычисление взвешенного центра
-        for (size_t k : acc[cid].idxs)
-        {
-            c += candidates[k].center * (float)candidates[k].weight;
-            w += candidates[k].weight;
+            // Защита от деления на ноль
+            if (w < 1e-9)
+                continue;
+
+            c /= (float)w; // Нормализация по сумме весов
+
+            // Создание финального столба
+            FinalPillar fp;
+            fp.local = c;
+            fp.total_weight = w;
+            fp.name = "Cluster_" + std::to_string(cid);
+
+            logi.log("DBSCAN Cluster %d: center (%.3f, %.3f), points=%lu, weight=%.3f\n",
+                     cid, c.x(), c.y(), acc[cid].idxs.size(), w);
+
+            final_pillars.push_back(fp);
         }
 
-        // Защита от деления на ноль
-        if (w < 1e-9) continue;
+        if (final_pillars.empty())
+        {
+            logi.log_w("DBSCAN: No valid clusters after accumulation.\n");
+            return final_pillars;
+        }
 
-        c /= (float)w; // Нормализация по сумме весов
+        // ---- Фаза 4: Если кластеров больше 4 — выбираем top-4 по весу ----
+        if (final_pillars.size() > 4)
+        {
+            logi.log_w("DBSCAN: %lu clusters => selecting top 4 by weight...\n",
+                       final_pillars.size());
 
-        // Создание финального столба
-        FinalPillar fp;
-        fp.local = c;
-        fp.total_weight = w;
-        fp.name = "Cluster_" + std::to_string(cid);
+            // Сортировка по убыванию суммарного веса
+            std::sort(final_pillars.begin(), final_pillars.end(),
+                      [](const FinalPillar &a, const FinalPillar &b)
+                      {
+                          return a.total_weight > b.total_weight;
+                      });
 
-        logi.log("DBSCAN Cluster %d: center (%.3f, %.3f), points=%lu, weight=%.3f\n",
-                 cid, c.x(), c.y(), acc[cid].idxs.size(), w);
+            final_pillars.resize(4); // Оставляем только 4 лучших кластера
 
-        final_pillars.push_back(fp);
-    }
+            logi.log_g("DBSCAN: Top 4 clusters selected.\n");
+        }
 
-    if (final_pillars.empty())
-    {
-        logi.log_w("DBSCAN: No valid clusters after accumulation.\n");
-        return final_pillars;
-    }
-
-    // ---- Фаза 4: Если кластеров больше 4 — выбираем top-4 по весу ----
-    if (final_pillars.size() > 4)
-    {
-        logi.log_w("DBSCAN: %lu clusters => selecting top 4 by weight...\n",
-                   final_pillars.size());
-
-        // Сортировка по убыванию суммарного веса
+        // ---- Фаза 5: Сортировка по углу (для согласованного порядка) ----
         std::sort(final_pillars.begin(), final_pillars.end(),
                   [](const FinalPillar &a, const FinalPillar &b)
                   {
-                      return a.total_weight > b.total_weight;
+                      return atan2(a.local.y(), a.local.x()) < atan2(b.local.y(), b.local.x());
                   });
 
-        final_pillars.resize(4); // Оставляем только 4 лучших кластера
+        // ---- Фаза 6: Финальное логирование результатов ----
+        for (size_t i = 0; i < final_pillars.size(); ++i)
+        {
+            double angle = atan2(final_pillars[i].local.y(), final_pillars[i].local.x()) * 180.0 / M_PI;
+            double range = final_pillars[i].local.norm();
 
-        logi.log_g("DBSCAN: Top 4 clusters selected.\n");
+            logi.log_g("  Pillar %lu: (%.3f, %.3f), R=%.3f m, Angle=%.1f°, W=%.3f\n",
+                       i,
+                       final_pillars[i].local.x(),
+                       final_pillars[i].local.y(),
+                       range,
+                       angle,
+                       final_pillars[i].total_weight);
+        }
+
+        logi.log("--- DBSCAN Fusion End: %lu pillars created ---\n", final_pillars.size());
+
+        return final_pillars;
     }
-
-    // ---- Фаза 5: Сортировка по углу (для согласованного порядка) ----
-    std::sort(final_pillars.begin(), final_pillars.end(),
-              [](const FinalPillar &a, const FinalPillar &b)
-              {
-                  return atan2(a.local.y(), a.local.x()) < atan2(b.local.y(), b.local.x());
-              });
-
-    // ---- Фаза 6: Финальное логирование результатов ----
-    for (size_t i = 0; i < final_pillars.size(); ++i)
-    {
-        double angle = atan2(final_pillars[i].local.y(), final_pillars[i].local.x()) * 180.0 / M_PI;
-        double range = final_pillars[i].local.norm();
-
-        logi.log_g("  Pillar %lu: (%.3f, %.3f), R=%.3f m, Angle=%.1f°, W=%.3f\n",
-                   i,
-                   final_pillars[i].local.x(),
-                   final_pillars[i].local.y(),
-                   range,
-                   angle,
-                   final_pillars[i].total_weight);
-    }
-
-    logi.log("--- DBSCAN Fusion End: %lu pillars created ---\n", final_pillars.size());
-
-    return final_pillars;
-}
-
-// std::vector<FinalPillar> fuseCandidates(const std::vector<PillarCandidate> &candidates)
-// {
-//     std::vector<FinalPillar> final_pillars;
-//     if (candidates.empty())
-//     {
-//         logi.log("Fusion skipped: No candidates found by detection methods.\n"); // Логирование пустого входа
-//         return final_pillars;
-//     }
-
-//     // 1. ЛОГИРОВАНИЕ НАЧАЛА (Список всех кандидатов)
-//     logi.log("--- Fusion Start: Analyzing %lu candidates ---\n", candidates.size());
-//     for (size_t i = 0; i < candidates.size(); ++i)
-//     {
-//         const auto& c = candidates[i]; // Получение кандидата
-//         // ИСПРАВЛЕНО: Теперь используем 'num_points'
-//         logi.log("Candidate %lu (Method %d): Center (X: %.3f, Y: %.3f), Weight: %.2f, Points: %d, RMSE: %.4f\n",
-//                  i, c.method_id, c.center.x(), c.center.y(), c.weight, c.num_points, c.rmse); // Вывод основных характеристик
-//     }
-//     logi.log("---------------------------------------------------\n");
-
-//     std::vector<bool> processed(candidates.size(), false);
-//     AlignedVector2f found_centers;
-
-//     for (size_t i = 0; i < candidates.size(); ++i)
-//     {
-//         if (processed[i])
-//             continue;
-        
-//         double sum_w = 0;
-//         Eigen::Vector2f w_center(0.0f, 0.0f);
-//         size_t fused_count = 0; // Счетчик объединенных кандидатов
-        
-//         logi.log("Starting fusion group %lu (Base: Candidate %lu, Method %d).\n", 
-//                    found_centers.size(), i, candidates[i].method_id); 
-
-//         for (size_t j = i; j < candidates.size(); ++j)
-//         {
-//             if (processed[j])
-//                 continue;
-            
-//             double dist = MathUtils::dist2D(candidates[i].center, candidates[j].center); 
-            
-//             // Слияние, если центры близки
-//             if (dist < fusion_group_radius)
-//             {
-//                 logi.log_w("  -> Merging Candidate %lu (Method %d). Dist: %.3f m.\n", 
-//                            j, candidates[j].method_id, dist);
-                           
-//                 w_center += candidates[j].center * (float)candidates[j].weight;
-//                 sum_w += candidates[j].weight;
-//                 processed[j] = true;
-//                 fused_count++;
-//             }
-//         }
-
-//         if (sum_w > 0)
-//         {
-//             Eigen::Vector2f final_center = w_center / (float)sum_w;
-//             found_centers.push_back(final_center);
-//             logi.log_g("  Fusion Group %lu complete: Fused %lu candidates. Center (X: %.3f, Y: %.3f).\n",
-//                        found_centers.size() - 1, fused_count, final_center.x(), final_center.y());
-//         }
-//     }
-
-//     logi.log("Fusion Total: Found %lu unique pillars before final check.\n", found_centers.size());
-
-//     if (found_centers.size() != 4)
-//     {
-//         logi.log_w("Fusion found %lu pillars. Umeyama calibration requires 4. Skipping calibration.\n", found_centers.size());
-//         return final_pillars;
-//     }
-
-//     // 2. ЛОГИРОВАНИЕ КОНЦА (После слияния и сортировки)
-//     logi.log_g("Fusion Success: 4 unique pillars found. Sorting by angle...\n");
-
-//     // Сортировка по углу
-//     std::sort(found_centers.begin(), found_centers.end(),
-//               [](const Eigen::Vector2f &a, const Eigen::Vector2f &b)
-//               {
-//                   return atan2(a.y(), a.x()) < atan2(b.y(), b.x());
-//               });
-
-//     for (size_t i = 0; i < 4; ++i)
-//     {
-//         FinalPillar fp;
-//         fp.local = found_centers[i];
-//         fp.name = "Pillar_" + std::to_string(i);
-//         final_pillars.push_back(fp);
-        
-//         // Вывод финальных характеристик (Центр и угол)
-//         double angle = atan2(fp.local.y(), fp.local.x()) * 180.0 / M_PI;
-//         double range = fp.local.norm();
-        
-//         logi.log_g("  Final Pillar %lu (Name: %s): Center (X: %.3f, Y: %.3f), Range: %.3f m, Angle: %.1f deg.\n",
-//                    i, fp.name.c_str(), fp.local.x(), fp.local.y(), range, angle);
-//     }
-    
-//     logi.log("--- Fusion End ---\n");
-//     return final_pillars;
-// }
-
 
     // Сохранение результатов в ROS Parameter Server (Без изменений)
     void saveResults(const std::vector<FinalPillar> &pillars)
@@ -1337,7 +1238,7 @@ public:
                        total_rays_removed_by_low_intensity(0),    // <--- ОБНУЛЕНИЕ
                        total_rays_removed_by_initial_intensity(0) // <--- ОБНУЛЕНИЕ
     {
-       logi.log("=== PillarScanNode v5.9 Started (Configurable Filters) ===\n"); // Обновление версии
+        logi.log("=== PillarScanNode v5.9 Started (Configurable Filters) ===\n"); // Обновление версии
 
         loadParameters();
         if (!ros::ok())
@@ -1385,21 +1286,131 @@ public:
     // ----------------------------------------------------------------------------------
     // Загрузка параметров (Без изменений)
     // ----------------------------------------------------------------------------------
+    // void loadParameters()
+    // {
+    //     logi.log_r("\n--- Loading YAML Parameters ---\n");
+
+    //     // 1. Диаметр столба и радиус
+    //     nh.param<double>("/pb_config/pillar_params/pillar_diametr", pillar_diam_, 0.315);
+    //     pillar_radius_ = pillar_diam_ / 2.0;
+
+    //     // 2. Эталонные расстояния (в метрах)
+    //     nh.param<double>("/pb_config/scan_node/pillar_0_1", d_surf[0], 10.5);
+    //     nh.param<double>("/pb_config/scan_node/pillar_0_2", d_surf[1], 12.0);
+    //     nh.param<double>("/pb_config/scan_node/pillar_0_3", d_surf[2], 4.8);
+    //     nh.param<double>("/pb_config/scan_node/pillar_1_2", d_surf[3], 5.5);
+    //     nh.param<double>("/pb_config/scan_node/pillar_1_3", d_surf[4], 11.5);
+    //     nh.param<double>("/pb_config/scan_node/pillar_2_3", d_surf[5], 4.8);
+
+    //     // Вычисление расстояний между центрами
+    //     for (int i = 0; i < 6; ++i)
+    //     {
+    //         d_center[i] = d_surf[i] + pillar_diam_;
+    //     }
+
+    //     // Лог параметров расстояний
+    //     logi.log_b("  pillar_diametr: %.4f\n", pillar_diam_);
+    //     logi.log("  pillar_0_1 RB-RT (surf): %.4f -> (center): %.4f\n", d_surf[0], d_center[0]);
+    //     logi.log("  pillar_0_2 RB-LT (surf): %.4f -> (center): %.4f\n", d_surf[1], d_center[1]);
+    //     logi.log("  pillar_0_3 RB-LB (surf): %.4f -> (center): %.4f\n", d_surf[1], d_center[1]);
+    //     logi.log("  pillar_1_2 RT-LT (surf): %.4f -> (center): %.4f\n", d_surf[1], d_center[1]);
+    //     logi.log("  pillar_1_3 RT-LB (surf): %.4f -> (center): %.4f\n", d_surf[1], d_center[1]);
+    //     logi.log("  pillar_2_3 LT-LB (surf): %.4f -> (center): %.4f\n", d_surf[1], d_center[1]);
+
+    //     // --- Параметры фильтрации кластеров (ОБНОВЛЕНО, v5.9) ---
+    //     nh.param<double>("/pb_config/scan_node/min_cluster_width", min_cluster_width_, 0.20); // Минимальная ширина [м]
+    //     nh.param<double>("/pb_config/scan_node/max_cluster_width", max_cluster_width_, 0.40); // Максимальная ширина [м]
+    //     nh.param<int>("/pb_config/scan_node/min_cluster_points", min_cluster_points_, 11);    // Минимальное количество точек (v5.9)
+
+    //     logi.log_b("Cluster Filter Config:\n");
+    //     logi.log("  Min Cluster Width: %.3f m\n", min_cluster_width_);
+    //     logi.log("  Max Cluster Width: %.3f m\n", max_cluster_width_);
+    //     logi.log("  Min Cluster Points: %d\n", min_cluster_points_); // Логирование нового параметра
+
+    //     // 4. Параметры детекции
+    //     nh.param<double>("/pb_config/scan_node/jump_dist_threshold", jump_dist_threshold, 0.33);
+    //     nh.param<double>("/pb_config/scan_node/cluster_dist_threshold", cluster_dist_threshold, 0.05);
+    //     logi.log("  Detection: jump_dist_threshold=%.2f, cluster_dist_threshold=%.2f\n", jump_dist_threshold, cluster_dist_threshold);
+
+    //     // 6. Веса методов
+    //     nh.param<double>("/pb_config/scan_node/w_method_1_jump", w_method[1], 1.0);
+    //     nh.param<double>("/pb_config/scan_node/w_method_2_cluster", w_method[2], 0.9);
+    //     nh.param<double>("/pb_config/scan_node/w_method_3_minima", w_method[3], 0.8);
+    //     logi.log_b("  Weights: method_1=%.2f, method_2= %.2f, method_3= %.2f\n", w_method[1], w_method[2], w_method[3]);
+
+    //     // 3. Параметры фильтрации
+    //     nh.param<double>("/pb_config/scan_node/min_range", min_range_filter, 0.2);
+    //     nh.param<double>("/pb_config/scan_node/max_range", max_range_filter, 15.0);
+    //     nh.param<double>("/pb_config/scan_node/neighbor_radius", neighbor_radius_filter, 0.3);
+    //     nh.param<int>("/pb_config/scan_node/min_neighbors", min_neighbors_filter, 3);
+    //     nh.param<double>("/pb_config/scan_node/intensity_min_threshold", intensity_min_threshold, 10.0);
+    //     nh.param<double>("/pb_config/scan_node/edge_angle_threshold_deg", edge_angle_threshold, 15.0);
+    //     edge_angle_threshold *= M_PI / 180.0; // Конвертация в радианы
+
+    //     logi.log("  Filter Range: [%.2f, %.2f], KNN: R=%.2f, N=%d\n", min_range_filter, max_range_filter, neighbor_radius_filter, min_neighbors_filter);
+    //     logi.log("  Artifact Filter: I_min=%.2f, Angle_rad=%.4f (%.1f deg)\n", intensity_min_threshold, edge_angle_threshold, edge_angle_threshold * 180.0 / M_PI);
+
+    //     // 5. Параметры Fusion
+    //     nh.param<double>("//pb_config/scan_node/rmse_max_tolerance", rmse_max_tolerance, 0.01);
+    //     nh.param<int>("/pb_config/scan_node/n_max_points_norm", n_max_points_norm, 100);
+    //     nh.param<double>("/pb_config/scan_node/group_radius", fusion_group_radius, 0.2);
+    //     nh.param<int>("/pb_config/scan_node/min_dbscan_points", min_dbscan_points_, 2); // Новый параметр для minPts
+
+    //     logi.log_b("  DBSCAN Fusion Config:\n");
+    //     logi.log("  Fusion: RMSE_max=%.4f, N_max=%d \n", rmse_max_tolerance, n_max_points_norm);
+    //     logi.log("  Min DBSCAN Points (minPts): %d\n", min_dbscan_points_);
+    //     logi.log("  Fusion Group Radius: %.3f m\n", fusion_group_radius);
+
+    //     logi.log_r("--- Parameters Loaded Successfully ---\n");
+    // }
+
     void loadParameters()
     {
-        logi.log("\n--- Loading YAML Parameters ---\n");
+        logi.log_r("--- Loading YAML Parameters ---\n");
+
+        // Вспомогательная лямбда для безопасного чтения double
+        auto loadParam = [this](const std::string &key, double &var, double default_val, const char *name)
+        {
+            if (!nh.getParam(key, var))
+            {
+                logi.log_r("WARNING: Param '%s' not found, using default = %.4f\n", name, default_val);
+                var = default_val;
+                return false;
+            }
+            else
+            {
+                logi.log("Loaded '%s' = %.4f\n", name, var);
+                return true;
+            }
+        };
+
+        // Вспомогательная лямбда для int
+        auto loadParamInt = [this](const std::string &key, int &var, int default_val, const char *name)
+        {
+            if (!nh.getParam(key, var))
+            {
+                logi.log_r("WARNING: Param '%s' not found, using default = %d\n", name, default_val);
+                var = default_val;
+                return false;
+            }
+            else
+            {
+                logi.log("Loaded '%s' = %d\n", name, var);
+                return true;
+            }
+        };
 
         // 1. Диаметр столба и радиус
-        nh.param<double>("/pb_config/pillar_params/pillar_diametr", pillar_diam_, 0.315);
+        loadParam("/pb_config/scan_node/pillar_diametr", pillar_diam_, 0.315, "pillar_diametr");
         pillar_radius_ = pillar_diam_ / 2.0;
 
-        // 2. Эталонные расстояния (в метрах)
-        nh.param<double>("/pb_config/reference_dists/pillar_0_1", d_surf[0], 10.5);
-        nh.param<double>("/pb_config/reference_dists/pillar_0_2", d_surf[1], 12.0);
-        nh.param<double>("/pb_config/reference_dists/pillar_0_3", d_surf[2], 4.8);
-        nh.param<double>("/pb_config/reference_dists/pillar_1_2", d_surf[3], 5.5);
-        nh.param<double>("/pb_config/reference_dists/pillar_1_3", d_surf[4], 11.5);
-        nh.param<double>("/pb_config/reference_dists/pillar_2_3", d_surf[5], 4.8);
+        // 2. Эталонные расстояния между поверхностями (6 штук)
+        loadParam("/pb_config/scan_node/pillar_0_1", d_surf[0], 10.5, "pillar_0_1");
+        loadParam("/pb_config/scan_node/pillar_0_2", d_surf[1], 12.0, "pillar_0_2");
+        loadParam("/pb_config/scan_node/pillar_0_3", d_surf[2], 4.8, "pillar_0_3");
+        loadParam("/pb_config/scan_node/pillar_1_2", d_surf[3], 5.5, "pillar_1_2");
+        loadParam("/pb_config/scan_node/pillar_1_3", d_surf[4], 11.5, "pillar_1_3");
+        loadParam("/pb_config/scan_node/pillar_2_3", d_surf[5], 4.8, "pillar_2_3");
 
         // Вычисление расстояний между центрами
         for (int i = 0; i < 6; ++i)
@@ -1407,95 +1418,271 @@ public:
             d_center[i] = d_surf[i] + pillar_diam_;
         }
 
-        // Лог параметров расстояний
-        logi.log("  pillar_diametr: %.4f\n", pillar_diam_);
-        logi.log("  pillar_0_1 (surf): %.4f -> (center): %.4f\n", d_surf[0], d_center[0]);
-        logi.log("  pillar_0_2 (surf): %.4f -> (center): %.4f\n", d_surf[1], d_center[1]);
-        // ...
+        // Логирование расстояний (исправлены индексы!)
+        logi.log_b("  pillar_diametr: %.4f\n", pillar_diam_);
+        logi.log("  pillar_0_1 RB-RT (surf): %.4f -> (center): %.4f\n", d_surf[0], d_center[0]);
+        logi.log("  pillar_0_2 RB-LT (surf): %.4f -> (center): %.4f\n", d_surf[1], d_center[1]);
+        logi.log("  pillar_0_3 RB-LB (surf): %.4f -> (center): %.4f\n", d_surf[2], d_center[2]);
+        logi.log("  pillar_1_2 RT-LT (surf): %.4f -> (center): %.4f\n", d_surf[3], d_center[3]);
+        logi.log("  pillar_1_3 RT-LB (surf): %.4f -> (center): %.4f\n", d_surf[4], d_center[4]);
+        logi.log("  pillar_2_3 LT-LB (surf): %.4f -> (center): %.4f\n", d_surf[5], d_center[5]);
 
-        // 3. Параметры фильтрации
-        nh.param<double>("/pb_config/filters/min_range", min_range_filter, 0.2);
-        nh.param<double>("/pb_config/filters/max_range", max_range_filter, 15.0);
-        nh.param<double>("/pb_config/filters/neighbor_radius", neighbor_radius_filter, 0.3);
-        nh.param<int>("/pb_config/filters/min_neighbors", min_neighbors_filter, 3);
+        // --- Параметры фильтрации кластеров ---
+        loadParam("/pb_config/scan_node/min_cluster_width", min_cluster_width_, 0.20, "min_cluster_width");
+        loadParam("/pb_config/scan_node/max_cluster_width", max_cluster_width_, 0.40, "max_cluster_width");
+        loadParamInt("/pb_config/scan_node/min_cluster_points", min_cluster_points_, 11, "min_cluster_points");
 
-        // НОВЫЕ ПАРАМЕТРЫ ФИЛЬТРАЦИИ ХВОСТОВ (v4.4)
-        nh.param<double>("/pb_config/filters/intensity_min_threshold", intensity_min_threshold, 10.0);
-        nh.param<double>("/pb_config/filters/edge_angle_threshold_deg", edge_angle_threshold, 15.0);
-        edge_angle_threshold *= M_PI / 180.0; // Конвертация в радианы
+        logi.log_b("Cluster Filter Config:\n");
+        logi.log("  Min Cluster Width: %.3f m\n", min_cluster_width_);
+        logi.log("  Max Cluster Width: %.3f m\n", max_cluster_width_);
+        logi.log("  Min Cluster Points: %d\n", min_cluster_points_);
 
-        logi.log("  Filter Range: [%.2f, %.2f], KNN: R=%.2f, N=%d\n",
-                 min_range_filter, max_range_filter, neighbor_radius_filter, min_neighbors_filter);
-        logi.log("  Artifact Filter: I_min=%.2f, Angle_rad=%.4f (%.1f deg)\n",
-                 intensity_min_threshold, edge_angle_threshold, edge_angle_threshold * 180.0 / M_PI);
+        // Параметры детекции
+        loadParam("/pb_config/scan_node/jump_dist_threshold", jump_dist_threshold, 0.33, "jump_dist_threshold");
+        loadParam("/pb_config/scan_node/cluster_dist_threshold", cluster_dist_threshold, 0.05, "cluster_dist_threshold");
+        logi.log("  Detection: jump_dist_threshold=%.2f, cluster_dist_threshold=%.2f\n", jump_dist_threshold, cluster_dist_threshold);
 
-        // 4. Параметры детекции
-        nh.param<double>("/pb_config/detection/jump_threshold", jump_dist_threshold, 0.33);
-        nh.param<double>("/pb_config/detection/cluster_threshold", cluster_dist_threshold, 0.05);
-        logi.log("  Detection: JumpThresh=%.2f, ClusterThresh=%.2f\n", jump_dist_threshold, cluster_dist_threshold);
+        // Веса методов
+        loadParam("/pb_config/scan_node/w_method_1_jump", w_method[1], 1.0, "w_method_1_jump");
+        loadParam("/pb_config/scan_node/w_method_2_cluster", w_method[2], 0.9, "w_method_2_cluster");
+        loadParam("/pb_config/scan_node/w_method_3_minima", w_method[3], 0.8, "w_method_3_minima");
+        logi.log_b("  Weights: method_1=%.2f, method_2=%.2f, method_3=%.2f\n", w_method[1], w_method[2], w_method[3]);
 
-        // 5. Параметры Fusion
-        nh.param<double>("/pb_config/fusion/rmse_max_tolerance", rmse_max_tolerance, 0.01);
-        nh.param<int>("/pb_config/fusion/n_max_points_norm", n_max_points_norm, 100);
+        // Параметры фильтрации сканов
+        loadParam("/pb_config/scan_node/min_range_filter", min_range_filter, 0.2, "min_range");
+        loadParam("/pb_config/scan_node/max_range_filter", max_range_filter, 15.0, "max_range");
+        loadParam("/pb_config/scan_node/neighbor_radius_filter", neighbor_radius_filter, 0.3, "neighbor_radius");
+        loadParamInt("/pb_config/scan_node/min_neighbors_filter", min_neighbors_filter, 3, "min_neighbors");
+        loadParam("/pb_config/scan_node/intensity_min_threshold", intensity_min_threshold, 10.0, "intensity_min_threshold");
+        loadParam("/pb_config/scan_node/edge_angle_threshold_deg", edge_angle_threshold, 15.0, "edge_angle_threshold_deg");
+        edge_angle_threshold *= M_PI / 180.0; // в радианы
+
+        logi.log("  Filter Range: [%.2f, %.2f], KNN: R=%.2f, N=%d\n", min_range_filter, max_range_filter, neighbor_radius_filter, min_neighbors_filter);
+        logi.log("  Artifact Filter: I_min=%.2f, Angle_rad=%.4f (%.1f deg)\n", intensity_min_threshold, edge_angle_threshold, edge_angle_threshold * 180.0 / M_PI);
+
+        // Параметры Fusion
+        // ИСПРАВЛЕНО: убран лишний слэш в начале
+        loadParam("/pb_config/scan_node/rmse_max_tolerance", rmse_max_tolerance, 0.01, "rmse_max_tolerance");
+        loadParamInt("/pb_config/scan_node/n_max_points_norm", n_max_points_norm, 100, "n_max_points_norm");
+        loadParam("/pb_config/scan_node/fusion_group_radius", fusion_group_radius, 0.2, "fusion_group_radius");
+        loadParamInt("/pb_config/scan_node/min_dbscan_points", min_dbscan_points_, 2, "min_dbscan_points");
+
+        logi.log_b("  DBSCAN Fusion Config:\n");
         logi.log("  Fusion: RMSE_max=%.4f, N_max=%d \n", rmse_max_tolerance, n_max_points_norm);
-        logi.log("DBSCAN Fusion Config:\n");
-        nh.param<double>("/pb_config/fusion/group_radius", fusion_group_radius, 0.2);
-        nh.param<int>("/pb/min_dbscan_points", min_dbscan_points_, 2); // Новый параметр для minPts
         logi.log("  Min DBSCAN Points (minPts): %d\n", min_dbscan_points_);
         logi.log("  Fusion Group Radius: %.3f m\n", fusion_group_radius);
 
-        // 6. Веса методов
-        nh.param<double>("/pb_config/weights/method_1", w_method[1], 1.0);
-        nh.param<double>("/pb_config/weights/method_2", w_method[2], 0.9);
-        nh.param<double>("/pb_config/weights/method_3", w_method[3], 0.8);
-        logi.log("  Weights: M1=%.2f, M2=%.2f, M3=%.2f\n", w_method[1], w_method[2], w_method[3]);
-
-                // --- Параметры фильтрации кластеров (ОБНОВЛЕНО, v5.9) ---
-        // Используем ваш ROS-пакет 'pb'
-        nh.param<double>("/pb/min_cluster_width", min_cluster_width_, 0.20); // Минимальная ширина [м]
-        nh.param<double>("/pb/max_cluster_width", max_cluster_width_, 0.40); // Максимальная ширина [м]
-        nh.param<int>("/pb/min_cluster_points", min_cluster_points_, 11);     // Минимальное количество точек (v5.9)
-
-        // Логирование новых параметров
-        logi.log("Cluster Filter Config:\n");
-        logi.log("  Min Cluster Width: %.3f m\n", min_cluster_width_);
-        logi.log("  Max Cluster Width: %.3f m\n", max_cluster_width_);
-        logi.log("  Min Cluster Points: %d\n", min_cluster_points_); // Логирование нового параметра
-
-
-
-        logi.log("--- Parameters Loaded Successfully ---\n");
+        logi.log_r("--- Parameters Loaded ---\n");
     }
 
-    // ----------------------------------------------------------------------------------
-    // Инициализация эталона (Reference System) (Без изменений)
-    // ----------------------------------------------------------------------------------
+    // ИЗМЕНЕНА: initReferenceSystem (v6.1 - LM Optimization)
+    // Находит координаты эталонной системы с помощью нелинейной оптимизации
+    // Levenberg-Marquardt, минимизируя невязки по всем 6 расстояниям.
     void initReferenceSystem()
     {
-        reference_centers_.clear();
+        reference_centers_.resize(4);
 
+        logi.log("\n=== Reference System Initialization (Levenberg-Marquardt) ===\n");
+
+        // Начальное приближение — трилатерация
         double L = d_center[0];
-        double Y_LT = d_center[3];
-        double X_LB = (d_center[1] * d_center[1] - d_center[4] * d_center[4] + L * L) / (2 * L);
-        double Y_LB = sqrt(d_center[2] * d_center[2] - X_LB * X_LB);
+        reference_centers_[0] = Eigen::Vector2f(0, 0);        // RB (0)
+        reference_centers_[1] = Eigen::Vector2f((float)L, 0); // RT (1)
 
-        // 0. RB (Right Bottom)
-        reference_centers_.emplace_back(0.0f, 0.0f);
+        // LT (2) - начальное приближение
+        // x2 = (d_0_1^2 + d_0_2^2 - d_1_2^2) / (2*d_0_1)
+        double x2 = (L * L + d_center[1] * d_center[1] - d_center[3] * d_center[3]) / (2 * L);
+        double y2 = std::sqrt(std::max(0.0, d_center[1] * d_center[1] - x2 * x2));
+        reference_centers_[2] = Eigen::Vector2f((float)x2, (float)y2);
 
-        // 1. RT (Right Top)
-        reference_centers_.emplace_back((float)L, 0.0f);
+        // LB (3) - начальное приближение
+        // x3 = (d_0_1^2 + d_0_3^2 - d_1_3^2) / (2*d_0_1)
+        double x3 = (L * L + d_center[2] * d_center[2] - d_center[4] * d_center[4]) / (2 * L);
+        double y3 = -std::sqrt(std::max(0.0, d_center[2] * d_center[2] - x3 * x3)); // Предполагаем, что LB ниже оси X
+        reference_centers_[3] = Eigen::Vector2f((float)x3, (float)y3);
 
-        // 2. LT (Left Top)
-        reference_centers_.emplace_back((float)L, (float)Y_LT);
+        logi.log("Initial approximation:\n");
+        for (int i = 0; i < 4; ++i)
+            logi.log(" P%d: [%.4f, %.4f]\n", i, reference_centers_[i].x(), reference_centers_[i].y());
 
-        // 3. LB (Left Bottom)
-        reference_centers_.emplace_back((float)X_LB, -(float)Y_LB);
+        // --- LM ОПТИМИЗАЦИЯ ---
+        // Параметры: x2, y2, x3, y3
+        Eigen::Vector4d params;
+        params << reference_centers_[2].x(), reference_centers_[2].y(),
+            reference_centers_[3].x(), reference_centers_[3].y();
 
-        logi.log("\nReference System Initialized:\n");
-        logi.log("  RB (0): [%.3f, %.3f]\n", reference_centers_[0].x(), reference_centers_[0].y());
-        logi.log("  RT (1): [%.3f, %.3f]\n", reference_centers_[1].x(), reference_centers_[1].y());
-        logi.log("  LT (2): [%.3f, %.3f]\n", reference_centers_[2].x(), reference_centers_[2].y());
-        logi.log("  LB (3): [%.3f, %.3f]\n", reference_centers_[3].x(), reference_centers_[3].y());
+        const int max_iter = 50;
+        const double tol = 1e-12; // Более строгий критерий сходимости
+        double lambda = 0.001;
+        double best_cost = std::numeric_limits<double>::max();
+        Eigen::Vector4d best_params = params;
+
+        for (int iter = 0; iter < max_iter; ++iter)
+        {
+            Eigen::Vector2d p2(params[0], params[1]); // LT (2)
+            Eigen::Vector2d p3(params[2], params[3]); // LB (3)
+            Eigen::Vector2d rb(0, 0);                 // RB (0)
+            Eigen::Vector2d rt(L, 0);                 // RT (1)
+
+            // Остатки (6 расстояний)
+            Eigen::VectorXd residuals(6);
+            residuals[0] = (p2 - rb).norm() - d_center[1]; // RB-LT
+            residuals[1] = (p2 - rt).norm() - d_center[3]; // RT-LT
+            residuals[2] = (p3 - rb).norm() - d_center[2]; // RB-LB
+            residuals[3] = (p3 - rt).norm() - d_center[4]; // RT-LB
+            residuals[4] = (p2 - p3).norm() - d_center[5]; // LT-LB
+            residuals[5] = (rt - rb).norm() - d_center[0]; // RB-RT (фиктивная, всегда близка к 0)
+
+            double cost = residuals.squaredNorm();
+
+            if (cost < best_cost)
+            {
+                best_cost = cost;
+                best_params = params;
+            }
+
+            if (cost < tol)
+            {
+                logi.log("Converged after %d iterations (cost=%.2e)\n", iter, cost);
+                break;
+            }
+
+            if (iter % 10 == 0)
+            {
+                logi.log(" Iter %d: cost=%.2e, lambda=%.2e\n", iter, cost, lambda);
+            }
+
+            // Якобиан 6x4 (J)
+            Eigen::Matrix<double, 6, 4> J = Eigen::Matrix<double, 6, 4>::Zero();
+
+            // Лямбда для расчета производной расстояния
+            auto jacobian_row = [&](int row, const Eigen::Vector2d &p, const Eigen::Vector2d &fixed, int px, int py)
+            {
+                double d = (p - fixed).norm();
+                if (d > 1e-12)
+                {
+                    J(row, px) = (p.x() - fixed.x()) / d;
+                    J(row, py) = (p.y() - fixed.y()) / d;
+                }
+            };
+
+            jacobian_row(0, p2, rb, 0, 1); // RB-LT (p2)
+            jacobian_row(1, p2, rt, 0, 1); // RT-LT (p2)
+            jacobian_row(2, p3, rb, 2, 3); // RB-LB (p3)
+            jacobian_row(3, p3, rt, 2, 3); // RT-LB (p3)
+
+            // LT-LB (r4)
+            double d_lt_lb = (p2 - p3).norm();
+            if (d_lt_lb > 1e-12)
+            {
+                J(4, 0) = (p2.x() - p3.x()) / d_lt_lb; // ∂/∂x2
+                J(4, 1) = (p2.y() - p3.y()) / d_lt_lb; // ∂/∂y2
+                J(4, 2) = (p3.x() - p2.x()) / d_lt_lb; // ∂/∂x3
+                J(4, 3) = (p3.y() - p2.y()) / d_lt_lb; // ∂/∂y3
+            }
+
+            // RB-RT (r5) - строка остается нулевой, т.к. P0 и P1 фиксированы.
+
+            Eigen::Matrix4d H = J.transpose() * J;
+            Eigen::Vector4d g = J.transpose() * residuals;
+
+            // LM итерация
+            bool step_accepted = false;
+            for (int lm_iter = 0; lm_iter < 10; ++lm_iter)
+            {
+                Eigen::Matrix4d H_lm = H + lambda * Eigen::Matrix4d::Identity();
+                Eigen::Vector4d delta = H_lm.ldlt().solve(-g);
+
+                if (!delta.allFinite())
+                {
+                    lambda *= 10;
+                    continue;
+                }
+
+                Eigen::Vector4d params_new = params + delta;
+                Eigen::Vector2d p2_new(params_new[0], params_new[1]);
+                Eigen::Vector2d p3_new(params_new[2], params_new[3]);
+
+                // Новые остатки
+                Eigen::VectorXd res_new(6);
+                res_new[0] = (p2_new - rb).norm() - d_center[1];
+                res_new[1] = (p2_new - rt).norm() - d_center[3];
+                res_new[2] = (p3_new - rb).norm() - d_center[2];
+                res_new[3] = (p3_new - rt).norm() - d_center[4];
+                res_new[4] = (p2_new - p3_new).norm() - d_center[5];
+                res_new[5] = (rt - rb).norm() - d_center[0];
+
+                double new_cost = res_new.squaredNorm();
+
+                if (new_cost < cost)
+                {
+                    params = params_new;
+                    lambda = std::max(lambda / 10.0, 1e-12);
+                    step_accepted = true;
+                    break;
+                }
+                else
+                {
+                    lambda *= 10;
+                }
+            }
+
+            if (!step_accepted)
+            {
+                logi.log("LM: No improvement, stopping at iter %d\n", iter);
+                break;
+            }
+        }
+
+        // Используем лучшие параметры
+        params = best_params;
+        reference_centers_[2] = Eigen::Vector2f((float)params[0], (float)params[1]);
+        reference_centers_[3] = Eigen::Vector2f((float)params[2], (float)params[3]);
+
+        // Детальная проверка ошибок
+        logi.log("\n=== Distance Validation ===\n");
+        double max_error = 0.0;
+        std::vector<std::string> dist_names = {"RB-LT", "RT-LT", "RB-LB", "RT-LB", "LT-LB", "RB-RT"};
+        std::vector<std::pair<int, int>> indices = {{0, 2}, {1, 2}, {0, 3}, {1, 3}, {2, 3}, {0, 1}};
+
+        for (int i = 0; i < 6; ++i)
+        {
+            double measured = MathUtils::dist2D(reference_centers_[indices[i].first],
+                                                reference_centers_[indices[i].second]);
+            double expected = d_center[i];
+            double error = std::abs(measured - expected);
+
+            if (error > max_error)
+                max_error = error;
+
+            if (error <= 0.001) // 1 мм
+                logi.log_g(" %s: %.4f (expected: %.4f) ✓ Δ=%.1f mm\n",
+                           dist_names[i].c_str(), measured, expected, error * 1000);
+            else if (error <= 0.010) // 10 мм
+                logi.log_w(" %s: %.4f (expected: %.4f) ~ Δ=%.1f mm\n",
+                           dist_names[i].c_str(), measured, expected, error * 1000);
+            else
+                logi.log_r(" %s: %.4f (expected: %.4f) ✗ Δ=%.1f mm\n",
+                           dist_names[i].c_str(), measured, expected, error * 1000);
+        }
+
+        // Финальное решение
+        if (max_error > 0.010) // 10 мм
+        {
+            logi.log_r("\nFATAL: Pillar geometry inconsistent! Max error = %.1f mm\n", max_error * 1000);
+            reference_centers_.clear();
+        }
+        else
+        {
+            logi.log_g("\nGeometry validated. Max residual = %.1f mm ✓\n", max_error * 1000);
+            logi.log_g("Final coordinates:\n");
+            std::vector<std::string> names = {"RB", "RT", "LT", "LB"};
+            for (int i = 0; i < 4; ++i)
+                logi.log_g(" %s: [%.4f, %.4f]\n", names[i].c_str(),
+                           reference_centers_[i].x(), reference_centers_[i].y());
+        }
+
+        logi.log("==============================================\n");
     }
 
     // МЕТОД: scanCallback
