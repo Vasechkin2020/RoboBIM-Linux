@@ -1482,7 +1482,7 @@ public:
     {
         reference_centers_.resize(4);
 
-        logi.log("\n=== Reference System Initialization (Levenberg-Marquardt) ===\n");
+        logi.log("=== Reference System Initialization (Levenberg-Marquardt) ===\n");
 
         // Начальное приближение — трилатерация
         double L = d_center[0];
@@ -1498,12 +1498,13 @@ public:
         // LB (3) - начальное приближение
         // x3 = (d_0_1^2 + d_0_3^2 - d_1_3^2) / (2*d_0_1)
         double x3 = (L * L + d_center[2] * d_center[2] - d_center[4] * d_center[4]) / (2 * L);
-        double y3 = -std::sqrt(std::max(0.0, d_center[2] * d_center[2] - x3 * x3)); // Предполагаем, что LB ниже оси X
+        double y3 = std::sqrt(std::max(0.0, d_center[2] * d_center[2] - x3 * x3)); 
         reference_centers_[3] = Eigen::Vector2f((float)x3, (float)y3);
 
-        logi.log("Initial approximation:\n");
+        logi.log_b("Initial approximation:\n");
         for (int i = 0; i < 4; ++i)
             logi.log(" P%d: [%.4f, %.4f]\n", i, reference_centers_[i].x(), reference_centers_[i].y());
+        logi.log("End approximation:\n");
 
         // --- LM ОПТИМИЗАЦИЯ ---
         // Параметры: x2, y2, x3, y3
@@ -1524,14 +1525,15 @@ public:
             Eigen::Vector2d rb(0, 0);                 // RB (0)
             Eigen::Vector2d rt(L, 0);                 // RT (1)
 
-            // Остатки (6 расстояний)
+            // Остатки (6 расстояний) - ИСПРАВЛЕННЫЕ ИНДЕКСЫ
             Eigen::VectorXd residuals(6);
-            residuals[0] = (p2 - rb).norm() - d_center[1]; // RB-LT
-            residuals[1] = (p2 - rt).norm() - d_center[3]; // RT-LT
-            residuals[2] = (p3 - rb).norm() - d_center[2]; // RB-LB
-            residuals[3] = (p3 - rt).norm() - d_center[4]; // RT-LB
-            residuals[4] = (p2 - p3).norm() - d_center[5]; // LT-LB
-            residuals[5] = (rt - rb).norm() - d_center[0]; // RB-RT (фиктивная, всегда близка к 0)
+            residuals[0] = (rt - rb).norm() - d_center[0]; // RB-RT = 4.0150
+            residuals[1] = (p2 - rb).norm() - d_center[1]; // RB-LT = 6.0930
+            residuals[2] = (p3 - rb).norm() - d_center[2]; // RB-LB = 3.5350
+            residuals[3] = (p2 - rt).norm() - d_center[3]; // RT-LT = 3.8250
+            residuals[4] = (p3 - rt).norm() - d_center[4]; // RT-LB = 5.0990
+            residuals[5] = (p2 - p3).norm() - d_center[5]; // LT-LB = 4.4940
+
 
             double cost = residuals.squaredNorm();
 
@@ -1543,7 +1545,7 @@ public:
 
             if (cost < tol)
             {
-                logi.log("Converged after %d iterations (cost=%.2e)\n", iter, cost);
+                logi.log(" Converged after %d iterations (cost=%.2e)\n", iter, cost);
                 break;
             }
 
@@ -1552,10 +1554,9 @@ public:
                 logi.log(" Iter %d: cost=%.2e, lambda=%.2e\n", iter, cost, lambda);
             }
 
-            // Якобиан 6x4 (J)
+            // Якобиан 6x4 (J) - ИСПРАВЛЕННЫЕ ИНДЕКСЫ
             Eigen::Matrix<double, 6, 4> J = Eigen::Matrix<double, 6, 4>::Zero();
 
-            // Лямбда для расчета производной расстояния
             auto jacobian_row = [&](int row, const Eigen::Vector2d &p, const Eigen::Vector2d &fixed, int px, int py)
             {
                 double d = (p - fixed).norm();
@@ -1566,19 +1567,19 @@ public:
                 }
             };
 
-            jacobian_row(0, p2, rb, 0, 1); // RB-LT (p2)
-            jacobian_row(1, p2, rt, 0, 1); // RT-LT (p2)
-            jacobian_row(2, p3, rb, 2, 3); // RB-LB (p3)
-            jacobian_row(3, p3, rt, 2, 3); // RT-LB (p3)
+            jacobian_row(1, p2, rb, 0, 1); // residuals[1] = RB-LT
+            jacobian_row(2, p3, rb, 2, 3); // residuals[2] = RB-LB
+            jacobian_row(3, p2, rt, 0, 1); // residuals[3] = RT-LT  
+            jacobian_row(4, p3, rt, 2, 3); // residuals[4] = RT-LB
 
-            // LT-LB (r4)
+            // residuals[5] = LT-LB
             double d_lt_lb = (p2 - p3).norm();
             if (d_lt_lb > 1e-12)
             {
-                J(4, 0) = (p2.x() - p3.x()) / d_lt_lb; // ∂/∂x2
-                J(4, 1) = (p2.y() - p3.y()) / d_lt_lb; // ∂/∂y2
-                J(4, 2) = (p3.x() - p2.x()) / d_lt_lb; // ∂/∂x3
-                J(4, 3) = (p3.y() - p2.y()) / d_lt_lb; // ∂/∂y3
+                J(5, 0) = (p2.x() - p3.x()) / d_lt_lb;
+                J(5, 1) = (p2.y() - p3.y()) / d_lt_lb;
+                J(5, 2) = (p3.x() - p2.x()) / d_lt_lb;
+                J(5, 3) = (p3.y() - p2.y()) / d_lt_lb;
             }
 
             // RB-RT (r5) - строка остается нулевой, т.к. P0 и P1 фиксированы.
@@ -1603,14 +1604,14 @@ public:
                 Eigen::Vector2d p2_new(params_new[0], params_new[1]);
                 Eigen::Vector2d p3_new(params_new[2], params_new[3]);
 
-                // Новые остатки
+                // Новые остатки (после исправления)
                 Eigen::VectorXd res_new(6);
-                res_new[0] = (p2_new - rb).norm() - d_center[1];
-                res_new[1] = (p2_new - rt).norm() - d_center[3];
-                res_new[2] = (p3_new - rb).norm() - d_center[2];
-                res_new[3] = (p3_new - rt).norm() - d_center[4];
-                res_new[4] = (p2_new - p3_new).norm() - d_center[5];
-                res_new[5] = (rt - rb).norm() - d_center[0];
+                res_new[0] = (rt - rb).norm() - d_center[0]; // RB-RT
+                res_new[1] = (p2_new - rb).norm() - d_center[1]; // RB-LT
+                res_new[2] = (p3_new - rb).norm() - d_center[2]; // RB-LB
+                res_new[3] = (p2_new - rt).norm() - d_center[3]; // RT-LT
+                res_new[4] = (p3_new - rt).norm() - d_center[4]; // RT-LB
+                res_new[5] = (p2_new - p3_new).norm() - d_center[5]; // LT-LB
 
                 double new_cost = res_new.squaredNorm();
 
@@ -1629,7 +1630,7 @@ public:
 
             if (!step_accepted)
             {
-                logi.log("LM: No improvement, stopping at iter %d\n", iter);
+                logi.log(" LM: No best improvement, stopping at iter %d\n", iter);
                 break;
             }
         }
@@ -1640,10 +1641,11 @@ public:
         reference_centers_[3] = Eigen::Vector2f((float)params[2], (float)params[3]);
 
         // Детальная проверка ошибок
-        logi.log("\n=== Distance Validation ===\n");
+        logi.log("=== Distance Validation ===\n");
         double max_error = 0.0;
-        std::vector<std::string> dist_names = {"RB-LT", "RT-LT", "RB-LB", "RT-LB", "LT-LB", "RB-RT"};
-        std::vector<std::pair<int, int>> indices = {{0, 2}, {1, 2}, {0, 3}, {1, 3}, {2, 3}, {0, 1}};
+
+        std::vector<std::string> dist_names = {"RB-RT", "RB-LT", "RB-LB", "RT-LT", "RT-LB", "LT-LB"};
+        std::vector<std::pair<int,int>> indices = {{0,1}, {0,2}, {0,3}, {1,2}, {1,3}, {2,3}};
 
         for (int i = 0; i < 6; ++i)
         {
