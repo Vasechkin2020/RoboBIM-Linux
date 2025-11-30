@@ -101,6 +101,10 @@ pb_config:
     w_method_2_cluster: 0.9           # Вес для Метод 2 (Кластер)
     w_method_3_minima: 0.8           # Вес для Метод 3 (Минимум)
 
+  min_cluster_width: 0.05
+  max_cluster_width: 0.50
+  min_cluster_points: 5 # НОВЫЙ ПАРАМЕТР
+
 
 
 

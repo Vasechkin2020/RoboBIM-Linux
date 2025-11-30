@@ -1,5 +1,5 @@
 /*
- * Версия: 5.6
+ * Версия: 6.0
  * Дата: 2025-11-29
  */
 
@@ -14,6 +14,7 @@
 #include <Eigen/Dense>             // Обязательно: библиотека линейной алгебры
 #include <limits>                  // Для std::numeric_limits
 #include <numeric>                 // Для std::accumulate
+#include <deque> // Требуется для std::deque
 
 // --- Заголовки для RViz (Только стандартные ROS) ---
 #include <visualization_msgs/MarkerArray.h> // Для публикации MarkerArray
@@ -51,6 +52,7 @@ struct FinalPillar
     std::string name;
     Eigen::Vector2f local;
     Eigen::Vector2d global;
+    double total_weight = 0.0;   // ← добавляем
 };
 
 // Тип для выровненного вектора Eigen::Vector2f
@@ -140,7 +142,12 @@ private:
 
     // --- Паблишеры ---
     ros::Publisher pub_filtered_scan;
-    ros::Publisher pub_method_clusters;
+
+    // Вместо одного pub_method_clusters теперь три:
+    ros::Publisher pub_method_1; // Jump (Красный)
+    ros::Publisher pub_method_2; // Cluster (Синий)
+    ros::Publisher pub_method_3; // Minima (Желтый)
+
     ros::Publisher pub_fused_pillars;
     ros::Publisher pub_final_markers;
 
@@ -157,8 +164,16 @@ private:
     double cluster_dist_threshold;
     double rmse_max_tolerance;
     int n_max_points_norm;
-    double fusion_group_radius;
     double w_method[4];
+
+    // --- Параметры кластеризации (НОВЫЕ, v5.8) ---
+    double min_cluster_width_; // Минимальная физическая ширина кластера [м]
+    double max_cluster_width_; // Максимальная физическая ширина кластера [м]
+    int min_cluster_points_;   // Минимальное количество точек в кластере (НОВЫЙ, v5.9)
+
+    // --- Параметры DBSCAN Fusion (НОВЫЙ, v6.1) ---
+    double fusion_group_radius;
+    int min_dbscan_points_; // minPts для DBSCAN-слияния
 
     // ПАРАМЕТРЫ ДЛЯ ФИЛЬТРАЦИИ ХВОСТОВ (v4.4)
     double intensity_min_threshold;
@@ -184,7 +199,12 @@ private:
 
     // Хранение промежуточных результатов для постоянной публикации
     sensor_msgs::LaserScan filtered_scan_results_;
-    visualization_msgs::MarkerArray cluster_markers_results_;
+
+    // ИЗМЕНЕНО: Вместо массива маркеров храним каждый маркер отдельно
+    visualization_msgs::Marker marker_m1_results_;
+    visualization_msgs::Marker marker_m2_results_;
+    visualization_msgs::Marker marker_m3_results_;
+
     AlignedVector2f fused_centers_results_;
     AlignedVector2f clean_points_results_; // <-- НОВОЕ: Для сохранения точек после углового фильтра
 
@@ -367,7 +387,7 @@ private:
     // ИЗМЕНЕНА: publishResultsTimerCallback (v5.6)
     void publishResultsTimerCallback(const ros::TimerEvent &event)
     {
-        ROS_INFO("    0-publishResultsTimerCallback");
+        ROS_INFO("+++ publishResultsTimerCallback");
 
         // 1. Публикация ЧИСТЫХ ТОЧЕК (clean_points_results_) как Marker::POINTS
         if (clean_points_results_.size() > 0 && meta_scan.header.frame_id != "")
@@ -377,7 +397,7 @@ private:
             pub_filtered_scan.publish(createPointsMarker(clean_points_results_,
                                                          meta_scan.header.frame_id,                    // Используем frame_id из meta_scan
                                                          "clean_points", 0, 0.7f, 0.7f, 0.7f, 0.05f)); // Серый цвет, мелкие точки
-            ROS_INFO("      clean_points_results_ published as Marker::POINTS");
+            ROS_INFO("    0 - clean_points_results_ published as Marker::POINTS");
         }
         else if (filtered_scan_results_.ranges.size() > 0)
         {
@@ -385,11 +405,27 @@ private:
             ROS_INFO("      NOTE: filtered_scan_results_ is no longer published as LaserScan.");
         }
 
-        // 2. Публикация маркеров кластеров (cluster_markers_results_)
-        if (cluster_markers_results_.markers.size() > 0)
+        // 2. Публикация маркеров кластеров (РАЗДЕЛЕНА)
+        // Метод 1: Jump (Красный)
+        if (marker_m1_results_.points.size() > 0)
         {
-            pub_method_clusters.publish(cluster_markers_results_);
-            ROS_INFO("      cluster_markers_results_");
+            marker_m1_results_.header.stamp = ros::Time::now(); // Обновляем время
+            pub_method_1.publish(marker_m1_results_);
+            ROS_INFO("    1 - marker_m1_results_");
+        }
+        // Метод 2: Cluster (Синий)
+        if (marker_m2_results_.points.size() > 0)
+        {
+            marker_m2_results_.header.stamp = ros::Time::now();
+            pub_method_2.publish(marker_m2_results_);
+            ROS_INFO("    2 - marker_m2_results_");
+        }
+        // Метод 3: Minima (Желтый)
+        if (marker_m3_results_.points.size() > 0)
+        {
+            marker_m3_results_.header.stamp = ros::Time::now();
+            pub_method_3.publish(marker_m3_results_);
+            ROS_INFO("    3 - marker_m3_results_");
         }
 
         // 3. Публикация центров Fusion (fused_centers_results_)
@@ -399,26 +435,40 @@ private:
             pub_fused_pillars.publish(createPointsMarker(fused_centers_results_,
                                                          meta_scan.header.frame_id, // Используем frame_id из meta_scan
                                                          "fused_centers", 4, 0.0f, 1.0f, 0.0f, 0.15f));
-            ROS_INFO("      pub_fused_pillars");
+            ROS_INFO("    4 - pub_fused_pillars");
         }
 
         // 4. Публикация финальных откалиброванных маркеров (final_pillars_results_)
         if (!final_pillars_results_.empty())
         {
             publishFinalMarkers(final_pillars_results_);
-            ROS_INFO("      publishFinalMarkers");
+            ROS_INFO("    5 - publishFinalMarkers");
         }
     }
 
-    // Обработка одного кластера (Без изменений)
+    // ИЗМЕНЕНА: processCluster (v5.9)
+    // Обработка одного кластера, фильтрация по количеству точек и физической ширине
     void processCluster(const AlignedVector2f &cluster, int method_id,
-                        std::vector<PillarCandidate> &out, AlignedVector2f &out_cluster_points)
+                                        std::vector<PillarCandidate> &out, AlignedVector2f &out_cluster_points)
     {
-        if (cluster.size() < 5)
+        // Фильтрация по минимальному количеству точек (ИЗМЕНЕНО: Используем параметр)
+        if (cluster.size() < min_cluster_points_)
+        {
+            logi.log_w("Rejecting cluster from method %d (size %lu): too few points (%lu < %d).\n",
+                       method_id, cluster.size(), cluster.size(), min_cluster_points_); // Подробный лог
             return;
+        }
+
+        // Расчет ширины кластера (Евклидово расстояние между крайними точками)
         double width = MathUtils::dist2D(cluster.front(), cluster.back());
-        if (width < 0.05 || width > 0.5)
+
+        // Фильтрация по ширине (Используем параметры min_cluster_width_ и max_cluster_width_)
+        if (width < min_cluster_width_ || width > max_cluster_width_)
+        {
+            logi.log_w("Rejecting cluster from method %d (size %lu): width %.3f m is outside bounds (%.3f to %.3f).\n",
+                       method_id, cluster.size(), width, min_cluster_width_, max_cluster_width_);
             return;
+        }
 
         Eigen::Vector2f center;
         double rmse;
@@ -448,286 +498,561 @@ private:
         }
     }
 
-// ИЗМЕНЕНА: Детекция на основе разрыва/плотности (v5.8)
-// Исправлено: 1. Циклическая кластеризация. 2. Устранена ошибка инвалидации ссылок.
-std::vector<PillarCandidate> detectGenericClustering(const AlignedVector2f &pts, double threshold, int method_id,
-                                                    AlignedVector2f &out_cluster_points)
-{
-    std::vector<PillarCandidate> results;
-    // Минимальное число точек для надежной обработки кластеризации
-    if (pts.size() < 10) 
-        return results;
-
-    // Вектор для временного хранения всех кластеров перед циклической проверкой
-    std::vector<AlignedVector2f> clusters;
-    AlignedVector2f current;
-    current.reserve(500); // Резервирование памяти для повышения эффективности
-
-    // === 1. Линейная кластеризация ===
-    current.push_back(pts[0]);
-    for (size_t i = 1; i < pts.size(); ++i)
+    // ИЗМЕНЕНА: Детекция на основе разрыва/плотности (v5.8)
+    // Исправлено: 1. Циклическая кластеризация. 2. Устранена ошибка инвалидации ссылок.
+    std::vector<PillarCandidate> detectGenericClustering(const AlignedVector2f &pts, double threshold, int method_id,
+                                                         AlignedVector2f &out_cluster_points)
     {
-        // Проверка расстояния между соседними точками
-        if (MathUtils::dist2D(pts[i], pts[i-1]) > threshold)
+        std::vector<PillarCandidate> results;
+        // Минимальное число точек для надежной обработки кластеризации
+        if (pts.size() < min_cluster_points_)
+            return results;
+
+        // Вектор для временного хранения всех кластеров перед циклической проверкой
+        std::vector<AlignedVector2f> clusters;
+        AlignedVector2f current;
+        current.reserve(500); // Резервирование памяти для повышения эффективности
+
+        // === 1. Линейная кластеризация ===
+        current.push_back(pts[0]);
+        for (size_t i = 1; i < pts.size(); ++i)
         {
-            // Фильтрация: сохраняем только кластеры, содержащие минимум 5 точек
-            if (current.size() >= 5)
-                clusters.push_back(std::move(current)); // Используем std::move
-                
-            current.clear(); // Начинаем новый кластер
-        }
-        current.push_back(pts[i]);
-    }
-    // Сохраняем последний кластер
-    if (current.size() >= 5)
-        clusters.push_back(std::move(current));
-    current.clear();
-
-
-    // === 2. Циклическое замыкание ===
-    // Проверяем, можно ли объединить первый и последний кластеры.
-    if (clusters.size() >= 2)
-    {
-        // КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: КОПИРУЕМ КЛАСТЕРЫ, чтобы избежать INVALIDATION (невалидности ссылок)
-        const AlignedVector2f first = clusters.front(); // Копия первого кластера
-        const AlignedVector2f last  = clusters.back();  // Копия последнего кластера
-
-        // Проверяем расстояние между последней точкой последнего кластера и первой точкой первого кластера
-        if (MathUtils::dist2D(last.back(), first.front()) < threshold)
-        {
-            // Объединяем в новом векторе, сохраняя угловой порядок: (Последний + Первый)
-            AlignedVector2f merged;
-            merged.reserve(last.size() + first.size());
-            
-            // Добавляем точки последнего кластера (в правильном порядке)
-            merged.insert(merged.end(), last.begin(), last.end());
-            // Добавляем точки первого кластера (в правильном порядке)
-            merged.insert(merged.end(), first.begin(), first.end());
-
-            // Удаляем старые кластеры из списка
-            clusters.erase(clusters.begin()); // Удаляем первый
-            clusters.pop_back();              // Удаляем последний
-            
-            // Добавляем объединенный кластер (merged)
-            clusters.push_back(std::move(merged));
-        }
-    }
-
-    // === 3. Обработка и фильтрация кластеров ===
-    // Для каждого финального кластера запускаем processCluster
-    for (const auto& cluster : clusters)
-    {
-        // out_cluster_points добавляется только внутри processCluster, без дублирования.
-        processCluster(cluster, method_id, results, out_cluster_points);
-    }
-
-    return results;
-}
-
-   
-  
-  // ----------------------------------------------------------------------------------
-// Детекция на основе локальных минимумов дальности (ОКОНЧАТЕЛЬНАЯ v5.13)
-// Внедрены: предвычисление радиусов, сравнение квадратов расстояний, защита от 
-// захвата уже обработанных лучей и улучшенные условия остановки.
-// ----------------------------------------------------------------------------------
-std::vector<PillarCandidate> detectLocalMinima(const AlignedVector2f &pts, int method_id,
-                                                      AlignedVector2f &out_cluster_points)
-{
-    std::vector<PillarCandidate> results;
-    size_t N = pts.size();
-    if (N < 10) 
-        return results;
-
-    // Параметры
-    const int MAX_SEG_POINTS = 40;// Жесткий лимит точек в одном направлении
-    const float MAX_RADIAL_DEVIATION = 0.10f;// Макс отклонение по радиусу (м)
-    const float MAX_NEIGHBOR_DIST = 0.10f;// Порог разрыва между соседними точками (м)
-    
-    // Оптимизация: используем квадраты расстояний для избежания sqrt()
-    const float MAX_NEIGHBOR_DIST2 = MAX_NEIGHBOR_DIST * MAX_NEIGHBOR_DIST; 
-
-    // Вектор флагов для маркировки обработанных точек.
-    std::vector<char> processed_flags(N, 0);
-    const int WINDOW_SIZE = 5;
-
-    // Оптимизация: Предвычисляем все нормы (расстояния до лидара)
-    std::vector<float> r_vals(N);
-    for (size_t i = 0; i < N; ++i) r_vals[i] = pts[i].norm();
-
-    // Вспомогательная лямбда: квадрат расстояния между двумя точками
-    auto dist2_sq = [&](size_t a, size_t b) -> float {
-        float dx = pts[a].x() - pts[b].x();
-        float dy = pts[a].y() - pts[b].y();
-        return dx*dx + dy*dy;
-    };
-
-    // 1. Поиск локального минимума
-    for (size_t i = 0; i < N; ++i)
-    {
-        if (processed_flags[i]) continue;
-
-        float r = r_vals[i]; // Используем предвычисленное значение
-        bool is_min = true;
-
-        // Проверка локального минимума в циклическом окне
-        for (int k = -WINDOW_SIZE; k <= WINDOW_SIZE; ++k)
-        {
-            if (k == 0) continue;
-            size_t j = (i + k + N) % N;
-            // Сравнение дальностей
-            if (r_vals[j] < r) { is_min = false; break; } 
-        }
-        if (!is_min) continue;
-
-        // 2. Расширение: собираем только индексы
-        std::vector<size_t> back_idx;
-        back_idx.reserve(MAX_SEG_POINTS);
-        int back_count = 0;
-        
-        // Cегмент назад (от i-1)
-        for (int k = -1; k >= -((int)N); --k)
-        {
-            size_t cur = (i + k + N) % N;
-            size_t next = (i + k + 1 + N) % N;
-
-            // Условие 1: Не захватываем уже обработанные точки
-            if (processed_flags[cur]) break; 
-
-            // Условие 2: Жесткий лимит кол-ва точек
-            if (++back_count > MAX_SEG_POINTS) break;
-
-            // Условие 3: Радиальное условие (абсолютная разница)
-            if (std::fabs(r_vals[cur] - r) > MAX_RADIAL_DEVIATION) break;
-
-            // Условие 4: Разрыв между соседями (используем квадраты)
-            if (dist2_sq(cur, next) > MAX_NEIGHBOR_DIST2) break;
-
-            back_idx.push_back(cur);
-        }
-        // Переворачиваем, чтобы получить порядок от дальнего к ближнему
-        std::reverse(back_idx.begin(), back_idx.end());
-
-        // Cегмент вперед (от i+1)
-        std::vector<size_t> fwd_idx;
-        fwd_idx.reserve(MAX_SEG_POINTS);
-        int fwd_count = 0;
-        for (size_t k = 1; k < N; ++k)
-        {
-            size_t cur = (i + k) % N;
-            size_t prev = (i + k - 1 + N) % N;
-
-            // Условие 1: Не захватываем уже обработанные точки
-            if (processed_flags[cur]) break;
-
-            // Условие 2: Жесткий лимит кол-ва точек
-            if (++fwd_count > MAX_SEG_POINTS) break;
-
-            // Условие 3: Радиальное условие
-            if (std::fabs(r_vals[cur] - r) > MAX_RADIAL_DEVIATION) break;
-
-            // Условие 4: Разрыв между соседями
-            if (dist2_sq(cur, prev) > MAX_NEIGHBOR_DIST2) break;
-
-            fwd_idx.push_back(cur);
-        }
-
-        // Защита от захвата всего скана (back + center + fwd не должны превышать N)
-        // Обрезаем fwd, если превышен общий лимит (N)
-        if (back_idx.size() + 1 + fwd_idx.size() > N) {
-            size_t allowed = (N > 1) ? (N - 1 - back_idx.size()) : 0;
-            if (fwd_idx.size() > allowed) fwd_idx.resize(allowed);
-        }
-
-        // 3. Формируем кластер по индексам (гарантированная синхронизация)
-        AlignedVector2f cluster;
-        cluster.reserve(back_idx.size() + 1 + fwd_idx.size());
-        
-        // P_far_back ... P_i-1
-        for (size_t idx : back_idx) cluster.push_back(pts[idx]);
-        
-        cluster.push_back(pts[i]); // P_i (центр)
-        
-        // P_i+1 ... P_far_forward
-        for (size_t idx : fwd_idx) cluster.push_back(pts[idx]);
-
-        // 4. Обработка и маркировка
-        if (cluster.size() >= 5)
-        {
-            processCluster(cluster, method_id, results, out_cluster_points);
-
-            // Маркировка по индексам (синхронизированы с cluster)
-            for (size_t idx : back_idx) processed_flags[idx] = 1;
-            for (size_t idx : fwd_idx) processed_flags[idx] = 1;
-            processed_flags[i] = 1; // Маркируем центр
-        }
-    } // for i
-
-    return results;
-}
-
-
-    // Логика слияния (Fusion) (Без изменений)
-    std::vector<FinalPillar> fuseCandidates(const std::vector<PillarCandidate> &candidates)
-    {
-        std::vector<FinalPillar> final_pillars;
-        if (candidates.empty())
-            return final_pillars;
-
-        std::vector<bool> processed(candidates.size(), false);
-        AlignedVector2f found_centers;
-
-        for (size_t i = 0; i < candidates.size(); ++i)
-        {
-            if (processed[i])  
-                continue;
-            double sum_w = 0;
-            Eigen::Vector2f w_center(0.0f, 0.0f);
-
-            for (size_t j = i; j < candidates.size(); ++j)
+            // Проверка расстояния между соседними точками
+            if (MathUtils::dist2D(pts[i], pts[i - 1]) > threshold)
             {
-                if (processed[j])
+                // Фильтрация: сохраняем только кластеры, содержащие минимум 5 точек
+                if (current.size() >= min_cluster_points_)
+                    clusters.push_back(std::move(current)); // Используем std::move
+
+                current.clear(); // Начинаем новый кластер
+            }
+            current.push_back(pts[i]);
+        }
+        // Сохраняем последний кластер
+        if (current.size() >= min_cluster_points_)
+            clusters.push_back(std::move(current));
+        current.clear();
+
+        // === 2. Циклическое замыкание ===
+        // Проверяем, можно ли объединить первый и последний кластеры.
+        if (clusters.size() >= 2)
+        {
+            // КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: КОПИРУЕМ КЛАСТЕРЫ, чтобы избежать INVALIDATION (невалидности ссылок)
+            const AlignedVector2f first = clusters.front(); // Копия первого кластера
+            const AlignedVector2f last = clusters.back();   // Копия последнего кластера
+
+            // Проверяем расстояние между последней точкой последнего кластера и первой точкой первого кластера
+            if (MathUtils::dist2D(last.back(), first.front()) < threshold)
+            {
+                // Объединяем в новом векторе, сохраняя угловой порядок: (Последний + Первый)
+                AlignedVector2f merged;
+                merged.reserve(last.size() + first.size());
+
+                // Добавляем точки последнего кластера (в правильном порядке)
+                merged.insert(merged.end(), last.begin(), last.end());
+                // Добавляем точки первого кластера (в правильном порядке)
+                merged.insert(merged.end(), first.begin(), first.end());
+
+                // Удаляем старые кластеры из списка
+                clusters.erase(clusters.begin()); // Удаляем первый
+                clusters.pop_back();              // Удаляем последний
+
+                // Добавляем объединенный кластер (merged)
+                clusters.push_back(std::move(merged));
+            }
+        }
+
+        // === 3. Обработка и фильтрация кластеров ===
+        // Для каждого финального кластера запускаем processCluster
+        for (const auto &cluster : clusters)
+        {
+            // out_cluster_points добавляется только внутри processCluster, без дублирования.
+            processCluster(cluster, method_id, results, out_cluster_points);
+        }
+
+        return results;
+    }
+
+    // ----------------------------------------------------------------------------------
+    // Детекция на основе локальных минимумов дальности (ОКОНЧАТЕЛЬНАЯ v5.13)
+    // Внедрены: предвычисление радиусов, сравнение квадратов расстояний, защита от
+    // захвата уже обработанных лучей и улучшенные условия остановки.
+    // ----------------------------------------------------------------------------------
+    std::vector<PillarCandidate> detectLocalMinima(const AlignedVector2f &pts, int method_id,
+                                                   AlignedVector2f &out_cluster_points)
+    {
+        std::vector<PillarCandidate> results;
+        size_t N = pts.size();
+        if (N < min_cluster_points_)
+            return results;
+
+        // Параметры
+        const int MAX_SEG_POINTS = 40;            // Жесткий лимит точек в одном направлении
+        const float MAX_RADIAL_DEVIATION = 0.10f; // Макс отклонение по радиусу (м)
+        const float MAX_NEIGHBOR_DIST = 0.10f;    // Порог разрыва между соседними точками (м)
+
+        // Оптимизация: используем квадраты расстояний для избежания sqrt()
+        const float MAX_NEIGHBOR_DIST2 = MAX_NEIGHBOR_DIST * MAX_NEIGHBOR_DIST;
+
+        // Вектор флагов для маркировки обработанных точек.
+        std::vector<char> processed_flags(N, 0);
+        const int WINDOW_SIZE = 5;
+
+        // Оптимизация: Предвычисляем все нормы (расстояния до лидара)
+        std::vector<float> r_vals(N);
+        for (size_t i = 0; i < N; ++i)
+            r_vals[i] = pts[i].norm();
+
+        // Вспомогательная лямбда: квадрат расстояния между двумя точками
+        auto dist2_sq = [&](size_t a, size_t b) -> float
+        {
+            float dx = pts[a].x() - pts[b].x();
+            float dy = pts[a].y() - pts[b].y();
+            return dx * dx + dy * dy;
+        };
+
+        // 1. Поиск локального минимума
+        for (size_t i = 0; i < N; ++i)
+        {
+            if (processed_flags[i])
+                continue;
+
+            float r = r_vals[i]; // Используем предвычисленное значение
+            bool is_min = true;
+
+            // Проверка локального минимума в циклическом окне
+            for (int k = -WINDOW_SIZE; k <= WINDOW_SIZE; ++k)
+            {
+                if (k == 0)
                     continue;
-                // Слияние, если центры близки
-                if (MathUtils::dist2D(candidates[i].center, candidates[j].center) < fusion_group_radius)
+                size_t j = (i + k + N) % N;
+                // Сравнение дальностей
+                if (r_vals[j] < r)
                 {
-                    w_center += candidates[j].center * (float)candidates[j].weight;
-                    sum_w += candidates[j].weight;
-                    processed[j] = true;
+                    is_min = false;
+                    break;
                 }
             }
+            if (!is_min)
+                continue;
 
-            if (sum_w > 0)
+            // 2. Расширение: собираем только индексы
+            std::vector<size_t> back_idx;
+            back_idx.reserve(MAX_SEG_POINTS);
+            int back_count = 0;
+
+            // Cегмент назад (от i-1)
+            for (int k = -1; k >= -((int)N); --k)
             {
-                found_centers.push_back(w_center / (float)sum_w);
+                size_t cur = (i + k + N) % N;
+                size_t next = (i + k + 1 + N) % N;
+
+                // Условие 1: Не захватываем уже обработанные точки
+                if (processed_flags[cur])
+                    break;
+
+                // Условие 2: Жесткий лимит кол-ва точек
+                if (++back_count > MAX_SEG_POINTS)
+                    break;
+
+                // Условие 3: Радиальное условие (абсолютная разница)
+                if (std::fabs(r_vals[cur] - r) > MAX_RADIAL_DEVIATION)
+                    break;
+
+                // Условие 4: Разрыв между соседями (используем квадраты)
+                if (dist2_sq(cur, next) > MAX_NEIGHBOR_DIST2)
+                    break;
+
+                back_idx.push_back(cur);
+            }
+            // Переворачиваем, чтобы получить порядок от дальнего к ближнему
+            std::reverse(back_idx.begin(), back_idx.end());
+
+            // Cегмент вперед (от i+1)
+            std::vector<size_t> fwd_idx;
+            fwd_idx.reserve(MAX_SEG_POINTS);
+            int fwd_count = 0;
+            for (size_t k = 1; k < N; ++k)
+            {
+                size_t cur = (i + k) % N;
+                size_t prev = (i + k - 1 + N) % N;
+
+                // Условие 1: Не захватываем уже обработанные точки
+                if (processed_flags[cur])
+                    break;
+
+                // Условие 2: Жесткий лимит кол-ва точек
+                if (++fwd_count > MAX_SEG_POINTS)
+                    break;
+
+                // Условие 3: Радиальное условие
+                if (std::fabs(r_vals[cur] - r) > MAX_RADIAL_DEVIATION)
+                    break;
+
+                // Условие 4: Разрыв между соседями
+                if (dist2_sq(cur, prev) > MAX_NEIGHBOR_DIST2)
+                    break;
+
+                fwd_idx.push_back(cur);
+            }
+
+            // Защита от захвата всего скана (back + center + fwd не должны превышать N)
+            // Обрезаем fwd, если превышен общий лимит (N)
+            if (back_idx.size() + 1 + fwd_idx.size() > N)
+            {
+                size_t allowed = (N > 1) ? (N - 1 - back_idx.size()) : 0;
+                if (fwd_idx.size() > allowed)
+                    fwd_idx.resize(allowed);
+            }
+
+            // 3. Формируем кластер по индексам (гарантированная синхронизация)
+            AlignedVector2f cluster;
+            cluster.reserve(back_idx.size() + 1 + fwd_idx.size());
+
+            // P_far_back ... P_i-1
+            for (size_t idx : back_idx)
+                cluster.push_back(pts[idx]);
+
+            cluster.push_back(pts[i]); // P_i (центр)
+
+            // P_i+1 ... P_far_forward
+            for (size_t idx : fwd_idx)
+                cluster.push_back(pts[idx]);
+
+            // 4. Обработка и маркировка
+            if (cluster.size() >= min_cluster_points_)
+            {
+                processCluster(cluster, method_id, results, out_cluster_points);
+
+                // Маркировка по индексам (синхронизированы с cluster)
+                for (size_t idx : back_idx)
+                    processed_flags[idx] = 1;
+                for (size_t idx : fwd_idx)
+                    processed_flags[idx] = 1;
+                processed_flags[i] = 1; // Маркируем центр
+            }
+        } // for i
+
+        return results;
+    }
+
+    // Логика слияния (Fusion) (Без изменений)
+   
+   // ИЗМЕНЕНА: fuseCandidates (v6.0 - Добавлено подробное логирование)
+// Логика слияния (Fusion)
+// Объединяет кандидатов, найденных разными методами, в единые уникальные столбы.
+// ИЗМЕНЕНА: fuseCandidates (v6.0 - Исправлена ошибка 'size', используется 'num_points')
+// Логика слияния (Fusion)
+// Объединяет кандидатов, найденных разными методами, в единые уникальные столбы.
+
+std::vector<FinalPillar> fuseCandidates(const std::vector<PillarCandidate> &candidates)
+// std::vector<FinalPillar> fuseCandidatesDBSCAN(const std::vector<PillarCandidate> &candidates)
+{
+    std::vector<FinalPillar> final_pillars;
+    if (candidates.empty())
+    {
+        logi.log("DBSCAN Fusion skipped: No candidates.\n");
+        return final_pillars;
+    }
+
+    logi.log("--- DBSCAN Fusion Start: %lu candidates ---\n", candidates.size());
+
+    // Параметры DBSCAN
+    const double eps = fusion_group_radius;      // радиус объединения кластеров (обычно 0.25–0.35 м)
+    const double eps2 = eps * eps;               // квадрат радиуса для оптимизации (избегаем sqrt)
+    // const int minPts = 2;                        // минимальное количество точек для образования кластера
+    // Заменить жестко заданное minPts = 2 на переменную:
+    const int minPts = min_dbscan_points_;
+
+    size_t N = candidates.size();
+    std::vector<int> labels(N, -1);              // -1 = непосещенная, -2 = шум, >=0 = ID кластера
+    int clusterId = 0;                           // счетчик кластеров
+
+    // Лямбда для вычисления квадрата расстояния между кандидатами
+    auto dist2 = [&](size_t a, size_t b)
+    {
+        return (candidates[a].center - candidates[b].center).squaredNorm();
+    };
+
+    // ---- Фаза 1: Алгоритм DBSCAN ----
+    for (size_t i = 0; i < N; ++i)
+    {
+        if (labels[i] != -1) continue;           // Пропускаем уже обработанные точки
+
+        // Поиск всех соседей в пределах eps
+        std::vector<size_t> neighbors;
+        neighbors.reserve(16);                   // Предварительное выделение памяти
+
+        for (size_t j = 0; j < N; ++j)
+            if (dist2(i, j) <= eps2)
+                neighbors.push_back(j);
+
+        // Проверка на core point: достаточно ли соседей?
+        if (neighbors.size() < minPts)
+        {
+            labels[i] = -2; // Помечаем как шум
+            continue;
+        }
+
+        // Создание нового кластера
+        labels[i] = clusterId;
+
+        // Очередь для расширения кластера (начинаем с соседей seed точки)
+        std::deque<size_t> q(neighbors.begin(), neighbors.end());
+
+        // Расширение кластера
+        while (!q.empty())
+        {
+            size_t n = q.front();
+            q.pop_front();
+
+            if (labels[n] == -2)   // Если точка была шумом - переклассифицируем в кластер
+                labels[n] = clusterId;
+
+            if (labels[n] != -1)   // Пропускаем уже посещенные точки
+                continue;
+
+            labels[n] = clusterId; // Помечаем как принадлежащую текущему кластеру
+
+            // Поиск соседей для текущей точки
+            std::vector<size_t> neigh2;
+            neigh2.reserve(16);
+
+            for (size_t k = 0; k < N; ++k)
+                if (dist2(n, k) <= eps2)
+                    neigh2.push_back(k);
+
+            // Если точка является core point - добавляем ее соседей в очередь
+            if (neigh2.size() >= minPts)
+            {
+                for (size_t x : neigh2)
+                    if (labels[x] == -1 || labels[x] == -2) // Добавляем только непосещенные или шумовые
+                        q.push_back(x);
             }
         }
 
-        logi.log("Fusion: Found %lu unique pillars.\n", found_centers.size());
+        clusterId++; // Переходим к следующему кластеру
+    }
 
-        if (found_centers.size() != 4)
-        {
-            logi.log_w("Fusion found %lu pillars. Umeyama calibration requires 4. Skipping.\n", found_centers.size());
-            return final_pillars;
-        }
+    // Подсчет и логирование шумовых точек
+    int noise_count = 0;
+    for (size_t i = 0; i < N; ++i) 
+        if (labels[i] == -2) noise_count++;
+    logi.log("DBSCAN: %d noise points filtered out.\n", noise_count);
 
-        // Сортировка по углу
-        std::sort(found_centers.begin(), found_centers.end(),
-                  [](const Eigen::Vector2f &a, const Eigen::Vector2f &b)
-                  {
-                      return atan2(a.y(), a.x()) < atan2(b.y(), b.x());
-                  });
-
-        for (size_t i = 0; i < 4; ++i)
-        {
-            FinalPillar fp;
-            fp.local = found_centers[i];
-            fp.name = "Pillar_" + std::to_string(i);
-            final_pillars.push_back(fp);
-        }
-
+    if (clusterId == 0)
+    {
+        logi.log_w("DBSCAN: No clusters found.\n");
         return final_pillars;
     }
+
+    logi.log("DBSCAN: %d initial clusters detected.\n", clusterId);
+
+    // ---- Фаза 2: Аккумуляторы веса для кластеров ----
+    struct Acc
+    {
+        double wsum = 0.0;                       // Суммарный вес кластера
+        std::vector<size_t> idxs;                // Индексы кандидатов в кластере
+    };
+
+    std::vector<Acc> acc(clusterId);             // Аккумуляторы для каждого кластера
+
+    // Сбор статистики по кластерам
+    for (size_t i = 0; i < N; ++i)
+    {
+        int cid = labels[i];
+        if (cid >= 0) // Игнорируем шумовые точки (cid = -2)
+        {
+            acc[cid].wsum += candidates[i].weight;
+            acc[cid].idxs.push_back(i);
+        }
+    }
+
+    // ---- Фаза 3: Формируем центры кластеров взвешенным усреднением ----
+    for (int cid = 0; cid < clusterId; ++cid)
+    {
+        if (acc[cid].idxs.size() < 1)            // Пропускаем пустые кластеры
+            continue;
+
+        Eigen::Vector2f c(0, 0);                 // Взвешенный центр
+        double w = 0.0;                          // Сумма весов
+
+        // Вычисление взвешенного центра
+        for (size_t k : acc[cid].idxs)
+        {
+            c += candidates[k].center * (float)candidates[k].weight;
+            w += candidates[k].weight;
+        }
+
+        // Защита от деления на ноль
+        if (w < 1e-9) continue;
+
+        c /= (float)w; // Нормализация по сумме весов
+
+        // Создание финального столба
+        FinalPillar fp;
+        fp.local = c;
+        fp.total_weight = w;
+        fp.name = "Cluster_" + std::to_string(cid);
+
+        logi.log("DBSCAN Cluster %d: center (%.3f, %.3f), points=%lu, weight=%.3f\n",
+                 cid, c.x(), c.y(), acc[cid].idxs.size(), w);
+
+        final_pillars.push_back(fp);
+    }
+
+    if (final_pillars.empty())
+    {
+        logi.log_w("DBSCAN: No valid clusters after accumulation.\n");
+        return final_pillars;
+    }
+
+    // ---- Фаза 4: Если кластеров больше 4 — выбираем top-4 по весу ----
+    if (final_pillars.size() > 4)
+    {
+        logi.log_w("DBSCAN: %lu clusters => selecting top 4 by weight...\n",
+                   final_pillars.size());
+
+        // Сортировка по убыванию суммарного веса
+        std::sort(final_pillars.begin(), final_pillars.end(),
+                  [](const FinalPillar &a, const FinalPillar &b)
+                  {
+                      return a.total_weight > b.total_weight;
+                  });
+
+        final_pillars.resize(4); // Оставляем только 4 лучших кластера
+
+        logi.log_g("DBSCAN: Top 4 clusters selected.\n");
+    }
+
+    // ---- Фаза 5: Сортировка по углу (для согласованного порядка) ----
+    std::sort(final_pillars.begin(), final_pillars.end(),
+              [](const FinalPillar &a, const FinalPillar &b)
+              {
+                  return atan2(a.local.y(), a.local.x()) < atan2(b.local.y(), b.local.x());
+              });
+
+    // ---- Фаза 6: Финальное логирование результатов ----
+    for (size_t i = 0; i < final_pillars.size(); ++i)
+    {
+        double angle = atan2(final_pillars[i].local.y(), final_pillars[i].local.x()) * 180.0 / M_PI;
+        double range = final_pillars[i].local.norm();
+
+        logi.log_g("  Pillar %lu: (%.3f, %.3f), R=%.3f m, Angle=%.1f°, W=%.3f\n",
+                   i,
+                   final_pillars[i].local.x(),
+                   final_pillars[i].local.y(),
+                   range,
+                   angle,
+                   final_pillars[i].total_weight);
+    }
+
+    logi.log("--- DBSCAN Fusion End: %lu pillars created ---\n", final_pillars.size());
+
+    return final_pillars;
+}
+
+// std::vector<FinalPillar> fuseCandidates(const std::vector<PillarCandidate> &candidates)
+// {
+//     std::vector<FinalPillar> final_pillars;
+//     if (candidates.empty())
+//     {
+//         logi.log("Fusion skipped: No candidates found by detection methods.\n"); // Логирование пустого входа
+//         return final_pillars;
+//     }
+
+//     // 1. ЛОГИРОВАНИЕ НАЧАЛА (Список всех кандидатов)
+//     logi.log("--- Fusion Start: Analyzing %lu candidates ---\n", candidates.size());
+//     for (size_t i = 0; i < candidates.size(); ++i)
+//     {
+//         const auto& c = candidates[i]; // Получение кандидата
+//         // ИСПРАВЛЕНО: Теперь используем 'num_points'
+//         logi.log("Candidate %lu (Method %d): Center (X: %.3f, Y: %.3f), Weight: %.2f, Points: %d, RMSE: %.4f\n",
+//                  i, c.method_id, c.center.x(), c.center.y(), c.weight, c.num_points, c.rmse); // Вывод основных характеристик
+//     }
+//     logi.log("---------------------------------------------------\n");
+
+//     std::vector<bool> processed(candidates.size(), false);
+//     AlignedVector2f found_centers;
+
+//     for (size_t i = 0; i < candidates.size(); ++i)
+//     {
+//         if (processed[i])
+//             continue;
+        
+//         double sum_w = 0;
+//         Eigen::Vector2f w_center(0.0f, 0.0f);
+//         size_t fused_count = 0; // Счетчик объединенных кандидатов
+        
+//         logi.log("Starting fusion group %lu (Base: Candidate %lu, Method %d).\n", 
+//                    found_centers.size(), i, candidates[i].method_id); 
+
+//         for (size_t j = i; j < candidates.size(); ++j)
+//         {
+//             if (processed[j])
+//                 continue;
+            
+//             double dist = MathUtils::dist2D(candidates[i].center, candidates[j].center); 
+            
+//             // Слияние, если центры близки
+//             if (dist < fusion_group_radius)
+//             {
+//                 logi.log_w("  -> Merging Candidate %lu (Method %d). Dist: %.3f m.\n", 
+//                            j, candidates[j].method_id, dist);
+                           
+//                 w_center += candidates[j].center * (float)candidates[j].weight;
+//                 sum_w += candidates[j].weight;
+//                 processed[j] = true;
+//                 fused_count++;
+//             }
+//         }
+
+//         if (sum_w > 0)
+//         {
+//             Eigen::Vector2f final_center = w_center / (float)sum_w;
+//             found_centers.push_back(final_center);
+//             logi.log_g("  Fusion Group %lu complete: Fused %lu candidates. Center (X: %.3f, Y: %.3f).\n",
+//                        found_centers.size() - 1, fused_count, final_center.x(), final_center.y());
+//         }
+//     }
+
+//     logi.log("Fusion Total: Found %lu unique pillars before final check.\n", found_centers.size());
+
+//     if (found_centers.size() != 4)
+//     {
+//         logi.log_w("Fusion found %lu pillars. Umeyama calibration requires 4. Skipping calibration.\n", found_centers.size());
+//         return final_pillars;
+//     }
+
+//     // 2. ЛОГИРОВАНИЕ КОНЦА (После слияния и сортировки)
+//     logi.log_g("Fusion Success: 4 unique pillars found. Sorting by angle...\n");
+
+//     // Сортировка по углу
+//     std::sort(found_centers.begin(), found_centers.end(),
+//               [](const Eigen::Vector2f &a, const Eigen::Vector2f &b)
+//               {
+//                   return atan2(a.y(), a.x()) < atan2(b.y(), b.x());
+//               });
+
+//     for (size_t i = 0; i < 4; ++i)
+//     {
+//         FinalPillar fp;
+//         fp.local = found_centers[i];
+//         fp.name = "Pillar_" + std::to_string(i);
+//         final_pillars.push_back(fp);
+        
+//         // Вывод финальных характеристик (Центр и угол)
+//         double angle = atan2(fp.local.y(), fp.local.x()) * 180.0 / M_PI;
+//         double range = fp.local.norm();
+        
+//         logi.log_g("  Final Pillar %lu (Name: %s): Center (X: %.3f, Y: %.3f), Range: %.3f m, Angle: %.1f deg.\n",
+//                    i, fp.name.c_str(), fp.local.x(), fp.local.y(), range, angle);
+//     }
+    
+//     logi.log("--- Fusion End ---\n");
+//     return final_pillars;
+// }
+
 
     // Сохранение результатов в ROS Parameter Server (Без изменений)
     void saveResults(const std::vector<FinalPillar> &pillars)
@@ -1012,7 +1337,7 @@ public:
                        total_rays_removed_by_low_intensity(0),    // <--- ОБНУЛЕНИЕ
                        total_rays_removed_by_initial_intensity(0) // <--- ОБНУЛЕНИЕ
     {
-        logi.log("=== PillarScanNode v5.2 Started (Intensity & Angle Debug) ===\n");
+       logi.log("=== PillarScanNode v5.9 Started (Configurable Filters) ===\n"); // Обновление версии
 
         loadParameters();
         if (!ros::ok())
@@ -1020,7 +1345,12 @@ public:
 
         // Инициализация паблишеров
         pub_filtered_scan = nh.advertise<visualization_msgs::Marker>("/rviz/filtered_scan", 1);
-        pub_method_clusters = nh.advertise<visualization_msgs::MarkerArray>("/rviz/method_clusters", 1);
+
+        // Три отдельных топика для методов
+        pub_method_1 = nh.advertise<visualization_msgs::Marker>("/rviz/method_1_jump", 1);
+        pub_method_2 = nh.advertise<visualization_msgs::Marker>("/rviz/method_2_cluster", 1);
+        pub_method_3 = nh.advertise<visualization_msgs::Marker>("/rviz/method_3_minima", 1);
+
         pub_fused_pillars = nh.advertise<visualization_msgs::Marker>("/rviz/fused_pillars", 1);
         pub_final_markers = nh.advertise<visualization_msgs::MarkerArray>("/rviz/final_pillars", 1);
 
@@ -1100,22 +1430,39 @@ public:
                  intensity_min_threshold, edge_angle_threshold, edge_angle_threshold * 180.0 / M_PI);
 
         // 4. Параметры детекции
-        nh.param<double>("/pb_config/detection/jump_threshold", jump_dist_threshold, 0.5);
+        nh.param<double>("/pb_config/detection/jump_threshold", jump_dist_threshold, 0.33);
         nh.param<double>("/pb_config/detection/cluster_threshold", cluster_dist_threshold, 0.05);
         logi.log("  Detection: JumpThresh=%.2f, ClusterThresh=%.2f\n", jump_dist_threshold, cluster_dist_threshold);
 
         // 5. Параметры Fusion
         nh.param<double>("/pb_config/fusion/rmse_max_tolerance", rmse_max_tolerance, 0.01);
         nh.param<int>("/pb_config/fusion/n_max_points_norm", n_max_points_norm, 100);
+        logi.log("  Fusion: RMSE_max=%.4f, N_max=%d \n", rmse_max_tolerance, n_max_points_norm);
+        logi.log("DBSCAN Fusion Config:\n");
         nh.param<double>("/pb_config/fusion/group_radius", fusion_group_radius, 0.2);
-        logi.log("  Fusion: RMSE_max=%.4f, N_max=%d, GroupR=%.2f\n",
-                 rmse_max_tolerance, n_max_points_norm, fusion_group_radius);
+        nh.param<int>("/pb/min_dbscan_points", min_dbscan_points_, 2); // Новый параметр для minPts
+        logi.log("  Min DBSCAN Points (minPts): %d\n", min_dbscan_points_);
+        logi.log("  Fusion Group Radius: %.3f m\n", fusion_group_radius);
 
         // 6. Веса методов
         nh.param<double>("/pb_config/weights/method_1", w_method[1], 1.0);
         nh.param<double>("/pb_config/weights/method_2", w_method[2], 0.9);
         nh.param<double>("/pb_config/weights/method_3", w_method[3], 0.8);
         logi.log("  Weights: M1=%.2f, M2=%.2f, M3=%.2f\n", w_method[1], w_method[2], w_method[3]);
+
+                // --- Параметры фильтрации кластеров (ОБНОВЛЕНО, v5.9) ---
+        // Используем ваш ROS-пакет 'pb'
+        nh.param<double>("/pb/min_cluster_width", min_cluster_width_, 0.20); // Минимальная ширина [м]
+        nh.param<double>("/pb/max_cluster_width", max_cluster_width_, 0.40); // Максимальная ширина [м]
+        nh.param<int>("/pb/min_cluster_points", min_cluster_points_, 11);     // Минимальное количество точек (v5.9)
+
+        // Логирование новых параметров
+        logi.log("Cluster Filter Config:\n");
+        logi.log("  Min Cluster Width: %.3f m\n", min_cluster_width_);
+        logi.log("  Max Cluster Width: %.3f m\n", max_cluster_width_);
+        logi.log("  Min Cluster Points: %d\n", min_cluster_points_); // Логирование нового параметра
+
+
 
         logi.log("--- Parameters Loaded Successfully ---\n");
     }
@@ -1202,7 +1549,7 @@ public:
             if (r < min_range_filter || r > max_range_filter)
                 continue;
             accumulated_ranges[i].push_back(r);
-            accumulated_intensities[i].push_back(intensity);  // Сохраняем  только если прошли фильтр
+            accumulated_intensities[i].push_back(intensity); // Сохраняем  только если прошли фильтр
             current_scan_added_count++;
         }
 
@@ -1220,61 +1567,49 @@ public:
         }
     }
 
-    // ИЗМЕНЕНА: Основной конвейер обработки (Полностью - v5.6)
+    // ИЗМЕНЕНА: processPipeline (v5.7)
+    // Сохранение результатов в разные переменные маркеров
     void processPipeline()
     {
-        logi.log("=== Starting Processing Pipeline (Median Filtered Scan) ===\n"); // Лог начала конвейера
+        logi.log("=== Starting Processing Pipeline (Median Filtered Scan) ===\n");
 
-        int total_initial_rays = 0;             // Общее число лучей в скане (фиксировано: 3585)
-        int points_removed_by_angle_filter = 0; // Счетчик точек, удаленных угловым фильтром
+        int total_initial_rays = 0;
+        int points_removed_by_angle_filter = 0;
 
-        // 1. ФОРМИРОВАНИЕ МЕДИАННОГО СКАНА И ПЕРЕВОД В ТОЧКИ
-
-        sensor_msgs::LaserScan current_filtered_scan = meta_scan; // Копирование мета-данных скана
-        current_filtered_scan.ranges.clear();                     // Очистка дальностей
-        current_filtered_scan.intensities.clear();                // Очистка интенсивностей
-        AlignedVector2f initial_points;                           // Вектор 2D точек до углового фильтра
-        std::vector<double> median_intensities;                   // Вектор медианных интенсивностей
-
-        float nan_val = std::numeric_limits<float>::quiet_NaN(); // Значение NaN
+        // 1. ФОРМИРОВАНИЕ МЕДИАННОГО СКАНА
+        sensor_msgs::LaserScan current_filtered_scan = meta_scan;
+        current_filtered_scan.ranges.clear();
+        current_filtered_scan.intensities.clear();
+        AlignedVector2f initial_points;
+        std::vector<double> median_intensities;
+        float nan_val = std::numeric_limits<float>::quiet_NaN();
 
         for (size_t i = 0; i < accumulated_ranges.size(); ++i)
         {
-            total_initial_rays++; // Считаем общее число лучей
-
-            if (accumulated_ranges[i].empty()) // Если луч был полностью отфильтрован по интенсивности
+            total_initial_rays++;
+            if (accumulated_ranges[i].empty())
             {
-                // Устанавливаем NaN и для дальности, и для интенсивности
                 current_filtered_scan.ranges.push_back(nan_val);
-                current_filtered_scan.intensities.push_back(nan_val); // NaN для интенсивности
-                continue;                                             // Пропускаем итерацию
+                current_filtered_scan.intensities.push_back(nan_val);
+                continue;
             }
 
-            // Расчет медианной дальности
-            std::vector<double> current_ray_data = accumulated_ranges[i];
-            double median_r = MathUtils::getMedian(current_ray_data);
-
-            // Расчет медианной интенсивности
+            double median_r = MathUtils::getMedian(accumulated_ranges[i]);
             double median_i = 0.0;
             if (accumulated_intensities[i].size() > 0)
-            {
-                std::vector<double> current_int_data = accumulated_intensities[i];
-                median_i = MathUtils::getMedian(current_int_data);
-            }
-            median_intensities.push_back(median_i); // Сохраняем медианную интенсивность
+                median_i = MathUtils::getMedian(accumulated_intensities[i]);
 
-            double angle = meta_scan.angle_min + i * meta_scan.angle_increment; // Угол луча
+            median_intensities.push_back(median_i);
 
-            current_filtered_scan.ranges.push_back((float)median_r);      // Сохраняем медианную дальность
-            current_filtered_scan.intensities.push_back((float)median_i); // Сохраняем медианную интенсивность
+            double angle = meta_scan.angle_min + i * meta_scan.angle_increment;
+            current_filtered_scan.ranges.push_back((float)median_r);
+            current_filtered_scan.intensities.push_back((float)median_i);
 
-            // Только если луч не NaN, переводим его в 2D точку для кластеризации (защита от NaN)
             if (!std::isnan(current_filtered_scan.ranges.back()))
             {
-                initial_points.emplace_back((float)(median_r * cos(angle)), (float)(median_r * sin(angle))); // Перевод в 2D
+                initial_points.emplace_back((float)(median_r * cos(angle)), (float)(median_r * sin(angle)));
             }
         }
-
         // СОХРАНЕНИЕ 1: Сохраняем отфильтрованный скан (LaserScan)
         filtered_scan_results_ = current_filtered_scan; // Сохраняем LaserScan (нужен для заголовка)
 
@@ -1329,19 +1664,21 @@ public:
         auto c3 = detectLocalMinima(clean_points, 3, clusters_m3); // Метод 3
         all_candidates.insert(all_candidates.end(), c3.begin(), c3.end());
 
-        // СОЗДАНИЕ МАРКЕРОВ КЛАСТЕРОВ ДЛЯ СОХРАНЕНИЯ
-        visualization_msgs::MarkerArray cluster_markers;
-        cluster_markers.markers.push_back(createPointsMarker(clusters_m1, meta_scan.header.frame_id,
-                                                             "method_1_jump", 1, 1.0f, 0.0f, 0.0f, 0.08f)); // Красные
-        cluster_markers.markers.push_back(createPointsMarker(clusters_m2, meta_scan.header.frame_id,
-                                                             "method_2_cluster", 2, 0.0f, 0.0f, 1.0f, 0.08f)); // Синие
-        cluster_markers.markers.push_back(createPointsMarker(clusters_m3, meta_scan.header.frame_id,
-                                                             "method_3_minima", 3, 1.0f, 1.0f, 0.0f, 0.08f)); // Желтые
+        // СОЗДАНИЕ И СОХРАНЕНИЕ ОТДЕЛЬНЫХ МАРКЕРОВ (ИЗМЕНЕНО)
+        // Метод 1: Красный
+        marker_m1_results_ = createPointsMarker(clusters_m1, meta_scan.header.frame_id,
+                                                "method_1_jump", 1, 1.0f, 0.0f, 0.0f, 0.08f);
 
-        cluster_markers_results_ = cluster_markers; // Сохранение маркеров
+        // Метод 2: Синий
+        marker_m2_results_ = createPointsMarker(clusters_m2, meta_scan.header.frame_id,
+                                                "method_2_cluster", 2, 0.0f, 0.0f, 1.0f, 0.08f);
+
+        // Метод 3: Желтый
+        marker_m3_results_ = createPointsMarker(clusters_m3, meta_scan.header.frame_id,
+                                                "method_3_minima", 3, 1.0f, 1.0f, 0.0f, 0.08f);
 
         logi.log("Total candidates found: %lu (M1=%lu, M2=%lu, M3=%lu)\n",
-                 all_candidates.size(), c1.size(), c2.size(), c3.size()); // Лог кандидатов
+                 all_candidates.size(), c1.size(), c2.size(), c3.size());
 
         // 6. Fusion
         std::vector<FinalPillar> final_pillars = fuseCandidates(all_candidates); // Слияние кандидатов
