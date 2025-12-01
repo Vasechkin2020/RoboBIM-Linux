@@ -966,7 +966,7 @@ private:
     // Алгоритм: полный перебор 24 перестановок с минимизацией суммы квадратов ошибок расстояний.
     void reorderPillars(AlignedPillarVector &pillars)
     {
-            logi.log_b("\n--- reorderPillars --- \n");
+            logi.log("\n--- reorderPillars --- \n");
         // --- ПРОВЕРКА ВХОДНЫХ ДАННЫХ ---
         if (pillars.size() != 4)
         {
@@ -1231,194 +1231,386 @@ private:
         return clean_points;
     }
 
-    // --- Калибровка: Полноценный Umeyama's Algorithm (Без изменений) ---
-    void performCalibration(AlignedPillarVector &pillars)
+    // // --- Калибровка: Полноценный Umeyama's Algorithm (Без изменений) ---
+    // void performCalibration(AlignedPillarVector &pillars)
+    // {
+    //     if (pillars.size() != 4)
+    //     {
+    //         logi.log_w("Calibration skipped: Need exactly 4 pillars (Found %lu). Not setting flag.\n", pillars.size());
+    //         return;
+    //     }
+
+    //     logi.log("\n--- Performing FULL Umeyama Calibration (SVD) ---\n");
+
+    //     // 1. Идентификация
+    //     int match_index[4] = {-1, -1, -1, -1};
+    //     std::vector<bool> pillar_used(4, false);
+
+    //     int idx_RB = -1;
+    //     int idx_RT = -1;
+    //     double best_err = 1000.0;
+
+    //     for (int i = 0; i < 4; ++i)
+    //     {
+    //         for (int j = 0; j < 4; ++j)
+    //         {
+    //             if (i == j)
+    //                 continue;
+    //             double d = MathUtils::dist2D(pillars[i].local, pillars[j].local);
+    //             double err = std::abs(d - d_center[0]);
+    //             if (err < 0.2 && err < best_err)
+    //             {
+    //                 best_err = err;
+    //                 if (pillars[i].local.x() < pillars[j].local.x())
+    //                 {
+    //                     idx_RB = i;
+    //                     idx_RT = j;
+    //                 }
+    //                 else
+    //                 {
+    //                     idx_RB = j;
+    //                     idx_RT = i;
+    //                 }
+    //             }
+    //         }
+    //     }
+
+    //     if (idx_RB == -1)
+    //     {
+    //         logi.log_r("Calibration Failed: Could not identify RB-RT pair.\n");
+    //         return;
+    //     }
+
+    //     match_index[0] = idx_RB;
+    //     pillar_used[idx_RB] = true;
+    //     match_index[1] = idx_RT;
+    //     pillar_used[idx_RT] = true;
+    //     pillars[idx_RB].name = "RB";
+    //     pillars[idx_RT].name = "RT";
+
+    //     int rem_idx[2];
+    //     int rem_count = 0;
+    //     for (int i = 0; i < 4; ++i)
+    //     {
+    //         if (!pillar_used[i])
+    //             rem_idx[rem_count++] = i;
+    //     }
+
+    //     if (pillars[rem_idx[0]].local.y() > pillars[rem_idx[1]].local.y())
+    //     {
+    //         match_index[2] = rem_idx[0];
+    //         match_index[3] = rem_idx[1];
+    //     }
+    //     else
+    //     {
+    //         match_index[2] = rem_idx[1];
+    //         match_index[3] = rem_idx[0];
+    //     }
+
+    //     pillars[match_index[2]].name = "LT";
+    //     pillars[match_index[3]].name = "LB";
+
+    //     logi.log("Identified: RB(%d), RT(%d), LT(%d), LB(%d)\n",
+    //              match_index[0], match_index[1], match_index[2], match_index[3]);
+
+    //     // 2. Подготовка матриц (DOUBLE)
+    //     Eigen::Matrix<double, 2, 4> X;
+    //     Eigen::Matrix<double, 2, 4> Y;
+
+    //     for (int i = 0; i < 4; ++i)
+    //     {
+    //         X.col(i) = pillars[match_index[i]].local.cast<double>();
+    //         Y.col(i) = reference_centers_[i].cast<double>();
+    //     }
+
+    //     // 3. Центрирование
+    //     Eigen::Vector2d mu_x = X.rowwise().mean();
+    //     Eigen::Vector2d mu_y = Y.rowwise().mean();
+
+    //     Eigen::Matrix<double, 2, 4> X_c = X.colwise() - mu_x;
+    //     Eigen::Matrix<double, 2, 4> Y_c = Y.colwise() - mu_y;
+
+    //     // 4. Матрица Ковариации H
+    //     Eigen::Matrix2d H = X_c * Y_c.transpose() / 4.0;
+
+    //     // 5. SVD
+    //     Eigen::JacobiSVD<Eigen::Matrix2d> svd(H, Eigen::ComputeFullU | Eigen::ComputeFullV);
+    //     Eigen::Matrix2d U = svd.matrixU();
+    //     Eigen::Matrix2d V = svd.matrixV();
+
+    //     // 6. Поворот (R)
+    //     Eigen::Matrix2d D;
+    //     D.setIdentity();
+    //     if (U.determinant() * V.determinant() < 0.0)
+    //     {
+    //         D(1, 1) = -1.0;
+    //     }
+    //     Eigen::Matrix2d R = V * D * U.transpose();
+
+    //     // 7. Масштаб (c)
+    //     double c_numerator = svd.singularValues().sum();
+    //     double c_denominator = (X_c.cwiseAbs2()).sum() / 4.0;
+
+    //     double c = c_numerator / c_denominator;
+
+    //     // 8. Сдвиг (T)
+    //     Eigen::Vector2d T = mu_y - c * R * mu_x;
+
+    //     logi.log_g("Umeyama Transform:\n");
+    //     logi.log_g("  Scale (c): %.4f\n", c);
+
+    //     double angle_rad = atan2(R(1, 0), R(0, 0));
+    //     logi.log_g("  Rotation (deg): %.3f\n", angle_rad * 180.0 / M_PI);
+
+    //     logi.log_g("  Translation (T): [%.3f, %.3f]\n", T.x(), T.y());
+
+    //     // 9. Применение R,c,T (сначала без фиксации)
+    //     Eigen::Vector2d global_RB;
+    //     for (int i = 0; i < 4; ++i)
+    //     {
+    //         FinalPillar &p = pillars[match_index[i]];
+    //         Eigen::Vector2d p_local_double = p.local.cast<double>();
+    //         p.global = c * R * p_local_double + T;
+
+    //         if (i == 0) // match_index[0] = RB
+    //             global_RB = p.global;
+    //     }
+
+    //     logi.log_w("RB before fix: [%.3f, %.3f]\n", global_RB.x(), global_RB.y());
+
+    //     // ---- Фиксация RB в (0,0) ----
+    //     Eigen::Vector2d delta = -global_RB;
+
+    //     logi.log_b("Fixing RB to global (0,0). Delta applied: [%.3f, %.3f]\n",
+    //                delta.x(), delta.y());
+
+    //     for (int i = 0; i < 4; ++i)
+    //     {
+    //         pillars[match_index[i]].global += delta;
+    //     }
+
+    //     // 10. Пересчёт RMSE уже после фиксации!
+    //     double final_rmse_sum_sq = 0.0;
+    //     for (int i = 0; i < 4; ++i)
+    //     {
+    //         FinalPillar &p = pillars[match_index[i]];
+
+    //         logi.log_g("Pillar %s -> Global FIXED: [%.3f, %.3f]\n",
+    //                    p.name.c_str(), p.global.x(), p.global.y());
+
+    //         Eigen::Vector2d ref_double = reference_centers_[i].cast<double>();
+    //         Eigen::Vector2d error = p.global - ref_double;
+    //         final_rmse_sum_sq += error.squaredNorm();
+    //     }
+
+    //     double final_rmse = sqrt(final_rmse_sum_sq / 4.0);
+    //     logi.log_g("Final Alignment RMSE (after RB fix): %.5f meters\n", final_rmse);
+
+    //     // --- ХРАНЕНИЕ РЕЗУЛЬТАТОВ ---
+    //     if (final_rmse <= 0.05)
+    //     {
+    //         final_pillars_results_ = pillars;
+    //         calibration_done_ = true;
+
+    //         publishFinalMarkers(final_pillars_results_);
+    //     }
+    //     else
+    //     {
+    //         logi.log_r("Calibration FAILED: High final alignment error (RMSE > 5 cm, current: %.5f). Not setting flag.\n", final_rmse);
+    //     }
+    // }
+
+// --- Калибровка: Упрощенный Umeyama Algorithm (после reorderPillars) ---
+void performCalibration(AlignedPillarVector &pillars)
+{
+    // ПРОВЕРКА ВХОДНЫХ ДАННЫХ
+    if (pillars.size() != 4)
     {
-        if (pillars.size() != 4)
+        logi.log_w("Calibration skipped: Need exactly 4 pillars (Found %lu).\n", pillars.size());
+        return;
+    }
+
+    logi.log("\n--- Performing UMEYAMA Calibration (Using Pre-sorted Pillars) ---\n");
+
+    // --- ПРОВЕРКА КОРРЕКТНОСТИ СОРТИРОВКИ ---
+    // После reorderPillars столбы должны быть в порядке: 0=RB, 1=RT, 2=LT, 3=LB
+    std::vector<std::string> expected_names = {"RB", "RT", "LT", "LB"};
+    bool sorting_correct = true;
+    
+    for (int i = 0; i < 4; ++i)
+    {
+        if (pillars[i].name != expected_names[i])
         {
-            logi.log_w("Calibration skipped: Need exactly 4 pillars (Found %lu). Not setting flag.\n", pillars.size());
-            return;
-        }
-
-        logi.log("\n--- Performing FULL Umeyama Calibration (SVD) ---\n");
-
-        // 1. Идентификация
-        int match_index[4] = {-1, -1, -1, -1};
-        std::vector<bool> pillar_used(4, false);
-
-        int idx_RB = -1;
-        int idx_RT = -1;
-        double best_err = 1000.0;
-
-        for (int i = 0; i < 4; ++i)
-        {
-            for (int j = 0; j < 4; ++j)
-            {
-                if (i == j)
-                    continue;
-                double d = MathUtils::dist2D(pillars[i].local, pillars[j].local);
-                double err = std::abs(d - d_center[0]);
-                if (err < 0.2 && err < best_err)
-                {
-                    best_err = err;
-                    if (pillars[i].local.x() < pillars[j].local.x())
-                    {
-                        idx_RB = i;
-                        idx_RT = j;
-                    }
-                    else
-                    {
-                        idx_RB = j;
-                        idx_RT = i;
-                    }
-                }
-            }
-        }
-
-        if (idx_RB == -1)
-        {
-            logi.log_r("Calibration Failed: Could not identify RB-RT pair.\n");
-            return;
-        }
-
-        match_index[0] = idx_RB;
-        pillar_used[idx_RB] = true;
-        match_index[1] = idx_RT;
-        pillar_used[idx_RT] = true;
-        pillars[idx_RB].name = "RB";
-        pillars[idx_RT].name = "RT";
-
-        int rem_idx[2];
-        int rem_count = 0;
-        for (int i = 0; i < 4; ++i)
-        {
-            if (!pillar_used[i])
-                rem_idx[rem_count++] = i;
-        }
-
-        if (pillars[rem_idx[0]].local.y() > pillars[rem_idx[1]].local.y())
-        {
-            match_index[2] = rem_idx[0];
-            match_index[3] = rem_idx[1];
-        }
-        else
-        {
-            match_index[2] = rem_idx[1];
-            match_index[3] = rem_idx[0];
-        }
-
-        pillars[match_index[2]].name = "LT";
-        pillars[match_index[3]].name = "LB";
-
-        logi.log("Identified: RB(%d), RT(%d), LT(%d), LB(%d)\n",
-                 match_index[0], match_index[1], match_index[2], match_index[3]);
-
-        // 2. Подготовка матриц (DOUBLE)
-        Eigen::Matrix<double, 2, 4> X;
-        Eigen::Matrix<double, 2, 4> Y;
-
-        for (int i = 0; i < 4; ++i)
-        {
-            X.col(i) = pillars[match_index[i]].local.cast<double>();
-            Y.col(i) = reference_centers_[i].cast<double>();
-        }
-
-        // 3. Центрирование
-        Eigen::Vector2d mu_x = X.rowwise().mean();
-        Eigen::Vector2d mu_y = Y.rowwise().mean();
-
-        Eigen::Matrix<double, 2, 4> X_c = X.colwise() - mu_x;
-        Eigen::Matrix<double, 2, 4> Y_c = Y.colwise() - mu_y;
-
-        // 4. Матрица Ковариации H
-        Eigen::Matrix2d H = X_c * Y_c.transpose() / 4.0;
-
-        // 5. SVD
-        Eigen::JacobiSVD<Eigen::Matrix2d> svd(H, Eigen::ComputeFullU | Eigen::ComputeFullV);
-        Eigen::Matrix2d U = svd.matrixU();
-        Eigen::Matrix2d V = svd.matrixV();
-
-        // 6. Поворот (R)
-        Eigen::Matrix2d D;
-        D.setIdentity();
-        if (U.determinant() * V.determinant() < 0.0)
-        {
-            D(1, 1) = -1.0;
-        }
-        Eigen::Matrix2d R = V * D * U.transpose();
-
-        // 7. Масштаб (c)
-        double c_numerator = svd.singularValues().sum();
-        double c_denominator = (X_c.cwiseAbs2()).sum() / 4.0;
-
-        double c = c_numerator / c_denominator;
-
-        // 8. Сдвиг (T)
-        Eigen::Vector2d T = mu_y - c * R * mu_x;
-
-        logi.log_g("Umeyama Transform:\n");
-        logi.log_g("  Scale (c): %.4f\n", c);
-
-        double angle_rad = atan2(R(1, 0), R(0, 0));
-        logi.log_g("  Rotation (deg): %.3f\n", angle_rad * 180.0 / M_PI);
-
-        logi.log_g("  Translation (T): [%.3f, %.3f]\n", T.x(), T.y());
-
-        // 9. Применение R,c,T (сначала без фиксации)
-        Eigen::Vector2d global_RB;
-        for (int i = 0; i < 4; ++i)
-        {
-            FinalPillar &p = pillars[match_index[i]];
-            Eigen::Vector2d p_local_double = p.local.cast<double>();
-            p.global = c * R * p_local_double + T;
-
-            if (i == 0) // match_index[0] = RB
-                global_RB = p.global;
-        }
-
-        logi.log_w("RB before fix: [%.3f, %.3f]\n", global_RB.x(), global_RB.y());
-
-        // ---- Фиксация RB в (0,0) ----
-        Eigen::Vector2d delta = -global_RB;
-
-        logi.log_b("Fixing RB to global (0,0). Delta applied: [%.3f, %.3f]\n",
-                   delta.x(), delta.y());
-
-        for (int i = 0; i < 4; ++i)
-        {
-            pillars[match_index[i]].global += delta;
-        }
-
-        // 10. Пересчёт RMSE уже после фиксации!
-        double final_rmse_sum_sq = 0.0;
-        for (int i = 0; i < 4; ++i)
-        {
-            FinalPillar &p = pillars[match_index[i]];
-
-            logi.log_g("Pillar %s -> Global FIXED: [%.3f, %.3f]\n",
-                       p.name.c_str(), p.global.x(), p.global.y());
-
-            Eigen::Vector2d ref_double = reference_centers_[i].cast<double>();
-            Eigen::Vector2d error = p.global - ref_double;
-            final_rmse_sum_sq += error.squaredNorm();
-        }
-
-        double final_rmse = sqrt(final_rmse_sum_sq / 4.0);
-        logi.log_g("Final Alignment RMSE (after RB fix): %.5f meters\n", final_rmse);
-
-        // --- ХРАНЕНИЕ РЕЗУЛЬТАТОВ ---
-        if (final_rmse <= 0.05)
-        {
-            final_pillars_results_ = pillars;
-            calibration_done_ = true;
-
-            publishFinalMarkers(final_pillars_results_);
-        }
-        else
-        {
-            logi.log_r("Calibration FAILED: High final alignment error (RMSE > 5 cm, current: %.5f). Not setting flag.\n", final_rmse);
+            logi.log_r("ERROR: Pillar %d should be %s but is %s\n", 
+                       i, expected_names[i].c_str(), pillars[i].name.c_str());
+            sorting_correct = false;
         }
     }
+    
+    if (!sorting_correct)
+    {
+        logi.log_r("Calibration ABORTED: Pillar order incorrect!\n");
+        logi.log_r("Expected: RB, RT, LT, LB\n");
+        logi.log_r("Found:    %s, %s, %s, %s\n", 
+                   pillars[0].name.c_str(), pillars[1].name.c_str(),
+                   pillars[2].name.c_str(), pillars[3].name.c_str());
+        return;
+    }
+    
+    logi.log_g("Using pre-sorted pillars: RB(0), RT(1), LT(2), LB(3)\n");
+
+    // --- ПОДГОТОВКА МАТРИЦ ДЛЯ UMEYAMA ---
+    // X - измеренные координаты столбов (2×4)
+    // Y - эталонные координаты из reference_centers_ (2×4)
+    Eigen::Matrix<double, 2, 4> X;
+    Eigen::Matrix<double, 2, 4> Y;
+
+    // ЗАПОЛНЕНИЕ МАТРИЦ: Прямое соответствие после сортировки
+    for (int i = 0; i < 4; ++i)
+    {
+        // Столб i (после reorderPillars) соответствует reference_centers_[i]
+        X.col(i) = pillars[i].local.cast<double>();
+        Y.col(i) = reference_centers_[i].cast<double>();
+        
+        logi.log("  %s: Local (%.3f, %.3f) -> Reference (%.3f, %.3f)\n",
+                 pillars[i].name.c_str(), 
+                 pillars[i].local.x(), pillars[i].local.y(),
+                 reference_centers_[i].x(), reference_centers_[i].y());
+    }
+
+    // --- ШАГ 1: ЦЕНТРИРОВАНИЕ ДАННЫХ ---
+    // Вычисляем центры масс измеренных и эталонных точек
+    Eigen::Vector2d mu_x = X.rowwise().mean(); // Центр измеренных точек
+    Eigen::Vector2d mu_y = Y.rowwise().mean(); // Центр эталонных точек
+    
+    // Вычитаем центры для получения центрированных матриц
+    Eigen::Matrix<double, 2, 4> X_c = X.colwise() - mu_x;
+    Eigen::Matrix<double, 2, 4> Y_c = Y.colwise() - mu_y;
+
+    // --- ШАГ 2: МАТРИЦА КОВАРИАЦИИ ---
+    // H = X_c * Y_c^T / N, где N=4 (количество точек)
+    Eigen::Matrix2d H = X_c * Y_c.transpose() / 4.0;
+
+    // --- ШАГ 3: SINGULAR VALUE DECOMPOSITION (SVD) ---
+    // SVD разложение: H = U * Σ * V^T
+    Eigen::JacobiSVD<Eigen::Matrix2d> svd(H, Eigen::ComputeFullU | Eigen::ComputeFullV);
+    Eigen::Matrix2d U = svd.matrixU(); // Левые сингулярные векторы
+    Eigen::Matrix2d V = svd.matrixV(); // Правые сингулярные векторы
+
+    // --- ШАГ 4: ВЫЧИСЛЕНИЕ МАТРИЦЫ ПОВОРОТА R ---
+    Eigen::Matrix2d D = Eigen::Matrix2d::Identity(); // Матрица отражения
+    // Проверка необходимости отражения (определитель должен быть положительным)
+    if (U.determinant() * V.determinant() < 0.0)
+    {
+        D(1, 1) = -1.0; // Применяем отражение
+    }
+    // Итоговая матрица поворота: R = V * D * U^T
+    Eigen::Matrix2d R = V * D * U.transpose();
+
+    // --- ШАГ 5: ВЫЧИСЛЕНИЕ МАСШТАБА c ---
+    // c = sum(Σ) / (sum(|X_c|²) / N)
+    double c_numerator = svd.singularValues().sum();     // Сумма сингулярных значений
+    double c_denominator = (X_c.cwiseAbs2()).sum() / 4.0; // Средний квадрат нормы центрированных точек
+    
+    // Защита от деления на ноль
+    if (c_denominator < 1e-12)
+    {
+        logi.log_r("Calibration FAILED: Zero denominator in scale calculation.\n");
+        return;
+    }
+    
+    double c = c_numerator / c_denominator; // Коэффициент масштаба
+
+    // --- ШАГ 6: ВЫЧИСЛЕНИЕ ВЕКТОРА СДВИГА T ---
+    // T = μ_y - c * R * μ_x
+    Eigen::Vector2d T = mu_y - c * R * mu_x;
+
+    // --- ЛОГИРОВАНИЕ ПАРАМЕТРОВ ПРЕОБРАЗОВАНИЯ ---
+    logi.log_g("Umeyama Transform Parameters:\n");
+    logi.log_g("  Scale (c): %.4f (should be ~1.0)\n", c);
+    
+    double angle_rad = atan2(R(1, 0), R(0, 0)); // Угол поворота из матрицы R
+    logi.log_g("  Rotation (deg): %.3f\n", angle_rad * 180.0 / M_PI);
+    
+    logi.log_g("  Translation (T): [%.3f, %.3f]\n", T.x(), T.y());
+
+    // --- ШАГ 7: ПРИМЕНЕНИЕ ПРЕОБРАЗОВАНИЯ КО ВСЕМ СТОЛБАМ ---
+    // Вычисляем глобальные координаты без фиксации RB
+    Eigen::Vector2d global_RB; // Для хранения координат RB до фиксации
+    
+    for (int i = 0; i < 4; ++i)
+    {
+        FinalPillar &p = pillars[i];
+        // Преобразование: global = c * R * local + T
+        Eigen::Vector2d p_local_double = p.local.cast<double>();
+        p.global = c * R * p_local_double + T;
+        
+        // Сохраняем координаты RB (i=0) для последующей фиксации
+        if (i == 0) global_RB = p.global;
+    }
+
+    // Логирование координат RB до фиксации
+    logi.log_w("RB before fix: [%.3f, %.3f]\n", global_RB.x(), global_RB.y());
+
+    // --- ШАГ 8: ФИКСАЦИЯ RB В ТОЧКЕ (0,0) ---
+    // Вычисляем необходимый сдвиг для перемещения RB в начало координат
+    Eigen::Vector2d delta = -global_RB; // Вектор сдвига
+    
+    logi.log_b("Fixing RB to global origin (0,0). Applying delta: [%.3f, %.3f]\n",
+               delta.x(), delta.y());
+
+    // Применяем сдвиг ко всем столбам
+    for (int i = 0; i < 4; ++i)
+    {
+        pillars[i].global += delta;
+    }
+
+    // --- ШАГ 9: ВЫЧИСЛЕНИЕ И ВАЛИДАЦИЯ ОШИБКИ ---
+    double final_rmse_sum_sq = 0.0; // Сумма квадратов ошибок
+    
+    logi.log_g("Final global coordinates (after RB fix):\n");
+    for (int i = 0; i < 4; ++i)
+    {
+        FinalPillar &p = pillars[i];
+        
+        logi.log_g("  %s: [%.3f, %.3f]\n", p.name.c_str(), p.global.x(), p.global.y());
+
+        // Сравниваем с эталонными координатами
+        Eigen::Vector2d ref_double = reference_centers_[i].cast<double>();
+        Eigen::Vector2d error = p.global - ref_double;
+        final_rmse_sum_sq += error.squaredNorm();
+        
+        // Детальное логирование ошибки для каждого столба
+        double error_dist = error.norm();
+        logi.log("    Error: %.1f mm\n", error_dist * 1000);
+    }
+
+    // Вычисление среднеквадратичной ошибки (RMSE)
+    double final_rmse = sqrt(final_rmse_sum_sq / 4.0);
+    logi.log_g("Final Alignment RMSE: %.5f meters (%.1f mm)\n", final_rmse, final_rmse * 1000);
+
+    // --- ШАГ 10: ПРИНЯТИЕ РЕШЕНИЯ О КАЛИБРОВКЕ ---
+    const double RMSE_THRESHOLD = 0.05; // Порог 5 см
+    
+    if (final_rmse <= RMSE_THRESHOLD)
+    {
+        // Калибровка успешна - сохраняем результаты
+        final_pillars_results_ = pillars;
+        calibration_done_ = true;
+        
+        // Публикуем маркеры для визуализации
+        publishFinalMarkers(final_pillars_results_);
+        
+        logi.log_g("Calibration SUCCESSFUL! RMSE within threshold (≤5 cm).\n");
+    }
+    else
+    {
+        // Калибровка не прошла проверку точности
+        logi.log_r("Calibration FAILED: RMSE exceeds threshold (%.1f mm > %.1f mm).\n", 
+                   final_rmse * 1000, RMSE_THRESHOLD * 1000);
+        logi.log_r("Results will not be saved. Calibration flag NOT set.\n");
+    }
+}
 
     // ----------------------------------------------------------------------------------
     // 4. ПУБЛИЧНЫЕ МЕТОДЫ
