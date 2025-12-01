@@ -53,7 +53,13 @@ struct FinalPillar
     Eigen::Vector2f local;
     Eigen::Vector2d global;
     double total_weight = 0.0; // ← добавляем
+    int ref_index = -1; // ← ДОБАВИТЬ ЭТУ СТРОКУ для хранения индекса эталона
 };
+
+// Тип для выровненного вектора FinalPillar
+// НОВОЕ: Мы указываем контейнеру использовать специальный аллокатор Eigen
+using AlignedPillarVector = std::vector<FinalPillar, Eigen::aligned_allocator<FinalPillar>>;
+
 
 // Тип для выровненного вектора Eigen::Vector2f
 using AlignedVector2f = std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f>>;
@@ -195,7 +201,7 @@ private:
     long long total_rays_removed_by_initial_intensity;
 
     bool calibration_done_;
-    std::vector<FinalPillar> final_pillars_results_;
+    AlignedPillarVector final_pillars_results_;
 
     // Хранение промежуточных результатов для постоянной публикации
     sensor_msgs::LaserScan filtered_scan_results_;
@@ -318,7 +324,7 @@ private:
     }
 
     // Метод для публикации маркеров финальных столбов (Без изменений)
-    void publishFinalMarkers(const std::vector<FinalPillar> &pillars)
+    void publishFinalMarkers(const AlignedPillarVector &pillars)
     {
         if (pillars.empty())
             return;
@@ -745,10 +751,10 @@ private:
     // Логика слияния (Fusion)
     // Объединяет кандидатов, найденных разными методами, в единые уникальные столбы.
 
-    std::vector<FinalPillar> fuseCandidates(const std::vector<PillarCandidate> &candidates)
-    // std::vector<FinalPillar> fuseCandidatesDBSCAN(const std::vector<PillarCandidate> &candidates)
+    AlignedPillarVector fuseCandidates(const std::vector<PillarCandidate> &candidates)
+    // AlignedPillarVector fuseCandidatesDBSCAN(const std::vector<PillarCandidate> &candidates)
     {
-        std::vector<FinalPillar> final_pillars;
+        AlignedPillarVector final_pillars;
         if (candidates.empty())
         {
             logi.log("DBSCAN Fusion skipped: No candidates.\n");
@@ -928,12 +934,12 @@ private:
             logi.log_g("DBSCAN: Top 4 clusters selected.\n");
         }
 
-        // ---- Фаза 5: Сортировка по углу (для согласованного порядка) ----
-        std::sort(final_pillars.begin(), final_pillars.end(),
-                  [](const FinalPillar &a, const FinalPillar &b)
-                  {
-                      return atan2(a.local.y(), a.local.x()) < atan2(b.local.y(), b.local.x());
-                  });
+        // // ---- Фаза 5: Сортировка по углу (для согласованного порядка) ----
+        // std::sort(final_pillars.begin(), final_pillars.end(),
+        //           [](const FinalPillar &a, const FinalPillar &b)
+        //           {
+        //               return atan2(a.local.y(), a.local.x()) < atan2(b.local.y(), b.local.x());
+        //           });
 
         // ---- Фаза 6: Финальное логирование результатов ----
         for (size_t i = 0; i < final_pillars.size(); ++i)
@@ -955,14 +961,175 @@ private:
         return final_pillars;
     }
 
+    // НОВАЯ ФУНКЦИЯ: reorderPillars (v6.5 - Ротационно-инвариантная сортировка)
+    // Выполняет геометрическое сопоставление и пересортировывает вектор pillars в эталонный порядок.
+    // Алгоритм: полный перебор 24 перестановок с минимизацией суммы квадратов ошибок расстояний.
+    void reorderPillars(AlignedPillarVector &pillars)
+    {
+            logi.log_b("\n--- reorderPillars --- \n");
+        // --- ПРОВЕРКА ВХОДНЫХ ДАННЫХ ---
+        if (pillars.size() != 4)
+        {
+            logi.log_r("    Reorder failed: Expected 4 pillars, found %lu.\n", pillars.size());
+            return; // Выход если количество столбов не соответствует ожидаемому
+        }
+
+        // --- КОНФИГУРАЦИЯ АЛГОРИТМА ---
+        const double ACCEPTABLE_RMSE = 0.05; // Допустимая среднеквадратичная ошибка (5 см)
+
+        // Эталонные имена столбов в правильном порядке
+        std::vector<std::string> names = {"RB", "RT", "LT", "LB"};
+
+        // Пары индексов для 6 расстояний между столбами и их соответствие d_center
+        // d_center: 0=RB-RT, 1=RB-LT, 2=RB-LB, 3=RT-LT, 4=RT-LB, 5=LT-LB
+        std::vector<std::pair<int, int>> ref_pairs = {
+            {0, 1}, // RB-RT = d_center[0]
+            {0, 2}, // RB-LT = d_center[1]
+            {0, 3}, // RB-LB = d_center[2]
+            {1, 2}, // RT-LT = d_center[3]
+            {1, 3}, // RT-LB = d_center[4]
+            {2, 3}  // LT-LB = d_center[5]
+        };
+
+        // --- ПЕРЕБОР ВСЕХ ПЕРЕСТАНОВОК ---
+        std::vector<int> current_match = {0, 1, 2, 3};        // Текущая перестановка индексов (начинаем с тождественной)
+        std::vector<int> best_match(4);                       // Лучшая найденная перестановка
+        double min_cost = std::numeric_limits<double>::max(); // Минимальная стоимость (инициализируем максимумом)
+        bool perfect_match_found = false;                     // Флаг идеального соответствия
+
+        logi.log("--- Starting geometric matching of %lu pillars...\n", pillars.size());
+
+        do
+        {
+            // ВЫЧИСЛЕНИЕ СТОИМОСТИ ТЕКУЩЕЙ ПЕРЕСТАНОВКИ
+            double current_cost = 0.0; // Сумма квадратов ошибок для текущей перестановки
+
+            // Проходим по всем 6 парам расстояний
+            for (int k = 0; k < 6; ++k)
+            {
+                // Получаем индексы эталонной пары
+                int i_ref = ref_pairs[k].first;
+                int j_ref = ref_pairs[k].second;
+
+                // Получаем соответствующие индексы в текущей перестановке
+                int i_pillar_idx = current_match[i_ref];
+                int j_pillar_idx = current_match[j_ref];
+
+                // Вычисляем измеренное расстояние между столбами
+                double measured_dist = MathUtils::dist2D(pillars[i_pillar_idx].local,
+                                                         pillars[j_pillar_idx].local);
+
+                // Получаем ожидаемое расстояние из эталонных данных
+                double expected_dist = d_center[k];
+
+                // Вычисляем квадрат ошибки и добавляем к общей стоимости
+                double error = measured_dist - expected_dist;
+                current_cost += error * error; // Используем L2-норму для устойчивости
+            }
+
+            // ПРОВЕРКА НА ИДЕАЛЬНОЕ СООТВЕТСТВИЕ (для оптимизации)
+            if (current_cost < 1e-6 && !perfect_match_found)
+            {
+                logi.log_g("    Perfect match found! Cost=%.2e\n", current_cost);
+                perfect_match_found = true;
+                best_match = current_match;
+                min_cost = current_cost;
+                break; // Выходим из цикла перебора - нашли идеальное решение
+            }
+
+            // ОБНОВЛЕНИЕ ЛУЧШЕГО РЕШЕНИЯ
+            if (current_cost < min_cost)
+            {
+                min_cost = current_cost;
+                best_match = current_match; // Сохраняем лучшую перестановку
+            }
+
+        } while (std::next_permutation(current_match.begin(), current_match.end())); // Перебираем все 24 варианта
+
+        // --- ВАЛИДАЦИЯ РЕЗУЛЬТАТА ---
+        double rmse = std::sqrt(min_cost / 6.0); // Среднеквадратичная ошибка по всем 6 расстояниям
+
+        if (rmse > ACCEPTABLE_RMSE)
+        {
+            logi.log_r("WARNING: High matching error (RMSE=%.3f m). Identification may be unreliable.\n", rmse);
+        }
+        else
+        {
+            logi.log_g("Geometric matching successful. RMSE=%.3f m\n", rmse);
+        }
+
+        // --- ДЕТАЛЬНОЕ ЛОГИРОВАНИЕ ЛУЧШЕЙ КОНФИГУРАЦИИ ---
+        logi.log("Best match configuration analysis:\n");
+        for (int k = 0; k < 6; ++k)
+        {
+            int i_ref = ref_pairs[k].first;
+            int j_ref = ref_pairs[k].second;
+            int i_actual = best_match[i_ref];
+            int j_actual = best_match[j_ref];
+
+            double measured = MathUtils::dist2D(pillars[i_actual].local,
+                                                pillars[j_actual].local);
+            double expected = d_center[k];
+            double error = std::abs(measured - expected);
+
+            // Цветное логирование в зависимости от величины ошибки
+            if (error <= 0.001)
+                logi.log_g("  %s-%s: %.3f (exp: %.3f) ✓ Δ=%.1f mm\n",
+                           names[i_ref].c_str(), names[j_ref].c_str(), measured, expected, error * 1000);
+            else if (error <= 0.010)
+                logi.log_w("  %s-%s: %.3f (exp: %.3f) ~ Δ=%.1f mm\n",
+                           names[i_ref].c_str(), names[j_ref].c_str(), measured, expected, error * 1000);
+            else
+                logi.log_r("  %s-%s: %.3f (exp: %.3f) ✗ Δ=%.1f mm\n",
+                           names[i_ref].c_str(), names[j_ref].c_str(), measured, expected, error * 1000);
+        }
+
+        // --- ПЕРЕСОРТИРОВКА И ПЕРЕИМЕНОВАНИЕ СТОЛБОВ ---
+        AlignedPillarVector sorted_pillars(4);
+        std::string mapping_log = "Pillar mapping result: ";
+
+        for (int i = 0; i < 4; ++i)
+        {
+            // best_match[i] содержит индекс исходного столба, который должен занять позицию i
+            int original_index = best_match[i];
+
+            // Копируем столб из исходной позиции в правильную позицию
+            sorted_pillars[i] = pillars[original_index];
+
+            // Присваиваем эталонное имя согласно новой позиции
+            sorted_pillars[i].name = names[i];
+
+            // Сохраняем индекс эталона для последующей калибровки
+            sorted_pillars[i].ref_index = i;
+
+            // Формируем строку лога для отладки
+            mapping_log += names[i] + "←P" + std::to_string(original_index) + " ";
+        }
+
+        // --- ФИНАЛЬНАЯ ЗАМЕНА И ЛОГИРОВАНИЕ ---
+        pillars = sorted_pillars; // Заменяем исходный вектор отсортированной версией
+
+        logi.log("%s\n", mapping_log.c_str());
+        logi.log_g("Pillars successfully reordered and renamed.\n");
+
+        // Дополнительный лог финальных координат
+        logi.log("Final pillar coordinates:\n");
+        for (const auto &pillar : pillars)
+        {
+            double angle = atan2(pillar.local.y(), pillar.local.x()) * 180.0 / M_PI;
+            logi.log("  %s: [%.3f, %.3f] (angle: %.1f°)\n",
+                     pillar.name.c_str(), pillar.local.x(), pillar.local.y(), angle);
+        }
+    }
+
     // Сохранение результатов в ROS Parameter Server (Без изменений)
-    void saveResults(const std::vector<FinalPillar> &pillars)
+    void saveResults(const AlignedPillarVector &pillars)
     {
         for (const auto &p : pillars)
         {
             if (p.name.find("Pillar_") != std::string::npos)
                 continue;
-            std::string base = "/pb_config/result/" + p.name;
+            std::string base = "/pb/scan/result/" + p.name;
             nh.setParam(base + "/x", p.global.x());
             nh.setParam(base + "/y", p.global.y());
         }
@@ -1047,10 +1214,10 @@ private:
             clean_points.push_back(P_next);
 
             // ВРЕМЕННЫЙ ЛОГ ТЕКУЩЕЙ ИТЕРАЦИИ (v5.5)
-            logi.log("%5lu | %8.3f | %8.3f | %9.3f | %8.3f | %8.3f | %10.3f | %13.3f | %s\n",
-                     i + 1, P_curr.x(), P_curr.y(), lidar_angle_deg, P_next.x(), P_next.y(),
-                     angle_deg, angle_check_deg,
-                     "KEPT_P_NEXT");
+            // logi.log("%5lu | %8.3f | %8.3f | %9.3f | %8.3f | %8.3f | %10.3f | %13.3f | %s\n",
+            //          i + 1, P_curr.x(), P_curr.y(), lidar_angle_deg, P_next.x(), P_next.y(),
+            //          angle_deg, angle_check_deg,
+            //          "KEPT_P_NEXT");
         }
 
         logi.log("--- END DETAILED ANGLE FILTER DEBUG LOG ---\n");
@@ -1065,7 +1232,7 @@ private:
     }
 
     // --- Калибровка: Полноценный Umeyama's Algorithm (Без изменений) ---
-    void performCalibration(std::vector<FinalPillar> &pillars)
+    void performCalibration(AlignedPillarVector &pillars)
     {
         if (pillars.size() != 4)
         {
@@ -1208,8 +1375,8 @@ private:
             if (i == 0) // match_index[0] = RB
                 global_RB = p.global;
         }
-        
-        logi.log_w("RB before fix: [%.3f, %.3f]\n", global_RB.x(), global_RB.y());  
+
+        logi.log_w("RB before fix: [%.3f, %.3f]\n", global_RB.x(), global_RB.y());
 
         // ---- Фиксация RB в (0,0) ----
         Eigen::Vector2d delta = -global_RB;
@@ -1745,10 +1912,10 @@ public:
         filtered_scan_results_ = current_filtered_scan; // Сохраняем LaserScan (нужен для заголовка)
 
         // 2. ЛОГИРОВАНИЕ СЫРОГО СКАНА (v4.7)
-        logRawScan(); // Логирование сырых данных
+        // logRawScan(); // Логирование сырых данных
 
         // 3. ЛОГИРОВАНИЕ ИТОГОВОГО ОТФИЛЬТРОВАННОГО СКАНА
-        logFinalFilteredScan(filtered_scan_results_); // Логирование медианного скана
+        // logFinalFilteredScan(filtered_scan_results_); // Логирование медианного скана
 
         logi.log("\n--- FILTERING STATISTICS ---\n");                      // Логирование статистики
         logi.log("1. Total rays in scan (max): %d\n", total_initial_rays); // Общее число лучей
@@ -1812,7 +1979,12 @@ public:
                  all_candidates.size(), c1.size(), c2.size(), c3.size());
 
         // 6. Fusion
-        std::vector<FinalPillar> final_pillars = fuseCandidates(all_candidates); // Слияние кандидатов
+        AlignedPillarVector final_pillars = fuseCandidates(all_candidates); // Слияние кандидатов
+
+        if (final_pillars.size() == 4)
+        {
+            reorderPillars(final_pillars); // Геометрическая сортировка
+        }
 
         AlignedVector2f current_fused_centers;
         for (const auto &fp : final_pillars)
