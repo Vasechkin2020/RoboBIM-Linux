@@ -53,13 +53,12 @@ struct FinalPillar
     Eigen::Vector2f local;
     Eigen::Vector2d global;
     double total_weight = 0.0; // ← добавляем
-    int ref_index = -1; // ← ДОБАВИТЬ ЭТУ СТРОКУ для хранения индекса эталона
+    int ref_index = -1;        // ← ДОБАВИТЬ ЭТУ СТРОКУ для хранения индекса эталона
 };
 
 // Тип для выровненного вектора FinalPillar
 // НОВОЕ: Мы указываем контейнеру использовать специальный аллокатор Eigen
 using AlignedPillarVector = std::vector<FinalPillar, Eigen::aligned_allocator<FinalPillar>>;
-
 
 // Тип для выровненного вектора Eigen::Vector2f
 using AlignedVector2f = std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f>>;
@@ -213,6 +212,25 @@ private:
 
     AlignedVector2f fused_centers_results_;
     AlignedVector2f clean_points_results_; // <-- НОВОЕ: Для сохранения точек после углового фильтра
+
+    // Структура для хранения калибровки лидара
+    struct LidarCalibration
+    {
+        double scale_factor = 1.0;
+        double rotation_deg = 0.0;
+        Eigen::Vector2d position = Eigen::Vector2d(0, 0);
+        Eigen::Matrix2d rotation_matrix = Eigen::Matrix2d::Identity();
+
+        void clear()
+        {
+            scale_factor = 1.0;
+            rotation_deg = 0.0;
+            position = Eigen::Vector2d(0, 0);
+            rotation_matrix = Eigen::Matrix2d::Identity();
+        }
+    };
+
+    LidarCalibration lidar_calibration_; //  для хранения калибровки
 
     // ----------------------------------------------------------------------------------
     // 3. ПРИВАТНЫЕ МЕТОДЫ
@@ -966,7 +984,7 @@ private:
     // Алгоритм: полный перебор 24 перестановок с минимизацией суммы квадратов ошибок расстояний.
     void reorderPillars(AlignedPillarVector &pillars)
     {
-            logi.log("\n--- reorderPillars --- \n");
+        logi.log("\n--- reorderPillars --- \n");
         // --- ПРОВЕРКА ВХОДНЫХ ДАННЫХ ---
         if (pillars.size() != 4)
         {
@@ -1122,20 +1140,54 @@ private:
         }
     }
 
-    // Сохранение результатов в ROS Parameter Server (Без изменений)
-    void saveResults(const AlignedPillarVector &pillars)
-    {
-        for (const auto &p : pillars)
-        {
-            if (p.name.find("Pillar_") != std::string::npos)
-                continue;
-            std::string base = "/pb/scan/result/" + p.name;
-            nh.setParam(base + "/x", p.global.x());
-            nh.setParam(base + "/y", p.global.y());
-        }
-        logi.log_g("Results saved to rosparam.\n");
+/* * Преобразование координат из системы лидара в мировую систему с применением калибровочных параметров */
+Eigen::Vector2d lidarToWorld(const Eigen::Vector2d& lidar_point)
+{
+    if (!calibration_done_) {
+        logi.log_r("Калибровка не выполнена, преобразование невозможно\n");
+        return lidar_point;
     }
+    
+    return lidar_calibration_.scale_factor * 
+           lidar_calibration_.rotation_matrix * 
+           lidar_point + 
+           lidar_calibration_.position;
+}
 
+/* * Преобразование координат из мировой системы в систему лидара * (обратное преобразование) */
+Eigen::Vector2d worldToLidar(const Eigen::Vector2d& world_point)
+{
+    if (!calibration_done_) {
+        logi.log_r("Калибровка не выполнена, преобразование невозможно\n");
+        return world_point;
+    }
+    
+    // Обратное преобразование: P = (1/c) * Rᵀ * (Q - T)
+    Eigen::Matrix2d R_inv = lidar_calibration_.rotation_matrix.transpose();
+    double c_inv = 1.0 / lidar_calibration_.scale_factor;
+    
+    return c_inv * R_inv * (world_point - lidar_calibration_.position);
+}
+
+void saveResults(const AlignedPillarVector &pillars)
+{
+    logi.log("--- 💾 СОХРАНЕНИЕ РЕЗУЛЬТАТОВ:\n");
+    
+    // 1. Сохраняем идеальные координаты столбов (для обратной совместимости)
+    for (const auto &p : pillars)
+    {
+        if (p.name.find("Pillar_") != std::string::npos)
+            continue;
+        
+        std::string base = "/pb/scan/result/" + p.name;
+        nh.setParam(base + "/x", p.global.x());
+        nh.setParam(base + "/y", p.global.y());
+        
+        logi.log("  %s: [%.6f, %.6f]\n", 
+                 p.name.c_str(), p.global.x(), p.global.y());
+    }
+    logi.log_g("✅ РЕЗУЛЬТАТЫ СОХРАНЕНЫ\n");
+}
     // --- ИЗМЕНЕНА: removeEdgeArtifacts (Полностью - v5.5) ---
     // Удаление фантомных точек (хвостов) с помощью углового фильтра
     AlignedVector2f removeEdgeArtifacts(const AlignedVector2f &points, const std::vector<double> &intensities, int &points_removed_by_angle_filter)
@@ -1231,193 +1283,499 @@ private:
         return clean_points;
     }
 
-    /*
- * Версия: 6.8 - Оптимизированная
- * Дата: 2025-12-01
- * Особенности:
- * 1. Предполагает pillars уже отсортированными в порядке {RB, RT, LT, LB}
- * 2. Корректная обработка масштаба с защитой от деления на ноль
- * 3. Детальное логирование ошибок для каждого столба
- * 4. Сохранение параметров трансформации для последующего использования
+    // /*
+    //  * Версия: 6.8 - Оптимизированная
+    //  * Дата: 2025-12-01
+    //  * Особенности:
+    //  * 1. Предполагает pillars уже отсортированными в порядке {RB, RT, LT, LB}
+    //  * 2. Корректная обработка масштаба с защитой от деления на ноль
+    //  * 3. Детальное логирование ошибок для каждого столба
+    //  * 4. Сохранение параметров трансформации для последующего использования
+    //  */
+    // void performCalibration(AlignedPillarVector &pillars)
+    // {
+    //     // ========== 1. ПРОВЕРКА ВХОДНЫХ ДАННЫХ ==========
+    //     if (pillars.size() != 4)
+    //     {
+    //         logi.log_w("Calibration skipped: Need exactly 4 pillars (Found %lu).\n", pillars.size());
+    //         return;
+    //     }
+
+    //     logi.log("\n--- UMEYAMA CALIBRATION (v6.8) ---\n");
+
+    //     // Быстрая проверка порядка столбов (опционально, для отладки)
+    //     const std::vector<std::string> expected_names = {"RB", "RT", "LT", "LB"};
+    //     for (int i = 0; i < 4; ++i)
+    //     {
+    //         if (pillars[i].name != expected_names[i])
+    //         {
+    //             logi.log_r("WARNING: Pillar %d is %s, expected %s\n",
+    //                        i, pillars[i].name.c_str(), expected_names[i].c_str());
+    //         }
+    //     }
+
+    //     // ========== 2. ПОДГОТОВКА МАТРИЦ ДАННЫХ ==========
+    //     // P - измеренные координаты (2×4), Q - эталонные координаты (2×4)
+    //     Eigen::Matrix2Xd P(2, 4), Q(2, 4);
+
+    //     for (int i = 0; i < 4; ++i)
+    //     {
+    //         // Прямое соответствие: pillars[i] → reference_centers_[i]
+    //         P.col(i) = pillars[i].local.cast<double>();
+    //         Q.col(i) = reference_centers_[i].cast<double>();
+
+    //         logi.log("  %s: Local (%.3f, %.3f) → Ref (%.3f, %.3f)\n",
+    //                  pillars[i].name.c_str(),
+    //                  pillars[i].local.x(), pillars[i].local.y(),
+    //                  reference_centers_[i].x(), reference_centers_[i].y());
+    //     }
+
+    //     // ========== 3. ВЫЧИСЛЕНИЕ ЦЕНТРОИДОВ ==========
+    //     Eigen::Vector2d mu_P = P.rowwise().mean(); // Центр измеренных точек
+    //     Eigen::Vector2d mu_Q = Q.rowwise().mean(); // Центр эталонных точек
+
+    //     // ========== 4. ЦЕНТРИРОВАНИЕ ==========
+    //     Eigen::Matrix2Xd P_centered = P.colwise() - mu_P;
+    //     Eigen::Matrix2Xd Q_centered = Q.colwise() - mu_Q;
+
+    //     // ========== 5. КОВАРИАЦИОННАЯ МАТРИЦА ==========
+    //     Eigen::Matrix2d H = P_centered * Q_centered.transpose();
+
+    //     // ========== 6. SVD РАЗЛОЖЕНИЕ ==========
+    //     Eigen::JacobiSVD<Eigen::Matrix2d> svd(H, Eigen::ComputeFullU | Eigen::ComputeFullV);
+    //     Eigen::Matrix2d U = svd.matrixU();
+    //     Eigen::Matrix2d V = svd.matrixV();
+
+    //     // ========== 7. МАТРИЦА ВРАЩЕНИЯ R ==========
+    //     Eigen::Matrix2d D = Eigen::Matrix2d::Identity();
+    //     // Проверка необходимости отражения
+    //     if (U.determinant() * V.determinant() < 0.0)
+    //     {
+    //         D(1, 1) = -1.0;
+    //     }
+    //     Eigen::Matrix2d R = V * D * U.transpose();
+
+    //     // ========== 8. ВЫЧИСЛЕНИЕ МАСШТАБА c ==========
+    //     double denominator = P_centered.squaredNorm();
+    //     if (denominator < 1e-12)
+    //     {
+    //         logi.log_r("CALIBRATION FAILED: Zero denominator in scale calculation.\n");
+    //         return;
+    //     }
+
+    //     double c = svd.singularValues().sum() / denominator;
+
+    //     // Проверка разумности масштаба
+    //     if (c < 0.7 || c > 1.3)
+    //     {
+    //         logi.log_r("WARNING: Abnormal scale c=%.3f (expected ~1.0)\n", c);
+    //     }
+
+    //     // ========== 9. ВЕКТОР СДВИГА T ==========
+    //     Eigen::Vector2d T = mu_Q - c * R * mu_P;
+
+    //     // ========== 10. ЛОГИРОВАНИЕ ПАРАМЕТРОВ ==========
+    //     logi.log("--- Umeyama Transformation Parameters:\n");
+    //     logi.log_g("  Scale (c):     %.4f\n", c);
+
+    //     double rotation_deg = atan2(R(1, 0), R(0, 0)) * 180.0 / M_PI;
+    //     logi.log_g("  Rotation:      %.2f°\n", rotation_deg);
+
+    //     logi.log_g("  Translation T: [%.3f, %.3f]\n", T.x(), T.y());
+
+    //     // ========== 11. ПРИМЕНЕНИЕ ТРАНСФОРМАЦИИ ==========
+    //     Eigen::Vector2d global_RB; // Для фиксации RB в (0,0)
+
+    //     for (int i = 0; i < 4; ++i)
+    //     {
+    //         FinalPillar &p = pillars[i];
+    //         Eigen::Vector2d local_double = p.local.cast<double>();
+
+    //         // Применяем трансформацию: global = c*R*local + T
+    //         p.global = c * R * local_double + T;
+
+    //         if (i == 0) // RB (индекс 0)
+    //         {
+    //             global_RB = p.global;
+    //             logi.log("RB before fix: [%.3f, %.3f]\n", global_RB.x(), global_RB.y());
+    //         }
+    //     }
+
+    //     // ========== 12. ФИКСАЦИЯ RB В (0,0) ==========
+    //     Eigen::Vector2d delta = -global_RB;
+    //     logi.log_b("Fixing RB to origin. Applying delta: [%.3f, %.3f]\n", delta.x(), delta.y());
+
+    //     for (int i = 0; i < 4; ++i)
+    //     {
+    //         pillars[i].global += delta;
+    //     }
+
+    //     // ========== 13. ВЫЧИСЛЕНИЕ И АНАЛИЗ ОШИБКИ ==========
+    //     double rmse_sum_sq = 0.0;
+    //     double max_error = 0.0;
+
+    //     logi.log("    Final Global Coordinates (after RB fix):\n");
+
+    //     for (int i = 0; i < 4; ++i)
+    //     {
+    //         FinalPillar &p = pillars[i];
+    //         Eigen::Vector2d ref = reference_centers_[i].cast<double>();
+    //         Eigen::Vector2d error = p.global - ref;
+    //         double error_norm = error.norm();
+
+    //         // Обновляем статистику
+    //         rmse_sum_sq += error_norm * error_norm;
+    //         max_error = std::max(max_error, error_norm);
+
+    //         // Детальное логирование с цветовой маркировкой
+    //         if (error_norm <= 0.001) // ≤1 мм
+    //             logi.log_g("  %s: [%.3f, %.3f] ✓ Δ=%.1f mm\n",
+    //                        p.name.c_str(), p.global.x(), p.global.y(), error_norm * 1000);
+    //         else if (error_norm <= 0.010) // ≤10 мм
+    //             logi.log_w("  %s: [%.3f, %.3f] ~ Δ=%.1f mm\n",
+    //                        p.name.c_str(), p.global.x(), p.global.y(), error_norm * 1000);
+    //         else
+    //             logi.log_r("  %s: [%.3f, %.3f] ✗ Δ=%.1f mm\n",
+    //                        p.name.c_str(), p.global.x(), p.global.y(), error_norm * 1000);
+    //     }
+
+    //     // ========== 14. ВЫЧИСЛЕНИЕ RMSE ==========
+    //     double rmse = std::sqrt(rmse_sum_sq / 4.0);
+
+    //     logi.log_b("--- Calibration Accuracy:\n");
+    //     logi.log_g("  RMSE:       %.3f m (%.1f mm)\n", rmse, rmse * 1000);
+    //     logi.log_g("  Max Error:  %.3f m (%.1f mm)\n", max_error, max_error * 1000);
+
+    //     // ========== 15. ПРИНЯТИЕ РЕШЕНИЯ ==========
+    //     const double RMSE_THRESHOLD = 0.05; // 5 см порог
+
+    //     if (rmse <= RMSE_THRESHOLD)
+    //     {
+    //         calibration_done_ = true;
+    //         // Сохранение результатов
+    //         final_pillars_results_ = pillars;
+
+    //         logi.log_g("✅ CALIBRATION SUCCESSFUL! RMSE = %.1f mm\n", rmse * 1000);
+
+    //         // Визуализация
+    //         publishFinalMarkers(final_pillars_results_);
+    //     }
+    //     else
+    //     {
+    //         logi.log_r("❌ CALIBRATION FAILED: RMSE = %.1f mm > threshold = %.1f mm\n",
+    //                    rmse * 1000, RMSE_THRESHOLD * 1000);
+    //         logi.log_r("Results will not be saved.\n");
+    //     }
+
+    //     logi.log("----------------------------------------\n");
+    // }
+
+/*
+ * Сохранение параметров калибровки лидара в ROS Parameter Server
+ */
+void saveCalibrationParameters()
+{
+    if (!calibration_done_) {
+        logi.log_r("Cannot save calibration: calibration not completed\n");
+        return;
+    }
+    
+    logi.log("--- 💾 SAVING CALIBRATION PARAMETERS:\n");
+    
+    std::string base_path = "/lidar_calibration";
+    
+    // 1. Позиция лидара
+    nh.setParam(base_path + "/position_x", lidar_calibration_.position.x());
+    nh.setParam(base_path + "/position_y", lidar_calibration_.position.y());
+    
+    logi.log("  LiDAR position saved:\n");
+    logi.log("    position_x = %.6f m\n", lidar_calibration_.position.x());
+    logi.log("    position_y = %.6f m\n", lidar_calibration_.position.y());
+    
+    // 2. Угол поворота
+    nh.setParam(base_path + "/rotation_deg", lidar_calibration_.rotation_deg);
+    nh.setParam(base_path + "/rotation_rad", lidar_calibration_.rotation_deg * M_PI / 180.0);
+    
+    logi.log("  Rotation angle saved:\n");
+    logi.log("    rotation_deg = %.6f°\n", lidar_calibration_.rotation_deg);
+    logi.log("    rotation_rad = %.6f rad\n", lidar_calibration_.rotation_deg * M_PI / 180.0);
+    
+    // 3. Масштабный коэффициент
+    nh.setParam(base_path + "/scale_factor", lidar_calibration_.scale_factor);
+    
+    logi.log("  Scale factor saved:\n");
+    logi.log("    scale_factor = %.6f\n", lidar_calibration_.scale_factor);
+    logi.log("    Scale error: %+.2f%%\n", 
+             (lidar_calibration_.scale_factor - 1.0) * 100.0);
+    
+    // 4. Матрица поворота (поэлементно)
+    nh.setParam(base_path + "/rotation_matrix/r00", lidar_calibration_.rotation_matrix(0,0));
+    nh.setParam(base_path + "/rotation_matrix/r01", lidar_calibration_.rotation_matrix(0,1));
+    nh.setParam(base_path + "/rotation_matrix/r10", lidar_calibration_.rotation_matrix(1,0));
+    nh.setParam(base_path + "/rotation_matrix/r11", lidar_calibration_.rotation_matrix(1,1));
+    
+    logi.log("  Rotation matrix saved:\n");
+    logi.log("    [%10.6f %10.6f]\n", 
+             lidar_calibration_.rotation_matrix(0,0),
+             lidar_calibration_.rotation_matrix(0,1));
+    logi.log("    [%10.6f %10.6f]\n", 
+             lidar_calibration_.rotation_matrix(1,0),
+             lidar_calibration_.rotation_matrix(1,1));
+    
+    // 5. Временная метка - FIXED: нужно привести к int
+    ros::Time now = ros::Time::now();
+    nh.setParam(base_path + "/timestamp_sec", static_cast<int>(now.sec));
+    nh.setParam(base_path + "/timestamp_nsec", static_cast<int>(now.nsec));
+    nh.setParam(base_path + "/calibration_done", true);
+    
+    logi.log("  Metadata:\n");
+    logi.log("    timestamp: %d.%09d\n", now.sec, now.nsec);
+    logi.log_g("    ✅ Calibration parameters saved to ROS Parameter Server\n");
+    logi.log("   Use command: rosparam get /lidar_calibration\n");
+}
+
+/*
+ * Версия: 7.0 - Калибровка лидара относительно эталона
+ * Вместо подгонки эталона под лидар, находим параметры лидара:
+ * 1. position - координаты лидара в мировой системе
+ * 2. rotation_deg - угол поворота лидара
+ * 3. scale_factor - поправочный коэффициент масштаба
  */
 void performCalibration(AlignedPillarVector &pillars)
 {
+    logi.log("\n--- LiDAR CALIBRATION STARTED performCalibration (v7.0)\n");
+    
     // ========== 1. ПРОВЕРКА ВХОДНЫХ ДАННЫХ ==========
     if (pillars.size() != 4) 
     {
-        logi.log_w("Calibration skipped: Need exactly 4 pillars (Found %lu).\n", pillars.size());
+        logi.log_r("❌ Calibration failed: found %lu pillars, need exactly 4\n", pillars.size());
+        lidar_calibration_.clear();
         return;
     }
-
-    logi.log("\n--- UMEYAMA CALIBRATION (v6.8) ---\n");
     
-    // Быстрая проверка порядка столбов (опционально, для отладки)
-    const std::vector<std::string> expected_names = {"RB", "RT", "LT", "LB"};
-    for (int i = 0; i < 4; ++i)
-    {
-        if (pillars[i].name != expected_names[i])
-        {
-            logi.log_r("WARNING: Pillar %d is %s, expected %s\n", 
-                       i, pillars[i].name.c_str(), expected_names[i].c_str());
-        }
+    logi.log_b("📊 INPUT DATA:\n");
+    logi.log("  Reference coordinates (from YAML):\n");
+    for (int i = 0; i < 4; ++i) {
+        logi.log("    %s: [%.4f, %.4f]\n", 
+                 pillars[i].name.c_str(),
+                 reference_centers_[i].x(), reference_centers_[i].y());
     }
-
+    
+    logi.log("  Measured coordinates (by LiDAR):\n");
+    for (int i = 0; i < 4; ++i) {
+        double angle = atan2(pillars[i].local.y(), pillars[i].local.x()) * 180.0 / M_PI;
+        logi.log("    %s: [%.4f, %.4f] (angle: %.1f°, distance: %.3f m)\n", 
+                 pillars[i].name.c_str(),
+                 pillars[i].local.x(), pillars[i].local.y(),
+                 angle, pillars[i].local.norm());
+    }
+    
     // ========== 2. ПОДГОТОВКА МАТРИЦ ДАННЫХ ==========
-    // P - измеренные координаты (2×4), Q - эталонные координаты (2×4)
+    // P - измеренные координаты (2×4) в системе лидара
+    // Q - эталонные координаты (2×4) в мировой системе
     Eigen::Matrix2Xd P(2, 4), Q(2, 4);
     
     for (int i = 0; i < 4; ++i)
     {
-        // Прямое соответствие: pillars[i] → reference_centers_[i]
-        P.col(i) = pillars[i].local.cast<double>();
-        Q.col(i) = reference_centers_[i].cast<double>();
-        
-        logi.log("  %s: Local (%.3f, %.3f) → Ref (%.3f, %.3f)\n",
-                 pillars[i].name.c_str(),
-                 pillars[i].local.x(), pillars[i].local.y(),
-                 reference_centers_[i].x(), reference_centers_[i].y());
+        // Важно: pillars уже отсортированы как {RB, RT, LT, LB}
+        // и соответствуют reference_centers_[i]
+        P.col(i) = pillars[i].local.cast<double>();       // LiDAR → pillar
+        Q.col(i) = reference_centers_[i].cast<double>();  // World → pillar
     }
-
+    
+    logi.log_g("--- 📐 UMEYAMA EQUATION SOLUTION:\n");
+    logi.log("  Finding transformation: Q = c * R * P + T\n");
+    logi.log("  where: Q - reference (world), P - measurements (LiDAR)\n");
+    
     // ========== 3. ВЫЧИСЛЕНИЕ ЦЕНТРОИДОВ ==========
-    Eigen::Vector2d mu_P = P.rowwise().mean();  // Центр измеренных точек
-    Eigen::Vector2d mu_Q = Q.rowwise().mean();  // Центр эталонных точек
-
+    Eigen::Vector2d mu_P = P.rowwise().mean();  // Measurements centroid
+    Eigen::Vector2d mu_Q = Q.rowwise().mean();  // Reference centroid
+    
+    logi.log("  Measurements centroid P̄: [%.4f, %.4f]\n", mu_P.x(), mu_P.y());
+    logi.log("  Reference centroid Q̄:   [%.4f, %.4f]\n", mu_Q.x(), mu_Q.y());
+    
     // ========== 4. ЦЕНТРИРОВАНИЕ ==========
     Eigen::Matrix2Xd P_centered = P.colwise() - mu_P;
     Eigen::Matrix2Xd Q_centered = Q.colwise() - mu_Q;
-
+    
     // ========== 5. КОВАРИАЦИОННАЯ МАТРИЦА ==========
     Eigen::Matrix2d H = P_centered * Q_centered.transpose();
-
+    logi.log("  Covariance matrix H:\n");
+    logi.log("    [%10.6f %10.6f]\n", H(0,0), H(0,1));
+    logi.log("    [%10.6f %10.6f]\n", H(1,0), H(1,1));
+    
     // ========== 6. SVD РАЗЛОЖЕНИЕ ==========
     Eigen::JacobiSVD<Eigen::Matrix2d> svd(H, Eigen::ComputeFullU | Eigen::ComputeFullV);
     Eigen::Matrix2d U = svd.matrixU();
     Eigen::Matrix2d V = svd.matrixV();
-
+    
+    logi.log("  Singular values: %.6f, %.6f\n", 
+             svd.singularValues()(0), svd.singularValues()(1));
+    
     // ========== 7. МАТРИЦА ВРАЩЕНИЯ R ==========
     Eigen::Matrix2d D = Eigen::Matrix2d::Identity();
-    // Проверка необходимости отражения
-    if (U.determinant() * V.determinant() < 0.0)
-    {
+    if (U.determinant() * V.determinant() < 0.0) {
         D(1, 1) = -1.0;
+        logi.log_w("  ⚠️  Different sign determinants → adding reflection\n");
     }
+    
     Eigen::Matrix2d R = V * D * U.transpose();
-
+    
+    // Проверка, что R - матрица вращения (ортогональная)
+    double det_R = R.determinant();
+    if (std::abs(det_R - 1.0) > 1e-6) {
+        logi.log_r("  ❗ Matrix R is not pure rotation matrix: det=%.6f\n", det_R);
+    }
+    
     // ========== 8. ВЫЧИСЛЕНИЕ МАСШТАБА c ==========
     double denominator = P_centered.squaredNorm();
-    if (denominator < 1e-12)
-    {
-        logi.log_r("CALIBRATION FAILED: Zero denominator in scale calculation.\n");
+    if (denominator < 1e-12) {
+        logi.log_r("  ❗ Zero denominator in scale calculation\n");
+        lidar_calibration_.clear();
         return;
     }
     
     double c = svd.singularValues().sum() / denominator;
     
-    // Проверка разумности масштаба
-    if (c < 0.7 || c > 1.3)
-    {
-        logi.log_r("WARNING: Abnormal scale c=%.3f (expected ~1.0)\n", c);
-    }
-
     // ========== 9. ВЕКТОР СДВИГА T ==========
+    // ВАЖНО: T = Q̄ - c*R*P̄
+    // Физический смысл: координаты лидара в мировой системе
     Eigen::Vector2d T = mu_Q - c * R * mu_P;
-
-    // ========== 10. ЛОГИРОВАНИЕ ПАРАМЕТРОВ ==========
-    logi.log("--- Umeyama Transformation Parameters:\n");
-    logi.log_g("  Scale (c):     %.4f\n", c);
     
-    double rotation_deg = atan2(R(1, 0), R(0, 0)) * 180.0 / M_PI;
-    logi.log_g("  Rotation:      %.2f°\n", rotation_deg);
+    logi.log_g("--- 🎯 FOUND LiDAR PARAMETERS:\n");
     
-    logi.log_g("  Translation T: [%.3f, %.3f]\n", T.x(), T.y());
-
-    // ========== 11. ПРИМЕНЕНИЕ ТРАНСФОРМАЦИИ ==========
-    Eigen::Vector2d global_RB; // Для фиксации RB в (0,0)
+    // 9.1. Масштабный коэффициент
+    lidar_calibration_.scale_factor = c;
+    double scale_error_percent = (c - 1.0) * 100.0;
+    logi.log("  🔍 Scale factor (c): %.6f\n", c);
+    logi.log("     Scale error: %+.2f%%\n", scale_error_percent);
     
-    for (int i = 0; i < 4; ++i)
-    {
-        FinalPillar &p = pillars[i];
-        Eigen::Vector2d local_double = p.local.cast<double>();
+    if (std::abs(scale_error_percent) > 5.0) {
+        logi.log_r("     ⚠️  Warning: large scale error (>5%%)\n");
+    } else if (std::abs(scale_error_percent) > 2.0) {
+        logi.log_w("     ⚠️  Noticeable scale error (>2%%)\n");
+    } else {
+        logi.log_g("     ✓ Scale within normal range\n");
+    }
+    
+    // 9.2. Угол поворота
+    double rotation_rad = atan2(R(1, 0), R(0, 0));
+    double rotation_deg = rotation_rad * 180.0 / M_PI;
+    lidar_calibration_.rotation_deg = rotation_deg;
+    lidar_calibration_.rotation_matrix = R;
+    
+    logi.log("  🧭 LiDAR rotation angle: %.2f°\n", rotation_deg);
+    logi.log("     Rotation matrix R:\n");
+    logi.log("     [%8.5f %8.5f]\n", R(0,0), R(0,1));
+    logi.log("     [%8.5f %8.5f]\n", R(1,0), R(1,1));
+    
+    // 9.3. Позиция лидара в мире
+    lidar_calibration_.position = T;
+    logi.log("  📍 LiDAR position in world system (T):\n");
+    logi.log("     X = %.4f m\n", T.x());
+    logi.log("     Y = %.4f m\n", T.y());
+    logi.log("     Distance from origin: %.3f m\n", T.norm());
+    
+    // ========== 10. ВАЛИДАЦИЯ: ПРИМЕНЕНИЕ ПРЕОБРАЗОВАНИЯ ==========
+    logi.log_g("--- 🔬 CALIBRATION VALIDATION:\n");
+    logi.log("  Applying transformation to measured points:\n");
+    logi.log("  Pillar | Measured (P) | Transformed | Reference (Q) | Error (mm)\n");
+    logi.log("  -------------------------------------------------------------\n");
+    
+    double max_error = 0.0;
+    double total_error_sq = 0.0;
+    
+    for (int i = 0; i < 4; ++i) {
+        Eigen::Vector2d p = P.col(i);
+        Eigen::Vector2d q_expected = Q.col(i);
         
-        // Применяем трансформацию: global = c*R*local + T
-        p.global = c * R * local_double + T;
+        // Преобразование: Q' = c*R*P + T
+        Eigen::Vector2d q_calculated = c * R * p + T;
         
-        if (i == 0) // RB (индекс 0)
-        {
-            global_RB = p.global;
-            logi.log("RB before fix: [%.3f, %.3f]\n", global_RB.x(), global_RB.y());
+        double error = (q_calculated - q_expected).norm();
+        total_error_sq += error * error;
+        if (error > max_error) max_error = error;
+        
+        // Цветное логирование в зависимости от ошибки
+        if (error <= 0.001) { // ≤1 мм
+            logi.log_g("  %s  [%6.3f,%6.3f] → [%6.3f,%6.3f] ≈ [%6.3f,%6.3f]  %.1f✓\n",
+                      pillars[i].name.c_str(),
+                      p.x(), p.y(),
+                      q_calculated.x(), q_calculated.y(),
+                      q_expected.x(), q_expected.y(),
+                      error * 1000);
+        } else if (error <= 0.010) { // ≤10 мм
+            logi.log_w("  %s  [%6.3f,%6.3f] → [%6.3f,%6.3f] ≈ [%6.3f,%6.3f]  %.1f~\n",
+                      pillars[i].name.c_str(),
+                      p.x(), p.y(),
+                      q_calculated.x(), q_calculated.y(),
+                      q_expected.x(), q_expected.y(),
+                      error * 1000);
+        } else {
+            logi.log_r("  %s  [%6.3f,%6.3f] → [%6.3f,%6.3f] ≠ [%6.3f,%6.3f]  %.1f✗\n",
+                      pillars[i].name.c_str(),
+                      p.x(), p.y(),
+                      q_calculated.x(), q_calculated.y(),
+                      q_expected.x(), q_expected.y(),
+                      error * 1000);
         }
     }
-
-    // ========== 12. ФИКСАЦИЯ RB В (0,0) ==========
-    Eigen::Vector2d delta = -global_RB;
-    logi.log_b("Fixing RB to origin. Applying delta: [%.3f, %.3f]\n", delta.x(), delta.y());
     
-    for (int i = 0; i < 4; ++i)
-    {
-        pillars[i].global += delta;
-    }
-
-    // ========== 13. ВЫЧИСЛЕНИЕ И АНАЛИЗ ОШИБКИ ==========
-    double rmse_sum_sq = 0.0;
-    double max_error = 0.0;
+    // ========== 11. ВЫЧИСЛЕНИЕ RMSE ==========
+    double rmse = std::sqrt(total_error_sq / 4.0);
+    logi.log_b("--- 📈 ACCURACY STATISTICS:\n");
+    logi.log("  Maximum error: %.1f mm\n", max_error * 1000);
+    logi.log("  Root Mean Square Error (RMSE): %.1f mm\n", rmse * 1000);
+    logi.log("  Sum of squared errors: %.6f m²\n", total_error_sq);
     
-    logi.log("    Final Global Coordinates (after RB fix):\n");
-    
-    for (int i = 0; i < 4; ++i)
-    {
-        FinalPillar &p = pillars[i];
-        Eigen::Vector2d ref = reference_centers_[i].cast<double>();
-        Eigen::Vector2d error = p.global - ref;
-        double error_norm = error.norm();
-        
-        // Обновляем статистику
-        rmse_sum_sq += error_norm * error_norm;
-        max_error = std::max(max_error, error_norm);
-        
-        // Детальное логирование с цветовой маркировкой
-        if (error_norm <= 0.001) // ≤1 мм
-            logi.log_g("  %s: [%.3f, %.3f] ✓ Δ=%.1f mm\n",
-                      p.name.c_str(), p.global.x(), p.global.y(), error_norm*1000);
-        else if (error_norm <= 0.010) // ≤10 мм
-            logi.log_w("  %s: [%.3f, %.3f] ~ Δ=%.1f mm\n",
-                      p.name.c_str(), p.global.x(), p.global.y(), error_norm*1000);
-        else
-            logi.log_r("  %s: [%.3f, %.3f] ✗ Δ=%.1f mm\n",
-                      p.name.c_str(), p.global.x(), p.global.y(), error_norm*1000);
-    }
-
-    // ========== 14. ВЫЧИСЛЕНИЕ RMSE ==========
-    double rmse = std::sqrt(rmse_sum_sq / 4.0);
-    
-    logi.log_b("--- Calibration Accuracy:\n");
-    logi.log_g("  RMSE:       %.3f m (%.1f mm)\n", rmse, rmse*1000);
-    logi.log_g("  Max Error:  %.3f m (%.1f mm)\n", max_error, max_error*1000);
-
-    // ========== 15. ПРИНЯТИЕ РЕШЕНИЯ ==========
+    // ========== 12. ПРИНЯТИЕ РЕШЕНИЯ О КАЛИБРОВКЕ ==========
     const double RMSE_THRESHOLD = 0.05; // 5 см порог
     
-    if (rmse <= RMSE_THRESHOLD)
-    {
+    if (rmse <= RMSE_THRESHOLD) {
         calibration_done_ = true;
-        // Сохранение результатов
+        
+        // Столбы получают идеальные координаты (а не преобразованные)
+        for (int i = 0; i < 4; ++i) {
+            pillars[i].global = reference_centers_[i].cast<double>();
+        }
+        
+        // Сохранение финальных результатов
         final_pillars_results_ = pillars;
         
-        logi.log_g("✅ CALIBRATION SUCCESSFUL! RMSE = %.1f mm\n", rmse*1000);
+        logi.log_g("✅ CALIBRATION SUCCESSFUL! RMSE = %.1f mm < %.1f mm\n", 
+                   rmse * 1000, RMSE_THRESHOLD * 1000);
+        
+        // Сохраняем параметры калибровки
+        saveCalibrationParameters();
         
         // Визуализация
         publishFinalMarkers(final_pillars_results_);
-    }
-    else
-    {
+    } else {
         logi.log_r("❌ CALIBRATION FAILED: RMSE = %.1f mm > threshold = %.1f mm\n",
-                   rmse*1000, RMSE_THRESHOLD*1000);
-        logi.log_r("Results will not be saved.\n");
+                   rmse * 1000, RMSE_THRESHOLD * 1000);
+        lidar_calibration_.clear();
+        logi.log_r("  Calibration parameters reset.\n");
     }
     
-    logi.log("----------------------------------------\n");
+    // ========== 13. ПРИМЕР ИСПОЛЬЗОВАНИЯ ==========
+    logi.log_g("--- 💡 CALIBRATION USAGE EXAMPLE:\n");
+    logi.log("  For correcting LiDAR measurements:\n");
+    logi.log("    Q = %.4f * R * P + [%.4f, %.4f]\n", 
+             lidar_calibration_.scale_factor,
+             lidar_calibration_.position.x(),
+             lidar_calibration_.position.y());
+    
+    // Пример: объект на расстоянии 5м прямо перед лидаром
+    Eigen::Vector2d example_lidar_point(5.0, 0.0);
+    Eigen::Vector2d example_world_point = 
+        lidar_calibration_.scale_factor * lidar_calibration_.rotation_matrix * 
+        example_lidar_point + lidar_calibration_.position;
+    
+    logi.log("  Example: object at LiDAR coordinates [5.0, 0.0]\n");
+    logi.log("           in world system will be: [%.3f, %.3f]\n",
+             example_world_point.x(), example_world_point.y());
+    
 }
-
 
     // ----------------------------------------------------------------------------------
     // 4. ПУБЛИЧНЫЕ МЕТОДЫ
