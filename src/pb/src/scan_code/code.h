@@ -1301,397 +1301,130 @@ struct CalibrationHypothesis {
         return results;
     }
 
-    // Логика слияния (Fusion) (Без изменений)
 
-    // ИЗМЕНЕНА: fuseCandidates (v6.0 - Добавлено подробное логирование)
-    // Логика слияния (Fusion)
-    // Объединяет кандидатов, найденных разными методами, в единые уникальные столбы.
-    // ИЗМЕНЕНА: fuseCandidates (v6.0 - Исправлена ошибка 'size', используется 'num_points')
-    // Логика слияния (Fusion)
-    // Объединяет кандидатов, найденных разными методами, в единые уникальные столбы.
-
-    // AlignedPillarVector fuseCandidatesDBSCAN(const std::vector<PillarCandidate> &candidates)
-    // AlignedPillarVector fuseCandidates(const std::vector<PillarCandidate> &candidates)
-    // {
-    //     AlignedPillarVector final_pillars;
-    //     if (candidates.empty())
-    //     {
-    //         logi.log("DBSCAN Fusion skipped: No candidates.\n");
-    //         return final_pillars;
-    //     }
-
-    //     logi.log("\n--- DBSCAN Fusion Start: %lu candidates ---\n", candidates.size());
-
-    //     // Параметры DBSCAN
-    //     const double eps = fusion_group_radius; // радиус объединения кластеров (обычно 0.25–0.35 м)
-    //     const double eps2 = eps * eps;          // квадрат радиуса для оптимизации (избегаем sqrt)
-    //     // const int minPts = 2;                        // минимальное количество точек для образования кластера
-    //     // Заменить жестко заданное minPts = 2 на переменную:
-    //     const int minPts = min_dbscan_points_;
-
-    //     size_t N = candidates.size();
-    //     std::vector<int> labels(N, -1); // -1 = непосещенная, -2 = шум, >=0 = ID кластера
-    //     int clusterId = 0;              // счетчик кластеров
-
-    //     // Лямбда для вычисления квадрата расстояния между кандидатами
-    //     auto dist2 = [&](size_t a, size_t b)
-    //     {
-    //         return (candidates[a].center - candidates[b].center).squaredNorm();
-    //     };
-
-    //     // ---- Фаза 1: Алгоритм DBSCAN ----
-    //     for (size_t i = 0; i < N; ++i)
-    //     {
-    //         if (labels[i] != -1)
-    //             continue; // Пропускаем уже обработанные точки
-
-    //         // Поиск всех соседей в пределах eps
-    //         std::vector<size_t> neighbors;
-    //         neighbors.reserve(16); // Предварительное выделение памяти
-
-    //         for (size_t j = 0; j < N; ++j)
-    //             if (dist2(i, j) <= eps2)
-    //                 neighbors.push_back(j);
-
-    //         // Проверка на core point: достаточно ли соседей?
-    //         if (neighbors.size() < minPts)
-    //         {
-    //             labels[i] = -2; // Помечаем как шум
-    //             continue;
-    //         }
-
-    //         // Создание нового кластера
-    //         labels[i] = clusterId;
-
-    //         // Очередь для расширения кластера (начинаем с соседей seed точки)
-    //         std::deque<size_t> q(neighbors.begin(), neighbors.end());
-
-    //         // Расширение кластера
-    //         while (!q.empty())
-    //         {
-    //             size_t n = q.front();
-    //             q.pop_front();
-
-    //             if (labels[n] == -2) // Если точка была шумом - переклассифицируем в кластер
-    //                 labels[n] = clusterId;
-
-    //             if (labels[n] != -1) // Пропускаем уже посещенные точки
-    //                 continue;
-
-    //             labels[n] = clusterId; // Помечаем как принадлежащую текущему кластеру
-
-    //             // Поиск соседей для текущей точки
-    //             std::vector<size_t> neigh2;
-    //             neigh2.reserve(16);
-
-    //             for (size_t k = 0; k < N; ++k)
-    //                 if (dist2(n, k) <= eps2)
-    //                     neigh2.push_back(k);
-
-    //             // Если точка является core point - добавляем ее соседей в очередь
-    //             if (neigh2.size() >= minPts)
-    //             {
-    //                 for (size_t x : neigh2)
-    //                     if (labels[x] == -1 || labels[x] == -2) // Добавляем только непосещенные или шумовые
-    //                         q.push_back(x);
-    //             }
-    //         }
-
-    //         clusterId++; // Переходим к следующему кластеру
-    //     }
-
-    //     // Подсчет и логирование шумовых точек
-    //     int noise_count = 0;
-    //     for (size_t i = 0; i < N; ++i)
-    //         if (labels[i] == -2)
-    //             noise_count++;
-    //     logi.log("DBSCAN: %d noise points filtered out.\n", noise_count);
-
-    //     if (clusterId == 0)
-    //     {
-    //         logi.log_w("DBSCAN: No clusters found.\n");
-    //         return final_pillars;
-    //     }
-
-    //     logi.log("DBSCAN: %d initial clusters detected.\n", clusterId);
-
-    //     // ---- Фаза 2: Аккумуляторы веса для кластеров ----
-    //     struct Acc
-    //     {
-    //         double wsum = 0.0;        // Суммарный вес кластера
-    //         std::vector<size_t> idxs; // Индексы кандидатов в кластере
-    //     };
-
-    //     std::vector<Acc> acc(clusterId); // Аккумуляторы для каждого кластера
-
-    //     // Сбор статистики по кластерам
-    //     for (size_t i = 0; i < N; ++i)
-    //     {
-    //         int cid = labels[i];
-    //         if (cid >= 0) // Игнорируем шумовые точки (cid = -2)
-    //         {
-    //             acc[cid].wsum += candidates[i].weight;
-    //             acc[cid].idxs.push_back(i);
-    //         }
-    //     }
-
-    //     // ---- Фаза 3: Формируем центры кластеров взвешенным усреднением ----
-    //     for (int cid = 0; cid < clusterId; ++cid)
-    //     {
-    //         if (acc[cid].idxs.size() < 1) // Пропускаем пустые кластеры
-    //             continue;
-
-    //         Eigen::Vector2f c(0, 0); // Взвешенный центр
-    //         double w = 0.0;          // Сумма весов
-
-    //         // Вычисление взвешенного центра
-    //         for (size_t k : acc[cid].idxs)
-    //         {
-    //             c += candidates[k].center * (float)candidates[k].weight;
-    //             w += candidates[k].weight;
-    //         }
-
-    //         // Защита от деления на ноль
-    //         if (w < 1e-9)
-    //             continue;
-
-    //         c /= (float)w; // Нормализация по сумме весов
-
-    //         // Создание финального столба
-    //         FinalPillar fp;
-    //         fp.local = c;
-    //         fp.total_weight = w;
-    //         fp.name = "Cluster_" + std::to_string(cid);
-
-    //         logi.log("DBSCAN Cluster %d: center (%.3f, %.3f), points=%lu, weight=%.3f\n",
-    //                  cid, c.x(), c.y(), acc[cid].idxs.size(), w);
-
-    //         final_pillars.push_back(fp);
-    //     }
-
-    //     if (final_pillars.empty())
-    //     {
-    //         logi.log_w("DBSCAN: No valid clusters after accumulation.\n");
-    //         return final_pillars;
-    //     }
-
-    //     // ---- Фаза 4: Если кластеров больше 4 — выбираем top-4 по весу ----
-    //     if (final_pillars.size() > 4)
-    //     {
-    //         logi.log_w("DBSCAN: %lu clusters => selecting top 4 by weight...\n",
-    //                    final_pillars.size());
-
-    //         // Сортировка по убыванию суммарного веса
-    //         std::sort(final_pillars.begin(), final_pillars.end(),
-    //                   [](const FinalPillar &a, const FinalPillar &b)
-    //                   {
-    //                       return a.total_weight > b.total_weight;
-    //                   });
-
-    //         final_pillars.resize(4); // Оставляем только 4 лучших кластера
-
-    //         logi.log_g("DBSCAN: Top 4 clusters selected.\n");
-    //     }
-
-    //     // // ---- Фаза 5: Сортировка по углу (для согласованного порядка) ----
-    //     // std::sort(final_pillars.begin(), final_pillars.end(),
-    //     //           [](const FinalPillar &a, const FinalPillar &b)
-    //     //           {
-    //     //               return atan2(a.local.y(), a.local.x()) < atan2(b.local.y(), b.local.x());
-    //     //           });
-
-    //     // ---- Фаза 6: Финальное логирование результатов ----
-    //     for (size_t i = 0; i < final_pillars.size(); ++i)
-    //     {
-    //         double angle = atan2(final_pillars[i].local.y(), final_pillars[i].local.x()) * 180.0 / M_PI;
-    //         double range = final_pillars[i].local.norm();
-
-    //         logi.log_g("  Pillar %lu: (%.3f, %.3f), R=%.3f m, Angle=%.1f°, W=%.3f\n",
-    //                    i,
-    //                    final_pillars[i].local.x(),
-    //                    final_pillars[i].local.y(),
-    //                    range,
-    //                    angle,
-    //                    final_pillars[i].total_weight);
-    //     }
-
-    //     logi.log("--- DBSCAN Fusion End: %lu pillars created ---\n", final_pillars.size());
-
-    //     return final_pillars;
-    // }
-
-// ИЗМЕНЕНА: Логика слияния (Fusion) с накоплением сырых точек и вызовом Гибридного расчета
-    AlignedPillarVector fuseCandidates(const std::vector<PillarCandidate> &candidates)
+/*
+ * Версия: v8.4 (DBSCAN + Radius Filter)
+ * Дата: 2025-12-02 09:32
+ */
+AlignedPillarVector fuseCandidates(const std::vector<PillarCandidate> &candidates)
+{
+    AlignedPillarVector final_pillars;
+    if (candidates.empty())
     {
-        AlignedPillarVector final_pillars;
-        if (candidates.empty())
-        {
-            logi.log("DBSCAN Fusion skipped: No candidates.\n");
-            return final_pillars;
-        }
-
-        logi.log("\n--- DBSCAN Fusion Start: %lu candidates ---\n", candidates.size());
-
-        // Параметры DBSCAN
-        const double eps = fusion_group_radius; // радиус объединения
-        const double eps2 = eps * eps;          
-        const int minPts = min_dbscan_points_;
-
-        size_t N = candidates.size();
-        std::vector<int> labels(N, -1); // -1 = непосещенная, -2 = шум, >=0 = ID кластера
-        int clusterId = 0;              
-
-        // Лямбда для вычисления квадрата расстояния между кандидатами
-        auto dist2 = [&](size_t a, size_t b)
-        {
-            return (candidates[a].center - candidates[b].center).squaredNorm();
-        };
-
-        // ---- Фаза 1: Алгоритм DBSCAN (Без изменений) ----
-        for (size_t i = 0; i < N; ++i)
-        {
-            if (labels[i] != -1) continue; 
-
-            std::vector<size_t> neighbors;
-            neighbors.reserve(16); 
-
-            for (size_t j = 0; j < N; ++j)
-                if (dist2(i, j) <= eps2)
-                    neighbors.push_back(j);
-
-            if (neighbors.size() < minPts)
-            {
-                labels[i] = -2; // Шум
-                continue;
-            }
-
-            labels[i] = clusterId;
-            std::deque<size_t> q(neighbors.begin(), neighbors.end());
-
-            while (!q.empty())
-            {
-                size_t n = q.front();
-                q.pop_front();
-
-                if (labels[n] == -2) labels[n] = clusterId;
-                if (labels[n] != -1) continue;
-
-                labels[n] = clusterId; 
-
-                std::vector<size_t> neigh2;
-                neigh2.reserve(16);
-
-                for (size_t k = 0; k < N; ++k)
-                    if (dist2(n, k) <= eps2)
-                        neigh2.push_back(k);
-
-                if (neigh2.size() >= minPts)
-                {
-                    for (size_t x : neigh2)
-                        if (labels[x] == -1 || labels[x] == -2) 
-                            q.push_back(x);
-                }
-            }
-            clusterId++; 
-        }
-
-        // Подсчет шума
-        int noise_count = 0;
-        for (size_t i = 0; i < N; ++i) if (labels[i] == -2) noise_count++;
-        logi.log("DBSCAN: %d noise points filtered out.\n", noise_count);
-
-        if (clusterId == 0)
-        {
-            logi.log_w("DBSCAN: No clusters found.\n");
-            return final_pillars;
-        }
-
-        logi.log("DBSCAN: %d initial clusters detected.\n", clusterId);
-
-        // ---- Фаза 2: Группировка индексов ----
-        struct Acc
-        {
-            double wsum = 0.0;        
-            std::vector<size_t> idxs; 
-        };
-        std::vector<Acc> acc(clusterId); 
-
-        for (size_t i = 0; i < N; ++i)
-        {
-            int cid = labels[i];
-            if (cid >= 0) 
-            {
-                acc[cid].wsum += candidates[i].weight;
-                acc[cid].idxs.push_back(i);
-            }
-        }
-
-        // ---- Фаза 3: Сборка точек и Гибридный Расчет (ИЗМЕНЕНО) ----
-        for (int cid = 0; cid < clusterId; ++cid)
-        {
-            if (acc[cid].idxs.size() < 1) continue;
-
-            FinalPillar fp;
-            fp.name = "Pillar_" + std::to_string(cid);
-            fp.total_weight = 0.0; 
-
-            // Собираем данные со всех кандидатов в этом кластере
-            for (size_t k : acc[cid].idxs)
-            {
-                // Суммируем вес (для сортировки Top-4)
-                fp.total_weight += candidates[k].weight;
-
-                // --- НОВОЕ: Сливаем сырые точки в общий котел ---
-                fp.merged_points.insert(fp.merged_points.end(), 
-                                      candidates[k].points.begin(), 
-                                      candidates[k].points.end());
-            }
-
-            // Если точек нет (маловероятно), пропускаем
-            if (fp.merged_points.empty()) continue;
-
-            // --- ВЫЗОВ НОВОГО РАСЧЕТА (Math + Phys) ---
-            calculatePillarMetrics(fp);
-
-            final_pillars.push_back(fp);
-        }
-
-        if (final_pillars.empty())
-        {
-            logi.log_w("DBSCAN: No valid clusters after accumulation.\n");
-            return final_pillars;
-        }
-
-        // ---- Фаза 4: Выбор Top-4 по весу (Без изменений) ----
-        if (final_pillars.size() > 4)
-        {
-            logi.log_w("DBSCAN: %lu clusters => selecting top 4 by weight...\n", final_pillars.size());
-
-            std::sort(final_pillars.begin(), final_pillars.end(),
-                      [](const FinalPillar &a, const FinalPillar &b)
-                      {
-                          return a.total_weight > b.total_weight;
-                      });
-
-            final_pillars.resize(4); 
-            logi.log_g("DBSCAN: Top 4 clusters selected.\n");
-        }
-
-        // ---- Фаза 5: Логирование результатов ----
-        for (size_t i = 0; i < final_pillars.size(); ++i)
-        {
-            const auto& p = final_pillars[i];
-            double angle = std::atan2(p.local.y(), p.local.x()) * 180.0 / M_PI;
-            double range = p.local.norm();
-
-            logi.log_g("  Pillar %lu: (%+8.3f, %+8.3f), R= %+8.3f m, Angle= %+7.2f°, W= %+8.3f\n",
-                       i, p.local.x(), p.local.y(), range, angle, p.total_weight);
-        }
-
-        logi.log("--- DBSCAN Fusion End: %lu pillars created ---\n", final_pillars.size());
-
+        // logi.log("DBSCAN Fusion skipped: No candidates.\n");
         return final_pillars;
     }
+
+    // logi.log("\n--- DBSCAN Fusion Start: %lu candidates ---\n", candidates.size());
+
+    // Параметры DBSCAN
+    const double eps = fusion_group_radius; 
+    const double eps2 = eps * eps;          
+    const int minPts = min_dbscan_points_;
+
+    size_t N = candidates.size();
+    std::vector<int> labels(N, -1); 
+    int clusterId = 0;              
+
+    auto dist2 = [&](size_t a, size_t b) {
+        return (candidates[a].center - candidates[b].center).squaredNorm();
+    };
+
+    // ---- Фаза 1: Алгоритм DBSCAN (Без изменений) ----
+    for (size_t i = 0; i < N; ++i)
+    {
+        if (labels[i] != -1) continue; 
+        std::vector<size_t> neighbors;
+        neighbors.reserve(16); 
+        for (size_t j = 0; j < N; ++j) if (dist2(i, j) <= eps2) neighbors.push_back(j);
+
+        if (neighbors.size() < minPts) { labels[i] = -2; continue; }
+
+        labels[i] = clusterId;
+        std::deque<size_t> q(neighbors.begin(), neighbors.end());
+
+        while (!q.empty())
+        {
+            size_t n = q.front(); q.pop_front();
+            if (labels[n] == -2) labels[n] = clusterId;
+            if (labels[n] != -1) continue;
+            labels[n] = clusterId; 
+            std::vector<size_t> neigh2;
+            for (size_t k = 0; k < N; ++k) if (dist2(n, k) <= eps2) neigh2.push_back(k);
+            if (neigh2.size() >= minPts) {
+                for (size_t x : neigh2) if (labels[x] == -1 || labels[x] == -2) q.push_back(x);
+            }
+        }
+        clusterId++; 
+    }
+
+    // ---- Фаза 2 & 3: Сборка и ФИЛЬТРАЦИЯ (Изменено) ----
+    
+    // Аккумуляторы
+    struct Acc { std::vector<size_t> idxs; };
+    std::vector<Acc> acc(clusterId); 
+    for (size_t i = 0; i < N; ++i) {
+        if (labels[i] >= 0) acc[labels[i]].idxs.push_back(i);
+    }
+
+    for (int cid = 0; cid < clusterId; ++cid)
+    {
+        if (acc[cid].idxs.empty()) continue;
+
+        FinalPillar fp;
+        fp.name = "Pillar_" + std::to_string(cid);
+        fp.total_weight = 0.0; 
+
+        for (size_t k : acc[cid].idxs) {
+            fp.total_weight += candidates[k].weight;
+            // Копируем точки для расчета метрик
+            fp.merged_points.insert(fp.merged_points.end(), 
+                                  candidates[k].points.begin(), 
+                                  candidates[k].points.end());
+        }
+
+        if (fp.merged_points.empty()) continue;
+
+        // Считаем метрики (Центр, Радиус, RMSE)
+        calculatePillarMetrics(fp);
+
+        // --- ФЕЙС-КОНТРОЛЬ (ГЛАВНОЕ ИЗМЕНЕНИЕ) ---
+        // 1. Проверка радиуса: Реальный = 0.1575м. 
+        // Разрешаем погрешность +/- 8 см. Если больше - это мусор/человек/стена.
+        double radius_diff = std::abs(fp.fit_radius - pillar_radius_);
+        
+        // 2. Проверка RMSE круга: Если > 5 см - это не круг.
+        
+        if (radius_diff > 0.08) {
+            logi.log_r("  [Filter] Reject Cluster %d: Bad Radius %.3f m (Diff %.3f > 0.08)\n", 
+                       cid, fp.fit_radius, radius_diff);
+            continue; // ПРОПУСКАЕМ ЭТОТ СТОЛБ
+        }
+        
+        if (fp.fit_rmse > 0.05) {
+            logi.log_r("  [Filter] Reject Cluster %d: High RMSE %.3f m\n", cid, fp.fit_rmse);
+            continue; // ПРОПУСКАЕМ ЭТОТ СТОЛБ
+        }
+
+        final_pillars.push_back(fp);
+    }
+
+    // ---- Фаза 4: Выбор Top-4 ----
+    if (final_pillars.size() > 4)
+    {
+        std::sort(final_pillars.begin(), final_pillars.end(),
+                  [](const FinalPillar &a, const FinalPillar &b){ return a.total_weight > b.total_weight; });
+        final_pillars.resize(4); 
+    }
+
+    // Логирование результата
+    if (!final_pillars.empty()) {
+         logi.log("DBSCAN Result: %lu valid pillars passed filter.\n", final_pillars.size());
+    }
+
+    return final_pillars;
+}
+
 
  /*
  * Ротационно-инвариантная сортировка (поддерживает 3 и 4 столба)
@@ -2127,71 +1860,6 @@ void saveResults(const AlignedPillarVector &pillars)
         return clean_points;
     }
 
-/*
- * Сохранение параметров калибровки лидара в ROS Parameter Server
- */
-// void saveCalibrationParameters()
-// {
-//     if (!calibration_done_) {
-//         logi.log_r("Cannot save calibration: calibration not completed\n");
-//         return;
-//     }
-    
-//     logi.log("--- 💾 SAVING CALIBRATION PARAMETERS:\n");
-    
-//     std::string base_path = "/lidar_calibration";
-    
-//     // 1. Позиция лидара
-//     nh.setParam(base_path + "/position_x", lidar_calibration_.position.x());
-//     nh.setParam(base_path + "/position_y", lidar_calibration_.position.y());
-    
-//     logi.log("  LiDAR position saved:\n");
-//     logi.log("    position_x = %.6f m\n", lidar_calibration_.position.x());
-//     logi.log("    position_y = %.6f m\n", lidar_calibration_.position.y());
-    
-//     // 2. Угол поворота
-//     nh.setParam(base_path + "/rotation_deg", lidar_calibration_.rotation_deg);
-//     nh.setParam(base_path + "/rotation_rad", lidar_calibration_.rotation_deg * M_PI / 180.0);
-    
-//     logi.log("  Rotation angle saved:\n");
-//     logi.log("    rotation_deg = %.6f°\n", lidar_calibration_.rotation_deg);
-//     logi.log("    rotation_rad = %.6f rad\n", lidar_calibration_.rotation_deg * M_PI / 180.0);
-    
-//     // 3. Масштабный коэффициент
-//     nh.setParam(base_path + "/scale_factor", lidar_calibration_.scale_factor);
-    
-//     logi.log("  Scale factor saved:\n");
-//     logi.log("    scale_factor = %.6f\n", lidar_calibration_.scale_factor);
-//     logi.log("    Scale error: %+.2f%%\n", 
-//              (lidar_calibration_.scale_factor - 1.0) * 100.0);
-    
-
-//     // 4. Матрица поворота (поэлементно)
-//     nh.setParam(base_path + "/rotation_matrix/r00", lidar_calibration_.rotation_matrix(0,0));
-//     nh.setParam(base_path + "/rotation_matrix/r01", lidar_calibration_.rotation_matrix(0,1));
-//     nh.setParam(base_path + "/rotation_matrix/r10", lidar_calibration_.rotation_matrix(1,0));
-//     nh.setParam(base_path + "/rotation_matrix/r11", lidar_calibration_.rotation_matrix(1,1));
-    
-//     logi.log("  Rotation matrix saved:\n");
-//     logi.log("    [%10.6f %10.6f]\n", 
-//              lidar_calibration_.rotation_matrix(0,0),
-//              lidar_calibration_.rotation_matrix(0,1));
-//     logi.log("    [%10.6f %10.6f]\n", 
-//              lidar_calibration_.rotation_matrix(1,0),
-//              lidar_calibration_.rotation_matrix(1,1));
-    
-//     // 5. Временная метка - FIXED: нужно привести к int
-//     ros::Time now = ros::Time::now();
-//     nh.setParam(base_path + "/timestamp_sec", static_cast<int>(now.sec));
-//     nh.setParam(base_path + "/timestamp_nsec", static_cast<int>(now.nsec));
-//     nh.setParam(base_path + "/calibration_done", true);
-    
-//     logi.log("  Metadata:\n");
-//     logi.log("    timestamp: %d.%09d\n", now.sec, now.nsec);
-//     logi.log_g("    ✅ Calibration parameters saved to ROS Parameter Server\n");
-//     logi.log("   Use command: rosparam get /lidar_calibration\n");
-// }
-
 // Сохранение параметров калибровки лидара в ROS Parameter Server
     void saveCalibrationParameters()
     {
@@ -2248,238 +1916,6 @@ void saveResults(const AlignedPillarVector &pillars)
         // logi.log_g("    ✅ Calibration parameters saved to ROS Parameter Server\n");
         // logi.log("   Use command: rosparam get /lidar_calibration\n");
     }
-
-// /*
-//  * Калибровка по 4 точкам с подробным логированием
-//  */
-// bool performCalibrationFourPillars(AlignedPillarVector &pillars)
-// {
-//     logi.log("=== 4-PILLAR CALIBRATION ===\n");
-    
-//     // Проверка, что pillars уже отсортированы
-//     if (pillars.size() != 4) {
-//         logi.log_r("Internal error: expected 4 pillars, got %lu\n", pillars.size());
-//         return false;
-//     }
-    
-//     logi.log("📊 INPUT DATA:\n");
-//     logi.log("  Reference coordinates (from YAML):\n");
-//     for (int i = 0; i < 4; ++i) {
-//         logi.log("    %s: [%.4f, %.4f]\n", 
-//                  pillars[i].name.c_str(),
-//                  reference_centers_[i].x(), reference_centers_[i].y());
-//     }
-    
-//     logi.log("  Measured coordinates (by LiDAR):\n");
-//     for (int i = 0; i < 4; ++i) {
-//         double angle = atan2(pillars[i].local.y(), pillars[i].local.x()) * 180.0 / M_PI;
-//         logi.log("    %s: [%.4f, %.4f] (angle: %.1f°, distance: %.3f m)\n", 
-//                  pillars[i].name.c_str(),
-//                  pillars[i].local.x(), pillars[i].local.y(),
-//                  angle, pillars[i].local.norm());
-//     }
-    
-//     // 1. ПОДГОТОВКА МАТРИЦ ДАННЫХ
-//     Eigen::Matrix2Xd P(2, 4), Q(2, 4);
-//     for (int i = 0; i < 4; ++i) {
-//         P.col(i) = pillars[i].local.cast<double>();
-//         Q.col(i) = reference_centers_[i].cast<double>();
-//     }
-    
-//     logi.log("--- 📐 UMEYAMA EQUATION SOLUTION:\n");
-//     logi.log("  Finding transformation: Q = c * R * P + T\n");
-//     logi.log("  where: Q - reference (world), P - measurements (LiDAR)\n");
-    
-//     // 2. ВЫЧИСЛЕНИЕ ЦЕНТРОИДОВ
-//     Eigen::Vector2d mu_P = P.rowwise().mean();
-//     Eigen::Vector2d mu_Q = Q.rowwise().mean();
-    
-//     logi.log("  Measurements centroid P̄: [%.4f, %.4f]\n", mu_P.x(), mu_P.y());
-//     logi.log("  Reference centroid Q̄:   [%.4f, %.4f]\n", mu_Q.x(), mu_Q.y());
-    
-//     // 3. ЦЕНТРИРОВАНИЕ
-//     Eigen::Matrix2Xd P_centered = P.colwise() - mu_P;
-//     Eigen::Matrix2Xd Q_centered = Q.colwise() - mu_Q;
-    
-//     // 4. КОВАРИАЦИОННАЯ МАТРИЦА
-//     Eigen::Matrix2d H = P_centered * Q_centered.transpose();
-//     logi.log("  Covariance matrix H:\n");
-//     logi.log("    [%10.6f %10.6f]\n", H(0,0), H(0,1));
-//     logi.log("    [%10.6f %10.6f]\n", H(1,0), H(1,1));
-    
-//     // 5. SVD РАЗЛОЖЕНИЕ
-//     Eigen::JacobiSVD<Eigen::Matrix2d> svd(H, Eigen::ComputeFullU | Eigen::ComputeFullV);
-//     Eigen::Matrix2d U = svd.matrixU();
-//     Eigen::Matrix2d V = svd.matrixV();
-    
-//     logi.log("  Singular values: %.6f, %.6f\n", 
-//              svd.singularValues()(0), svd.singularValues()(1));
-    
-//     // 6. МАТРИЦА ВРАЩЕНИЯ R
-//     Eigen::Matrix2d D = Eigen::Matrix2d::Identity();
-//     if (U.determinant() * V.determinant() < 0.0) {
-//         D(1, 1) = -1.0;
-//         logi.log_w("  ⚠️  Different sign determinants → adding reflection\n");
-//     }
-    
-//     Eigen::Matrix2d R = V * D * U.transpose();
-    
-//     // Проверка, что R - матрица вращения
-//     double det_R = R.determinant();
-//     if (std::abs(det_R - 1.0) > 1e-6) {
-//         logi.log_r("  ❗ Matrix R is not pure rotation matrix: det=%.6f\n", det_R);
-//     }
-    
-//     // 7. ВЫЧИСЛЕНИЕ МАСШТАБА c
-//     double denominator = P_centered.squaredNorm();
-//     if (denominator < 1e-12) {
-//         logi.log_r("  ❗ Zero denominator in scale calculation\n");
-//         return false;
-//     }
-    
-//     double c = svd.singularValues().sum() / denominator;
-    
-//     // 8. ВЕКТОР СДВИГА T (позиция лидара)
-//     Eigen::Vector2d T = mu_Q - c * R * mu_P;
-    
-//     logi.log("--- 🎯 FOUND LiDAR PARAMETERS:\n");
-    
-//     // 8.1. Масштабный коэффициент
-//     lidar_calibration_.scale_factor = c;
-//     double scale_error_percent = (c - 1.0) * 100.0;
-//     logi.log("  🔍 Scale factor (c): %.6f\n", c);
-//     logi.log("     Scale error: %+.2f%%\n", scale_error_percent);
-    
-//     if (std::abs(scale_error_percent) > 5.0) {
-//         logi.log_r("     ⚠️  Warning: large scale error (>5%%)\n");
-//     } else if (std::abs(scale_error_percent) > 2.0) {
-//         logi.log_w("     ⚠️  Noticeable scale error (>2%%)\n");
-//     } else {
-//         logi.log_g("     ✓ Scale within normal range\n");
-//     }
-    
-//     // 8.2. Угол поворота
-//     double rotation_rad = atan2(R(1, 0), R(0, 0));
-//     double rotation_deg = rotation_rad * 180.0 / M_PI;
-//     lidar_calibration_.rotation_deg = rotation_deg;
-//     lidar_calibration_.rotation_matrix = R;
-    
-//     logi.log("  🧭 LiDAR rotation angle: %.2f°\n", rotation_deg);
-//     logi.log("     Rotation matrix R:\n");
-//     logi.log("     [%8.5f %8.5f]\n", R(0,0), R(0,1));
-//     logi.log("     [%8.5f %8.5f]\n", R(1,0), R(1,1));
-    
-//     // 8.3. Позиция лидара в мире
-//     lidar_calibration_.position = T;
-//     logi.log("  📍 LiDAR position in world system (T):\n");
-//     logi.log("     X = %.4f m\n", T.x());
-//     logi.log("     Y = %.4f m\n", T.y());
-//     logi.log("     Distance from origin: %.3f m\n", T.norm());
-    
-//     // 9. ВАЛИДАЦИЯ: ПРИМЕНЕНИЕ ПРЕОБРАЗОВАНИЯ
-//     logi.log("--- 🔬 CALIBRATION VALIDATION:\n");
-//     logi.log("  Applying transformation to measured points:\n");
-//     logi.log("  Pillar | Measured (P) | Transformed | Reference (Q) | Error (mm)\n");
-//     logi.log("  -------------------------------------------------------------\n");
-    
-//     double max_error = 0.0;
-//     double total_error_sq = 0.0;
-    
-//     for (int i = 0; i < 4; ++i) {
-//         Eigen::Vector2d p = P.col(i);
-//         Eigen::Vector2d q_expected = Q.col(i);
-        
-//         // Преобразование: Q' = c*R*P + T
-//         Eigen::Vector2d q_calculated = c * R * p + T;
-        
-//         double error = (q_calculated - q_expected).norm();
-//         total_error_sq += error * error;
-//         if (error > max_error) max_error = error;
-        
-//         // Цветное логирование в зависимости от ошибки
-//         if (error <= 0.001) { // ≤1 мм
-//             logi.log_g("  %s  [%6.3f,%6.3f] → [%6.3f,%6.3f] ≈ [%6.3f,%6.3f]  %.1f✓\n",
-//                       pillars[i].name.c_str(),
-//                       p.x(), p.y(),
-//                       q_calculated.x(), q_calculated.y(),
-//                       q_expected.x(), q_expected.y(),
-//                       error * 1000);
-//         } else if (error <= 0.010) { // ≤10 мм
-//             logi.log_w("  %s  [%6.3f,%6.3f] → [%6.3f,%6.3f] ≈ [%6.3f,%6.3f]  %.1f~\n",
-//                       pillars[i].name.c_str(),
-//                       p.x(), p.y(),
-//                       q_calculated.x(), q_calculated.y(),
-//                       q_expected.x(), q_expected.y(),
-//                       error * 1000);
-//         } else {
-//             logi.log_r("  %s  [%6.3f,%6.3f] → [%6.3f,%6.3f] ≠ [%6.3f,%6.3f]  %.1f✗\n",
-//                       pillars[i].name.c_str(),
-//                       p.x(), p.y(),
-//                       q_calculated.x(), q_calculated.y(),
-//                       q_expected.x(), q_expected.y(),
-//                       error * 1000);
-//         }
-//     }
-    
-//     // 10. ВЫЧИСЛЕНИЕ RMSE
-//     double rmse = std::sqrt(total_error_sq / 4.0);
-//     logi.log("--- 📈 ACCURACY STATISTICS:\n");
-//     logi.log("  Maximum error: %.1f mm\n", max_error * 1000);
-//     logi.log("  Root Mean Square Error (RMSE): %.1f mm\n", rmse * 1000);
-//     logi.log("  Sum of squared errors: %.6f m²\n", total_error_sq);
-    
-//     // 11. ПРИНЯТИЕ РЕШЕНИЯ О КАЛИБРОВКЕ
-//     const double RMSE_THRESHOLD = 0.05; // 5 см порог
-    
-//     if (rmse <= RMSE_THRESHOLD) {
-//         calibration_done_ = true;
-        
-//         // Столбы получают идеальные координаты (а не преобразованные)
-//         for (int i = 0; i < 4; ++i) {
-//             pillars[i].global = reference_centers_[i].cast<double>();
-//         }
-        
-//         // Сохранение финальных результатов
-//         final_pillars_results_ = pillars;
-        
-//         logi.log_g("✅ 4-PILLAR CALIBRATION SUCCESSFUL! RMSE = %.1f mm < %.1f mm\n", 
-//                    rmse * 1000, RMSE_THRESHOLD * 1000);
-        
-//         // Сохраняем параметры калибровки
-//         saveCalibrationParameters();
-        
-//         // Визуализация
-//         publishFinalMarkers(final_pillars_results_);
-        
-//         // 12. ПРИМЕР ИСПОЛЬЗОВАНИЯ - ЗАКОММЕНТИРОВАНО
-//             /*
-//             logi.log_g("\n💡 CALIBRATION USAGE EXAMPLE:\n");
-//             logi.log("  For correcting LiDAR measurements:\n");
-//             logi.log("    Q = %.4f * R * P + [%.4f, %.4f]\n", 
-//                      lidar_calibration_.scale_factor,
-//                      lidar_calibration_.position.x(),
-//                      lidar_calibration_.position.y());
-            
-//             Eigen::Vector2d example_lidar_point(5.0, 0.0);
-//             Eigen::Vector2d example_world_point = 
-//                 lidar_calibration_.scale_factor * lidar_calibration_.rotation_matrix * example_lidar_point + lidar_calibration_.position;
-            
-//             logi.log("  Example: object at LiDAR coordinates [5.0, 0.0]\n");
-//             logi.log("           in world system will be: [%.3f, %.3f]\n",
-//                      example_world_point.x(), example_world_point.y());
-            
-//             logi.log("═══════════════════════════════════════════════════════════\n");
-//             */
-        
-        
-//         return true;
-//     } else {
-//         logi.log_r("❌ 4-PILLAR CALIBRATION FAILED: RMSE = %.1f mm > threshold = %.1f mm\n",
-//                    rmse * 1000, RMSE_THRESHOLD * 1000);
-//         lidar_calibration_.clear();
-//         return false;
-//     }
-// }
 
 /*
      * Калибровка по 4 точкам (Компактные логи)
@@ -2573,661 +2009,9 @@ void saveResults(const AlignedPillarVector &pillars)
             return false;
         }
     }
-
-// /*
-//  * Калибровка по 3 точкам с подробным логированием (подробный лог как для 4 точек)
-//  */
-// bool performCalibrationThreePillars(AlignedPillarVector &pillars)
-// {
-//     logi.log("--- 🔍 3-PILLAR CALIBRATION (Advanced Hypothesis Testing)\n");
-    
-//     if (pillars.size() != 3) {
-//         logi.log_r("❌ Internal error: expected 3 pillars, got %lu\n", pillars.size());
-//         return false;
-//     }
-    
-//     // Временная копия pillars для модификации
-//     AlignedPillarVector original_pillars = pillars;
-//     const std::vector<std::string> pillar_names = {"RB", "RT", "LT", "LB"};
-    
-//     logi.log("📊 INPUT DATA (3 measured pillars):\n");
-//     for (int i = 0; i < 3; ++i) {
-//         double angle = atan2(original_pillars[i].local.y(), 
-//                            original_pillars[i].local.x()) * 180.0 / M_PI;
-//         logi.log("  Pillar_%d: [%.4f, %.4f] (angle: %.1f°, distance: %.3f m)\n",
-//                  i, original_pillars[i].local.x(), original_pillars[i].local.y(),
-//                  angle, original_pillars[i].local.norm());
-//     }
-    
-//     logi.log("\n📊 REFERENCE DATA (4 expected pillars from YAML):\n");
-//     for (int i = 0; i < 4; ++i) {
-//         logi.log("  %s: [%.4f, %.4f]\n",
-//                  pillar_names[i].c_str(),
-//                  reference_centers_[i].x(), reference_centers_[i].y());
-//     }
-    
-//     logi.log("\n🧮 STARTING HYPOTHESIS TESTING (4 possibilities):\n");
-    
-// // 1. ГЕНЕРАЦИЯ ВСЕХ ВОЗМОЖНЫХ ГИПОТЕЗ (4 варианта)
-//     // Используем aligned_allocator, чтобы избежать падения Eigen
-//     std::vector<CalibrationHypothesis, Eigen::aligned_allocator<CalibrationHypothesis>> hypotheses(4);
-     
-//     for (int missing_idx = 0; missing_idx < 4; ++missing_idx) {
-//         CalibrationHypothesis &hyp = hypotheses[missing_idx];
-//         hyp.missing_pillar_idx = missing_idx;
-        
-//         // Индексы видимых столбов (все кроме missing)
-//         for (int i = 0; i < 4; ++i) {
-//             if (i != missing_idx) hyp.visible_indices.push_back(i);
-//         }
-        
-//         logi.log("\n--- Testing Hypothesis %d ---\n", missing_idx);
-//         logi.log("  Missing pillar: %s\n", pillar_names[missing_idx].c_str());
-//         logi.log("  Visible pillars assumed: ");
-//         for (int idx : hyp.visible_indices) {
-//             logi.log("%s ", pillar_names[idx].c_str());
-//         }
-//         logi.log("\n");
-        
-//         // 2. ВЫПОЛНИТЬ UMEYAMA ДЛЯ 3 ТОЧЕК
-//         if (!performUmeyamaForThreePoints(original_pillars, hyp)) {
-//             logi.log_r("  ❌ Hypothesis failed: Umeyama computation impossible\n");
-//             hyp.total_score = 1e9;
-//             continue;
-//         }
-        
-//         // 3. ДЕТАЛЬНОЕ ЛОГИРОВАНИЕ НАЙДЕННЫХ ПАРАМЕТРОВ
-//         logi.log("  ✅ Umeyama solution found:\n");
-//         logi.log("     Scale factor: %.6f (error: %+.2f%%)\n", 
-//                  hyp.calib_params.scale_factor,
-//                  (hyp.calib_params.scale_factor - 1.0) * 100.0);
-//         logi.log("     Rotation angle: %.2f°\n", hyp.calib_params.rotation_deg);
-//         logi.log("     LiDAR position: [%.4f, %.4f] m\n",
-//                  hyp.calib_params.position.x(), hyp.calib_params.position.y());
-        
-//         // 4. ВАЛИДАЦИЯ ГИПОТЕЗЫ
-//         logi.log("  🔍 Validating hypothesis...\n");
-        
-//         double transformation_error = 0.0;
-//         int valid_points = 0;
-        
-//         // Применяем преобразование к видимым точкам
-//         for (size_t i = 0; i < 3; ++i) {
-//             Eigen::Vector2d p = original_pillars[i].local.cast<double>();
-//             Eigen::Vector2d q_expected = reference_centers_[hyp.visible_indices[i]].cast<double>();
-//             Eigen::Vector2d q_calculated = hyp.calib_params.scale_factor * 
-//                                           hyp.calib_params.rotation_matrix * p + 
-//                                           hyp.calib_params.position;
-            
-//             double error = (q_calculated - q_expected).norm();
-//             transformation_error += error * error;
-//             valid_points++;
-            
-//             logi.log("     %s → %s: error = %.1f mm %s\n",
-//                      ("Pillar_" + std::to_string(i)).c_str(),
-//                      pillar_names[hyp.visible_indices[i]].c_str(),
-//                      error * 1000,
-//                      error <= 0.02 ? "✓" : "✗");
-//         }
-        
-//         hyp.transformation_error = std::sqrt(transformation_error / valid_points);
-        
-//         // 5. ОЦЕНКА ПОЛОЖЕНИЯ ОТСУТСТВУЮЩЕГО СТОЛБА
-//         logi.log("  🔮 Estimating missing pillar position...\n");
-        
-//         // Находим, какая из измеренных точек соответствует какой эталонной
-//         // (упрощенно - предполагаем порядок)
-//         Eigen::Vector2d estimated_missing;
-//         double prediction_error = 0.0;
-        
-//         // Для простоты берем среднюю точку измерений как кандидата на отсутствующий столб
-//         Eigen::Vector2d avg_measured(0, 0);
-//         for (const auto& p : original_pillars) {
-//             avg_measured += p.local.cast<double>();
-//         }
-//         avg_measured /= 3.0;
-        
-//         // Преобразуем в мировые координаты
-//         estimated_missing = hyp.calib_params.scale_factor * 
-//                           hyp.calib_params.rotation_matrix * avg_measured + 
-//                           hyp.calib_params.position;
-        
-//         // Сравниваем с эталонным положением отсутствующего столба
-//         Eigen::Vector2d expected_missing = reference_centers_[missing_idx].cast<double>();
-//         prediction_error = (estimated_missing - expected_missing).norm();
-//         hyp.prediction_error = prediction_error;
-//         hyp.estimated_missing = estimated_missing;
-        
-//         logi.log("     Estimated %s position: [%.4f, %.4f]\n",
-//                  pillar_names[missing_idx].c_str(),
-//                  estimated_missing.x(), estimated_missing.y());
-//         logi.log("     Expected %s position:  [%.4f, %.4f]\n",
-//                  pillar_names[missing_idx].c_str(),
-//                  expected_missing.x(), expected_missing.y());
-//         logi.log("     Prediction error: %.1f mm %s\n",
-//                  prediction_error * 1000,
-//                  prediction_error <= 0.05 ? "✓" : "✗");
-        
-//         // 6. ГЕОМЕТРИЧЕСКАЯ ПРОВЕРКА
-//         logi.log("  📐 Geometric consistency check...\n");
-        
-//         double geometric_error = 0.0;
-//         int pair_count = 0;
-        
-//         // Проверяем расстояния между измеренными точками
-//         for (int i = 0; i < 2; ++i) {
-//             for (int j = i + 1; j < 3; ++j) {
-//                 double measured_dist = MathUtils::dist2D(original_pillars[i].local,
-//                                                         original_pillars[j].local);
-                
-//                 // Находим, каким эталонным столбам они могут соответствовать
-//                 // (упрощенно - берем среднее ожидаемое расстояние)
-//                 double expected_dist = 4.0; // Примерное среднее расстояние
-                
-//                 double error = std::abs(measured_dist - expected_dist);
-//                 geometric_error += error;
-//                 pair_count++;
-                
-//                 logi.log("     Distance P%d-P%d: %.3f m (≈ expected: %.3f m, Δ=%.1f mm)\n",
-//                          i, j, measured_dist, expected_dist, error * 1000);
-//             }
-//         }
-        
-//         if (pair_count > 0) {
-//             hyp.geometric_error = geometric_error / pair_count;
-//         }
-        
-//         // 7. ВЫЧИСЛЕНИЕ ОБЩЕГО SCORE
-//         hyp.total_score = hyp.transformation_error * 1000.0 +  // мм
-//                          hyp.prediction_error * 2000.0 +       // вес x2
-//                          hyp.geometric_error * 1000.0 +        // мм
-//                          std::abs(hyp.calib_params.scale_factor - 1.0) * 10.0;
-        
-//         logi.log("  📊 Hypothesis score breakdown:\n");
-//         logi.log("     Transformation error: %.1f mm\n", hyp.transformation_error * 1000);
-//         logi.log("     Prediction error:     %.1f mm\n", hyp.prediction_error * 1000);
-//         logi.log("     Geometric error:      %.1f mm\n", hyp.geometric_error * 1000);
-//         logi.log("     Scale penalty:        %.3f\n", std::abs(hyp.calib_params.scale_factor - 1.0) * 10.0);
-//         logi.log("     TOTAL SCORE:          %.3f\n", hyp.total_score);
-//     }
-    
-//     // 8. ВЫБОР ЛУЧШЕЙ ГИПОТЕЗЫ
-//     logi.log("\n🎯 SELECTING BEST HYPOTHESIS:\n");
-    
-//     int best_hyp_idx = -1;
-//     double best_score = 1e9;
-    
-//     for (int i = 0; i < 4; ++i) {
-//         if (hypotheses[i].total_score < best_score) {
-//             best_score = hypotheses[i].total_score;
-//             best_hyp_idx = i;
-//         }
-//     }
-    
-//     if (best_hyp_idx == -1 || best_score > 1000.0) {
-//         logi.log_r("❌ No valid hypothesis found (all scores > 1000)\n");
-//         logi.log_r("    Possible reasons:\n");
-//         logi.log_r("    - Geometry doesn't match any expected pillar configuration\n");
-//         logi.log_r("    - Measurement errors too large\n");
-//         logi.log_r("    - Wrong pillar identification\n");
-//         return false;
-//     }
-    
-//     CalibrationHypothesis &best_hyp = hypotheses[best_hyp_idx];
-    
-//     logi.log_g("✅ BEST HYPOTHESIS SELECTED:\n");
-//     logi.log("   Missing pillar: %s\n", pillar_names[best_hyp.missing_pillar_idx].c_str());
-//     logi.log("   Total score:    %.3f\n", best_score);
-//     logi.log("   Transformation RMSE: %.1f mm\n", best_hyp.transformation_error * 1000);
-//     logi.log("   Prediction error:    %.1f mm\n", best_hyp.prediction_error * 1000);
-    
-//     // 9. ПРИМЕНЕНИЕ ЛУЧШЕЙ ГИПОТЕЗЫ
-//     logi.log("\n🔧 APPLYING BEST HYPOTHESIS...\n");
-    
-//     // Копируем параметры калибровки
-//     lidar_calibration_ = best_hyp.calib_params;
-    
-//     // Восстанавливаем полный набор из 4 столбов
-//     pillars.clear();
-//     pillars.resize(4);
-    
-//     // Для видимых столбов
-//     for (int i = 0; i < 3; ++i) {
-//         int pillar_idx = best_hyp.visible_indices[i];
-//         pillars[pillar_idx] = original_pillars[i];
-//         pillars[pillar_idx].name = pillar_names[pillar_idx];
-//         pillars[pillar_idx].global = reference_centers_[pillar_idx].cast<double>();
-//         pillars[pillar_idx].is_estimated = false;
-//         pillars[pillar_idx].estimation_confidence = 1.0;
-        
-//         logi.log("  %s: Measured → Reference [%.4f, %.4f]\n",
-//                  pillar_names[pillar_idx].c_str(),
-//                  pillars[pillar_idx].global.x(), pillars[pillar_idx].global.y());
-//     }
-    
-//     // Для отсутствующего столба (оцениваемого)
-//     int missing_idx = best_hyp.missing_pillar_idx;
-//     pillars[missing_idx].name = pillar_names[missing_idx];
-//     pillars[missing_idx].global = reference_centers_[missing_idx].cast<double>();
-//     pillars[missing_idx].local = best_hyp.estimated_missing.cast<float>();
-//     pillars[missing_idx].is_estimated = true;
-//     pillars[missing_idx].estimation_confidence = 0.7; // 70% уверенности
-    
-//     logi.log("  %s: Estimated → Reference [%.4f, %.4f] (confidence: 70%%)\n",
-//              pillar_names[missing_idx].c_str(),
-//              pillars[missing_idx].global.x(), pillars[missing_idx].global.y());
-    
-//     // 10. ФИНАЛЬНАЯ ВАЛИДАЦИЯ
-//     logi.log("\n🔬 FINAL VALIDATION (using 3 measured pillars):\n");
-//     logi.log("  Pillar | Measured (P) | Transformed | Reference (Q) | Error (mm)\n");
-//     logi.log("  -------------------------------------------------------------\n");
-    
-//     double max_error = 0.0;
-//     double total_error_sq = 0.0;
-//     int valid_points = 0;
-    
-//     for (int i = 0; i < 4; ++i) {
-//         if (i == missing_idx) continue; // Пропускаем оцененный столб
-        
-//         Eigen::Vector2d p = pillars[i].local.cast<double>();
-//         Eigen::Vector2d q_expected = reference_centers_[i].cast<double>();
-//         Eigen::Vector2d q_calculated = lidar_calibration_.scale_factor * 
-//                                       lidar_calibration_.rotation_matrix * p + 
-//                                       lidar_calibration_.position;
-        
-//         double error = (q_calculated - q_expected).norm();
-//         total_error_sq += error * error;
-//         valid_points++;
-        
-//         if (error > max_error) max_error = error;
-        
-//         if (error <= 0.001) {
-//             logi.log_g("  %s  [%6.3f,%6.3f] → [%6.3f,%6.3f] ≈ [%6.3f,%6.3f]  %.1f✓\n",
-//                       pillar_names[i].c_str(),
-//                       p.x(), p.y(),
-//                       q_calculated.x(), q_calculated.y(),
-//                       q_expected.x(), q_expected.y(),
-//                       error * 1000);
-//         } else if (error <= 0.010) {
-//             logi.log_w("  %s  [%6.3f,%6.3f] → [%6.3f,%6.3f] ≈ [%6.3f,%6.3f]  %.1f~\n",
-//                       pillar_names[i].c_str(),
-//                       p.x(), p.y(),
-//                       q_calculated.x(), q_calculated.y(),
-//                       q_expected.x(), q_expected.y(),
-//                       error * 1000);
-//         } else {
-//             logi.log_r("  %s  [%6.3f,%6.3f] → [%6.3f,%6.3f] ≠ [%6.3f,%6.3f]  %.1f✗\n",
-//                       pillar_names[i].c_str(),
-//                       p.x(), p.y(),
-//                       q_calculated.x(), q_calculated.y(),
-//                       q_expected.x(), q_expected.y(),
-//                       error * 1000);
-//         }
-//     }
-    
-//     if (valid_points == 0) {
-//         logi.log_r("❌ No valid points for validation\n");
-//         return false;
-//     }
-    
-//     double rmse = std::sqrt(total_error_sq / valid_points);
-    
-//     logi.log("\n📈 ACCURACY STATISTICS:\n");
-//     logi.log("  Maximum error: %.1f mm\n", max_error * 1000);
-//     logi.log("  Root Mean Square Error (RMSE): %.1f mm\n", rmse * 1000);
-//     logi.log("  Valid points used: %d (1 pillar estimated)\n", valid_points);
-    
-//     // 11. ПРИНЯТИЕ РЕШЕНИЯ (более строгий порог для 3 точек)
-//     const double RMSE_THRESHOLD = 0.03; // 3 см (строже чем для 4 точек)
-    
-//     if (rmse <= RMSE_THRESHOLD) {
-//         calibration_done_ = true;
-//         final_pillars_results_ = pillars;
-        
-//         logi.log_g("\n✅ 3-PILLAR CALIBRATION SUCCESSFUL! RMSE = %.1f mm\n", rmse * 1000);
-//         logi.log_w("⚠️  NOTE: Pillar %s is ESTIMATED (confidence: 70%%)\n",
-//                    pillar_names[missing_idx].c_str());
-        
-//         // 12. ПРИМЕР ИСПОЛЬЗОВАНИЯ
-//         logi.log_g("\n💡 CALIBRATION USAGE EXAMPLE:\n");
-//         logi.log("  For correcting LiDAR measurements:\n");
-//         logi.log("    Q = %.4f * R * P + [%.4f, %.4f]\n", 
-//                  lidar_calibration_.scale_factor,
-//                  lidar_calibration_.position.x(),
-//                  lidar_calibration_.position.y());
-        
-//         // Пример: объект на расстоянии 5м прямо перед лидаром
-//         Eigen::Vector2d example_lidar_point(5.0, 0.0);
-//         Eigen::Vector2d example_world_point = 
-//             lidar_calibration_.scale_factor * lidar_calibration_.rotation_matrix * 
-//             example_lidar_point + lidar_calibration_.position;
-        
-//         logi.log("  Example: object at LiDAR coordinates [5.0, 0.0]\n");
-//         logi.log("           in world system will be: [%.3f, %.3f]\n",
-//                  example_world_point.x(), example_world_point.y());
-        
-        
-//         saveCalibrationParameters();
-//         publishFinalMarkers(final_pillars_results_);
-//         return true;
-//     } else {
-//         logi.log_r("\n❌ 3-PILLAR CALIBRATION FAILED: RMSE = %.1f mm > threshold = %.1f mm\n",
-//                    rmse * 1000, RMSE_THRESHOLD * 1000);
-//         logi.log_r("    Threshold is stricter for 3-point calibration (30 mm vs 50 mm)\n");
-//         lidar_calibration_.clear();
-//         return false;
-//     }
-// }
-
-// /*
-//  * Выполнение Umeyama для 3 точек с детальным логированием
-//  */
-// bool performUmeyamaForThreePoints(const AlignedPillarVector &measured_pillars,
-//                                   CalibrationHypothesis &hyp)
-// {
-//     if (measured_pillars.size() != 3) {
-//         logi.log_r("    ❌ Expected 3 measured pillars, got %lu\n", measured_pillars.size());
-//         return false;
-//     }
-    
-//     logi.log("    🧮 Starting Umeyama for 3 points...\n");
-    
-//     // У нас есть 3 измеренных столба и 3 соответствующих эталонных
-//     // Но мы не знаем, какие именно эталонные соответствуют измеренным
-    
-//     std::vector<int> perm = {0, 1, 2}; // индексы измеренных точек
-//     const std::vector<std::string> pillar_names = {"RB", "RT", "LT", "LB"};
-    
-//     double best_error = 1e9;
-//     std::vector<int> best_perm = {-1, -1, -1};
-//     LidarCalibration best_calib;
-//     Eigen::Matrix2Xd best_P, best_Q;
-    
-//     int permutation_count = 0;
-    
-//     do {
-//         permutation_count++;
-//         logi.log("      Testing permutation %d: [P%d, P%d, P%d] → [%s, %s, %s]\n",
-//                  permutation_count, 
-//                  perm[0], perm[1], perm[2],
-//                  pillar_names[hyp.visible_indices[0]].c_str(),
-//                  pillar_names[hyp.visible_indices[1]].c_str(),
-//                  pillar_names[hyp.visible_indices[2]].c_str());
-        
-//         // Подготовка матриц P (измеренные) и Q (эталонные) для этой перестановки
-//         Eigen::Matrix2Xd P(2, 3), Q(2, 3);
-        
-//         for (int i = 0; i < 3; ++i) {
-//             // measured_pillars[perm[i]] соответствует reference_centers_[hyp.visible_indices[i]]
-//             P.col(i) = measured_pillars[perm[i]].local.cast<double>();
-//             Q.col(i) = reference_centers_[hyp.visible_indices[i]].cast<double>();
-//         }
-        
-//         // Логирование входных данных для этой перестановки
-//         logi.log("        Measured points (P):\n");
-//         for (int i = 0; i < 3; ++i) {
-//             logi.log("          P%d: [%.4f, %.4f] → %s: [%.4f, %.4f]\n",
-//                      perm[i],
-//                      P(0, i), P(1, i),
-//                      pillar_names[hyp.visible_indices[i]].c_str(),
-//                      Q(0, i), Q(1, i));
-//         }
-        
-//         // 1. ВЫЧИСЛЕНИЕ ЦЕНТРОИДОВ
-//         Eigen::Vector2d mu_P = P.rowwise().mean();
-//         Eigen::Vector2d mu_Q = Q.rowwise().mean();
-        
-//         logi.log("        Centroids: P̄ = [%.4f, %.4f], Q̄ = [%.4f, %.4f]\n",
-//                  mu_P.x(), mu_P.y(), mu_Q.x(), mu_Q.y());
-        
-//         // 2. ЦЕНТРИРОВАНИЕ
-//         Eigen::Matrix2Xd P_centered = P.colwise() - mu_P;
-//         Eigen::Matrix2Xd Q_centered = Q.colwise() - mu_Q;
-        
-//         // 3. КОВАРИАЦИОННАЯ МАТРИЦА
-//         Eigen::Matrix2d H = P_centered * Q_centered.transpose();
-        
-//         logi.log("        Covariance matrix H:\n");
-//         logi.log("          [%10.6f %10.6f]\n", H(0,0), H(0,1));
-//         logi.log("          [%10.6f %10.6f]\n", H(1,0), H(1,1));
-        
-//         // 4. SVD РАЗЛОЖЕНИЕ
-//         Eigen::JacobiSVD<Eigen::Matrix2d> svd(H, Eigen::ComputeFullU | Eigen::ComputeFullV);
-//         Eigen::Matrix2d U = svd.matrixU();
-//         Eigen::Matrix2d V = svd.matrixV();
-        
-//         double sv1 = svd.singularValues()(0);
-//         double sv2 = svd.singularValues()(1);
-        
-//         logi.log("        Singular values: %.6f, %.6f (ratio: %.3f)\n", 
-//                  sv1, sv2, sv1 / (sv2 + 1e-12));
-        
-//         // Проверка сингулярных значений
-//         if (sv2 < 1e-6) {
-//             logi.log_r("        ⚠️  Second singular value too small (%.2e), skipping\n", sv2);
-//             continue;
-//         }
-        
-//         // 5. МАТРИЦА ВРАЩЕНИЯ R
-//         Eigen::Matrix2d D = Eigen::Matrix2d::Identity();
-//         double det_U = U.determinant();
-//         double det_V = V.determinant();
-        
-//         logi.log("        Determinants: det(U)=%.6f, det(V)=%.6f\n", det_U, det_V);
-        
-//         if (det_U * det_V < 0.0) {
-//             D(1, 1) = -1.0;
-//             logi.log_w("        ⚠️  Different sign determinants → adding reflection\n");
-//         }
-        
-//         Eigen::Matrix2d R = V * D * U.transpose();
-        
-//         // Проверка, что R - матрица вращения
-//         double det_R = R.determinant();
-//         logi.log("        Rotation matrix determinant: %.6f\n", det_R);
-        
-//         if (std::abs(det_R - 1.0) > 1e-4) {
-//             logi.log_r("        ❗ Matrix R is not pure rotation (det=%.6f)\n", det_R);
-//             continue;
-//         }
-        
-//         // 6. ВЫЧИСЛЕНИЕ МАСШТАБА c
-//         double denominator = P_centered.squaredNorm();
-//         logi.log("        Denominator for scale: %.6f\n", denominator);
-        
-//         if (denominator < 1e-12) {
-//             logi.log_r("        ❗ Zero denominator in scale calculation\n");
-//             continue;
-//         }
-        
-//         double c = svd.singularValues().sum() / denominator;
-//         logi.log("        Scale factor c = %.6f (error: %+.2f%%)\n", 
-//                  c, (c - 1.0) * 100.0);
-        
-//         // Проверка разумности масштаба
-//         if (c < 0.7 || c > 1.3) {
-//             logi.log_r("        ❗ Unrealistic scale factor (c=%.3f)\n", c);
-//             continue;
-//         }
-        
-//         // 7. ВЕКТОР СДВИГА T
-//         Eigen::Vector2d T = mu_Q - c * R * mu_P;
-//         logi.log("        Translation T = [%.4f, %.4f]\n", T.x(), T.y());
-        
-//         // 8. ВЫЧИСЛЕНИЕ УГЛА ПОВОРОТА
-//         double rotation_rad = atan2(R(1, 0), R(0, 0));
-//         double rotation_deg = rotation_rad * 180.0 / M_PI;
-//         logi.log("        Rotation angle: %.2f°\n", rotation_deg);
-        
-//         // Проверка разумности угла
-//         if (std::abs(rotation_deg) > 45.0 && std::abs(rotation_deg) < 135.0) {
-//             logi.log_r("        ❗ Unusual rotation angle (%.1f°)\n", rotation_deg);
-//             continue;
-//         }
-        
-//         // 9. ВЫЧИСЛЕНИЕ ОШИБКИ ДЛЯ ЭТОЙ ПЕРЕСТАНОВКИ
-//         double error = 0.0;
-//         double max_point_error = 0.0;
-        
-//         logi.log("        Point-wise errors:\n");
-//         for (int i = 0; i < 3; ++i) {
-//             Eigen::Vector2d q_calc = c * R * P.col(i) + T;
-//             Eigen::Vector2d q_ref = Q.col(i);
-            
-//             double point_error = (q_calc - q_ref).norm();
-//             error += point_error * point_error;
-            
-//             if (point_error > max_point_error) {
-//                 max_point_error = point_error;
-//             }
-            
-//             logi.log("          %s: error = %.1f mm %s\n",
-//                      pillar_names[hyp.visible_indices[i]].c_str(),
-//                      point_error * 1000,
-//                      point_error <= 0.02 ? "✓" : "✗");
-//         }
-        
-//         error = std::sqrt(error / 3.0);
-        
-//         logi.log("        Transformation RMSE: %.1f mm, Max error: %.1f mm\n",
-//                  error * 1000, max_point_error * 1000);
-        
-//         // 10. ПРОВЕРКА ГЕОМЕТРИЧЕСКОЙ СОГЛАСОВАННОСТИ
-//         // Вычисляем расстояния между преобразованными точками
-//         std::vector<double> transformed_distances;
-//         for (int i = 0; i < 2; ++i) {
-//             for (int j = i + 1; j < 3; ++j) {
-//                 Eigen::Vector2d p1 = c * R * P.col(i) + T;
-//                 Eigen::Vector2d p2 = c * R * P.col(j) + T;
-//                 double dist = (p1 - p2).norm();
-//                 transformed_distances.push_back(dist);
-//             }
-//         }
-        
-//         // Сравниваем с эталонными расстояниями
-//         double geometric_consistency_error = 0.0;
-//         logi.log("        Geometric consistency:\n");
-        
-//         // Пары эталонных расстояний для видимых столбов
-//         std::vector<std::pair<int, int>> ref_pairs = {
-//             {hyp.visible_indices[0], hyp.visible_indices[1]},
-//             {hyp.visible_indices[0], hyp.visible_indices[2]},
-//             {hyp.visible_indices[1], hyp.visible_indices[2]}
-//         };
-        
-//         for (size_t idx = 0; idx < transformed_distances.size(); ++idx) {
-//             double transformed_dist = transformed_distances[idx];
-            
-//             // Находим соответствующее эталонное расстояние
-//             double expected_dist = 0.0;
-//             for (int k = 0; k < 6; ++k) {
-//                 if ((ref_pairs[idx].first == k/4 && ref_pairs[idx].second == k%4) ||
-//                     (ref_pairs[idx].first == k%4 && ref_pairs[idx].second == k/4)) {
-//                     expected_dist = d_center[k];
-//                     break;
-//                 }
-//             }
-            
-//             double dist_error = std::abs(transformed_dist - expected_dist);
-//             geometric_consistency_error += dist_error;
-            
-//             logi.log("          %s-%s: %.3f m (exp: %.3f m, Δ=%.1f mm)\n",
-//                      pillar_names[ref_pairs[idx].first].c_str(),
-//                      pillar_names[ref_pairs[idx].second].c_str(),
-//                      transformed_dist, expected_dist, dist_error * 1000);
-//         }
-        
-//         geometric_consistency_error /= transformed_distances.size();
-//         logi.log("        Avg geometric error: %.1f mm\n", geometric_consistency_error * 1000);
-        
-//         // 11. ОБЩАЯ ОЦЕНКА ЭТОЙ ПЕРЕСТАНОВКИ
-//         double total_permutation_score = error * 1000.0 + // мм
-//                                         geometric_consistency_error * 1000.0 + // мм
-//                                         std::abs(c - 1.0) * 500.0 + // штраф за масштаб
-//                                         std::abs(rotation_deg) * 2.0; // штраф за большой угол
-        
-//         logi.log("        Total permutation score: %.3f\n", total_permutation_score);
-        
-//         // 12. ОБНОВЛЕНИЕ ЛУЧШЕГО РЕШЕНИЯ
-//         if (total_permutation_score < best_error) {
-//             best_error = total_permutation_score;
-//             best_perm = perm;
-//             best_calib.scale_factor = c;
-//             best_calib.rotation_deg = rotation_deg;
-//             best_calib.rotation_matrix = R;
-//             best_calib.position = T;
-//             best_P = P;
-//             best_Q = Q;
-            
-//             logi.log_g("        🎯 NEW BEST PERMUTATION FOUND! (score: %.3f)\n", best_error);
-//         }
-        
-//         logi.log("\n");
-        
-//     } while (std::next_permutation(perm.begin(), perm.end()));
-    
-//     // 13. ПРОВЕРКА РЕЗУЛЬТАТОВ
-//     if (best_error > 1e8) {
-//         logi.log_r("    ❌ No valid permutation found for this hypothesis\n");
-//         logi.log_r("    Possible reasons:\n");
-//         logi.log_r("    - Geometry doesn't match\n");
-//         logi.log_r("    - Large measurement errors\n");
-//         logi.log_r("    - Invalid scale or rotation\n");
-//         return false;
-//     }
-    
-//     // 14. ФИНАЛЬНОЕ ЛОГИРОВАНИЕ ЛУЧШЕЙ ПЕРЕСТАНОВКИ
-//     logi.log_g("    ✅ BEST PERMUTATION SELECTED:\n");
-//     logi.log("       Permutation: [P%d, P%d, P%d] → [%s, %s, %s]\n",
-//              best_perm[0], best_perm[1], best_perm[2],
-//              pillar_names[hyp.visible_indices[0]].c_str(),
-//              pillar_names[hyp.visible_indices[1]].c_str(),
-//              pillar_names[hyp.visible_indices[2]].c_str());
-    
-//     logi.log("       Transformation parameters:\n");
-//     logi.log("         Scale factor:      %.6f (error: %+.2f%%)\n", 
-//              best_calib.scale_factor, (best_calib.scale_factor - 1.0) * 100.0);
-//     logi.log("         Rotation angle:    %.2f°\n", best_calib.rotation_deg);
-//     logi.log("         LiDAR position:    [%.4f, %.4f] m\n", 
-//              best_calib.position.x(), best_calib.position.y());
-//     logi.log("         Distance from origin: %.3f m\n", best_calib.position.norm());
-    
-//     // 15. ФИНАЛЬНАЯ ВАЛИДАЦИЯ ЛУЧШЕГО РЕШЕНИЯ
-//     logi.log("       Final validation of best permutation:\n");
-//     double final_error = 0.0;
-    
-//     for (int i = 0; i < 3; ++i) {
-//         Eigen::Vector2d q_calc = best_calib.scale_factor * best_calib.rotation_matrix * best_P.col(i) + 
-//                                 best_calib.position;
-//         Eigen::Vector2d q_ref = best_Q.col(i);
-        
-//         double point_error = (q_calc - q_ref).norm();
-//         final_error += point_error * point_error;
-        
-//         logi.log("         %s: error = %.1f mm %s\n",
-//                  pillar_names[hyp.visible_indices[i]].c_str(),
-//                  point_error * 1000,
-//                  point_error <= 0.02 ? "✓" : "✗");
-//     }
-    
-//     final_error = std::sqrt(final_error / 3.0);
-//     logi.log("       Final transformation RMSE: %.1f mm\n", final_error * 1000);
-    
-//     // 16. СОХРАНЕНИЕ РЕЗУЛЬТАТОВ
-//     hyp.calib_params = best_calib;
-//     hyp.transformation_error = final_error;
-    
-//     // Сохраняем информацию о лучшей перестановке
-//     hyp.visible_indices_permutation = best_perm;
-    
-//     logi.log_g("    ✅ Umeyama computation successful for this hypothesis\n");
-    
-//     return true;
-// }
-
 /*
- * Версия: v8.1 (Fix Eigen Type Mismatch)
- * Дата: 2025-12-02 09:07
+ * Версия: v8.3 (Full 3-Point with Validation)
+ * Дата: 2025-12-02 09:16
  */
 bool performCalibrationThreePillars(AlignedPillarVector &pillars)
 {
@@ -3247,7 +2031,7 @@ bool performCalibrationThreePillars(AlignedPillarVector &pillars)
     double best_scale = 1.0;
     int best_missing_idx = -1;
 
-    // 1. ПЕРЕБОР ГИПОТЕЗ
+    // 1. ПЕРЕБОР ГИПОТЕЗ (Какой столб отсутствует?)
     for (int missing_idx = 0; missing_idx < 4; ++missing_idx) 
     {
         std::vector<int> ref_indices; 
@@ -3297,7 +2081,7 @@ bool performCalibrationThreePillars(AlignedPillarVector &pillars)
             double c_cand = svd.singularValues().sum() / P_centered.squaredNorm();
             Eigen::Vector2d T_cand = mu_Q - c_cand * R_cand * mu_P;
 
-            // В. ПРОВЕРКА КАЧЕСТВА
+            // В. ПРОВЕРКА КАЧЕСТВА (RMSE)
             double current_rmse_sq = 0.0;
             for (int i = 0; i < 3; ++i) {
                 Eigen::Vector2d p_val = P_mat.col(i);
@@ -3313,6 +2097,7 @@ bool performCalibrationThreePillars(AlignedPillarVector &pillars)
                 best_T = T_cand;
                 best_scale = c_cand;
                 best_missing_idx = missing_idx;
+                // Запоминаем, какой столб (0,1,2) какому эталону соответствует
                 for(int i=0; i<3; ++i) best_mapping[p_indices[i]] = ref_indices[i];
             }
 
@@ -3324,21 +2109,44 @@ bool performCalibrationThreePillars(AlignedPillarVector &pillars)
 
     if (best_missing_idx != -1) 
     {
-        logi.log("  🎯 Best Match: Missing=%s, RMSE=%.3f m\n", ref_names[best_missing_idx].c_str(), best_rmse);
+        // --- ДЕТАЛЬНЫЙ ЛОГ ---
+        logi.log("--- CALIBRATION RESULTS ---\n");
+        logi.log("  Hypothesis: Missing Pillar = %s\n", ref_names[best_missing_idx].c_str());
+        
+        double rot_deg = std::atan2(best_R(1, 0), best_R(0, 0)) * 180.0 / M_PI;
+        logi.log("  Scale: %.6f (Err: %+.2f%%) | Angle: %.2f°\n", best_scale, (best_scale - 1.0) * 100.0, rot_deg);
+        logi.log("  Pos:   X=%.4f m, Y=%.4f m (Dist from origin: %.3f m)\n", best_T.x(), best_T.y(), best_T.norm());
 
         if (best_rmse > RMSE_THRESHOLD_3PT) {
             logi.log_r("❌ FAILED: Best RMSE %.1f mm > Threshold %.1f mm\n", best_rmse * 1000, RMSE_THRESHOLD_3PT * 1000);
             return false;
         }
 
+        // --- ТАБЛИЦА ВАЛИДАЦИИ ---
+        logi.log("--- VALIDATION (3 Visible) ---\n");
+        
+        for (int i = 0; i < 3; ++i) {
+            int ref_idx = best_mapping[i];
+            Eigen::Vector2d p = pillars[i].local.cast<double>();
+            Eigen::Vector2d q_exp = reference_centers_[ref_idx].cast<double>();
+            Eigen::Vector2d q_calc = best_scale * best_R * p + best_T;
+            double err = (q_calc - q_exp).norm();
+            
+            char status = (err <= 0.001) ? '+' : (err <= 0.010 ? '~' : '!');
+            logi.log("  %s: Meas[%+6.3f,%+6.3f] -> Trans[%+6.3f,%+6.3f] (Ref[%+6.3f,%+6.3f]) | Err: %5.1f mm %c\n",
+                     ref_names[ref_idx].c_str(), 
+                     p.x(), p.y(), q_calc.x(), q_calc.y(), q_exp.x(), q_exp.y(), 
+                     err * 1000, status);
+        }
+
+        // Применяем результат
         calibration_done_ = true;
         lidar_calibration_.scale_factor = best_scale;
         lidar_calibration_.rotation_matrix = best_R;
         lidar_calibration_.position = best_T;
-        double rot_rad = std::atan2(best_R(1, 0), best_R(0, 0));
-        lidar_calibration_.rotation_deg = rot_rad * 180.0 / M_PI;
+        lidar_calibration_.rotation_deg = rot_deg;
 
-        // Обновляем видимые
+        // Обновляем имена видимых столбов
         for (int i = 0; i < 3; ++i) {
             int ref_idx = best_mapping[i];
             pillars[i].name = ref_names[ref_idx];
@@ -3346,22 +2154,22 @@ bool performCalibrationThreePillars(AlignedPillarVector &pillars)
             pillars[i].is_estimated = false;
         }
 
-        // Восстанавливаем 4-й (невидимку)
+        // --- ВОССТАНОВЛЕНИЕ НЕВИДИМОГО ---
         FinalPillar missing_pillar;
         missing_pillar.name = ref_names[best_missing_idx];
         missing_pillar.global = reference_centers_[best_missing_idx].cast<double>();
         
-        // --- ИСПРАВЛЕНИЕ ОШИБКИ ТИПОВ EIGEN ---
-        // (Vector2d - Vector2d) -> Vector2d
-        // Matrix2d * Vector2d -> Vector2d
-        // .cast<float>() -> Vector2f
+        // Обратная проекция (с исправлением типов Eigen)
         missing_pillar.local = ((1.0/best_scale) * best_R.transpose() * (missing_pillar.global - best_T)).cast<float>();
-        
         missing_pillar.is_estimated = true;
+        
+        logi.log("--- RECONSTRUCTION ---\n");
+        logi.log("  %s (Missing): Reconstructed at Local[%+6.3f, %+6.3f]\n", 
+                 missing_pillar.name.c_str(), missing_pillar.local.x(), missing_pillar.local.y());
+        
         pillars.push_back(missing_pillar); 
         
-        logi.log_g("✅ 3-PT SUCCESS! Scale=%.4f, Ang=%.2f, RMSE=%.1f mm\n", 
-                   best_scale, lidar_calibration_.rotation_deg, best_rmse * 1000);
+        logi.log_g("✅ 3-PT SUCCESS! RMSE=%.1f mm\n", best_rmse * 1000);
         
         saveCalibrationParameters();
         final_pillars_results_ = pillars;
@@ -4128,250 +2936,8 @@ public:
     //     }
     // }
 
-    // ИЗМЕНЕНА: processPipeline (v5.7)
-    // Сохранение результатов в разные переменные маркеров
-    // void processPipeline()
-    // {
-    //     logi.log("\n=== Starting Processing Pipeline (Median Filtered Scan) ===\n");
 
-    //     int total_initial_rays = 0;
-    //     int points_removed_by_angle_filter = 0;
-
-    //     // 1. ФОРМИРОВАНИЕ МЕДИАННОГО СКАНА
-    //     sensor_msgs::LaserScan current_filtered_scan = meta_scan;
-    //     current_filtered_scan.ranges.clear();
-    //     current_filtered_scan.intensities.clear();
-    //     AlignedVector2f initial_points;
-    //     std::vector<double> median_intensities;
-    //     float nan_val = std::numeric_limits<float>::quiet_NaN();
-
-    //     for (size_t i = 0; i < accumulated_ranges.size(); ++i)
-    //     {
-    //         total_initial_rays++;
-    //         if (accumulated_ranges[i].empty())
-    //         {
-    //             current_filtered_scan.ranges.push_back(nan_val);
-    //             current_filtered_scan.intensities.push_back(nan_val);
-    //             continue;
-    //         }
-
-    //         double median_r = MathUtils::getMedian(accumulated_ranges[i]);
-    //         double median_i = 0.0;
-    //         if (accumulated_intensities[i].size() > 0)
-    //             median_i = MathUtils::getMedian(accumulated_intensities[i]);
-
-    //         median_intensities.push_back(median_i);
-
-    //         double angle = meta_scan.angle_min + i * meta_scan.angle_increment;
-    //         current_filtered_scan.ranges.push_back((float)median_r);
-    //         current_filtered_scan.intensities.push_back((float)median_i);
-
-    //         if (!std::isnan(current_filtered_scan.ranges.back()))
-    //         {
-    //             initial_points.emplace_back((float)(median_r * cos(angle)), (float)(median_r * sin(angle)));
-    //         }
-    //     }
-    //     // СОХРАНЕНИЕ 1: Сохраняем отфильтрованный скан (LaserScan)
-    //     filtered_scan_results_ = current_filtered_scan; // Сохраняем LaserScan (нужен для заголовка)
-
-    //     // 2. ЛОГИРОВАНИЕ СЫРОГО СКАНА (v4.7)
-    //     // logRawScan(); // Логирование сырых данных
-
-    //     // 3. ЛОГИРОВАНИЕ ИТОГОВОГО ОТФИЛЬТРОВАННОГО СКАНА
-    //     // logFinalFilteredScan(filtered_scan_results_); // Логирование медианного скана
-
-    //     logi.log("\n--- FILTERING STATISTICS ---\n");                      // Логирование статистики
-    //     logi.log("1. Total rays in scan (max): %d\n", total_initial_rays); // Общее число лучей
-    //     logi.log_r("2. Total rays removed by ZERO Intensity (I=0.0) over %d scans: %lld\n",
-    //                SCANS_TO_COLLECT, total_rays_removed_by_zero_intensity); // Удалено I=0
-    //     logi.log_b("3. Total rays removed by LOW Intensity (0.0 < I < %.2f) over %d scans: %lld\n",
-    //                intensity_min_threshold, SCANS_TO_COLLECT, total_rays_removed_by_low_intensity);                         // Удалено I<I_min
-    //     logi.log_b("4. Total accumulated intensity removed (Sum of 2+3): %lld\n", total_rays_removed_by_initial_intensity); // Общая сумма
-    //     logi.log("5. Points remaining before Angle Filter: %lu\n", initial_points.size());                                  // Точки до углового фильтра
-
-    //     if (initial_points.empty())
-    //     {
-    //         logi.log_r("No valid points after median filtering. Exiting pipeline.\n"); // Выход, если нет точек
-    //         return;
-    //     }
-
-    //     // 4. УДАЛЕНИЕ ФАНТОМНЫХ АРТЕФАКТОВ
-    //     AlignedVector2f clean_points = removeEdgeArtifacts(initial_points, median_intensities, points_removed_by_angle_filter); // Применение углового фильтра
-
-    //     // СОХРАНЕНИЕ 2 (v5.6): Сохраняем чистые точки для постоянной публикации
-    //     clean_points_results_ = clean_points; // <--- НОВОЕ: Сохранение чистых точек
-
-    //     logi.log_b("4. Removed by Angle Filter (<%.1f deg): %d\n", edge_angle_threshold * 180.0 / M_PI, points_removed_by_angle_filter); // Лог удаленных
-    //     logi.log_b("5. Final clean points for clustering: %lu\n", clean_points.size());                                                  // Лог финального числа
-    //     logi.log("----------------------------\n");
-
-    //     if (clean_points.empty())
-    //     {
-    //         logi.log_r("No points left after artifact filtering. Exiting pipeline.\n"); // Выход, если нет точек
-    //         return;
-    //     }
-
-    //     // 5. Детекция (3 метода)
-    //     std::vector<PillarCandidate> all_candidates; // Все кандидаты
-    //     // ... (Код детекции и fusion)
-    //     AlignedVector2f clusters_m1, clusters_m2, clusters_m3; // Точки кластеров для RVIZ
-
-    //     auto c1 = detectGenericClustering(clean_points, jump_dist_threshold, 1, clusters_m1); // Метод 1
-    //     all_candidates.insert(all_candidates.end(), c1.begin(), c1.end());
-
-    //     auto c2 = detectGenericClustering(clean_points, cluster_dist_threshold, 2, clusters_m2); // Метод 2
-    //     all_candidates.insert(all_candidates.end(), c2.begin(), c2.end());
-
-    //     auto c3 = detectLocalMinima(clean_points, 3, clusters_m3); // Метод 3
-    //     all_candidates.insert(all_candidates.end(), c3.begin(), c3.end());
-
-    //     // СОЗДАНИЕ И СОХРАНЕНИЕ ОТДЕЛЬНЫХ МАРКЕРОВ (ИЗМЕНЕНО)
-    //     // Метод 1: Красный
-    //     marker_m1_results_ = createPointsMarker(clusters_m1, meta_scan.header.frame_id,
-    //                                             "method_1_jump", 1, 1.0f, 0.0f, 0.0f, 0.08f);
-
-    //     // Метод 2: Синий
-    //     marker_m2_results_ = createPointsMarker(clusters_m2, meta_scan.header.frame_id,
-    //                                             "method_2_cluster", 2, 0.0f, 0.0f, 1.0f, 0.08f);
-
-    //     // Метод 3: Желтый
-    //     marker_m3_results_ = createPointsMarker(clusters_m3, meta_scan.header.frame_id,
-    //                                             "method_3_minima", 3, 1.0f, 1.0f, 0.0f, 0.08f);
-
-    //     logi.log("Total candidates found: %lu (M1=%lu, M2=%lu, M3=%lu)\n",
-    //              all_candidates.size(), c1.size(), c2.size(), c3.size());
-
-    //     // 6. Fusion
-    //     AlignedPillarVector final_pillars = fuseCandidates(all_candidates); // Слияние кандидатов
-
-
-    //     AlignedVector2f current_fused_centers;
-    //     for (const auto &fp : final_pillars)
-    //     {
-    //         current_fused_centers.push_back(fp.local); // Сохранение центров
-    //     }
-    //     fused_centers_results_ = current_fused_centers; // Сохранение центров Fusion
-
-    //     // 7. Калибровка (Full Umeyama)
-    //     // performCalibration(final_pillars); // Выполнение калибровки
-    //     // Стало:
-    //     if (final_pillars.size() >= 3) {
-    //         // Для 4+ столбов сначала сортируем
-    //         if (final_pillars.size() >= 4) {
-    //             reorderPillars(final_pillars);
-    //         }
-    //         // Универсальная калибровка
-    //         performCalibration(final_pillars);
-    //     } else {
-    //         logi.log_r("Insufficient pillars for calibration: %lu (need at least 3)\n",
-    //                 final_pillars.size());
-    //     }
-
-    //     // 8. Сохранение и лог
-    //     if (calibration_done_)
-    //     {
-    //         saveResults(final_pillars_results_); // Сохранение результатов
-    //         logi.log_g("Calibration successful. Node remains active, publishing results every 1 second.\n");
-    //     }
-    //     else
-    //     {
-    //         logi.log_w("Initial calibration attempt ended without success. Node remains active, check logs for details.\n");
-    //     }
-    // }
-    // // ИЗМЕНЕНО: Обработка единичного скана
-    // void processPipeline(const sensor_msgs::LaserScan &scan)
-    // {
-    //     logi.log_r("\n\n\n --- processPipeline ---\n");
-    //     // 1. ЛОГ СЫРОГО СКАНА (Твой лог)
-    //     // logRawScan(scan); 
-
-    //     int points_removed_by_angle_filter = 0;
-    //     int removed_by_zero = 0;
-    //     int removed_by_low = 0;
-
-    //     // Вместо медианы заполняем вектора напрямую
-    //     AlignedVector2f initial_points;
-    //     std::vector<double> point_intensities;
-    //     bool has_intensities = (scan.intensities.size() == scan.ranges.size());
-    //     initial_points.reserve(scan.ranges.size());
-
-    //     for (size_t i = 0; i < scan.ranges.size(); ++i)
-    //     {
-    //         float r = scan.ranges[i];
-    //         float intensity = has_intensities ? scan.intensities[i] : 0.0f;
-
-    //         if (std::isnan(r) || std::isinf(r)) continue;
-    //         if (r < min_range_filter || r > max_range_filter) continue;
-
-    //         if (has_intensities) {
-    //             if (intensity == 0.0f) { removed_by_zero++; continue; }
-    //             if (intensity < intensity_min_threshold) { removed_by_low++; continue; }
-    //         }
-
-    //         double angle = scan.angle_min + i * scan.angle_increment;
-    //         initial_points.emplace_back((float)(r * cos(angle)), (float)(r * sin(angle)));
-    //         point_intensities.push_back(intensity);
-    //     }
-
-    //     total_rays_removed_by_zero_intensity += removed_by_zero;
-    //     total_rays_removed_by_low_intensity += removed_by_low;
-    //     total_rays_removed_by_initial_intensity = total_rays_removed_by_zero_intensity + total_rays_removed_by_low_intensity;
-
-    //     // ТВОЙ ЛОГ СТАТИСТИКИ (немного адаптирован под один скан)
-    //     logi.log("\n--- FILTERING STATISTICS ---\n");
-    //     logi.log("1. Total rays in scan: %lu\n", scan.ranges.size());
-    //     logi.log_r("2. Zero Intensity removed (total): %lld\n", total_rays_removed_by_zero_intensity);
-    //     logi.log_b("3. Low Intensity removed (total): %lld\n", total_rays_removed_by_low_intensity);
-    //     logi.log("5. Points before Angle Filter: %lu\n", initial_points.size());
-
-    //     if (initial_points.empty()) return;
-
-    //     // 2. Угловой фильтр
-    //     AlignedVector2f clean_points = removeEdgeArtifacts(initial_points, point_intensities, points_removed_by_angle_filter);
-        
-    //     // ЛОГ ПОСЛЕ ФИЛЬТРА
-    //     // logFinalFilteredScan(clean_points, point_intensities);
-    //     logi.log_b("4. Removed by Angle Filter: %d\n", points_removed_by_angle_filter);
-    //     logi.log_b("5. Final clean points: %lu\n", clean_points.size());
-
-    //     clean_points_results_ = clean_points; 
-
-    //     if (clean_points.empty()) return;
-
-    //     // 3. Детекция (ТВОЙ КОД БЕЗ ИЗМЕНЕНИЙ)
-    //     std::vector<PillarCandidate> all_candidates;
-    //     AlignedVector2f clusters_m1, clusters_m2, clusters_m3;
-
-    //     auto c1 = detectGenericClustering(clean_points, jump_dist_threshold, 1, clusters_m1);
-    //     all_candidates.insert(all_candidates.end(), c1.begin(), c1.end());
-
-    //     auto c2 = detectGenericClustering(clean_points, cluster_dist_threshold, 2, clusters_m2);
-    //     all_candidates.insert(all_candidates.end(), c2.begin(), c2.end());
-
-    //     auto c3 = detectLocalMinima(clean_points, 3, clusters_m3);
-    //     all_candidates.insert(all_candidates.end(), c3.begin(), c3.end());
-
-    //     // Создаем маркеры
-    //     marker_m1_results_ = createPointsMarker(clusters_m1, scan.header.frame_id, "method_1_jump", 1, 1.0f, 0.0f, 0.0f, 0.08f);
-    //     marker_m2_results_ = createPointsMarker(clusters_m2, scan.header.frame_id, "method_2_cluster", 2, 0.0f, 0.0f, 1.0f, 0.08f);
-    //     marker_m3_results_ = createPointsMarker(clusters_m3, scan.header.frame_id, "method_3_minima", 3, 1.0f, 1.0f, 0.0f, 0.08f);
-
-    //     logi.log("Total candidates found: %lu (M1=%lu, M2=%lu, M3=%lu)\n",
-    //              all_candidates.size(), c1.size(), c2.size(), c3.size());
-
-    //     // 4. FUSION
-    //     AlignedPillarVector final_pillars = fuseCandidates(all_candidates);
-        
-    //     AlignedVector2f current_fused_centers;
-    //     for (const auto &fp : final_pillars) current_fused_centers.push_back(fp.local);
-    //     fused_centers_results_ = current_fused_centers;
-
-    //     // 5. КАЛИБРОВКА (Постоянный трекинг)
-    //     if (final_pillars.size() >= 3) {
-    //         if (final_pillars.size() >= 4) reorderPillars(final_pillars);
-    //         performCalibration(final_pillars);
-    //     }
-    // }
+    
 
 // ИЗМЕНЕНА: Добавлен учет точек, удаленных по дальности и NaN, чтобы сходилась статистика
     void processPipeline(const sensor_msgs::LaserScan &scan)
@@ -4502,23 +3068,3 @@ public:
     }
 
 };
-/*
-// --------------------------------------------------------------------------------------
-// 5. MAIN (Без изменений)
-// --------------------------------------------------------------------------------------
-int main(int argc, char** argv)
-{
-    // Инициализация ROS
-    ros::init(argc, argv, "scan_pillar_node");
-
-    // Создание объекта
-    PillarScanNode node;
-
-    // Запуск цикла обработки
-    ros::spin();
-
-    // Завершение работы
-    logi.log("Node finished execution gracefully.\n");
-    return 0;
-}
-*/
