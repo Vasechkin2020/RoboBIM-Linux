@@ -1917,6 +1917,41 @@ void saveResults(const AlignedPillarVector &pillars)
         // logi.log("   Use command: rosparam get /lidar_calibration\n");
     }
 
+    /*
+     * Универсальная калибровка (Маршрутизатор)
+     */
+    void performCalibration(AlignedPillarVector &pillars)
+    {
+        // logi.log("--- UNIVERSAL CALIBRATION DISPATCH ---\n"); 
+        
+        if (pillars.size() == 4) {
+            // Стандартный случай
+            performCalibrationFourPillars(pillars);
+        }
+        else if (pillars.size() == 3) {
+            // Сложный случай (Треугольник) - вызывает твою новую функцию
+            logi.log_w("⚠️ 3 pillars detected -> Calling 3-PT Calibration\n");
+            performCalibrationThreePillars(pillars);
+        }
+        else if (pillars.size() > 4) {
+            // Избыточность - отбираем лучшие
+            logi.log_w("⚠️ %lu pillars detected -> Selecting Best 4\n", pillars.size());
+            selectBestFourPillars(pillars);
+            
+            if (pillars.size() == 4) {
+                performCalibrationFourPillars(pillars);
+            } else {
+                logi.log_r("❌ Failed to select pillars\n");
+                lidar_calibration_.clear();
+            }
+        }
+        else {
+            // Мало данных
+            logi.log_r("❌ Insufficient pillars: %lu (need 3 or 4)\n", pillars.size());
+            lidar_calibration_.clear();
+        }
+    }
+    
 /*
      * Калибровка по 4 точкам (Компактные логи)
      */
@@ -2183,144 +2218,6 @@ bool performCalibrationThreePillars(AlignedPillarVector &pillars)
         return false;
     }
 }
-
-
-/*
- * Оценка качества гипотезы
- */
-void evaluateHypothesis(CalibrationHypothesis &hyp, 
-                       const AlignedPillarVector &measured_pillars)
-{
-    LidarCalibration &calib = hyp.calib_params;
-    
-    // 1. Ошибка трансформации уже вычислена в performUmeyamaForThreePoints
-    // hyp.transformation_error
-    
-    // 2. Ошибка предсказания 4-го столба
-    // Находим "лишнюю" измеренную точку (ту, которая не использовалась в калибровке)
-    // Это сложно без знания соответствия, поэтому пропускаем этот шаг
-    hyp.prediction_error = 0.0;
-    
-    // 3. Геометрическая ошибка
-    // Проверяем расстояния между видимыми столбами
-    double geom_error = 0.0;
-    int geom_pairs = 0;
-    
-    // У нас есть 3 измеренные точки, проверяем их расстояния
-    for (int i = 0; i < 2; ++i) {
-        for (int j = i + 1; j < 3; ++j) {
-            double measured_dist = MathUtils::dist2D(measured_pillars[i].local,
-                                                    measured_pillars[j].local);
-            
-            // Находим, каким эталонным столбам они должны соответствовать
-            // Это сложно без знания соответствия, поэтому упрощаем
-            geom_error += std::abs(measured_dist - 4.0); // Примерное среднее расстояние
-            geom_pairs++;
-        }
-    }
-    
-    if (geom_pairs > 0) {
-        hyp.geometric_error = geom_error / geom_pairs;
-    }
-    
-    // 4. Физическая правдоподобность параметров
-    double scale_penalty = std::abs(calib.scale_factor - 1.0) * 10.0;
-    double rotation_penalty = std::abs(calib.rotation_deg) > 45.0 ? 10.0 : 0.0;
-    
-    // 5. Общий score
-    hyp.total_score = hyp.transformation_error * 1000.0 +  // мм
-                      hyp.prediction_error * 2000.0 +      // вес x2
-                      hyp.geometric_error * 1000.0 +       // мм
-                      scale_penalty +
-                      rotation_penalty;
-}
-
-// /*
-//  * Применение лучшей гипотезы
-//  */
-// bool applyBestHypothesis(const CalibrationHypothesis &best_hyp,
-//                          AlignedPillarVector &pillars,
-//                          const AlignedPillarVector &original_pillars)
-// {
-//     // 1. Копируем параметры калибровки
-//     lidar_calibration_ = best_hyp.calib_params;
-    
-//     // 2. Восстанавливаем полный набор из 4 столбов
-//     pillars.clear();
-//     pillars.resize(4);
-    
-//     // 3. Для видимых столбов
-//     for (int i = 0; i < 3; ++i) {
-//         int pillar_idx = best_hyp.visible_indices[i];
-//         pillars[pillar_idx] = original_pillars[i];
-//         pillars[pillar_idx].name = PILLAR_NAMES[pillar_idx];
-//         pillars[pillar_idx].global = reference_centers_[pillar_idx].cast<double>();
-//     }
-    
-//     // 4. Для отсутствующего столба (оцениваемого)
-//     int missing_idx = best_hyp.missing_pillar_idx;
-//     pillars[missing_idx].name = PILLAR_NAMES[missing_idx];
-//     pillars[missing_idx].global = reference_centers_[missing_idx].cast<double>();
-//     pillars[missing_idx].is_estimated = true;
-//     pillars[missing_idx].estimation_confidence = 0.7; // 70% уверенности
-    
-//     logi.log_g("✅ Reconstructed 4 pillars (1 estimated: %s)\n",
-//                PILLAR_NAMES[missing_idx].c_str());
-    
-//     // 5. Валидация
-//     double max_error = 0.0;
-//     double total_error_sq = 0.0;
-//     int valid_points = 0;
-    
-//     for (int i = 0; i < 4; ++i) {
-//         if (i == missing_idx) continue; // Пропускаем оцененный столб
-        
-//         Eigen::Vector2d p = pillars[i].local.cast<double>();
-//         Eigen::Vector2d q_expected = reference_centers_[i].cast<double>();
-//         Eigen::Vector2d q_calculated = lidar_calibration_.scale_factor * 
-//                                        lidar_calibration_.rotation_matrix * p + 
-//                                        lidar_calibration_.position;
-        
-//         double error = (q_calculated - q_expected).norm();
-//         total_error_sq += error * error;
-//         valid_points++;
-        
-//         if (error > max_error) max_error = error;
-        
-//         logi.log("  %s: error = %.1f mm %s\n",
-//                  PILLAR_NAMES[i].c_str(), error * 1000,
-//                  error <= 0.02 ? "✓" : "✗");
-//     }
-    
-//     if (valid_points == 0) {
-//         logi.log_r("❌ No valid points for validation\n");
-//         return false;
-//     }
-    
-//     double rmse = std::sqrt(total_error_sq / valid_points);
-    
-//     // 6. Принятие решения (более строгий порог для 3 точек)
-//     const double RMSE_THRESHOLD = 0.03; // 3 см (строже чем для 4 точек)
-    
-//     if (rmse <= RMSE_THRESHOLD) {
-//         calibration_done_ = true;
-//         final_pillars_results_ = pillars;
-        
-//         logi.log_g("\n✅ 3-PILLAR CALIBRATION SUCCESSFUL! RMSE = %.1f mm\n", rmse * 1000);
-//         logi.log_w("⚠️  Note: Pillar %s is estimated (confidence: 70%%)\n",
-//                    PILLAR_NAMES[missing_idx].c_str());
-        
-//         saveCalibrationParameters();
-//         publishFinalMarkers(final_pillars_results_);
-//         return true;
-//     } else {
-//         logi.log_r("❌ 3-PILLAR CALIBRATION FAILED: RMSE = %.1f mm > %.1f mm\n",
-//                    rmse * 1000, RMSE_THRESHOLD * 1000);
-//         lidar_calibration_.clear();
-//         return false;
-//     }
-// }
-
 /*
  * Выбор лучших 4 столбов из большего количества
  */
@@ -2347,126 +2244,12 @@ void selectBestFourPillars(AlignedPillarVector &pillars)
     logi.log_g("Selected 4 pillars with highest weights\n");
 }
 
-/*
- * Универсальная калибровка - работает с 3 или 4 столбами
- */
-// void performCalibration(AlignedPillarVector &pillars)
-// {
-//     logi.log("--- 🚀 UNIVERSAL LiDAR CALIBRATION (v8.0 - Supports 3 & 4 pillars)\n");
-    
-//     // ========== ПРОВЕРКА ВХОДНЫХ ДАННЫХ ==========
-//     if (pillars.size() == 4) {
-//         logi.log_g("✓ 4 pillars detected - using standard calibration\n");
-//         performCalibrationFourPillars(pillars);
-//     }
-//     else if (pillars.size() == 3) {
-//         logi.log_w("⚠️  3 pillars detected - attempting advanced calibration\n");
-//         performCalibrationThreePillars(pillars);
-//     }
-//     else if (pillars.size() > 4) {
-//         logi.log_w("⚠️  %lu pillars detected - selecting best 4\n", pillars.size());
-//         selectBestFourPillars(pillars);
-//         if (pillars.size() == 4) {
-//             performCalibrationFourPillars(pillars);
-//         } else {
-//             logi.log_r("❌ Failed to select 4 pillars\n");
-//             lidar_calibration_.clear();
-//         }
-//     }
-//     else {
-//         logi.log_r("❌ Insufficient pillars for calibration: %lu (need 3 or 4)\n", pillars.size());
-//         lidar_calibration_.clear();
-//     }
-// }
 
-    /*
-     * Универсальная калибровка (Маршрутизатор)
-     */
-    void performCalibration(AlignedPillarVector &pillars)
-    {
-        // logi.log("--- UNIVERSAL CALIBRATION DISPATCH ---\n"); 
-        
-        if (pillars.size() == 4) {
-            // Стандартный случай
-            performCalibrationFourPillars(pillars);
-        }
-        else if (pillars.size() == 3) {
-            // Сложный случай (Треугольник) - вызывает твою новую функцию
-            logi.log_w("⚠️ 3 pillars detected -> Calling 3-PT Calibration\n");
-            performCalibrationThreePillars(pillars);
-        }
-        else if (pillars.size() > 4) {
-            // Избыточность - отбираем лучшие
-            logi.log_w("⚠️ %lu pillars detected -> Selecting Best 4\n", pillars.size());
-            selectBestFourPillars(pillars);
-            
-            if (pillars.size() == 4) {
-                performCalibrationFourPillars(pillars);
-            } else {
-                logi.log_r("❌ Failed to select pillars\n");
-                lidar_calibration_.clear();
-            }
-        }
-        else {
-            // Мало данных
-            logi.log_r("❌ Insufficient pillars: %lu (need 3 or 4)\n", pillars.size());
-            lidar_calibration_.clear();
-        }
-    }
 
+public:
     // ----------------------------------------------------------------------------------
     // 4. ПУБЛИЧНЫЕ МЕТОДЫ
     // ----------------------------------------------------------------------------------
-public:
-    // PillarScanNode() : scans_collected(0), calibration_done_(false),
-    //                    total_rays_removed_by_zero_intensity(0),   // <--- ОБНУЛЕНИЕ
-    //                    total_rays_removed_by_low_intensity(0),    // <--- ОБНУЛЕНИЕ
-    //                    total_rays_removed_by_initial_intensity(0) // <--- ОБНУЛЕНИЕ
-    // {
-    //     logi.log("\n=== PillarScanNode v5.9 Started (Configurable Filters) ===\n"); // Обновление версии
-
-    //     loadParameters();
-    //     if (!ros::ok())
-    //         return;
-
-    //     // Инициализация паблишеров
-    //     pub_filtered_scan = nh.advertise<visualization_msgs::Marker>("/rviz/filtered_scan", 1);
-
-    //     // Три отдельных топика для методов
-    //     pub_method_1 = nh.advertise<visualization_msgs::Marker>("/rviz/method_1_jump", 1);
-    //     pub_method_2 = nh.advertise<visualization_msgs::Marker>("/rviz/method_2_cluster", 1);
-    //     pub_method_3 = nh.advertise<visualization_msgs::Marker>("/rviz/method_3_minima", 1);
-
-    //     pub_fused_pillars = nh.advertise<visualization_msgs::Marker>("/rviz/fused_pillars", 1);
-    //     pub_final_markers = nh.advertise<visualization_msgs::MarkerArray>("/rviz/final_pillars", 1);
-
-    //     initReferenceSystem();
-
-    //     logi.log("Checking /scan topic availability (timeout 30s)...\n");
-
-    //     // Ожидание первого сообщения /scan
-    //     sensor_msgs::LaserScan::ConstPtr first_scan =
-    //         ros::topic::waitForMessage<sensor_msgs::LaserScan>("/scan", ros::Duration(30));
-
-    //     if (!first_scan)
-    //     {
-    //         logi.log_r("Timed out waiting for /scan topic. Is the LiDAR node running? Shutting down.\n");
-    //         ros::shutdown();
-    //         return;
-    //     }
-
-    //     size_t num_rays = first_scan->ranges.size();
-    //     accumulated_ranges.resize(num_rays);
-    //     accumulated_intensities.resize(num_rays);
-    //     meta_scan = *first_scan;
-
-    //     logi.log_b("LiDAR initialized. Rays: %lu. Starting accumulation.\n", num_rays);
-
-    //     scan_sub = nh.subscribe("/scan", 100, &PillarScanNode::scanCallback, this);
-    //     logi.log("Waiting for %d laser scans on /scan topic to complete initial calibration.\n", SCANS_TO_COLLECT);
-
-    //     publish_timer_ = nh.createTimer(ros::Duration(1.0), &PillarScanNode::publishResultsTimerCallback, this);
-    // }
 
 // Конструктор: только нули и паблишеры
     PillarScanNode() : 
@@ -2866,78 +2649,6 @@ public:
 
         logi.log("==============================================\n");
     }
-
-    // // МЕТОД: scanCallback
-    // void scanCallback(const sensor_msgs::LaserScan::ConstPtr &scan)
-    // {
-    //     if (calibration_done_ || scans_collected >= SCANS_TO_COLLECT)
-    //     {
-    //         return;
-    //     }
-
-    //     if (scans_collected == 0)
-    //     {
-    //         meta_scan = *scan;
-    //         accumulated_ranges.resize(scan->ranges.size());
-    //         accumulated_intensities.resize(scan->ranges.size());
-    //         logi.log("LiDAR initialized. Rays: %lu. Starting accumulation.\n", scan->ranges.size());
-    //     }
-
-    //     bool has_intensities = (scan->intensities.size() == scan->ranges.size());
-
-    //     int removed_by_zero_in_current_scan = 0;
-    //     int removed_by_low_in_current_scan = 0;
-    //     int current_scan_added_count = 0;
-
-    //     for (size_t i = 0; i < scan->ranges.size(); ++i)
-    //     {
-    //         float r = scan->ranges[i];
-    //         float intensity = has_intensities ? scan->intensities[i] : 0.0f;
-
-    //         // ФИЛЬТРАЦИЯ ПО ИНТЕНСИВНОСТИ
-    //         if (has_intensities)
-    //         {
-    //             if (intensity == 0.0f)
-    //             {
-    //                 removed_by_zero_in_current_scan++;
-    //                 total_rays_removed_by_zero_intensity++;
-    //                 total_rays_removed_by_initial_intensity++;
-    //                 continue;
-    //             }
-
-    //             if (intensity < intensity_min_threshold)
-    //             {
-    //                 removed_by_low_in_current_scan++;
-    //                 total_rays_removed_by_low_intensity++;
-    //                 total_rays_removed_by_initial_intensity++;
-    //                 continue;
-    //             }
-    //         }
-    //         if (std::isinf(r) || std::isnan(r))
-    //             continue;
-    //         if (r < min_range_filter || r > max_range_filter)
-    //             continue;
-    //         accumulated_ranges[i].push_back(r);
-    //         accumulated_intensities[i].push_back(intensity); // Сохраняем  только если прошли фильтр
-    //         current_scan_added_count++;
-    //     }
-
-    //     scans_collected++;
-
-    //     logi.log("Collecting scans: %d/%d. Kept: %d. Removed: Zero=%d, Low=%d. Total Intensity Removed: %lld\n",
-    //              scans_collected, SCANS_TO_COLLECT, current_scan_added_count,
-    //              removed_by_zero_in_current_scan, removed_by_low_in_current_scan,
-    //              total_rays_removed_by_initial_intensity);
-
-    //     if (scans_collected == SCANS_TO_COLLECT)
-    //     {
-    //         logi.log("Accumulation complete. Starting processing pipeline...\n");
-    //         processPipeline();
-    //     }
-    // }
-
-
-    
 
 // ИЗМЕНЕНА: Добавлен учет точек, удаленных по дальности и NaN, чтобы сходилась статистика
     void processPipeline(const sensor_msgs::LaserScan &scan)
