@@ -23,6 +23,14 @@
 #include <geometry_msgs/Point.h>            // Для точек внутри маркеров
 #include <geometry_msgs/PoseStamped.h>      // <-- ДОБАВИТЬ ЭТУ СТРОКУ
 
+
+#include "trilaterationSolver.h" // Файл для функций для формирования топиков в нужном виде и формате
+
+
+
+
+
+
 // Константа для математических вычислений (pi)
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -186,6 +194,8 @@ private:
     ros::Publisher pub_fused_pillars;
     ros::Publisher pub_final_markers;
     ros::Publisher pub_calib_result; // <-- НОВЫЙ ПАБЛИШЕР
+    ros::Publisher pub_mnk_result;   // <--- НОВЫЙ: MNK (Trilateration)
+    ros::Publisher pub_fused_result; // Не забудь добавить в конструктор: nh.advertise...("/pb/scan/fused_pose", 1);
 
     // --- Параметры ---
     double pillar_diam_;
@@ -251,6 +261,15 @@ private:
     AlignedVector2f fused_centers_results_;
     AlignedVector2f clean_points_results_; // <-- НОВОЕ: Для сохранения точек после углового фильтра
 
+    // Объект твоего решателя
+    // Инициализируем его в конструкторе, передавая начальную точку (0,0)
+    std::unique_ptr<TrilaterationSolver> mnk_solver_;
+    // Результаты MNK для слияния
+    geometry_msgs::PoseStamped mnk_pose_result_;
+    double mnk_rmse_result_ = 0.0;
+    double mnk_yaw_deg_result_ = 0.0; // <--- НОВОЕ ПОЛЕ
+    
+
     // Структура для хранения калибровки лидара
     struct LidarCalibration
     {
@@ -259,6 +278,7 @@ private:
         double rotation_deg = 0.0;
         Eigen::Vector2d position = Eigen::Vector2d(0, 0);
         Eigen::Matrix2d rotation_matrix = Eigen::Matrix2d::Identity();
+        double rmse = 0.0; // <--- НОВОЕ ПОЛЕ
 
         void clear()
         {
@@ -271,7 +291,6 @@ private:
 
     LidarCalibration lidar_calibration_; //  для хранения калибровки
 
-private:
     // Структура для хранения гипотезы калибровки (для 3 точек)
     struct CalibrationHypothesis
     {
@@ -299,6 +318,169 @@ private:
     // ----------------------------------------------------------------------------------
     // 3. ПРИВАТНЫЕ МЕТОДЫ
     // ----------------------------------------------------------------------------------
+
+/*
+     * Расчет позиции вторым методом (MNK / Trilateration) для сравнения
+     */
+    void performMnkCalculation(const AlignedPillarVector &pillars)
+    {
+        // Нам нужно минимум 3 столба для трилатерации
+        if (pillars.size() < 3) return;
+
+        // 1. Очистка и подготовка
+        mnk_solver_->clear_circles();
+        
+        // Обновляем "предыдущую точку" для решателя результатом Umeyama (или предыдущим MNK),
+        // чтобы он правильно выбирал дуги.
+        if (calibration_done_) {
+            SPoint prev;
+            prev.x = lidar_calibration_.position.x();
+            prev.y = lidar_calibration_.position.y();
+            
+            logi.log("MNK Init: Using Umeyama Pose (%+8.3f, %+8.3f) as hint.\n", prev.x, prev.y); // Лог для проверки, что мы взяли не (0,0)
+
+            mnk_solver_->set_A_prev(prev);
+        }
+
+        int count_circles = 0;
+
+        // 2. Добавляем ДИСТАНЦИИ (4 измерения)
+        for (const auto& p : pillars) {
+            // MNK требует координат центра маяка
+            SPoint beacon;
+            beacon.x = p.global.x();
+            beacon.y = p.global.y();
+            
+            // MNK требует расстояние до ЦЕНТРА. 
+            // У нас есть phys_dist (до поверхности). Прибавляем радиус.
+            // Используем взвешенную дистанцию (final_dist), которую мы посчитали в calculatePillarMetrics
+            // Восстанавливаем её: L_center = dist(0,0) до local
+            double dist_to_center = p.local.norm(); 
+            
+            mnk_solver_->add_circle_from_distance(beacon, dist_to_center);
+            count_circles++;
+        }
+
+        // 3. Добавляем УГЛЫ (C(4,2) = 6 измерений)
+        for (size_t i = 0; i < pillars.size(); ++i) {
+            for (size_t j = i + 1; j < pillars.size(); ++j) {
+                SPoint p1 = {pillars[i].global.x(), pillars[i].global.y()};
+                SPoint p2 = {pillars[j].global.x(), pillars[j].global.y()};
+                
+                // Угол между лучами на столбы в системе лидара
+                // Используем углы из local координат (это и есть углы, измеренные лидаром)
+                double ang_i = std::atan2(pillars[i].local.y(), pillars[i].local.x()) * 180.0 / M_PI;
+                double ang_j = std::atan2(pillars[j].local.y(), pillars[j].local.x()) * 180.0 / M_PI;
+                
+                // Разница углов (всегда положительная для решателя)
+                double angle_deg = std::abs(ang_i - ang_j);
+                if (angle_deg > 180.0) angle_deg = 360.0 - angle_deg;
+                
+                mnk_solver_->add_filtered_circle_from_angle(p1, p2, angle_deg);
+                count_circles++;
+            }
+        }
+
+        // 4. РАСЧЕТ ПОЗИЦИИ (Robust WLS)
+        SPoint_Q result = mnk_solver_->find_A_by_mnk_robust();
+
+        // 5. РАСЧЕТ ОРИЕНТАЦИИ
+        std::vector<SPoint> beacons;
+        std::vector<double> angles;
+        
+        for(const auto& p : pillars) {
+            beacons.push_back({p.global.x(), p.global.y()});
+            double ang = std::atan2(p.local.y(), p.local.x()) * 180.0 / M_PI;
+            angles.push_back(ang);
+        }
+        
+        double orientation = mnk_solver_->get_lidar_orientation(result.A, beacons, angles);
+
+        // 6. ПУБЛИКАЦИЯ
+        geometry_msgs::PoseStamped msg;
+        msg.header.stamp = ros::Time::now();
+        msg.header.frame_id = "map"; // Global frame
+
+        msg.pose.position.x = result.A.x;
+        msg.pose.position.y = result.A.y;
+        msg.pose.position.z = result.quality; // Пишем качество (RMS) в Z для отладки
+
+        // Yaw -> Quaternion
+        double yaw_rad = orientation * M_PI / 180.0;
+        msg.pose.orientation.z = sin(yaw_rad * 0.5);
+        msg.pose.orientation.w = cos(yaw_rad * 0.5);
+
+        pub_mnk_result.publish(msg);
+        
+        // СОХРАНЯЕМ ДЛЯ FUSION
+        mnk_pose_result_ = msg;
+        mnk_rmse_result_ = result.quality;
+        mnk_yaw_deg_result_ = orientation; // <--- СОХРАНЯЕМ УГОЛ (в градусах)
+        
+        // Лог для сравнения (можно закомментить)
+        /*
+        logi.log("  [MNK COMPARE] X=%.3f Y=%.3f Ang=%.1f (RMS=%.3f)\n", 
+                 result.A.x, result.A.y, orientation, result.quality);
+        */
+    }
+
+/*
+     * Версия: v9.2 (Full Fusion: Pos + Angle)
+     * Слияние двух методов по весам (Inverse Variance Weighting)
+     */
+    void fuseResults()
+    {
+        // 1. Берем ошибки (RMSE)
+        double rmse_u = lidar_calibration_.rmse;
+        double rmse_m = mnk_rmse_result_;
+        
+        if (rmse_u < 1e-4) rmse_u = 1e-4;
+        if (rmse_m < 1e-4) rmse_m = 1e-4;
+
+        // 2. Считаем Веса (1/E^2)
+        double w_u = 1.0 / (rmse_u * rmse_u);
+        double w_m = 1.0 / (rmse_m * rmse_m);
+        double total_w = w_u + w_m;
+
+        double nw_u = w_u / total_w; // Нормализованный вес Umeyama (0..1)
+        double nw_m = w_m / total_w; // Нормализованный вес MNK (0..1)
+
+        // 3. Считаем Позицию (Взвешенное среднее)
+        double x_gold = lidar_calibration_.position.x() * nw_u + mnk_pose_result_.pose.position.x * nw_m;
+        double y_gold = lidar_calibration_.position.y() * nw_u + mnk_pose_result_.pose.position.y * nw_m;
+
+        // 4. Считаем Угол (Векторное усреднение)
+        double ang_u_rad = lidar_calibration_.rotation_deg * M_PI / 180.0;
+        double ang_m_rad = mnk_yaw_deg_result_ * M_PI / 180.0;
+
+        // Складываем векторы направлений с весами
+        double sin_sum = nw_u * std::sin(ang_u_rad) + nw_m * std::sin(ang_m_rad);
+        double cos_sum = nw_u * std::cos(ang_u_rad) + nw_m * std::cos(ang_m_rad);
+
+        // Восстанавливаем угол
+        double yaw_gold_rad = std::atan2(sin_sum, cos_sum);
+        double yaw_gold_deg = yaw_gold_rad * 180.0 / M_PI;
+
+        // 5. ЛОГИРОВАНИЕ
+        logi.log_b("=== 🏆 GOLDEN RESULT ===\n");
+        logi.log("  Weights: Umeyama %5.1f%% (Err=%.1fmm) vs MNK %5.1f%% (Err=%.1fmm)\n", 
+                 nw_u * 100.0, rmse_u * 1000.0, 
+                 nw_m * 100.0, rmse_m * 1000.0);
+        
+        logi.log_g("  POS: X= %+8.4f Y= %+8.4f | Ang= %+6.2f deg\n", x_gold, y_gold, yaw_gold_deg);
+
+        // 6. Публикация
+        geometry_msgs::PoseStamped msg;
+        msg.header.stamp = ros::Time::now();
+        msg.header.frame_id = "map";
+        msg.pose.position.x = x_gold;
+        msg.pose.position.y = y_gold;
+        
+        msg.pose.orientation.z = sin(yaw_gold_rad * 0.5);
+        msg.pose.orientation.w = cos(yaw_gold_rad * 0.5);
+        
+        pub_fused_result.publish(msg);
+    }
 
     // ЛОГИРОВАНИЕ СЫРОГО СКАНА (Адаптировано под прямой вызов)
     void logRawScan(const sensor_msgs::LaserScan &scan)
@@ -2135,6 +2317,7 @@ private:
         if (rmse <= RMSE_THRESHOLD)
         {
             calibration_done_ = true;
+            lidar_calibration_.rmse = rmse; // <--- ДОБАВИТЬ ЭТУ СТРОКУ
             for (int i = 0; i < 4; ++i)
                 pillars[i].global = reference_centers_[i].cast<double>();
             final_pillars_results_ = pillars;
@@ -2301,6 +2484,7 @@ private:
 
             // Применяем результат
             calibration_done_ = true;
+            lidar_calibration_.rmse = best_rmse; // <--- ДОБАВЬ ЭТУ СТРОКУ СЮДА
             lidar_calibration_.scale_factor = best_scale;
             lidar_calibration_.rotation_matrix = best_R;
             lidar_calibration_.position = best_T;
@@ -2378,23 +2562,59 @@ public:
     // 4. ПУБЛИЧНЫЕ МЕТОДЫ
     // ----------------------------------------------------------------------------------
 
-    // Конструктор: только нули и паблишеры
-    PillarScanNode() : new_scan_available_(false),
-                       initialized_(false),
-                       scans_processed_count_(0), // <--- ДОБАВИТЬ ЭТУ СТРОКУ (Обнуление)
-                       calibration_done_(false),
-                       total_rays_removed_by_zero_intensity(0),
-                       total_rays_removed_by_low_intensity(0),
-                       total_rays_removed_by_initial_intensity(0)
+    // // Конструктор: только нули и паблишеры
+    // PillarScanNode() : new_scan_available_(false),
+    //                    initialized_(false),
+    //                    scans_processed_count_(0), // <--- ДОБАВИТЬ ЭТУ СТРОКУ (Обнуление)
+    //                    calibration_done_(false),
+    //                    total_rays_removed_by_zero_intensity(0),
+    //                    total_rays_removed_by_low_intensity(0),
+    //                    total_rays_removed_by_initial_intensity(0)
+    // {
+    //     // Паблишеры (как было)
+    //     pub_filtered_scan = nh.advertise<visualization_msgs::Marker>("/rviz/filtered_scan", 1);
+    //     pub_method_1 = nh.advertise<visualization_msgs::Marker>("/rviz/method_1_jump", 1);
+    //     pub_method_2 = nh.advertise<visualization_msgs::Marker>("/rviz/method_2_cluster", 1);
+    //     pub_method_3 = nh.advertise<visualization_msgs::Marker>("/rviz/method_3_minima", 1);
+    //     pub_fused_pillars = nh.advertise<visualization_msgs::Marker>("/rviz/fused_pillars", 1);
+    //     pub_final_markers = nh.advertise<visualization_msgs::MarkerArray>("/rviz/final_pillars", 1);
+    //     pub_calib_result = nh.advertise<geometry_msgs::PoseStamped>("/pb/scan/calibration_pose", 1); // <-- НОВОЕ: Топик с результатом калибровки (Позиция лидара)
+        
+    //     pub_mnk_result = nh.advertise<geometry_msgs::PoseStamped>("/pb/scan/pose_mnk", 1);// НОВЫЙ ТОПИК
+    //     SPoint start_p = {0.0, 0.0};  // Создаем решатель. Начальная точка (0,0) нигде не используется. только для создания
+    //     mnk_solver_ = std::make_unique<TrilaterationSolver>(start_p);
+    // }
+
+// Конструктор
+    PillarScanNode() : 
+        new_scan_available_(false),
+        initialized_(false),
+        scans_processed_count_(0),
+        calibration_done_(false),
+        total_rays_removed_by_zero_intensity(0),
+        total_rays_removed_by_low_intensity(0),
+        total_rays_removed_by_initial_intensity(0)
     {
-        // Паблишеры (как было)
+        // 1. Старые паблишеры (RVIZ)
         pub_filtered_scan = nh.advertise<visualization_msgs::Marker>("/rviz/filtered_scan", 1);
         pub_method_1 = nh.advertise<visualization_msgs::Marker>("/rviz/method_1_jump", 1);
         pub_method_2 = nh.advertise<visualization_msgs::Marker>("/rviz/method_2_cluster", 1);
         pub_method_3 = nh.advertise<visualization_msgs::Marker>("/rviz/method_3_minima", 1);
         pub_fused_pillars = nh.advertise<visualization_msgs::Marker>("/rviz/fused_pillars", 1);
         pub_final_markers = nh.advertise<visualization_msgs::MarkerArray>("/rviz/final_pillars", 1);
-        pub_calib_result = nh.advertise<geometry_msgs::PoseStamped>("/pb/scan/calibration_pose", 1); // <-- НОВОЕ: Топик с результатом калибровки (Позиция лидара)
+        
+        // 2. Паблишер результата Umeyama (Калибровка)
+        pub_calib_result = nh.advertise<geometry_msgs::PoseStamped>("/pb/scan/calibration_pose", 1);
+
+        // Паблишер результата MNK (Второе мнение)
+        pub_mnk_result = nh.advertise<geometry_msgs::PoseStamped>("/pb/scan/pose_mnk", 1);
+        
+        // Паблишер результата Fusion (Слияние)
+        pub_fused_result = nh.advertise<geometry_msgs::PoseStamped>("/pb/scan/fused_pose", 1);
+
+        // 4. Инициализация решателя MNK
+        SPoint start_p = {0.0, 0.0}; 
+        mnk_solver_ = std::make_unique<TrilaterationSolver>(start_p);
     }
 
     // Инициализация (перенесли сюда тяжелую логику)
@@ -2946,14 +3166,21 @@ public:
             current_fused_centers.push_back(fp.local);
         fused_centers_results_ = current_fused_centers;
 
-        // 5. КАЛИБРОВКА (БЕЗ ИЗМЕНЕНИЙ)
-        if (final_pillars.size() >= 3)
-        {
-            if (final_pillars.size() >= 4)
-                reorderPillars(final_pillars);
-            performCalibration(final_pillars);
+        // 5. КАЛИБРОВКА И СЛИЯНИЕ
+        if (final_pillars.size() >= 3) {
+            // А. Сортировка
+            if (final_pillars.size() >= 4) reorderPillars(final_pillars);
+            
+            // Б. Метод 1 (Umeyama) - Основной
+            performCalibration(final_pillars); 
+            
+            // В. Метод 2 (MNK) и Слияние - только если есть калибровка
+            if (calibration_done_) {
+                performMnkCalculation(final_pillars); // Посчитали MNK
+                fuseResults();                        // Слили результаты 1 и 2
+            }
         }
-
+        
         scans_processed_count_++;
     }
 };

@@ -5,7 +5,7 @@
 
 AsyncFileLogger logi("/home/pi/RoboBIM-Linux/src/pb/log/", "scan_node");
 
-#include "scan_code/code.h"
+#include "scan_code/pillarScanNode.h"
 
 int main(int argc, char **argv)
 {
