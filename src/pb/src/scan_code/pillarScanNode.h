@@ -403,7 +403,8 @@ private:
 
         msg.pose.position.x = result.A.x;
         msg.pose.position.y = result.A.y;
-        msg.pose.position.z = result.quality; // Пишем качество (RMS) в Z для отладки
+
+        msg.pose.position.z = result.quality; // Пишем качество (RMS) в Z для отладки // --- ИЗМЕНЕНИЕ: Z = RMSE (качество в метрах) ---
 
         // Yaw -> Quaternion
         double yaw_rad = orientation * M_PI / 180.0;
@@ -425,56 +426,57 @@ private:
     }
 
 /*
-     * Версия: v9.2 (Full Fusion: Pos + Angle)
-     * Слияние двух методов по весам (Inverse Variance Weighting)
+     * Версия: v9.3 (Fusion with Quality Output)
      */
     void fuseResults()
     {
-        // 1. Берем ошибки (RMSE)
         double rmse_u = lidar_calibration_.rmse;
         double rmse_m = mnk_rmse_result_;
         
         if (rmse_u < 1e-4) rmse_u = 1e-4;
         if (rmse_m < 1e-4) rmse_m = 1e-4;
 
-        // 2. Считаем Веса (1/E^2)
+        // Веса (обратная дисперсия)
         double w_u = 1.0 / (rmse_u * rmse_u);
         double w_m = 1.0 / (rmse_m * rmse_m);
         double total_w = w_u + w_m;
 
-        double nw_u = w_u / total_w; // Нормализованный вес Umeyama (0..1)
-        double nw_m = w_m / total_w; // Нормализованный вес MNK (0..1)
+        double nw_u = w_u / total_w;
+        double nw_m = w_m / total_w;
 
-        // 3. Считаем Позицию (Взвешенное среднее)
+        // Координаты
         double x_gold = lidar_calibration_.position.x() * nw_u + mnk_pose_result_.pose.position.x * nw_m;
         double y_gold = lidar_calibration_.position.y() * nw_u + mnk_pose_result_.pose.position.y * nw_m;
 
-        // 4. Считаем Угол (Векторное усреднение)
+        // Угол
         double ang_u_rad = lidar_calibration_.rotation_deg * M_PI / 180.0;
         double ang_m_rad = mnk_yaw_deg_result_ * M_PI / 180.0;
-
-        // Складываем векторы направлений с весами
         double sin_sum = nw_u * std::sin(ang_u_rad) + nw_m * std::sin(ang_m_rad);
         double cos_sum = nw_u * std::cos(ang_u_rad) + nw_m * std::cos(ang_m_rad);
-
-        // Восстанавливаем угол
         double yaw_gold_rad = std::atan2(sin_sum, cos_sum);
         double yaw_gold_deg = yaw_gold_rad * 180.0 / M_PI;
 
-        // 5. ЛОГИРОВАНИЕ
+        // --- ИЗМЕНЕНИЕ: Расчет итогового качества (Theoretical Fused RMSE) ---
+        // RMSE_total = 1 / sqrt(W_total)
+        double fused_rmse = std::sqrt(1.0 / total_w);
+
+        // Логирование
         logi.log_b("=== 🏆 GOLDEN RESULT ===\n");
         logi.log("  Weights: Umeyama %5.1f%% (Err=%.1fmm) vs MNK %5.1f%% (Err=%.1fmm)\n", 
                  nw_u * 100.0, rmse_u * 1000.0, 
                  nw_m * 100.0, rmse_m * 1000.0);
-        
-        logi.log_g("  POS: X= %+8.4f Y= %+8.4f | Ang= %+6.2f deg\n", x_gold, y_gold, yaw_gold_deg);
+        logi.log_g("  POS: X= %+8.4f Y= %+8.4f | Ang= %+6.2f deg | Qual= %.1f mm\n", 
+                 x_gold, y_gold, yaw_gold_deg, fused_rmse * 1000.0);
 
-        // 6. Публикация
+        // Публикация
         geometry_msgs::PoseStamped msg;
         msg.header.stamp = ros::Time::now();
         msg.header.frame_id = "map";
         msg.pose.position.x = x_gold;
         msg.pose.position.y = y_gold;
+        
+        // Пишем итоговое качество в Z
+        msg.pose.position.z = fused_rmse; 
         
         msg.pose.orientation.z = sin(yaw_gold_rad * 0.5);
         msg.pose.orientation.w = cos(yaw_gold_rad * 0.5);
@@ -2165,8 +2167,8 @@ private:
         msg.pose.position.x = lidar_calibration_.position.x();
         msg.pose.position.y = lidar_calibration_.position.y();
 
-        // ХАК: Передаем Scale Factor в Z, чтобы не терять инфу (для 2D задач Z обычно не нужен)
-        msg.pose.position.z = lidar_calibration_.scale_factor;
+        // --- ИЗМЕНЕНИЕ: Z = RMSE (качество в метрах) ---
+        msg.pose.position.z = lidar_calibration_.rmse;
 
         // 2. Ориентация (Конвертация Yaw -> Quaternion)
         // Угол у нас в радианах: lidar_calibration_.rotation_deg * M_PI / 180.0
@@ -2189,44 +2191,37 @@ private:
     }
 
     /*
-     * Универсальная калибровка (Маршрутизатор)
+     * Универсальная калибровка (Маршрутизатор) - ТЕПЕРЬ ВОЗВРАЩАЕТ BOOL
      */
-    void performCalibration(AlignedPillarVector &pillars)
+    bool performCalibration(AlignedPillarVector &pillars)
     {
-        // logi.log("--- UNIVERSAL CALIBRATION DISPATCH ---\n");
-
-        if (pillars.size() == 4)
-        {
+        if (pillars.size() == 4) {
             // Стандартный случай
-            performCalibrationFourPillars(pillars);
+            return performCalibrationFourPillars(pillars);
         }
-        else if (pillars.size() == 3)
-        {
-            // Сложный случай (Треугольник) - вызывает твою новую функцию
+        else if (pillars.size() == 3) {
+            // Сложный случай (Треугольник)
             logi.log_w("⚠️ 3 pillars detected -> Calling 3-PT Calibration\n");
-            performCalibrationThreePillars(pillars);
+            return performCalibrationThreePillars(pillars);
         }
-        else if (pillars.size() > 4)
-        {
-            // Избыточность - отбираем лучшие
+        else if (pillars.size() > 4) {
+            // Избыточность
             logi.log_w("⚠️ %lu pillars detected -> Selecting Best 4\n", pillars.size());
             selectBestFourPillars(pillars);
-
-            if (pillars.size() == 4)
-            {
-                performCalibrationFourPillars(pillars);
-            }
-            else
-            {
+            
+            if (pillars.size() == 4) {
+                return performCalibrationFourPillars(pillars);
+            } else {
                 logi.log_r("❌ Failed to select pillars\n");
                 lidar_calibration_.clear();
+                return false;
             }
         }
-        else
-        {
+        else {
             // Мало данных
             logi.log_r("❌ Insufficient pillars: %lu (need 3 or 4)\n", pillars.size());
             lidar_calibration_.clear();
+            return false;
         }
     }
 
@@ -2604,10 +2599,10 @@ public:
         pub_final_markers = nh.advertise<visualization_msgs::MarkerArray>("/rviz/final_pillars", 1);
         
         // 2. Паблишер результата Umeyama (Калибровка)
-        pub_calib_result = nh.advertise<geometry_msgs::PoseStamped>("/pb/scan/calibration_pose", 1);
+        pub_calib_result = nh.advertise<geometry_msgs::PoseStamped>("/pb/scan/umeyama_pose", 1);
 
         // Паблишер результата MNK (Второе мнение)
-        pub_mnk_result = nh.advertise<geometry_msgs::PoseStamped>("/pb/scan/pose_mnk", 1);
+        pub_mnk_result = nh.advertise<geometry_msgs::PoseStamped>("/pb/scan/mnk_pose", 1);
         
         // Паблишер результата Fusion (Слияние)
         pub_fused_result = nh.advertise<geometry_msgs::PoseStamped>("/pb/scan/fused_pose", 1);
@@ -3167,17 +3162,26 @@ public:
         fused_centers_results_ = current_fused_centers;
 
         // 5. КАЛИБРОВКА И СЛИЯНИЕ
-        if (final_pillars.size() >= 3) {
+        if (final_pillars.size() >= 3) 
+        {
             // А. Сортировка
             if (final_pillars.size() >= 4) reorderPillars(final_pillars);
             
             // Б. Метод 1 (Umeyama) - Основной
-            performCalibration(final_pillars); 
+            bool umeyama_success = performCalibration(final_pillars);
             
             // В. Метод 2 (MNK) и Слияние - только если есть калибровка
-            if (calibration_done_) {
-                performMnkCalculation(final_pillars); // Посчитали MNK
-                fuseResults();                        // Слили результаты 1 и 2
+            // ЗАПУСКАЕМ MNK ТОЛЬКО ЕСЛИ ТЕКУЩАЯ КАЛИБРОВКА УСПЕШНА
+            if (umeyama_success) 
+            { 
+                try 
+                {
+                    performMnkCalculation(final_pillars);
+                    fuseResults();
+                } catch (const std::exception& e) 
+                {
+                    logi.log_r("MNK/Fusion Error: %s\n", e.what());
+                }
             }
         }
         
