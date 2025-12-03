@@ -34,6 +34,15 @@ PillarScanNode::PillarScanNode() : new_scan_available_(false),
     // 4. Инициализация решателя MNK
     SPoint start_p = {0.0, 0.0};
     mnk_solver_ = std::make_unique<TrilaterationSolver>(start_p);
+    
+    // Инициализация статистики
+    stats_.start_time = ros::Time::now();
+    stats_.last_print_time = ros::Time::now();
+    // Обнуление map
+    stats_.missing_counts["RB"] = 0;
+    stats_.missing_counts["RT"] = 0;
+    stats_.missing_counts["LT"] = 0;
+    stats_.missing_counts["LB"] = 0;
 }
 
 
@@ -49,8 +58,7 @@ void PillarScanNode::performMnkCalculation(const AlignedPillarVector &pillars)
     // 1. Очистка и подготовка
     mnk_solver_->clear_circles();
 
-    // Обновляем "предыдущую точку" для решателя результатом Umeyama (или предыдущим MNK),
-    // чтобы он правильно выбирал дуги.
+    // Обновляем "предыдущую точку" для решателя результатом Umeyama (или предыдущим MNK), чтобы он правильно выбирал дуги.
     if (calibration_done_)
     {
         SPoint prev;
@@ -145,8 +153,7 @@ void PillarScanNode::performMnkCalculation(const AlignedPillarVector &pillars)
 
     // Лог для сравнения (можно закомментить)
     /*
-    logi.log("  [MNK COMPARE] X=%.3f Y=%.3f Ang=%.1f (RMS=%.3f)\n",
-             result.A.x, result.A.y, orientation, result.quality);
+    logi.log("  [MNK COMPARE] X=%.3f Y=%.3f Ang=%.1f (RMS=%.3f)\n", result.A.x, result.A.y, orientation, result.quality);
     */
 }
 
@@ -207,6 +214,13 @@ void PillarScanNode::fuseResults()
 
     msg.pose.orientation.z = sin(yaw_gold_rad * 0.5);
     msg.pose.orientation.w = cos(yaw_gold_rad * 0.5);
+
+    // --- СТАТИСТИКА MNK vs UMEYAMA ---
+    double diff = std::sqrt(std::pow(lidar_calibration_.position.x() - mnk_pose_result_.pose.position.x, 2) +
+                            std::pow(lidar_calibration_.position.y() - mnk_pose_result_.pose.position.y, 2));
+    
+    stats_.sum_mnk_diff += diff;
+    stats_.mnk_count++;
 
     pub_fused_result.publish(msg);
 }
@@ -428,20 +442,34 @@ void PillarScanNode::publishResultsTimerCallback(const ros::TimerEvent &event)
     }
 }
 
-// ИЗМЕНЕНО: Теперь сохраняет сырые точки в кандидата
+/*
+ * Обработка одного кластера: фильтрация, fitCircle, создание кандидата
+ */
 bool PillarScanNode::processCluster(const AlignedVector2f &cluster, int method_id,
                     std::vector<PillarCandidate> &out, AlignedVector2f &out_cluster_points)
 {
     size_t c_size = cluster.size();
 
-    // 1. Проверка количества точек
+// 1. Фильтрация по количеству точек
     if (c_size < min_cluster_points_)
+    {
+        if (method_id == 1) stats_.m1_rejected++;
+        else if (method_id == 2) stats_.m2_rejected++;
+        else if (method_id == 3) stats_.m3_rejected++;
         return false;
+    }
 
     // 2. Проверка ширины
     double width = MathUtils::dist2D(cluster.front(), cluster.back());
+
+// 2. Фильтрация по ширине
     if (width < min_cluster_width_ || width > max_cluster_width_)
+    {
+        if (method_id == 1) stats_.m1_rejected++;
+        else if (method_id == 2) stats_.m2_rejected++;
+        else if (method_id == 3) stats_.m3_rejected++;
         return false;
+    }
 
     Eigen::Vector2f center;
     double rmse;
@@ -474,8 +502,25 @@ bool PillarScanNode::processCluster(const AlignedVector2f &cluster, int method_i
             {
                 out_cluster_points.push_back(p);
             }
+            // Обновляем статистику успеха
+            if (method_id == 1) stats_.m1_found++;
+            else if (method_id == 2) stats_.m2_found++;
+            else if (method_id == 3) stats_.m3_found++;
+
             return true;
         }
+        else// Отказ по низкому весу
+        {
+            if (method_id == 1) stats_.m1_rejected++;
+            else if (method_id == 2) stats_.m2_rejected++;
+            else if (method_id == 3) stats_.m3_rejected++;
+        }
+    }
+    else // Отказ: fitCircle не смог построить круг
+    {
+        if (method_id == 1) stats_.m1_rejected++;
+        else if (method_id == 2) stats_.m2_rejected++;
+        else if (method_id == 3) stats_.m3_rejected++;
     }
     return false;
 }
@@ -572,6 +617,16 @@ void PillarScanNode::calculatePillarMetrics(FinalPillar &pillar)
     double rad_score = std::max(0.0, 1.0 - (radius_err / 0.02));
 
     w_fit = (rmse_score * 0.6 + rad_score * 0.4);
+
+    // --- СТАТИСТИКА ГИБРИДА ---
+    if (w_fit > 0.5) 
+    {
+        stats_.hybrid_math_dominant++;
+    }
+    else 
+    {
+        stats_.hybrid_phys_dominant++;
+    }
 
     // 1. Финальный Угол
     double final_angle = w_fit * pillar.math_angle + (1.0 - w_fit) * pillar.phys_angle;
@@ -799,8 +854,8 @@ std::vector<PillarCandidate> PillarScanNode::detectLocalMinima(const AlignedVect
 }
 
 /*
- * Версия: v8.4 (DBSCAN + Radius Filter)
- * Дата: 2025-12-02 09:32
+ * Версия: v10.1 (Fusion: DBSCAN + Point Accumulation + Hard Filtering + Stats)
+ * Дата: 2025-12-02
  */
 AlignedPillarVector PillarScanNode::fuseCandidates(const std::vector<PillarCandidate> &candidates)
 {
@@ -819,10 +874,10 @@ AlignedPillarVector PillarScanNode::fuseCandidates(const std::vector<PillarCandi
     const int minPts = min_dbscan_points_;
 
     size_t N = candidates.size();
-    std::vector<int> labels(N, -1);
+    std::vector<int> labels(N, -1); // -1 = непосещенная, -2 = шум, >=0 = ID кластера
     int clusterId = 0;
 
-    auto dist2 = [&](size_t a, size_t b)
+    auto dist2 = [&](size_t a, size_t b) // Лямбда для расстояния
     {
         return (candidates[a].center - candidates[b].center).squaredNorm();
     };
@@ -840,7 +895,7 @@ AlignedPillarVector PillarScanNode::fuseCandidates(const std::vector<PillarCandi
 
         if (neighbors.size() < minPts)
         {
-            labels[i] = -2;
+            labels[i] = -2; // Шум
             continue;
         }
 
@@ -852,7 +907,7 @@ AlignedPillarVector PillarScanNode::fuseCandidates(const std::vector<PillarCandi
             size_t n = q.front();
             q.pop_front();
             if (labels[n] == -2)
-                labels[n] = clusterId;
+                labels[n] = clusterId; // Был шум -> стал край кластера
             if (labels[n] != -1)
                 continue;
             labels[n] = clusterId;
@@ -869,14 +924,18 @@ AlignedPillarVector PillarScanNode::fuseCandidates(const std::vector<PillarCandi
         }
         clusterId++;
     }
+    // Подсчет статистики шума
+    int noise_count = 0;
+    for (size_t i = 0; i < N; ++i) 
+    {
+        if (labels[i] == -2) noise_count++;
+    }
+    stats_.dbscan_noise_points += noise_count;
 
     // ---- Фаза 2 & 3: Сборка и ФИЛЬТРАЦИЯ (Изменено) ----
 
     // Аккумуляторы
-    struct Acc
-    {
-        std::vector<size_t> idxs;
-    };
+    struct Acc { std::vector<size_t> idxs; };
     std::vector<Acc> acc(clusterId);
     for (size_t i = 0; i < N; ++i)
     {
@@ -893,10 +952,10 @@ AlignedPillarVector PillarScanNode::fuseCandidates(const std::vector<PillarCandi
         fp.name = "Pillar_" + std::to_string(cid);
         fp.total_weight = 0.0;
 
-        for (size_t k : acc[cid].idxs)
+        for (size_t k : acc[cid].idxs) // Сбор данных со всех кандидатов кластера
         {
             fp.total_weight += candidates[k].weight;
-            // Копируем точки для расчета метрик
+            // Копируем точки для расчета метрик // ВАЖНО: Сливаем сырые точки всех кандидатов в один вектор
             fp.merged_points.insert(fp.merged_points.end(),
                                     candidates[k].points.begin(),
                                     candidates[k].points.end());
@@ -939,6 +998,11 @@ AlignedPillarVector PillarScanNode::fuseCandidates(const std::vector<PillarCandi
                   { return a.total_weight > b.total_weight; });
         final_pillars.resize(4);
     }
+
+    // Обновляем статистику сцены
+    if (final_pillars.size() == 4) stats_.scans_4_pillars++;
+    else if (final_pillars.size() == 3) stats_.scans_3_pillars++;
+    else stats_.scans_bad_count++;
 
     // Логирование результата
     if (!final_pillars.empty())
@@ -1459,47 +1523,124 @@ void PillarScanNode::saveCalibrationParameters()
 /*
  * Универсальная калибровка (Маршрутизатор) - ТЕПЕРЬ ВОЗВРАЩАЕТ BOOL
  */
-bool PillarScanNode::performCalibration(AlignedPillarVector &pillars)
-{
-    if (pillars.size() == 4)
-    {
-        // Стандартный случай
-        return performCalibrationFourPillars(pillars);
-    }
-    else if (pillars.size() == 3)
-    {
-        // Сложный случай (Треугольник)
-        logi.log_w("⚠️ 3 pillars detected -> Calling 3-PT Calibration\n");
-        return performCalibrationThreePillars(pillars);
-    }
-    else if (pillars.size() > 4)
-    {
-        // Избыточность
-        logi.log_w("⚠️ %lu pillars detected -> Selecting Best 4\n", pillars.size());
-        selectBestFourPillars(pillars);
+// bool PillarScanNode::performCalibration(AlignedPillarVector &pillars)
+// {
+//     if (pillars.size() == 4)
+//     {
+//         // Стандартный случай
+//         return performCalibrationFourPillars(pillars);
+//     }
+//     else if (pillars.size() == 3)
+//     {
+//         // Сложный случай (Треугольник)
+//         logi.log_w("⚠️ 3 pillars detected -> Calling 3-PT Calibration\n");
+//         return performCalibrationThreePillars(pillars);
+//     }
+//     else if (pillars.size() > 4)
+//     {
+//         // Избыточность
+//         logi.log_w("⚠️ %lu pillars detected -> Selecting Best 4\n", pillars.size());
+//         selectBestFourPillars(pillars);
 
-        if (pillars.size() == 4)
-        {
-            return performCalibrationFourPillars(pillars);
-        }
-        else
-        {
-            logi.log_r("❌ Failed to select pillars\n");
+//         if (pillars.size() == 4)
+//         {
+//             return performCalibrationFourPillars(pillars);
+//         }
+//         else
+//         {
+//             logi.log_r("❌ Failed to select pillars\n");
+//             lidar_calibration_.clear();
+//             return false;
+//         }
+//     }
+//     else
+//     {
+//         // Мало данных
+//         logi.log_r("❌ Insufficient pillars: %lu (need 3 or 4)\n", pillars.size());
+//         lidar_calibration_.clear();
+//         return false;
+//     }
+// }
+
+/*
+     * Универсальная калибровка с попыткой восстановления при сбоях
+     * Версия: v10.2 (Auto-Recovery / RANSAC with Stats)
+ */
+    bool PillarScanNode::performCalibration(AlignedPillarVector &pillars)
+    {
+        // 1. Если видим 4 столба - пробуем идеальный вариант
+        if (pillars.size() == 4) {
+            // Создаем копию, чтобы 4-точечный метод не испортил исходные данные при неудаче
+            // (хотя он меняет только локальные имена, но лучше перестраховаться)
+            AlignedPillarVector pillars_copy = pillars;
+            
+            if (performCalibrationFourPillars(pillars_copy)) {
+                pillars = pillars_copy; // Применяем успех
+                return true;
+            }
+            
+            logi.log_w("⚠️ 4-Point Algo Failed. Trying subsets (3-Point RANSAC)...\n");
+            
+            // --- СПАСАТЕЛЬНЫЙ КРУГ: Перебор подмножеств из 3-х точек ---
+            // У нас есть [0, 1, 2, 3]. Пробуем выкинуть каждый по очереди.
+            
+            for (int i = 0; i < 4; ++i) {
+                // Создаем набор из 3-х столбов, исключая i-й
+                AlignedPillarVector subset;
+                for (int j = 0; j < 4; ++j) {
+                    if (i == j) continue;
+                    subset.push_back(pillars[j]);
+                }
+                
+                // Пробуем откалиброваться по этому треугольнику
+                // (performCalibrationThreePillars сама внутри делает перебор гипотез)
+                if (performCalibrationThreePillars(subset)) {
+                    logi.log_g("✅ RANSAC Recovered! Used subset excluding index %d\n", i);
+                    
+                // --- СТАТИСТИКА: УРА, СПАСЛИСЬ! ---
+                stats_.mode_4pt_ransac++; 
+                // Заметь: внутри performCalibrationThreePillars уже увеличился 
+                // счетчик mode_3pt и calib_success. Это нормально.
+                // mode_4pt_ransac покажет именно факт "переключения" логики.
+                // ----------------------------------
+
+                    // Важно: subset теперь содержит 4 столба (3 измеренных + 1 восстановленный)
+                    // Обновляем основной вектор pillars
+                    pillars = subset; 
+                    return true;
+                }
+            }
+            
+            logi.log_r("❌ RANSAC Failed. Data is too noisy.\n");
             lidar_calibration_.clear();
             return false;
         }
+        
+        // 2. Если видим 3 столба
+        else if (pillars.size() == 3) {
+            return performCalibrationThreePillars(pillars);
+        }
+        
+        // 3. Если видим > 4 (избыточность)
+        else if (pillars.size() > 4) {
+            logi.log_w("⚠️ %lu pillars detected -> Selecting Best 4\n", pillars.size());
+            selectBestFourPillars(pillars);
+            
+            // Рекурсивный вызов себя же, чтобы пройти логику пункта 1 (4 точки + RANSAC)
+            return performCalibration(pillars); 
+        }
+        
+        else {
+            logi.log_r("❌ Insufficient pillars: %lu (need 3 or 4)\n", pillars.size());
+            lidar_calibration_.clear();
+            stats_.calib_fail++; // Тоже считаем как провал
+            return false;
+        }
     }
-    else
-    {
-        // Мало данных
-        logi.log_r("❌ Insufficient pillars: %lu (need 3 or 4)\n", pillars.size());
-        lidar_calibration_.clear();
-        return false;
-    }
-}
 
 /*
- * Калибровка по 4 точкам (Компактные логи)
+ * Версия: v10.2 (Calibration 4-PT with Statistics)
+ * Дата: 2025-12-02
  */
 bool PillarScanNode::performCalibrationFourPillars(AlignedPillarVector &pillars)
 {
@@ -1590,6 +1731,13 @@ bool PillarScanNode::performCalibrationFourPillars(AlignedPillarVector &pillars)
             pillars[i].global = reference_centers_[i].cast<double>();
         final_pillars_results_ = pillars;
 
+        // --- СТАТИСТИКА УСПЕХА ---
+        stats_.calib_success++;
+        stats_.mode_4pt_perfect++; // Идеальный режим
+        stats_.sum_rmse += rmse;
+        if (rmse > stats_.max_rmse) stats_.max_rmse = rmse;
+        // -------------------------
+
         logi.log_g("✅ SUCCESS! RMSE=%+6.1f mm (Max=%+6.1f mm)\n", rmse * 1000, max_error * 1000);
         saveCalibrationParameters();
         publishFinalMarkers(final_pillars_results_);
@@ -1597,14 +1745,17 @@ bool PillarScanNode::performCalibrationFourPillars(AlignedPillarVector &pillars)
     }
     else
     {
+        // --- СТАТИСТИКА ПРОВАЛА ---
+        stats_.calib_fail++;
+        // --------------------------
         logi.log_r("❌ FAILED: RMSE=%.1f mm > %.1f mm\n", rmse * 1000, RMSE_THRESHOLD * 1000);
         lidar_calibration_.clear();
         return false;
     }
 }
 /*
- * Версия: v8.3 (Full 3-Point with Validation)
- * Дата: 2025-12-02 09:16
+ * Версия: v10.2 (Calibration 3-PT with Statistics)
+ * Дата: 2025-12-02
  */
 bool PillarScanNode::performCalibrationThreePillars(AlignedPillarVector &pillars)
 {
@@ -1758,6 +1909,15 @@ bool PillarScanNode::performCalibrationThreePillars(AlignedPillarVector &pillars
         lidar_calibration_.position = best_T;
         lidar_calibration_.rotation_deg = rot_deg;
 
+        // --- СТАТИСТИКА УСПЕХА ---
+        stats_.calib_success++;
+        stats_.mode_3pt++; // Режим 3 точек
+        stats_.sum_rmse += best_rmse;
+        if (best_rmse > stats_.max_rmse) stats_.max_rmse = best_rmse;
+        // Записываем, какого столба не было
+        stats_.missing_counts[ref_names[best_missing_idx]]++;
+        // -------------------------
+
         // Обновляем имена видимых столбов
         for (int i = 0; i < 3; ++i)
         {
@@ -1793,9 +1953,11 @@ bool PillarScanNode::performCalibrationThreePillars(AlignedPillarVector &pillars
     else
     {
         logi.log_r("❌ FAILED: No geometric match found among hypotheses.\n");
+        stats_.calib_fail++; // Статистика провала
         return false;
     }
 }
+
 /*
  * Выбор лучших 4 столбов из большего количества
  */
@@ -2214,13 +2376,21 @@ void PillarScanNode::initReferenceSystem()
     logi.log("==============================================\n");
 }
 
-// ИЗМЕНЕНА: Добавлен учет точек, удаленных по дальности и NaN, чтобы сходилась статистика
+/*
+ * Версия: v10.0 (Full Pipeline: Multithread + Stats + Dual Solver + Fusion)
+ * Дата: 2025-12-02
+ */
 void PillarScanNode::processPipeline(const sensor_msgs::LaserScan &scan)
 {
-    // 1. ЛОГ СЫРОГО СКАНА
     logi.log_r("\n\n\n --- processPipeline ---\n");
-    // logRawScan(scan);
+    
+    // 1. Статистика входа
+    stats_.total_scans++;
+    stats_.total_points_raw += scan.ranges.size();
 
+    // 1. ЛОГ СЫРОГО СКАНА
+    // logRawScan(scan); // 2. Логирование (внутри метода стоит защита: пишем только 1-й скан или редко)
+    
     int points_removed_by_angle_filter = 0;
     int removed_by_zero = 0;
     int removed_by_low = 0;
@@ -2287,8 +2457,11 @@ void PillarScanNode::processPipeline(const sensor_msgs::LaserScan &scan)
     logi.log_b("5. Low Intensity (<%.1f): %d\n", intensity_min_threshold, removed_by_low);
     logi.log("6. Points remaining: %lu\n", initial_points.size());
 
-    // Математика теперь: Total - Invalid - Range - Zero - Low == Remaining
 
+    // Статистика после первичной фильтрации
+    stats_.total_points_filtered += initial_points.size();
+
+    // Математика теперь: Total - Invalid - Range - Zero - Low == Remaining
     if (initial_points.empty())
     {
         scans_processed_count_++;
@@ -2298,7 +2471,10 @@ void PillarScanNode::processPipeline(const sensor_msgs::LaserScan &scan)
     // 2. Угловой фильтр
     AlignedVector2f clean_points = removeEdgeArtifacts(initial_points, point_intensities, points_removed_by_angle_filter);
 
-    // logFinalFilteredScan(clean_points, point_intensities);
+    // Обновляем статистику фильтра
+    stats_.angle_filter_removed += points_removed_by_angle_filter;
+
+    // logFinalFilteredScan(clean_points, point_intensities); // Логирование отфильтрованных (тоже защищено внутри метода)
 
     // Выводим сколько удалил угловой фильтр
     logi.log_b("7. Removed by Angle Filter: %d\n", points_removed_by_angle_filter);
@@ -2381,5 +2557,143 @@ void PillarScanNode::processPipeline(const sensor_msgs::LaserScan &scan)
         }
     }
 
+    // --- 7. ПЕЧАТЬ СТАТИСТИКИ (Раз в 15 секунд) ---
+    if ((ros::Time::now() - stats_.last_print_time).toSec() > 15.0) 
+    {
+        printSessionStatistics();
+        stats_.last_print_time = ros::Time::now();
+    }
+
     scans_processed_count_++;
+}
+
+// void PillarScanNode::printSessionStatistics()
+// {
+//     double run_time = (ros::Time::now() - stats_.start_time).toSec();
+//     long long N = stats_.total_scans;
+//     if (N == 0) return;
+
+//     logi.log_b("\n==================== [SESSION STATISTICS] ====================\n");
+//     logi.log("  Work Time: %.1f sec | Scans Processed: %lld (%.1f Hz)\n", 
+//              run_time, N, (double)N / run_time);
+    
+//     logi.log("  [INPUT DATA]\n");
+//     logi.log("    Avg Raw Points:    %lld (Input load)\n", stats_.total_points_raw / N);
+//     logi.log("    Avg Clean Points:  %lld (After range/intensity)\n", stats_.total_points_filtered / N);
+//     logi.log("    Avg Angle Removed: %lld (Edge artifacts cut)\n", stats_.angle_filter_removed / N);
+
+//     logi.log("  [DETECTION FILTERS]\n");
+//     auto print_met = [&](const char* name, long long f, long long r) 
+//     {
+//         long long tot = f + r;
+//         // Rejection rate - это хорошо, это работа фильтра
+//         logi.log("    %s: Total Cand %lld -> Kept %lld (Filtered %lld)\n", name, tot, f, r);
+//     };
+//     print_met("M1 (Jump) ", stats_.m1_found, stats_.m1_rejected);
+//     print_met("M2 (Clust)", stats_.m2_found, stats_.m2_rejected);
+//     print_met("M3 (Min)  ", stats_.m3_found, stats_.m3_rejected);
+
+//     logi.log("  [SCENE & FUSION]\n");
+//     logi.log("    Noise Points:      %lld /scan (DBSCAN noise)\n", stats_.dbscan_noise_points / N);
+//     logi.log("    Garbage Clusters:  %lld (Rejected by Radius/RMSE)\n", stats_.clusters_rejected_radius + stats_.clusters_rejected_rmse);
+    
+//     // ГИБРИДНАЯ СТАТИСТИКА
+//     long long total_decisions = stats_.hybrid_math_dominant + stats_.hybrid_phys_dominant;
+//     double math_pct = total_decisions > 0 ? (double)stats_.hybrid_math_dominant / total_decisions * 100.0 : 0;
+//     logi.log("    Hybrid Logic:      Math(Circle) %.1f%% vs Phys(Median) %.1f%%\n", math_pct, 100.0 - math_pct);
+
+//     logi.log("  [CALIBRATION MODES]\n");
+//     logi.log("    4-Point (Perfect): %lld\n", stats_.mode_4pt_perfect);
+//     logi.log("    4-Point (RANSAC):  %lld (Saved by removing bad pillar)\n", stats_.mode_4pt_ransac);
+//     logi.log("    3-Point (Triang):  %lld (One pillar missing)\n", stats_.mode_3pt);
+    
+//     logi.log("  [ACCURACY & CHECK]\n");
+//     logi.log("    Avg RMSE:          %.2f mm\n", (stats_.sum_rmse / (stats_.calib_success + 1)) * 100.0);
+//     logi.log("    Max RMSE:          %.1f mm\n", stats_.max_rmse * 1000.0);
+    
+//     // СРАВНЕНИЕ С MNK
+//     if (stats_.mnk_count > 0) {
+//         logi.log("    Solver Diff:       %.2f mm (Umeyama vs MNK agreement)\n", (stats_.sum_mnk_diff / stats_.mnk_count) * 1000.0);
+//     }
+    
+//     logi.log("  [MISSING PILLARS DIAGNOSTICS]\n");
+//     logi.log("    RB: %lld | RT: %lld | LT: %lld | LB: %lld\n", 
+//              stats_.missing_counts["RB"], stats_.missing_counts["RT"], 
+//              stats_.missing_counts["LT"], stats_.missing_counts["LB"]);
+             
+//     logi.log_b("==============================================================\n");
+// }
+
+
+/*
+ * Версия: v10.3 (Statistics: Full Report with Input, Hybrid & MNK)
+ * Дата: 2025-12-02
+ */
+void PillarScanNode::printSessionStatistics()
+{
+    double run_time = (ros::Time::now() - stats_.start_time).toSec();
+    long long N = stats_.total_scans;
+    
+    if (N == 0) return;
+
+    logi.log_b("\n==================== [SESSION STATISTICS] ====================\n");
+    logi.log("  Work Time: %.1f sec | Scans: %lld (%.1f Hz)\n", 
+             run_time, N, (double)N / run_time);
+    
+    // --- 1. ВХОДНЫЕ ДАННЫЕ (ВОССТАНОВЛЕНО) ---
+    logi.log("  [INPUT DATA]\n");
+    logi.log("    Avg Raw Points:    %lld (Input load)\n", stats_.total_points_raw / N);
+    logi.log("    Avg Clean Points:  %lld (After range/intensity)\n", stats_.total_points_filtered / N);
+    logi.log("    Avg Angle Removed: %lld (Edge artifacts cut)\n", stats_.angle_filter_removed / N);
+
+    // --- 2. ЭФФЕКТИВНОСТЬ ДЕТЕКЦИИ ---
+    logi.log("  [DETECTION EFFICIENCY]\n");
+    auto print_met = [&](const char* name, long long f, long long r) {
+        long long tot = f + r;
+        double rej_rate = tot > 0 ? (double)r/tot*100.0 : 0.0;
+        logi.log("    %s: Found %lld | Rejected %lld (%.1f%%)\n", name, f, r, rej_rate);
+    };
+    print_met("M1 (Jump) ", stats_.m1_found, stats_.m1_rejected);
+    print_met("M2 (Clust)", stats_.m2_found, stats_.m2_rejected);
+    print_met("M3 (Min)  ", stats_.m3_found, stats_.m3_rejected);
+
+    // --- 3. FUSION И ГИБРИДНАЯ ЛОГИКА (ДОПОЛНЕНО) ---
+    logi.log("  [SCENE & FUSION]\n");
+    logi.log("    Noise Points:      %lld /scan (DBSCAN noise)\n", stats_.dbscan_noise_points / N);
+    logi.log("    Garbage Clusters:  %lld (Rejected by Radius/RMSE)\n", stats_.clusters_rejected_radius + stats_.clusters_rejected_rmse);
+    
+    // Новое: Статистика выбора (Математика vs Физика)
+    long long total_hybrid = stats_.hybrid_math_dominant + stats_.hybrid_phys_dominant;
+    if (total_hybrid > 0) {
+        double math_pct = (double)stats_.hybrid_math_dominant / total_hybrid * 100.0;
+        double phys_pct = (double)stats_.hybrid_phys_dominant / total_hybrid * 100.0;
+        logi.log("    Hybrid Preference: Math(Circle) %.1f%% vs Phys(Median) %.1f%%\n", math_pct, phys_pct);
+    }
+
+    // --- 4. КАЛИБРОВКА ---
+    logi.log("  [CALIBRATION MODES]\n");
+    double success_rate = (double)stats_.calib_success / (stats_.calib_success + stats_.calib_fail + 1) * 100.0;
+    logi.log("    Success Rate:      %.1f%%\n", success_rate);
+    logi.log("    Mode 4-PT (Ideal): %lld\n", stats_.mode_4pt_perfect);
+    logi.log("    Mode RANSAC (SOS): %lld (Saved by removing bad pillar)\n", stats_.mode_4pt_ransac);
+    logi.log("    Mode 3-PT (Tri):   %lld\n", stats_.mode_3pt);
+    
+    // --- 5. ТОЧНОСТЬ (ДОПОЛНЕНО) ---
+    logi.log("  [ACCURACY & CHECK]\n");
+    logi.log("    Avg RMSE:          %.2f mm\n", (stats_.sum_rmse / (stats_.calib_success + 1)) * 100.0);
+    logi.log("    Max RMSE:          %.1f mm\n", stats_.max_rmse * 1000.0);
+    
+    // Новое: Сравнение с MNK
+    if (stats_.mnk_count > 0) {
+        double avg_diff = (stats_.sum_mnk_diff / stats_.mnk_count) * 1000.0;
+        logi.log("    Solver Diff:       %.2f mm (Umeyama vs MNK agreement)\n", avg_diff);
+    }
+    
+    // --- 6. ПРОПУСКИ ---
+    logi.log("  [MISSING PILLARS DIAGNOSTICS]\n");
+    logi.log("    RB: %lld | RT: %lld | LT: %lld | LB: %lld\n", 
+             stats_.missing_counts["RB"], stats_.missing_counts["RT"], 
+             stats_.missing_counts["LT"], stats_.missing_counts["LB"]);
+             
+    logi.log_b("==============================================================\n");
 }

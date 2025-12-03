@@ -25,8 +25,7 @@
 #include <geometry_msgs/Point.h>            // Для точек внутри маркеров
 #include <geometry_msgs/PoseStamped.h>      // <-- ДОБАВИТЬ ЭТУ СТРОКУ
 
-
-#include "../genStruct.h" // Тут все общие структуры. Истользуются и Data и Main и Head
+#include "../genStruct.h"        // Тут все общие структуры. Истользуются и Data и Main и Head
 #include "trilaterationSolver.h" // Файл для функций для формирования топиков в нужном виде и формате
 
 // Константа для математических вычислений (pi)
@@ -97,7 +96,7 @@ struct FinalPillar
     std::string decision_reason; // Объяснение (для лога)
 };
 
-using AlignedPillarVector = std::vector<FinalPillar, Eigen::aligned_allocator<FinalPillar>>; //Тип для выровненного вектора FinalPillar Мы указываем контейнеру использовать специальный аллокатор Eigen
+using AlignedPillarVector = std::vector<FinalPillar, Eigen::aligned_allocator<FinalPillar>>; // Тип для выровненного вектора FinalPillar Мы указываем контейнеру использовать специальный аллокатор Eigen
 
 // Класс математических утилит (Без изменений)
 class MathUtils
@@ -177,9 +176,9 @@ public:
 class PillarScanNode
 {
 public:
-    PillarScanNode();  // Конструктор
-    void init();// Инициализация (перенесли сюда тяжелую логику)
-    void process();  // Метод обработки (вызываем в цикле)
+    PillarScanNode(); // Конструктор
+    void init();      // Инициализация (перенесли сюда тяжелую логику)
+    void process();   // Метод обработки (вызываем в цикле)
 
 private:
     ros::NodeHandle nh;
@@ -256,12 +255,12 @@ private:
     AlignedVector2f clean_points_results_; // <-- НОВОЕ: Для сохранения точек после углового фильтра
 
     // Объект твоего решателя
-    std::unique_ptr<TrilaterationSolver> mnk_solver_;// Инициализируем его в конструкторе, передавая начальную точку (0,0)
-    geometry_msgs::PoseStamped mnk_pose_result_;// Результаты MNK для слияния
+    std::unique_ptr<TrilaterationSolver> mnk_solver_; // Инициализируем его в конструкторе, передавая начальную точку (0,0)
+    geometry_msgs::PoseStamped mnk_pose_result_;      // Результаты MNK для слияния
     double mnk_rmse_result_ = 0.0;
     double mnk_yaw_deg_result_ = 0.0; // <--- НОВОЕ ПОЛЕ
-    
-    const std::vector<std::string> PILLAR_NAMES = {"RB", "RT", "LT", "LB"};// Имена столбов для удобства
+
+    const std::vector<std::string> PILLAR_NAMES = {"RB", "RT", "LT", "LB"}; // Имена столбов для удобства
 
     // Структура для хранения калибровки лидара
     struct LidarCalibration
@@ -283,14 +282,62 @@ private:
     };
 
     LidarCalibration lidar_calibration_; //  для хранения калибровки
-  
-    
 
-//*********************
+    // --- СТАТИСТИКА (Бортовой самописец) ---
+    struct SessionStats
+    {
+        ros::Time start_time;
+        ros::Time last_print_time;
 
+        // 1. Входные данные
+        long long total_scans = 0;
+        long long total_points_raw = 0;
+        long long total_points_filtered = 0; // После дальности/интенсивности
+        long long angle_filter_removed = 0;  // Удалено угловым фильтром
+
+        // 2. Детекция (Atomic для многопоточности)
+        std::atomic<long long> m1_found{0};
+        std::atomic<long long> m1_rejected{0};
+        std::atomic<long long> m2_found{0};
+        std::atomic<long long> m2_rejected{0};
+        std::atomic<long long> m3_found{0};
+        std::atomic<long long> m3_rejected{0};
+
+        // 3. Fusion & DBSCAN
+        long long dbscan_noise_points = 0;
+        long long clusters_rejected_radius = 0; // Самый важный показатель мусора
+        long long clusters_rejected_rmse = 0;
+        long long scans_4_pillars = 0;
+        long long scans_3_pillars = 0;
+        long long scans_bad_count = 0; // <3 или >4
+
+        // 4. Калибровка (Режимы)
+        long long calib_success = 0;
+        long long calib_fail = 0;
+        long long mode_4pt_perfect = 0;
+        long long mode_4pt_ransac = 0; // Спасения
+        long long mode_3pt = 0;
+
+        // 5. Точность
+        double sum_rmse = 0.0;
+        double max_rmse = 0.0;
+        double sum_mnk_diff = 0.0; // Накопленная разница между методами
+        long long mnk_count = 0;
+
+        // 6. Пропуски столбов (Blind Spots)
+        std::map<std::string, long long> missing_counts;
+        
+        long long hybrid_math_dominant = 0; // Сколько раз победил fitCircle
+        long long hybrid_phys_dominant = 0; // Сколько раз победила Медиана
+    };
+
+    SessionStats stats_; // Экземпляр статистики
+
+
+    //*********************
 
 private:
-// --- Методы (Только объявления) ---
+    // --- Методы (Только объявления) ---
     void loadParameters();
     void initReferenceSystem();
     void scanCallback(const sensor_msgs::LaserScan::ConstPtr &scan);
@@ -304,30 +351,32 @@ private:
     visualization_msgs::Marker createPointsMarker(const AlignedVector2f &points, const std::string &frame_id, const std::string &ns, int id, float r, float g, float b, float scale);
 
     // Алгоритмы
-    AlignedVector2f removeEdgeArtifacts(const AlignedVector2f &points, const std::vector<double> &intensities, int &points_removed_by_angle_filter);// Удаление фантомных точек (хвостов) с помощью углового фильтра
+    AlignedVector2f removeEdgeArtifacts(const AlignedVector2f &points, const std::vector<double> &intensities, int &points_removed_by_angle_filter); // Удаление фантомных точек (хвостов) с помощью углового фильтра
     std::vector<PillarCandidate> detectGenericClustering(const AlignedVector2f &pts, double threshold, int method_id, AlignedVector2f &out_cluster_points);
     std::vector<PillarCandidate> detectLocalMinima(const AlignedVector2f &pts, int method_id, AlignedVector2f &out_cluster_points);
     bool processCluster(const AlignedVector2f &cluster, int method_id, std::vector<PillarCandidate> &out, AlignedVector2f &out_cluster_points);
     AlignedPillarVector fuseCandidates(const std::vector<PillarCandidate> &candidates);
     void calculatePillarMetrics(FinalPillar &pillar);
     void reorderPillars(AlignedPillarVector &pillars);
-    
+
     // Калибровка
     bool performCalibration(AlignedPillarVector &pillars);
     bool performCalibrationFourPillars(AlignedPillarVector &pillars);
     bool performCalibrationThreePillars(AlignedPillarVector &pillars);
     void selectBestFourPillars(AlignedPillarVector &pillars);
-    
+
     void performMnkCalculation(const AlignedPillarVector &pillars);
     void fuseResults();
     void saveCalibrationParameters();
 
-    void publishMarkerInArray(const visualization_msgs::Marker &marker, ros::Publisher &pub); // НОВАЯ ФУНКЦИЯ: publishMarkerInArray (Без изменений)
+    void publishMarkerInArray(const visualization_msgs::Marker &marker, ros::Publisher &pub);                                          // НОВАЯ ФУНКЦИЯ: publishMarkerInArray (Без изменений)
     visualization_msgs::MarkerArray createClusterMarkers(const std::vector<PillarCandidate> &candidates, const std::string &frame_id); // НОВАЯ ФУНКЦИЯ: createClusterMarkers (Без изменений)
-    void publishResultsTimerCallback(const ros::TimerEvent &event); // ИЗМЕНЕНА: publishResultsTimerCallback (v5.6)
-    Eigen::Vector2d lidarToWorld(const Eigen::Vector2d &lidar_point); /* * Преобразование координат из системы лидара в мировую систему с применением калибровочных параметров */
-    Eigen::Vector2d worldToLidar(const Eigen::Vector2d &world_point);/* * Преобразование координат из мировой системы в систему лидара * (обратное преобразование) */
+    void publishResultsTimerCallback(const ros::TimerEvent &event);                                                                    // ИЗМЕНЕНА: publishResultsTimerCallback (v5.6)
+    Eigen::Vector2d lidarToWorld(const Eigen::Vector2d &lidar_point);                                                                  /* * Преобразование координат из системы лидара в мировую систему с применением калибровочных параметров */
+    Eigen::Vector2d worldToLidar(const Eigen::Vector2d &world_point);                                                                  /* * Преобразование координат из мировой системы в систему лидара * (обратное преобразование) */
     void saveResults(const AlignedPillarVector &pillars);
+    // Метод для печати (объявление)
+    void printSessionStatistics();
 };
-    
+
 #endif
