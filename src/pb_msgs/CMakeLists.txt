@@ -125,6 +125,9 @@ add_message_files(
   Struct_Data2Print.msg
   #-------------------------------------------------------
   SSetSpeed.msg
+  #-------------------------------------------------------
+  SScan.msg
+  Struct_PoseScan.msg
 
 )
 

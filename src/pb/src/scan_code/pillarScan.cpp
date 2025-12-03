@@ -21,6 +21,8 @@ PillarScanNode::PillarScanNode() : new_scan_available_(false),
     pub_method_3 = nh.advertise<visualization_msgs::Marker>("/rviz/method_3_minima", 1);
     pub_fused_pillars = nh.advertise<visualization_msgs::Marker>("/rviz/fused_pillars", 1);
     pub_final_markers = nh.advertise<visualization_msgs::MarkerArray>("/rviz/final_pillars", 1);
+    
+    pub_custom_struct = nh.advertise<pb_msgs::Struct_PoseScan>("/pb/scan/struct_result", 1);
 
     // 2. Паблишер результата Umeyama (Калибровка)
     pub_calib_result = nh.advertise<geometry_msgs::PoseStamped>("/pb/scan/umeyama_pose", 1);
@@ -165,6 +167,18 @@ void PillarScanNode::fuseResults()
     double rmse_u = lidar_calibration_.rmse;
     double rmse_m = mnk_rmse_result_;
 
+// // --- СБОР СТАТИСТИКИ (Новый блок) ---
+//         double diff = std::sqrt(std::pow(lidar_calibration_.position.x() - mnk_pose_result_.pose.position.x, 2) +
+//                                 std::pow(lidar_calibration_.position.y() - mnk_pose_result_.pose.position.y, 2));
+        
+//         stats_.sum_mnk_diff += diff;
+//         stats_.sum_mnk_rmse += rmse_m; // Копим ошибку MNK
+        
+//         if (rmse_m < rmse_u) {
+//             stats_.mnk_better_count++; // MNK победил в этом раунде
+//         }
+//         stats_.mnk_count++;
+
     if (rmse_u < 1e-4)
         rmse_u = 1e-4;
     if (rmse_m < 1e-4)
@@ -182,7 +196,11 @@ void PillarScanNode::fuseResults()
     double x_gold = lidar_calibration_.position.x() * nw_u + mnk_pose_result_.pose.position.x * nw_m;
     double y_gold = lidar_calibration_.position.y() * nw_u + mnk_pose_result_.pose.position.y * nw_m;
 
-    // Угол
+    // Углы в градусах для твоего сообщения (SScan th)
+    double yaw_u_deg = lidar_calibration_.rotation_deg;
+    double yaw_m_deg = mnk_yaw_deg_result_; // Мы его сохранили ранее
+
+    // Векторное слияние угла для Fused
     double ang_u_rad = lidar_calibration_.rotation_deg * M_PI / 180.0;
     double ang_m_rad = mnk_yaw_deg_result_ * M_PI / 180.0;
     double sin_sum = nw_u * std::sin(ang_u_rad) + nw_m * std::sin(ang_m_rad);
@@ -202,6 +220,49 @@ void PillarScanNode::fuseResults()
     logi.log_g("  POS: X= %+8.4f Y= %+8.4f | Ang= %+6.2f deg | Qual= %.1f mm\n",
                x_gold, y_gold, yaw_gold_deg, fused_rmse * 1000.0);
 
+// --- ЗАПОЛНЕНИЕ ТВОЕГО СООБЩЕНИЯ ---
+    pb_msgs::Struct_PoseScan custom_msg;
+    
+    // Блок X
+    custom_msg.x.umeyama = lidar_calibration_.position.x();
+    custom_msg.x.mnk     = mnk_pose_result_.pose.position.x;
+    custom_msg.x.laser   = 0.0; // Пока нет лазеров
+    custom_msg.x.fused   = x_gold;
+    
+    // Блок Y
+    custom_msg.y.umeyama = lidar_calibration_.position.y();
+    custom_msg.y.mnk     = mnk_pose_result_.pose.position.y;
+    custom_msg.y.laser   = 0.0;
+    custom_msg.y.fused   = y_gold;
+    
+    // Блок TH (Угол в градусах)
+    custom_msg.th.umeyama = yaw_u_deg;
+    custom_msg.th.mnk     = yaw_m_deg;
+    custom_msg.th.laser   = 0.0;
+    custom_msg.th.fused   = yaw_gold_deg;
+    
+    // Блок RMSE (Качество)
+    custom_msg.rmse.umeyama = rmse_u;
+    custom_msg.rmse.mnk     = rmse_m;
+    custom_msg.rmse.laser   = 0.0;
+    custom_msg.rmse.fused   = fused_rmse;
+
+    // Публикация твоего сообщения
+    pub_custom_struct.publish(custom_msg);
+    
+    // --- СТАТИСТИКА FUSION (v12) ---
+        stats_.sum_fused_rmse += fused_rmse;
+        if (fused_rmse > stats_.max_fused_rmse) stats_.max_fused_rmse = fused_rmse;
+        
+        // Статистика сравнения (была ранее)
+        double diff = std::sqrt(std::pow(lidar_calibration_.position.x() - mnk_pose_result_.pose.position.x, 2) +
+                                std::pow(lidar_calibration_.position.y() - mnk_pose_result_.pose.position.y, 2));
+        stats_.sum_mnk_diff += diff;
+        stats_.sum_mnk_rmse += rmse_m;
+        if (rmse_m < rmse_u) stats_.mnk_better_count++;
+        stats_.mnk_count++;
+        // --------------------------------
+
     // Публикация
     geometry_msgs::PoseStamped msg;
     msg.header.stamp = ros::Time::now();
@@ -214,13 +275,6 @@ void PillarScanNode::fuseResults()
 
     msg.pose.orientation.z = sin(yaw_gold_rad * 0.5);
     msg.pose.orientation.w = cos(yaw_gold_rad * 0.5);
-
-    // --- СТАТИСТИКА MNK vs UMEYAMA ---
-    double diff = std::sqrt(std::pow(lidar_calibration_.position.x() - mnk_pose_result_.pose.position.x, 2) +
-                            std::pow(lidar_calibration_.position.y() - mnk_pose_result_.pose.position.y, 2));
-    
-    stats_.sum_mnk_diff += diff;
-    stats_.mnk_count++;
 
     pub_fused_result.publish(msg);
 }
@@ -655,8 +709,9 @@ std::vector<PillarCandidate> PillarScanNode::detectGenericClustering(const Align
     std::vector<PillarCandidate> results;
     if (pts.size() < min_cluster_points_)
         return results;
-
-    std::vector<AlignedVector2f> clusters;
+    
+    // 1. Сбор ВСЕХ кластеров (без фильтрации по размеру пока что)
+    std::vector<AlignedVector2f> clusters; 
     AlignedVector2f current;
     current.reserve(500);
 
@@ -2382,6 +2437,9 @@ void PillarScanNode::initReferenceSystem()
  */
 void PillarScanNode::processPipeline(const sensor_msgs::LaserScan &scan)
 {
+    // 1. ЗАСЕКАЕМ ВРЕМЯ
+    auto start_time = std::chrono::high_resolution_clock::now();
+
     logi.log_r("\n\n\n --- processPipeline ---\n");
     
     // 1. Статистика входа
@@ -2558,6 +2616,20 @@ void PillarScanNode::processPipeline(const sensor_msgs::LaserScan &scan)
     }
 
     // --- 7. ПЕЧАТЬ СТАТИСТИКИ (Раз в 15 секунд) ---
+    // if ((ros::Time::now() - stats_.last_print_time).toSec() > 15.0) 
+    // {
+    //     printSessionStatistics();
+    //     stats_.last_print_time = ros::Time::now();
+    // }
+
+    // 2. СЧИТАЕМ ВРЕМЯ ВЫПОЛНЕНИЯ
+    auto end_time = std::chrono::high_resolution_clock::now();
+    double latency = std::chrono::duration<double, std::milli>(end_time - start_time).count();
+    
+    stats_.sum_latency_ms += latency;
+    if (latency > stats_.max_latency_ms) stats_.max_latency_ms = latency;
+
+    // Печать статистики (как было)
     if ((ros::Time::now() - stats_.last_print_time).toSec() > 15.0) 
     {
         printSessionStatistics();
@@ -2629,6 +2701,234 @@ void PillarScanNode::processPipeline(const sensor_msgs::LaserScan &scan)
  * Версия: v10.3 (Statistics: Full Report with Input, Hybrid & MNK)
  * Дата: 2025-12-02
  */
+// void PillarScanNode::printSessionStatistics()
+// {
+//     double run_time = (ros::Time::now() - stats_.start_time).toSec();
+//     long long N = stats_.total_scans;
+    
+//     if (N == 0) return;
+
+//     logi.log_b("\n==================== [SESSION STATISTICS] ====================\n");
+//     logi.log("  Work Time: %.1f sec | Scans: %lld (%.1f Hz)\n", 
+//              run_time, N, (double)N / run_time);
+    
+//     // --- 1. ВХОДНЫЕ ДАННЫЕ (ВОССТАНОВЛЕНО) ---
+//     logi.log("  [INPUT DATA]\n");
+//     logi.log("    Avg Raw Points:    %lld (Input load)\n", stats_.total_points_raw / N);
+//     logi.log("    Avg Clean Points:  %lld (After range/intensity)\n", stats_.total_points_filtered / N);
+//     logi.log("    Avg Angle Removed: %lld (Edge artifacts cut)\n", stats_.angle_filter_removed / N);
+
+//     // --- 2. ЭФФЕКТИВНОСТЬ ДЕТЕКЦИИ ---
+//     logi.log("  [DETECTION EFFICIENCY]\n");
+//     auto print_met = [&](const char* name, long long f, long long r) {
+//         long long tot = f + r;
+//         double rej_rate = tot > 0 ? (double)r/tot*100.0 : 0.0;
+//         logi.log("    %s: Found %lld | Rejected %lld (%.1f%%)\n", name, f, r, rej_rate);
+//     };
+//     print_met("M1 (Jump) ", stats_.m1_found, stats_.m1_rejected);
+//     print_met("M2 (Clust)", stats_.m2_found, stats_.m2_rejected);
+//     print_met("M3 (Min)  ", stats_.m3_found, stats_.m3_rejected);
+
+//     // --- 3. FUSION И ГИБРИДНАЯ ЛОГИКА (ДОПОЛНЕНО) ---
+//     logi.log("  [SCENE & FUSION]\n");
+//     logi.log("    Noise Points:      %lld /scan (DBSCAN noise)\n", stats_.dbscan_noise_points / N);
+//     logi.log("    Garbage Clusters:  %lld (Rejected by Radius/RMSE)\n", stats_.clusters_rejected_radius + stats_.clusters_rejected_rmse);
+    
+//     // Новое: Статистика выбора (Математика vs Физика)
+//     long long total_hybrid = stats_.hybrid_math_dominant + stats_.hybrid_phys_dominant;
+//     if (total_hybrid > 0) {
+//         double math_pct = (double)stats_.hybrid_math_dominant / total_hybrid * 100.0;
+//         double phys_pct = (double)stats_.hybrid_phys_dominant / total_hybrid * 100.0;
+//         logi.log("    Hybrid Preference: Math(Circle) %.1f%% vs Phys(Median) %.1f%%\n", math_pct, phys_pct);
+//     }
+
+//     // --- 4. КАЛИБРОВКА ---
+//     logi.log("  [CALIBRATION MODES]\n");
+//     double success_rate = (double)stats_.calib_success / (stats_.calib_success + stats_.calib_fail + 1) * 100.0;
+//     logi.log("    Success Rate:      %.1f%%\n", success_rate);
+//     logi.log("    Mode 4-PT (Ideal): %lld\n", stats_.mode_4pt_perfect);
+//     logi.log("    Mode RANSAC (SOS): %lld (Saved by removing bad pillar)\n", stats_.mode_4pt_ransac);
+//     logi.log("    Mode 3-PT (Tri):   %lld\n", stats_.mode_3pt);
+    
+//     // --- 5. ТОЧНОСТЬ (ДОПОЛНЕНО) ---
+//     logi.log("  [ACCURACY & CHECK]\n");
+//     logi.log("    Avg RMSE:          %.2f mm\n", (stats_.sum_rmse / (stats_.calib_success + 1)) * 100.0);
+//     logi.log("    Max RMSE:          %.1f mm\n", stats_.max_rmse * 1000.0);
+    
+//     // Новое: Сравнение с MNK
+//     if (stats_.mnk_count > 0) {
+//         double avg_diff = (stats_.sum_mnk_diff / stats_.mnk_count) * 1000.0;
+//         logi.log("    Solver Diff:       %.2f mm (Umeyama vs MNK agreement)\n", avg_diff);
+//     }
+    
+//     // --- 6. ПРОПУСКИ ---
+//     logi.log("  [MISSING PILLARS DIAGNOSTICS]\n");
+//     logi.log("    RB: %lld | RT: %lld | LT: %lld | LB: %lld\n", 
+//              stats_.missing_counts["RB"], stats_.missing_counts["RT"], 
+//              stats_.missing_counts["LT"], stats_.missing_counts["LB"]);
+             
+//     logi.log_b("==============================================================\n");
+// }
+
+/*
+ * Версия: v10.4 (Human Readable Stats + Solver Battle)
+ */
+// void PillarScanNode::printSessionStatistics()
+// {
+//     double run_time = (ros::Time::now() - stats_.start_time).toSec();
+//     long long N = stats_.total_scans;
+    
+//     if (N == 0) return;
+
+//     logi.log_b("\n==================== [SESSION REPORT] ====================\n");
+//     logi.log("  Time: %.1f s | Scans: %lld | Freq: %.1f Hz\n", 
+//              run_time, N, (double)N / run_time);
+    
+//     logi.log("\n  [1. RAW DATA QUALITY]\n");
+//     logi.log("    Raw Points:        %lld (avg)\n", stats_.total_points_raw / N);
+//     logi.log("    Filter Cut:        %lld (avg) points removed by range/intensity\n", 
+//              (stats_.total_points_raw - stats_.total_points_filtered) / N);
+//     logi.log("    Angle Cut:         %lld (avg) points removed (edge artifacts)\n", 
+//              stats_.angle_filter_removed / N);
+
+//     logi.log("\n  [2. DETECTION EFFICIENCY]\n");
+//     auto print_met = [&](const char* name, long long kept, long long rejected) {
+//         long long total = kept + rejected;
+//         double rej_rate = total > 0 ? (double)rejected/total*100.0 : 0.0;
+//         // Формат: Имя | Всего -> Отброшено (%) -> ОСТАЛОСЬ
+//         logi.log("    %-10s | Total: %-5lld -> Rej: %-5lld (%4.1f%%) -> KEPT: %lld\n", 
+//                  name, total, rejected, rej_rate, kept);
+//     };
+//     print_met("M1(Jump)", stats_.m1_found, stats_.m1_rejected);
+//     print_met("M2(Clust)", stats_.m2_found, stats_.m2_rejected);
+//     print_met("M3(Min)", stats_.m3_found, stats_.m3_rejected);
+
+//     logi.log("\n  [3. SCENE STABILITY]\n");
+//     logi.log("    Garbage Clusters:  %lld (Rejected by Radius/RMSE)\n", 
+//              stats_.clusters_rejected_radius + stats_.clusters_rejected_rmse);
+//     logi.log("    Valid Scenes:      4 Pillars: %lld | 3 Pillars: %lld | Bad: %lld\n", 
+//              stats_.scans_4_pillars, stats_.scans_3_pillars, stats_.scans_bad_count);
+    
+//     // Гибридная логика
+//     long long total_hybrid = stats_.hybrid_math_dominant + stats_.hybrid_phys_dominant;
+//     if (total_hybrid > 0) {
+//         double math_pct = (double)stats_.hybrid_math_dominant / total_hybrid * 100.0;
+//         logi.log("    Hybrid Choice:     Math(Circle) %.1f%% vs Phys(Median) %.1f%%\n", 
+//                  math_pct, 100.0 - math_pct);
+//     }
+
+//     logi.log("\n  [4. SOLVER BATTLE: UMEYAMA vs MNK]\n");
+//     if (stats_.mnk_count > 0) {
+//         double avg_u_rmse = (stats_.sum_rmse / (stats_.calib_success + 1)) * 1000.0;
+//         double avg_m_rmse = (stats_.sum_mnk_rmse / stats_.mnk_count) * 1000.0;
+//         double mnk_win_rate = (double)stats_.mnk_better_count / stats_.mnk_count * 100.0;
+//         double divergence = (stats_.sum_mnk_diff / stats_.mnk_count) * 1000.0;
+
+//         logi.log("    Avg Accuracy:      Umeyama: %.2f mm  vs  MNK: %.2f mm\n", avg_u_rmse, avg_m_rmse);
+//         logi.log("    Reliability:       MNK was better in %.1f%% of cases\n", mnk_win_rate);
+//         logi.log("    Divergence:        %.2f mm (Difference between solvers)\n", divergence);
+//     } else {
+//         logi.log("    (No MNK data available yet)\n");
+//     }
+
+//     logi.log("\n  [5. OVERALL STATUS]\n");
+//     double success_rate = (double)stats_.calib_success / (stats_.calib_success + stats_.calib_fail + 1) * 100.0;
+//     logi.log("    Success Rate:      %.1f%%\n", success_rate);
+//     logi.log("    Emergency Ops:     RANSAC used %lld times (Saved broken scenes)\n", stats_.mode_4pt_ransac);
+//     logi.log("    Blind Spots (Lost): RB:%lld  RT:%lld  LT:%lld  LB:%lld\n", 
+//              stats_.missing_counts["RB"], stats_.missing_counts["RT"], 
+//              stats_.missing_counts["LT"], stats_.missing_counts["LB"]);
+             
+//     logi.log_b("========================================================\n");
+// }
+
+/*
+ * Версия: v11.0 (ULTIMATE REPORT: All Metrics Included)
+ */
+// void PillarScanNode::printSessionStatistics()
+// {
+//     double run_time = (ros::Time::now() - stats_.start_time).toSec();
+//     long long N = stats_.total_scans;
+    
+//     if (N == 0) return;
+
+//     logi.log_b("\n==================== [SESSION REPORT v11] ====================\n");
+//     logi.log("  Time: %.1f s | Scans: %lld | Freq: %.1f Hz\n", 
+//              run_time, N, (double)N / run_time);
+    
+//     // --- 1. КАЧЕСТВО ВХОДНЫХ ДАННЫХ ---
+//     logi.log("\n  [1. RAW DATA QUALITY]\n");
+//     logi.log("    Raw Points:        %lld (avg per scan)\n", stats_.total_points_raw / N);
+//     logi.log("    Range/Intens Cut:  %lld (avg) -> Points invalid or too far/weak\n", 
+//              (stats_.total_points_raw - stats_.total_points_filtered) / N);
+//     logi.log("    Angle Artif. Cut:  %lld (avg) -> Points on edges (ghosts)\n", 
+//              stats_.angle_filter_removed / N);
+//     logi.log("    Final Clean Pts:   %lld (avg) -> Ready for detection\n", 
+//              (stats_.total_points_filtered - stats_.angle_filter_removed) / N);
+
+//     // --- 2. ВОРОНКА ДЕТЕКЦИИ ---
+//     logi.log("\n  [2. DETECTION PIPELINE]\n");
+//     auto print_met = [&](const char* name, long long found, long long rejected) {
+//         long long total = found + rejected;
+//         double rej_rate = total > 0 ? (double)rejected/total*100.0 : 0.0;
+//         // Формат: Имя | Всего -> Отброшено (%) -> ПРИНЯТО
+//         logi.log("    %-10s | Total: %-5lld -> Rej: %-5lld (%4.1f%%) -> KEPT: %lld\n", 
+//                  name, total, rejected, rej_rate, found);
+//     };
+//     print_met("M1(Jump)", stats_.m1_found, stats_.m1_rejected);
+//     print_met("M2(Clust)", stats_.m2_found, stats_.m2_rejected);
+//     print_met("M3(Min)", stats_.m3_found, stats_.m3_rejected);
+
+//     // --- 3. СЦЕНА И ФИЛЬТРАЦИЯ МУСОРА ---
+//     logi.log("\n  [3. SCENE & FUSION]\n");
+//     logi.log("    DBSCAN Noise:      %lld pts/scan (Unclustered points)\n", stats_.dbscan_noise_points / N);
+//     logi.log("    Garbage Clusters:  %lld (Total rejected by Radius/RMSE checks)\n", 
+//              stats_.clusters_rejected_radius + stats_.clusters_rejected_rmse);
+//     logi.log("    Scene Composition: 4 Pillars: %lld | 3 Pillars: %lld | Bad (<3 or >4): %lld\n", 
+//              stats_.scans_4_pillars, stats_.scans_3_pillars, stats_.scans_bad_count);
+    
+//     // --- 4. ВНУТРЕННЯЯ ЛОГИКА (ГИБРИД) ---
+//     long long total_hybrid = stats_.hybrid_math_dominant + stats_.hybrid_phys_dominant;
+//     if (total_hybrid > 0) {
+//         double math_pct = (double)stats_.hybrid_math_dominant / total_hybrid * 100.0;
+//         logi.log("    Hybrid Strategy:   Math(Circle Fit) %.1f%% vs Phys(Median) %.1f%%\n", 
+//                  math_pct, 100.0 - math_pct);
+//     }
+
+//     // --- 5. СРАВНЕНИЕ СОЛВЕРОВ ---
+//     logi.log("\n  [4. SOLVER BATTLE: UMEYAMA vs MNK]\n");
+//     if (stats_.mnk_count > 0) {
+//         double avg_u_rmse = (stats_.sum_rmse / (stats_.calib_success + 1)) * 1000.0;
+//         double avg_m_rmse = (stats_.sum_mnk_rmse / stats_.mnk_count) * 1000.0;
+//         double mnk_win_rate = (double)stats_.mnk_better_count / stats_.mnk_count * 100.0;
+//         double divergence = (stats_.sum_mnk_diff / stats_.mnk_count) * 1000.0;
+
+//         logi.log("    Avg Accuracy:      Umeyama: %.2f mm  vs  MNK: %.2f mm\n", avg_u_rmse, avg_m_rmse);
+//         logi.log("    Reliability:       MNK was better/equal in %.1f%% of cases\n", mnk_win_rate);
+//         logi.log("    Divergence:        %.2f mm (Avg distance between solutions)\n", divergence);
+//     } else {
+//         logi.log("    (No MNK data available yet)\n");
+//     }
+
+//     // --- 6. ИТОГОВЫЙ СТАТУС ---
+//     logi.log("\n  [5. SYSTEM HEALTH]\n");
+//     double success_rate = (double)stats_.calib_success / (stats_.calib_success + stats_.calib_fail + 1) * 100.0;
+//     logi.log("    Success Rate:      %.1f%%\n", success_rate);
+//     logi.log("    Mode 4-PT (Ideal): %lld\n", stats_.mode_4pt_perfect);
+//     logi.log("    Mode RANSAC (SOS): %lld (Saved broken scenes)\n", stats_.mode_4pt_ransac);
+//     logi.log("    Mode 3-PT (Tri):   %lld (One pillar missing)\n", stats_.mode_3pt);
+    
+//     logi.log("    Blind Spots (Lost Pillars):\n");
+//     logi.log("      RB: %-4lld RT: %-4lld LT: %-4lld LB: %-4lld\n", 
+//              stats_.missing_counts["RB"], stats_.missing_counts["RT"], 
+//              stats_.missing_counts["LT"], stats_.missing_counts["LB"]);
+             
+//     logi.log_b("==============================================================\n");
+// }
+
+/*
+ * Версия: v12.0 (MAXIMUM INFORMATION REPORT)
+ */
 void PillarScanNode::printSessionStatistics()
 {
     double run_time = (ros::Time::now() - stats_.start_time).toSec();
@@ -2636,64 +2936,99 @@ void PillarScanNode::printSessionStatistics()
     
     if (N == 0) return;
 
-    logi.log_b("\n==================== [SESSION STATISTICS] ====================\n");
-    logi.log("  Work Time: %.1f sec | Scans: %lld (%.1f Hz)\n", 
+    logi.log_b("\n==================== [SESSION REPORT v12] ====================\n");
+    logi.log("  Time: %.1f s | Scans: %lld | Freq: %.1f Hz\n", 
              run_time, N, (double)N / run_time);
     
-    // --- 1. ВХОДНЫЕ ДАННЫЕ (ВОССТАНОВЛЕНО) ---
-    logi.log("  [INPUT DATA]\n");
-    logi.log("    Avg Raw Points:    %lld (Input load)\n", stats_.total_points_raw / N);
-    logi.log("    Avg Clean Points:  %lld (After range/intensity)\n", stats_.total_points_filtered / N);
-    logi.log("    Avg Angle Removed: %lld (Edge artifacts cut)\n", stats_.angle_filter_removed / N);
+    // --- 1. ПРОИЗВОДИТЕЛЬНОСТЬ (НОВОЕ) ---
+    logi.log("\n  [1. PERFORMANCE LATENCY]\n");
+    logi.log("    Avg Latency:       %.1f ms (Calculation time per frame)\n", stats_.sum_latency_ms / N);
+    logi.log("    Max Latency:       %.1f ms (Worst case lag)\n", stats_.max_latency_ms);
+    // Бюджет 100мс для 10Гц
+    double load_pct = (stats_.sum_latency_ms / N) / 100.0 * 100.0;
+    logi.log("    CPU Load (10Hz):   %.1f%% of time budget used\n", load_pct);
 
-    // --- 2. ЭФФЕКТИВНОСТЬ ДЕТЕКЦИИ ---
-    logi.log("  [DETECTION EFFICIENCY]\n");
-    auto print_met = [&](const char* name, long long f, long long r) {
-        long long tot = f + r;
-        double rej_rate = tot > 0 ? (double)r/tot*100.0 : 0.0;
-        logi.log("    %s: Found %lld | Rejected %lld (%.1f%%)\n", name, f, r, rej_rate);
+    // --- 2. ВХОДНЫЕ ДАННЫЕ ---
+    logi.log("\n  [2. RAW DATA QUALITY]\n");
+    logi.log("    Raw Points:        %lld (avg)\n", stats_.total_points_raw / N);
+    logi.log("    Filter Cut:        %lld (avg) removed by Range/Intensity\n", 
+             (stats_.total_points_raw - stats_.total_points_filtered) / N);
+    logi.log("    Angle Artif. Cut:  %lld (avg) removed by Edge Filter\n", 
+             stats_.angle_filter_removed / N);
+    logi.log("    Final Input:       %lld (avg) points used for detection\n", 
+             (stats_.total_points_filtered - stats_.angle_filter_removed) / N);
+
+    // --- 3. ДЕТЕКЦИЯ ---
+    logi.log("\n  [3. DETECTION PIPELINE]\n");
+    auto print_met = [&](const char* name, long long found, long long rejected) 
+    {
+        long long total = found + rejected;
+        double rej_rate = total > 0 ? (double)rejected/total*100.0 : 0.0;
+        logi.log("    %-10s | Total: %-5lld -> Filtered: %-5lld (%4.1f%%) -> ACCEPTED: %lld\n", 
+                 name, total, rejected, rej_rate, found);
     };
-    print_met("M1 (Jump) ", stats_.m1_found, stats_.m1_rejected);
-    print_met("M2 (Clust)", stats_.m2_found, stats_.m2_rejected);
-    print_met("M3 (Min)  ", stats_.m3_found, stats_.m3_rejected);
+    print_met("M1(Jump)", stats_.m1_found, stats_.m1_rejected);
+    print_met("M2(Clust)", stats_.m2_found, stats_.m2_rejected);
+    print_met("M3(Min)", stats_.m3_found, stats_.m3_rejected);
 
-    // --- 3. FUSION И ГИБРИДНАЯ ЛОГИКА (ДОПОЛНЕНО) ---
-    logi.log("  [SCENE & FUSION]\n");
-    logi.log("    Noise Points:      %lld /scan (DBSCAN noise)\n", stats_.dbscan_noise_points / N);
-    logi.log("    Garbage Clusters:  %lld (Rejected by Radius/RMSE)\n", stats_.clusters_rejected_radius + stats_.clusters_rejected_rmse);
+    // --- 4. СЦЕНА ---
+    logi.log("\n  [4. SCENE & FUSION]\n");
+    logi.log("    DBSCAN Noise:      %lld pts/scan (Unclustered)\n", stats_.dbscan_noise_points / N);
+    logi.log("    Garbage Clusters:  %lld (Total rejected by Radius > 8cm)\n", 
+             stats_.clusters_rejected_radius + stats_.clusters_rejected_rmse);
     
-    // Новое: Статистика выбора (Математика vs Физика)
+    // Гибрид
     long long total_hybrid = stats_.hybrid_math_dominant + stats_.hybrid_phys_dominant;
-    if (total_hybrid > 0) {
+    if (total_hybrid > 0) 
+    {
         double math_pct = (double)stats_.hybrid_math_dominant / total_hybrid * 100.0;
-        double phys_pct = (double)stats_.hybrid_phys_dominant / total_hybrid * 100.0;
-        logi.log("    Hybrid Preference: Math(Circle) %.1f%% vs Phys(Median) %.1f%%\n", math_pct, phys_pct);
+        logi.log("    Hybrid Preference: Math(Circle Fit) %.1f%% vs Phys(Median) %.1f%%\n", 
+                 math_pct, 100.0 - math_pct);
     }
 
-    // --- 4. КАЛИБРОВКА ---
-    logi.log("  [CALIBRATION MODES]\n");
-    double success_rate = (double)stats_.calib_success / (stats_.calib_success + stats_.calib_fail + 1) * 100.0;
+    // --- 5. КАЛИБРОВКА (РЕЖИМЫ) ---
+    logi.log("\n  [5. CALIBRATION MODES]\n");
+    long long total_calib = stats_.calib_success + stats_.calib_fail;
+    double success_rate = total_calib > 0 ? (double)stats_.calib_success / total_calib * 100.0 : 0.0;
+    
     logi.log("    Success Rate:      %.1f%%\n", success_rate);
-    logi.log("    Mode 4-PT (Ideal): %lld\n", stats_.mode_4pt_perfect);
-    logi.log("    Mode RANSAC (SOS): %lld (Saved by removing bad pillar)\n", stats_.mode_4pt_ransac);
-    logi.log("    Mode 3-PT (Tri):   %lld\n", stats_.mode_3pt);
+    logi.log("    Mode 4-PT (Ideal): %lld (%.1f%%)\n", 
+             stats_.mode_4pt_perfect, 
+             total_calib > 0 ? (double)stats_.mode_4pt_perfect/total_calib*100.0 : 0);
+    logi.log("    Mode RANSAC (SOS): %lld (Recovered from garbage)\n", stats_.mode_4pt_ransac);
+    logi.log("    Mode 3-PT (Tri):   %lld (One pillar missing)\n", stats_.mode_3pt);
     
-    // --- 5. ТОЧНОСТЬ (ДОПОЛНЕНО) ---
-    logi.log("  [ACCURACY & CHECK]\n");
-    logi.log("    Avg RMSE:          %.2f mm\n", (stats_.sum_rmse / (stats_.calib_success + 1)) * 100.0);
-    logi.log("    Max RMSE:          %.1f mm\n", stats_.max_rmse * 1000.0);
-    
-    // Новое: Сравнение с MNK
-    if (stats_.mnk_count > 0) {
-        double avg_diff = (stats_.sum_mnk_diff / stats_.mnk_count) * 1000.0;
-        logi.log("    Solver Diff:       %.2f mm (Umeyama vs MNK agreement)\n", avg_diff);
-    }
-    
-    // --- 6. ПРОПУСКИ ---
-    logi.log("  [MISSING PILLARS DIAGNOSTICS]\n");
-    logi.log("    RB: %lld | RT: %lld | LT: %lld | LB: %lld\n", 
+    logi.log("    Blind Spots (Lost):\n");
+    logi.log("      RB: %-4lld RT: %-4lld LT: %-4lld LB: %-4lld\n", 
              stats_.missing_counts["RB"], stats_.missing_counts["RT"], 
              stats_.missing_counts["LT"], stats_.missing_counts["LB"]);
-             
+
+    // --- 6. ТОЧНОСТЬ И ФИНАЛ (ГЛАВНОЕ) ---
+    logi.log("\n  [6. FINAL ACCURACY]\n");
+    
+    long long valid_samples = stats_.calib_success > 0 ? stats_.calib_success : 1;
+    long long mnk_samples = stats_.mnk_count > 0 ? stats_.mnk_count : 1;
+
+    double avg_u = (stats_.sum_rmse / valid_samples) * 1000.0;
+    double avg_m = (stats_.sum_mnk_rmse / mnk_samples) * 1000.0;
+    double avg_fused = (stats_.sum_fused_rmse / mnk_samples) * 1000.0; // Fused считается только когда есть оба
+    
+    logi.log("    Umeyama RMSE:      %.2f mm\n", avg_u);
+    logi.log("    MNK (Tri) RMSE:    %.2f mm\n", avg_m);
+    
+    // Сравнение
+    if (stats_.mnk_count > 0) 
+    {
+        double improvement = avg_u - avg_fused;
+        logi.log("    ---------------------------\n");
+        logi.log("    FINAL FUSED RMSE:  %.2f mm (Theoretical Precision)\n", avg_fused);
+        logi.log("    Max Fused Error:   %.2f mm (Worst case)\n", stats_.max_fused_rmse * 1000.0);
+        logi.log("    ---------------------------\n");
+        
+        logi.log("    Solver Diff:       %.2f mm (Agreements)\n", (stats_.sum_mnk_diff / mnk_samples) * 1000.0);
+        double win_rate = (double)stats_.mnk_better_count / mnk_samples * 100.0;
+        logi.log("    MNK Win Rate:      %.1f%% (Was cleaner than Umeyama)\n", win_rate);
+    }
+    
     logi.log_b("==============================================================\n");
 }

@@ -24,6 +24,7 @@
 #include <visualization_msgs/Marker.h>      // Для публикации одиночного Marker
 #include <geometry_msgs/Point.h>            // Для точек внутри маркеров
 #include <geometry_msgs/PoseStamped.h>      // <-- ДОБАВИТЬ ЭТУ СТРОКУ
+#include <pb_msgs/Struct_PoseScan.h>
 
 #include "../genStruct.h"        // Тут все общие структуры. Истользуются и Data и Main и Head
 #include "trilaterationSolver.h" // Файл для функций для формирования топиков в нужном виде и формате
@@ -197,6 +198,7 @@ private:
     ros::Publisher pub_calib_result; // <-- НОВЫЙ ПАБЛИШЕР
     ros::Publisher pub_mnk_result;   // <--- НОВЫЙ: MNK (Trilateration)
     ros::Publisher pub_fused_result; // Не забудь добавить в конструктор: nh.advertise...("/pb/scan/fused_pose", 1);
+    ros::Publisher pub_custom_struct; // Наш новый супер-топик
 
     // --- Параметры ---
     double pillar_diam_;
@@ -329,6 +331,17 @@ private:
         
         long long hybrid_math_dominant = 0; // Сколько раз победил fitCircle
         long long hybrid_phys_dominant = 0; // Сколько раз победила Медиана
+        
+        double sum_mnk_rmse = 0.0;        // Накопленная ошибка MNK
+        long long mnk_better_count = 0;   // Сколько раз MNK был точнее Umeyama
+
+        // Итоговое качество
+        double sum_fused_rmse = 0.0;      // Накопленная ошибка после слияния
+        double max_fused_rmse = 0.0;      // Худшая ошибка слияния
+        
+        // Производительность
+        double sum_latency_ms = 0.0;      // Накопленное время обработки (мс)
+        double max_latency_ms = 0.0;      // Максимальное время обработки (мс)
     };
 
     SessionStats stats_; // Экземпляр статистики
