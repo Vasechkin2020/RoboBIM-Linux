@@ -702,66 +702,145 @@ void PillarScanNode::calculatePillarMetrics(FinalPillar &pillar)
              pillar.math_dist, pillar.phys_dist, final_dist);
 }
 
-// ИЗМЕНЕНО: Добавлен подсчет статистики (Total/Rejected/Accepted)
+// // ИЗМЕНЕНО: Добавлен подсчет статистики (Total/Rejected/Accepted)
+// std::vector<PillarCandidate> PillarScanNode::detectGenericClustering(const AlignedVector2f &pts, double threshold, int method_id,
+//                                                      AlignedVector2f &out_cluster_points)
+// {
+//     std::vector<PillarCandidate> results;
+//     if (pts.size() < min_cluster_points_)
+//         return results;
+    
+//     // 1. Сбор ВСЕХ кластеров (без фильтрации по размеру пока что)
+//     std::vector<AlignedVector2f> clusters; 
+//     AlignedVector2f current;
+//     current.reserve(500);
+
+//     // 1. Линейная кластеризация
+//     current.push_back(pts[0]);
+//     for (size_t i = 1; i < pts.size(); ++i)
+//     {
+//         if (MathUtils::dist2D(pts[i], pts[i - 1]) > threshold)
+//         {
+//             if (current.size() >= min_cluster_points_)
+//                 clusters.push_back(std::move(current));
+//             current.clear();
+//         }
+//         current.push_back(pts[i]);
+//     }
+//     if (current.size() >= min_cluster_points_)
+//         clusters.push_back(std::move(current));
+//     current.clear();
+
+//     // 2. Циклическое замыкание
+//     if (clusters.size() >= 2)
+//     {
+//         const AlignedVector2f first = clusters.front();
+//         const AlignedVector2f last = clusters.back();
+
+//         if (MathUtils::dist2D(last.back(), first.front()) < threshold)
+//         {
+//             AlignedVector2f merged;
+//             merged.reserve(last.size() + first.size());
+//             merged.insert(merged.end(), last.begin(), last.end());
+//             merged.insert(merged.end(), first.begin(), first.end());
+
+//             clusters.erase(clusters.begin());
+//             clusters.pop_back();
+//             clusters.push_back(std::move(merged));
+//         }
+//     }
+
+//     // 3. Обработка и статистика
+//     int total_clusters = clusters.size();
+//     int accepted_count = 0;
+
+//     for (const auto &cluster : clusters)
+//     {
+//         // Используем bool результат для подсчета
+//         if (processCluster(cluster, method_id, results, out_cluster_points))
+//         {
+//             accepted_count++;
+//         }
+//     }
+
+//     // Вывод статистики одной строкой
+//     if (total_clusters > 0)
+//     {
+//         logi.log("Method %d Stats: Total Clusters: %d | Rejected: %d | Accepted: %d\n",
+//                  method_id, total_clusters, total_clusters - accepted_count, accepted_count);
+//     }
+
+//     return results;
+// }
+
+/*
+ * Версия: v11.0 (Fix: Cyclic Buffer Merge BEFORE filtering)
+ */
 std::vector<PillarCandidate> PillarScanNode::detectGenericClustering(const AlignedVector2f &pts, double threshold, int method_id,
                                                      AlignedVector2f &out_cluster_points)
 {
     std::vector<PillarCandidate> results;
-    if (pts.size() < min_cluster_points_)
-        return results;
-    
-    // 1. Сбор ВСЕХ кластеров (без фильтрации по размеру пока что)
-    std::vector<AlignedVector2f> clusters; 
-    AlignedVector2f current;
-    current.reserve(500);
+    if (pts.size() < min_cluster_points_) return results; // Если точек меньше минимума для ОДНОГО кластера, искать нечего
 
-    // 1. Линейная кластеризация
+    // 1. Сбор ВСЕХ кластеров (без фильтрации по размеру пока что)
+    std::vector<AlignedVector2f> raw_clusters;
+    AlignedVector2f current;
+    current.reserve(100); 
+
     current.push_back(pts[0]);
     for (size_t i = 1; i < pts.size(); ++i)
     {
+        // Разрыв дистанции
         if (MathUtils::dist2D(pts[i], pts[i - 1]) > threshold)
         {
-            if (current.size() >= min_cluster_points_)
-                clusters.push_back(std::move(current));
-            current.clear();
+            raw_clusters.push_back(std::move(current)); // Сохраняем любой кластер
+            current.clear(); 
         }
         current.push_back(pts[i]);
     }
-    if (current.size() >= min_cluster_points_)
-        clusters.push_back(std::move(current));
-    current.clear();
-
-    // 2. Циклическое замыкание
-    if (clusters.size() >= 2)
+    // Сохраняем последний
+    raw_clusters.push_back(std::move(current));
+    
+    // 2. Циклическое замыкание (Suture)
+    // Проверяем, являются ли Последний и Первый кластер частями одного целого
+    if (raw_clusters.size() >= 2)
     {
-        const AlignedVector2f first = clusters.front();
-        const AlignedVector2f last = clusters.back();
+        AlignedVector2f& first = raw_clusters.front(); 
+        AlignedVector2f& last = raw_clusters.back();   
 
+        // Проверяем расстояние между последней точкой Конца и первой точкой Начала
         if (MathUtils::dist2D(last.back(), first.front()) < threshold)
         {
-            AlignedVector2f merged;
-            merged.reserve(last.size() + first.size());
-            merged.insert(merged.end(), last.begin(), last.end());
-            merged.insert(merged.end(), first.begin(), first.end());
-
-            clusters.erase(clusters.begin());
-            clusters.pop_back();
-            clusters.push_back(std::move(merged));
+            // Слияние: Добавляем точки Первого в конец Последнего
+            last.insert(last.end(), first.begin(), first.end());
+            
+            // Удаляем первый кластер (он теперь часть последнего)
+            raw_clusters.erase(raw_clusters.begin());
+            
+            // logi.log("Method %d: Cyclic Merge performed! (End+Start)\n", method_id);
         }
     }
 
-    // 3. Обработка и статистика
-    int total_clusters = clusters.size();
+    // 3. Финальная обработка и фильтрация
+    int total_clusters = raw_clusters.size();
     int accepted_count = 0;
 
-    for (const auto &cluster : clusters)
+    for (const auto &cluster : raw_clusters)
     {
-        // Используем bool результат для подсчета
-        if (processCluster(cluster, method_id, results, out_cluster_points))
-        {
+        // Вот теперь, когда мы склеили края, проверяем размер и ширину
+        // Вот теперь проверяем размер, ширину и форму. Если кластер был разбит, теперь он целый и пройдет проверку
+        if (processCluster(cluster, method_id, results, out_cluster_points)) {
             accepted_count++;
         }
     }
+
+    // Статистика (выводим только если что-то нашли)
+    /*
+    if (total_clusters > 0 && accepted_count > 0) {
+        logi.log("Method %d Stats: Raw Clusters: %d | Rejected: %d | Accepted: %d\n", 
+                 method_id, total_clusters, total_clusters - accepted_count, accepted_count);
+    }
+    */
 
     // Вывод статистики одной строкой
     if (total_clusters > 0)
@@ -772,6 +851,8 @@ std::vector<PillarCandidate> PillarScanNode::detectGenericClustering(const Align
 
     return results;
 }
+
+
 
 // ИЗМЕНЕНО: Добавлен подсчет статистики (Total/Rejected/Accepted)
 std::vector<PillarCandidate> PillarScanNode::detectLocalMinima(const AlignedVector2f &pts, int method_id,
