@@ -1,11 +1,13 @@
 
-#include "genStruct.h" // Тут все общие структуры. Истользуются и Data и Main и Head
+// #include "genStruct.h" // Тут все общие структуры. Истользуются и Data и Main и Head
 // #include "scan_code/config.h"
 // #include "scan_code/topic.h" // Файл для функций для формирования топиков в нужном виде и формате
 
+#include "logi.h" //Класс для моего формата логов
 AsyncFileLogger logi("/home/pi/RoboBIM-Linux/src/pb/log/", "scan_node");
 
-#include "scan_code/pillarScanNode.h"
+// #include "scan_code/pillarScanNode.h"
+#include "scan_code/pillarScan.h"
 
 int main(int argc, char **argv)
 {

@@ -270,24 +270,24 @@ struct SPose
 // };
 
 //************************************** ОБЬЯВЛЯЕМ ФУНКЦИИ **********************************
-float sqr(float x_);                                   // Функция возведния в квадрат
-float ctan(float x_);                                  // Функция котангенса угла
-float vectorLen(SPoint point1, SPoint point2);         // Функция нахождения длинны вектора
-void normalizeVector(double &x, double &y, double &z); // Нормализация вектора
-float normalizeAngle360(float angle);                  // Нормализует угол (в градусах) в диапазон [0, 360)
-float normalizeAngle2PI(float angle_rad);              // Нормализует угол (в радианах) в диапазон [0, 2*PI)
+// inline float sqr(float x_);                                   // Функция возведния в квадрат
+// inline float ctan(float x_);                                  // Функция котангенса угла
+// inline float vectorLen(SPoint point1, SPoint point2);         // Функция нахождения длинны вектора
+// inline void normalizeVector(double &x, double &y, double &z); // Нормализация вектора
+// inline float normalizeAngle360(float angle);                  // Нормализует угол (в градусах) в диапазон [0, 360)
+// inline float normalizeAngle2PI(float angle_rad);              // Нормализует угол (в радианах) в диапазон [0, 2*PI)
 
 // Функция возведения в квадрат
-float sqr(float x_)
+inline float sqr(float x_)
 {
   return x_ * x_;
 }
 // Функция котангенса
-float ctan(float x_)
+inline float ctan(float x_)
 {
   return 1 / tan(x_);
 }
-float vectorLen(SPoint point1, SPoint point2) // Функция возвращает длинну вектора, фактически растояние по прямой между двумя точкам
+inline float vectorLen(SPoint point1, SPoint point2) // Функция возвращает длинну вектора, фактически растояние по прямой между двумя точкам
 {
   float dx = abs(point2.x - point1.x); // Находим разницу в координатах
   float dy = abs(point2.y - point1.y); //
@@ -295,7 +295,7 @@ float vectorLen(SPoint point1, SPoint point2) // Функция возвраща
   return len;
 }
 
-void normalizeVector(double &x, double &y, double &z)
+inline void normalizeVector(double &x, double &y, double &z)
 {
   double norm = sqrt(x * x + y * y + z * z);
 
@@ -305,7 +305,7 @@ void normalizeVector(double &x, double &y, double &z)
 }
 
 // Нормализует угол (в радианах) в диапазон (-PI, PI]
-float normalizeAnglePI(float angle_rad)
+inline float normalizeAnglePI(float angle_rad)
 {
   float TWO_PI = 2.0f * M_PI; // Константа 2 * PI
   while (angle_rad > M_PI)    // Если угол больше PI
@@ -316,7 +316,7 @@ float normalizeAnglePI(float angle_rad)
 }
 
 // Нормализует угол (в радианах) в диапазон [0, 2*PI)
-float normalizeAngle2PI(float angle_rad)
+inline float normalizeAngle2PI(float angle_rad)
 {
   angle_rad = fmodf(angle_rad, (2.0f * M_PI)); // Приводим угол к диапазону (-2*PI, 2*PI)
   if (angle_rad < 0.0f)                        // Обрабатываем отрицательные углы
@@ -325,7 +325,7 @@ float normalizeAngle2PI(float angle_rad)
 }
 
 // Нормализует угол (в градусах) в диапазон (-180, 180]
-float normalizeAngle180(float angle_deg)
+inline float normalizeAngle180(float angle_deg)
 {
   while (angle_deg > 180.0f)   // Если угол больше 180
     angle_deg -= 360.0f;       // Вычитаем полный оборот
@@ -335,7 +335,7 @@ float normalizeAngle180(float angle_deg)
 }
 
 // Нормализует угол (в градусах) в диапазон [0, 360)
-float normalizeAngle360(float angle)
+inline float normalizeAngle360(float angle)
 {
   angle = fmodf(angle, 360.0f); // Приводим угол к диапазону [0, 360)
   if (angle < 0)                // Обрабатываем отрицательные углы
@@ -344,7 +344,7 @@ float normalizeAngle360(float angle)
 }
 
 // Угловая разность: phi - theta, нормализованная в [-180, 180)
-double angle_diff_deg(double phi, double theta)
+inline double angle_diff_deg(double phi, double theta)
 {
   double diff = phi - theta;      // Расчет сырой разницы
   return normalizeAngle180(diff); // Нормализуем разницу для получения кратчайшего пути

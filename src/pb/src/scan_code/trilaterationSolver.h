@@ -1,6 +1,12 @@
 #ifndef TRIALATERATIONSOLVER_H
 #define TRIALATERATIONSOLVER_H
 
+// #include "../genStruct.h" // Тут все общие структуры. Истользуются и Data и Main и Head
+
+// ВНЕШНЕЕ ОБЪЯВЛЕНИЕ ЛОГГЕРА
+class AsyncFileLogger;
+extern AsyncFileLogger logi;
+
 #include <stdio.h>   // Подключение стандартной библиотеки ввода-вывода (для printf)
 #include <math.h>    // Подключение математической библиотеки (для M_PI, M_SQRT2)
 #include <vector>    // Подключение библиотеки для работы с векторами
@@ -51,14 +57,14 @@ struct SPoint_Q
     bool has_outliers;      // Были ли выбросы отброшены (только для Robust)
 };
 
-double sqr(double val)
-{
-    return val * val; // Функция для вычисления квадрата числа
-}
-double ctan(double rad)
-{
-    return 1.0 / tan(rad); // Функция для вычисления котангенса
-}
+// double sqr(double val)
+// {
+//     return val * val; // Функция для вычисления квадрата числа
+// }
+// double ctan(double rad)
+// {
+//     return 1.0 / tan(rad); // Функция для вычисления котангенса
+// }
 
 /**
  * @brief Преобразует угол из любого диапазона (например, 0-360) в диапазон (+-180] и инвертирует знак.
@@ -67,7 +73,7 @@ double ctan(double rad)
  * * @param angle_deg Угол в градусах.
  * @return Нормализованный и инвертированный угол в градусах.
  */
-double normalize_and_invert_sign_deg(double angle_deg)
+inline double normalize_and_invert_sign_deg(double angle_deg)
 {
     // --- 1. Нормализация в стандартный диапазон (-180, 180] ---
 
@@ -131,17 +137,17 @@ public:
 
 // --- Конструктор и вспомогательные методы ---
 
-TrilaterationSolver::TrilaterationSolver(SPoint prev) : A_prev(prev)
+inline TrilaterationSolver::TrilaterationSolver(SPoint prev) : A_prev(prev)
 {
 } // Инициализация A_prev
 
-double TrilaterationSolver::get_azimuth_deg(SPoint P_from, SPoint P_to)
+inline double TrilaterationSolver::get_azimuth_deg(SPoint P_from, SPoint P_to)
 {
     double rad = atan2(P_to.y - P_from.y, P_to.x - P_from.x); // Азимут в радианах
     return RAD2DEG(rad);                                      // Азимут в градусах (требуется макрос RAD2DEG)
 }
 
-double TrilaterationSolver::normalize_angle_deg_abs(double angle_deg)
+inline double TrilaterationSolver::normalize_angle_deg_abs(double angle_deg)
 {
     while (angle_deg > 180.0) // Пока угол больше 180 градусов
     {
@@ -153,7 +159,7 @@ double TrilaterationSolver::normalize_angle_deg_abs(double angle_deg)
     }
     return std::abs(angle_deg); // Возвращаем абсолютное значение
 }
-double TrilaterationSolver::normalize_angle_deg(double angle_deg)
+inline double TrilaterationSolver::normalize_angle_deg(double angle_deg)
 {
     while (angle_deg > 180.0) // Пока угол больше 180 градусов
     {
@@ -166,24 +172,24 @@ double TrilaterationSolver::normalize_angle_deg(double angle_deg)
     return angle_deg; // Возвращаем
 }
 
-void TrilaterationSolver::set_A_prev(SPoint new_prev)
+inline void TrilaterationSolver::set_A_prev(SPoint new_prev)
 {
     A_prev = new_prev;                                               // Устанавливаем новое предыдущее положение
     logi.log_b("    A_prev updated to: (%+8.3f, %+8.3f)\n", A_prev.x, A_prev.y); // Output updated A_prev
 }
 
-void TrilaterationSolver::clear_circles()
+inline void TrilaterationSolver::clear_circles()
 {
     all_circles.clear();                                    // Очистка вектора all_circles
     logi.log("    All circles cleared for new calculation.\n"); // Output confirmation
 }
 
-int TrilaterationSolver::get_circle_count() const
+inline int TrilaterationSolver::get_circle_count() const
 {
     return all_circles.size(); // Получить количество окружностей
 }
 
-void TrilaterationSolver::add_circle_from_distance(SPoint P_beacon, double distance)
+inline void TrilaterationSolver::add_circle_from_distance(SPoint P_beacon, double distance)
 {
     // printf("+++ add_circle_from_distance \n");
     // Отладочный вывод: Добавление измерения дальности
@@ -198,7 +204,7 @@ void TrilaterationSolver::add_circle_from_distance(SPoint P_beacon, double dista
     all_circles.push_back({P_beacon.x, P_beacon.y, distance, WEIGHT_DISTANCE_NORM, true}); // Добавляем маяк с весом 1.0 и флагом active=true
 }
 
-void TrilaterationSolver::add_filtered_circle_from_angle(SPoint P1, SPoint P2, double angle_deg)
+inline void TrilaterationSolver::add_filtered_circle_from_angle(SPoint P1, SPoint P2, double angle_deg)
 {
     // logi.log("    ANGLE CIRCLE (P1=(%+7.3f, %+7.3f), P2=(%+7.3f, %+7.3f), Angle= %+8.3f) \n", P1.x, P1.y, P2.x, P2.y, angle_deg);
 
@@ -310,7 +316,7 @@ void TrilaterationSolver::add_filtered_circle_from_angle(SPoint P1, SPoint P2, d
 /**
  * @brief Приватный метод, выполняющий ОДИН проход WLS по АКТИВНЫМ окружностям.
  */
-bool TrilaterationSolver::perform_wls_pass(SPoint &result_A, double &result_rms, int &used_count, bool print_residuals)
+inline bool TrilaterationSolver::perform_wls_pass(SPoint &result_A, double &result_rms, int &used_count, bool print_residuals)
 {
     int N = all_circles.size(); // Общее количество окружностей
     used_count = 0;             // Сбрасываем счетчик использованных измерений
@@ -439,7 +445,7 @@ bool TrilaterationSolver::perform_wls_pass(SPoint &result_A, double &result_rms,
 /**
  * @brief Метод 1: Простой WLS (Один проход, без отбраковки).
  */
-SPoint_Q TrilaterationSolver::find_A_by_mnk_simple()
+inline SPoint_Q TrilaterationSolver::find_A_by_mnk_simple()
 {
     SPoint A = {0.0, 0.0};
     SPoint_Q AQ; // Инициализация структуры качества
@@ -490,7 +496,7 @@ SPoint_Q TrilaterationSolver::find_A_by_mnk_simple()
 /**
  * @brief Метод 2: Робастный WLS (Два прохода, с отбраковкой выбросов).
  */
-SPoint_Q TrilaterationSolver::find_A_by_mnk_robust()
+inline SPoint_Q TrilaterationSolver::find_A_by_mnk_robust()
 {
     SPoint A = {0.0, 0.0};
     SPoint_Q AQ; // Инициализация структуры качества
@@ -597,7 +603,7 @@ SPoint_Q TrilaterationSolver::find_A_by_mnk_robust()
 
 // --- Дополнительные методы (Ориентация, Расчет углов) ---
 
-double TrilaterationSolver::get_lidar_orientation(
+inline double TrilaterationSolver::get_lidar_orientation(
     const SPoint A_found,                       // Найденное положение A
     const std::vector<SPoint> &beacons,         // Координаты маяков
     const std::vector<double> &lidar_angles_deg // Углы на маяки, измеренные лидаром
@@ -644,21 +650,21 @@ double TrilaterationSolver::get_lidar_orientation(
     return orientation_deg; // Возвращаем финальную ориентацию лидара в градусах
 }
 
-double TrilaterationSolver::calculate_angle_BAC(SPoint A, SPoint B, SPoint C)
+inline double TrilaterationSolver::calculate_angle_BAC(SPoint A, SPoint B, SPoint C)
 {
     double az_AB = get_azimuth_deg(A, B);               // Азимут AB
     double az_AC = get_azimuth_deg(A, C);               // Азимут AC
     return calculate_angle_from_azimuths(az_AB, az_AC); // Расчет угла по разности азимутов
 }
 
-double TrilaterationSolver::calculate_angle_from_azimuths(double az_AB, double az_AC)
+inline double TrilaterationSolver::calculate_angle_from_azimuths(double az_AB, double az_AC)
 {
     double angle = az_AC - az_AB;          // Разница азимутов
     return normalize_angle_deg_abs(angle); // Нормализация и абсолютное значение
 }
 
 // Угловая разность: phi - theta, нормализованная в [-180, 180)
-double TrilaterationSolver::angle_diff_deg(double phi, double theta)
+inline double TrilaterationSolver::angle_diff_deg(double phi, double theta)
 {
     double diff = phi - theta;        // Расчет сырой разницы
     return normalize_angle_deg(diff); // Нормализуем разницу для получения кратчайшего пути
@@ -670,7 +676,7 @@ double TrilaterationSolver::angle_diff_deg(double phi, double theta)
 // alpha: вес нового измерения phi (0 <= alpha <= 1)
 // theta: предыдущая оценка
 // phi: новое измерение
-double TrilaterationSolver::complementary_filter_angle_deg(double theta, double phi, double alpha)
+inline double TrilaterationSolver::complementary_filter_angle_deg(double theta, double phi, double alpha)
 {
     // Ограничение коэффициента
     if (alpha < 0.0)
