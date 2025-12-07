@@ -135,10 +135,10 @@ int main(int argc, char **argv)
         controlLed();   // Функция управления несколькими светодиодами которые отведены для прямого управления нодой data
         setModeModul(); // Установка режима работы - колибровки модуля на основании переменной из лаунч файла
 
-        static uint32_t mode_age = 999;
-        if(mode_age != Data2Print.controlPrint.mode)
+        static uint32_t status_age = 999;
+        if(status_age != Data2Print.controlPrint.status)
             logi.log("   id= %7d, mode= %2d, status= %2d, torque = %+6.2f \n", Data2Print.id, Data2Print.controlPrint.mode, Data2Print.controlPrint.status, Data2Print.controlPrint.torque);
-        mode_age = Data2Print.controlPrint.mode;
+        status_age = Data2Print.controlPrint.status;
 /*
         // --------------------------- ОТПРАВКА ДАННЫХ на нижний уровень и разборка и публикация данных полученных с нижнего уровня---------------------------------------------------------------------
         Data2Modul.id++;                                 //= 0x1F1F1F1F;
