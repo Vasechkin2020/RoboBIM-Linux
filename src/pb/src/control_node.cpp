@@ -2,14 +2,14 @@
 #include "logi.h" //Класс для моего формата логов
 AsyncFileLogger logi("/home/pi/RoboBIM-Linux/src/pb/log/", "control_node");
 
+int g_controlMode; // Выбор режима управления 0- по одометрии 1- по слиянию main
+
 #include "genStruct.h" // Тут все общие структуры. Истользуются и Data и Main и Control
 #include "control_code/config.h"
 #include "control_code/topic.h" // Файл для функций для формирования топиков в нужном виде и формате
 #include "control_code/code.h"
 #include "control_code/gCodeParser.h"
 #include "control_code/c_joy.h"
-
-
 
 CJoy joy(0.5, 0.5); // Обьявляем экземпляр класса в нем вся обработка джойстика
 
@@ -45,12 +45,11 @@ int main(int argc, char **argv)
     logi.log_w("Start Setup.\n");
     readParam(); // Считывание переменных параметров из лаунч файла при запуске. Там офсеты и режимы работы
     // initCommandArray(verComand); // Заполнение маасива команд
-    
 
     GCodeParser parser; // Создание объекта парсера
-    
-    ros::spinOnce();            // Опрашиваем ядро ROS и по этой команде наши срабатывают колбеки. Нужно только для подписки на топики
-    parser.run();       // Запуск обработки
+
+    ros::spinOnce(); // Опрашиваем ядро ROS и по этой команде наши срабатывают колбеки. Нужно только для подписки на топики
+    parser.run();    // Запуск обработки
 
     // static ros::Time time = ros::Time::now();      // Захватываем начальный момент времени
     static ros::Time timeStart = ros::Time::now(); // Захватываем начальный момент времени
@@ -66,13 +65,20 @@ int main(int argc, char **argv)
     // list int listok;
 
     logi.log_w("End Setup. Start loop.\n");
-    ros::Duration(1).sleep(); // Подождем пока
+
+    // g_controlMode = 0; // Выбор режима управления 0- по одометрии 1- по слиянию main
+    if (g_controlMode)
+        logi.log("+++ Start Control MAIN !!!\n");
+    else
+        logi.log("+++ Start Control ODOMETRY !!!\n");
+
+    ros::Duration(3).sleep(); // Подождем пока
 
     while (ros::ok())
     {
         timeNow = ros::Time::now(); // Захватываем текущий момент времени начала цикла
         // ROS_INFO("loop \n");        // С новой строки в логе новый цикл
-        ros::spinOnce();            // Опрашиваем ядро ROS и по этой команде наши срабатывают колбеки. Нужно только для подписки на топики
+        ros::spinOnce(); // Опрашиваем ядро ROS и по этой команде наши срабатывают колбеки. Нужно только для подписки на топики
 
         if (g_controlMode) // В зависимости от режима из yaml файла заполняем перменную и далее все опирается на нее.
         {
@@ -105,65 +111,72 @@ int main(int argc, char **argv)
                 flagAngle = true;         // Флаг что теперь отслеживаем угол
                 flagAngleFirst = true;
                 history.reset(); // СБРОС БУФЕРА
-                checker.reset();// СБРОС БУФЕРА
-                
+                checker.reset(); // СБРОС БУФЕРА
+
+                point_A.x = commandArray[i].point_A_x;
+                point_A.y = commandArray[i].point_A_y;
+                logi.log("    point A table  x = %+8.3f y = %+8.3f \n", commandArray[i].point_A_x, commandArray[i].point_A_y);
+
+                point_B.x = commandArray[i].point_B_x;
+                point_B.y = commandArray[i].point_B_y;
+                logi.log("    point B table  x = %+8.3f y = %+8.3f \n", commandArray[i].point_B_x, commandArray[i].point_B_y);
+
                 point_C.x = g_poseC.x; // Запоминаем те координаты которые были в момент начала движения
                 point_C.y = g_poseC.y;
-                logi.log("    'point C x = %+8.3f y = %+8.3f th = %+8.3f '\n",point_C.x,point_C.y, RAD2DEG(g_poseC.th));
+                logi.log("    'point C x = %+8.3f y = %+8.3f th = %+8.3f '\n", point_C.x, point_C.y, RAD2DEG(g_poseC.th));
 
-                logi.log_b("    Start Angle \n"); 
+                logi.log_b("    Start Angle \n");
                 break;
-            case 2:                          // Режим где движемся по координатам. даигаемся по длинне вектора.
+            case 2: // Режим где движемся по координатам. даигаемся по длинне вектора.
                 // point_A.x = msg_PoseRotation.x.odom; // Запоминаем те координаты которые были в момент начала движения
                 // point_A.y = msg_PoseRotation.y.odom;
                 // logi.log("    point A odom    x = %+8.3f y = %+8.3f \n",point_A.x,point_A.y);
                 point_A.x = commandArray[i].point_A_x;
                 point_A.y = commandArray[i].point_A_y;
-                logi.log("    point A table  x = %+8.3f y = %+8.3f \n",commandArray[i].point_A_x,commandArray[i].point_A_y);
+                logi.log("    point A table  x = %+8.3f y = %+8.3f \n", commandArray[i].point_A_x, commandArray[i].point_A_y);
 
                 // signed_distance = commandArray[i].len;
                 // if (commandArray[i].velLen < 0) // Если скорость орицательная то надо учитывать при расчетах
                 //     signed_distance = -commandArray[i].len;
                 // point_B = calculate_new_coordinates(point_A, msg_PoseRotation.th.odom, signed_distance); // Посчитали конечные координаты точки В
                 // logi.log("    point B calc x = %+8.3f y = %+8.3f \n", point_B.x,point_B.y);
-                
+
                 point_B.x = commandArray[i].point_B_x;
                 point_B.y = commandArray[i].point_B_y;
-                logi.log("    point B table  x = %+8.3f y = %+8.3f \n",commandArray[i].point_B_x,commandArray[i].point_B_y);
+                logi.log("    point B table  x = %+8.3f y = %+8.3f \n", commandArray[i].point_B_x, commandArray[i].point_B_y);
 
                 point_C.x = g_poseC.x; // Запоминаем те координаты которые были в момент начала движения
                 point_C.y = g_poseC.y;
-                logi.log("    'point C main  x = %+8.3f y = %+8.3f th = %+8.3f '\n",point_C.x,point_C.y, RAD2DEG(g_poseC.th));
+                logi.log("    'point C main  x = %+8.3f y = %+8.3f th = %+8.3f '\n", point_C.x, point_C.y, RAD2DEG(g_poseC.th));
 
                 time = millis() + 999999; // Огромное время ставим
                 flagVector = true;        // Флаг что теперь отслеживаем длину вектора
                 logi.log_b("    Start Vector. len = %f \n", commandArray[i].len);
                 break;
-            case 3:                                                 // Напечатать
+            case 3: // Напечатать
                 controlPrint.id++;
-                controlPrint.controlPrint.mode = 0; // 0 - работать по командам
-                controlPrint.controlPrint.status = 1; // 1- печатать 0- не печатать
+                controlPrint.controlPrint.mode = 0;     // 0 - работать по командам
+                controlPrint.controlPrint.status = 1;   // 1- печатать 0- не печатать
                 controlPrint.controlPrint.torque = 0.5; // Вручную задаю силу прижатия маркера к полу
                 time = millis() + commandArray[i].duration;
                 logi.log_b("    Print Start \n");
                 break;
-            case 5:                                                 // Отменить печать
+            case 5: // Отменить печать
                 controlPrint.id++;
-                controlPrint.controlPrint.mode = 0; // 0 - работать по командам
-                controlPrint.controlPrint.status = 0; // 1- печатать 0- не печатать
+                controlPrint.controlPrint.mode = 0;      // 0 - работать по командам
+                controlPrint.controlPrint.status = 0;    // 1- печатать 0- не печатать
                 controlPrint.controlPrint.torque = -2.0; // Вручную задаю силу с которой отводим маркер в течении 50 милисекунд
                 time = millis() + commandArray[i].duration;
                 logi.log_b("    Print Cancel \n");
                 break;
-            }  
+            }
         }
-
 
         if (time < millis())
         {
             flagCommand = true;
             i++;
-            logi.log("    i = %i => mode = %i \n", i,commandArray[i].mode );
+            logi.log("    i = %i => mode = %i \n", i, commandArray[i].mode);
 
             if (commandArray[i].mode == 9)
             {
@@ -204,7 +217,7 @@ int main(int argc, char **argv)
         // }
 
         topic.publicationControlDriver(); // Формируем и Публикуем команды для управления Driver
-        topic.publicationControlPrint(); // Формируем и Публикуем команды для управления Print
+        topic.publicationControlPrint();  // Формируем и Публикуем команды для управления Print
 
         //============================================================================================================================
 

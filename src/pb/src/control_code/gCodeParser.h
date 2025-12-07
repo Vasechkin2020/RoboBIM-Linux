@@ -214,10 +214,14 @@ private:
 
         // === КОМПАКТНЫЙ ЛОГ ПАРСИНГА В ОДНУ СТРОКУ ===
         std::string parsed_params; // Строка для сбора всех разобранных параметров.
-        if (cmd.has_l)
-            parsed_params += " L=" + fmt_float(cmd.l); // Добавляем L.
+        if (cmd.has_x)
+            parsed_params += " X=" + fmt_float(cmd.x); // Добавляем X.
+        if (cmd.has_y)
+            parsed_params += " Y=" + fmt_float(cmd.y); // Добавляем Y.
         if (cmd.has_a)
             parsed_params += " A=" + fmt_float(cmd.a); // Добавляем A.
+        if (cmd.has_l)
+            parsed_params += " L=" + fmt_float(cmd.l); // Добавляем L.
         if (cmd.has_o)
             parsed_params += " O=" + fmt_float(cmd.o); // Добавляем O.
         if (cmd.has_f && !cmd.has_f_l && !cmd.has_f_r)
@@ -230,10 +234,6 @@ private:
             parsed_params += " F_L=" + fmt_float(cmd.f_l); // Добавляем F_L.
         if (cmd.has_f_r)
             parsed_params += " F_R=" + fmt_float(cmd.f_r); // Добавляем F_R.
-        if (cmd.has_x)
-            parsed_params += " X=" + fmt_float(cmd.x); // Добавляем X.
-        if (cmd.has_y)
-            parsed_params += " Y=" + fmt_float(cmd.y); // Добавляем Y.
         if (!cmd.comment.empty())
             parsed_params += " ; " + cmd.comment; // Добавляем комментарий.
 

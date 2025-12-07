@@ -521,55 +521,57 @@ void workVector(float len_, SPoint point_A_, SPoint point_B_, u_int64_t &time_, 
 			}
 		}
 
-			// ============================================== ЭТО УПРАВЛЕНИЕ ПО ТРАЕКТОРИИ. СТРАЕМСЯ ЕХАТЬ НА ТОЧКУ D, лежащуу на отрезке АВ =================================================
-			double speedL = 0;			// OUT скорости колес ЛЕВОГО
-			double speedR = 0;			// OUT скорости колес ПРАВОГО
-			double omega = 0;			// OUT: Угловая скорость (рад/с).
-			double angle_error_rad = 0; // OUT: Угловая ошибка рад. По ней считается все управление.
-			double target_angle_rad = 0; // Выходные данные (для отладки)
-			double heading_used_rad = 0; // Выходные данные (для отладки)
-			SPoint point_D;
-			SPoint point_D2;
+		// ============================================== ЭТО УПРАВЛЕНИЕ ПО ТРАЕКТОРИИ. СТРАЕМСЯ ЕХАТЬ НА ТОЧКУ D, лежащуу на отрезке АВ =================================================
+		double speedL = 0;			 // OUT скорости колес ЛЕВОГО
+		double speedR = 0;			 // OUT скорости колес ПРАВОГО
+		double omega = 0;			 // OUT: Угловая скорость (рад/с).
+		double angle_error_rad = 0;	 // OUT: Угловая ошибка рад. По ней считается все управление.
+		double target_angle_rad = 0; // Выходные данные (для отладки)
+		double heading_used_rad = 0; // Выходные данные (для отладки)
+		SPoint point_D;
+		SPoint point_D2;
 
-		if (g_controlMode) // Тут управление колесами. Берем общую скорость как основу и по расчету притормаживаем одно и ускоряем другое колесо.
-		{
-			double L_lookahead = 0.4; // Дистанция упреждения L
-			static L1GuidanceController controller(L_lookahead, DISTANCE_WHEELS);// Создание контроллера:
+		// if (g_controlMode) // Тут управление колесами. Берем общую скорость как основу и по расчету притормаживаем одно и ускоряем другое колесо.
+		// {
+			double L_lookahead = 0.4;											  // Дистанция упреждения L
+			static L1GuidanceController controller(L_lookahead, DISTANCE_WHEELS); // Создание контроллера:
 			controller.setMaxOmega(0.10);
 			controller.setMaxSteeringRatio(1.0);
 
-			point_D = controller.findNearestPointD_Exact(point_A_, point_B_, point_C_);																						// Находим точку D на прямой между точками А и В
-			point_D2 = controller.findNearestPointD_2var(point_A_, point_B_, point_C_);																						// Находим точку D на прямой между точками А и В
+			point_D = controller.findNearestPointD_Exact(point_A_, point_B_, point_C_);																								// Находим точку D на прямой между точками А и В
+			point_D2 = controller.findNearestPointD_2var(point_A_, point_B_, point_C_);																								// Находим точку D на прямой между точками А и В
 			controller.calculateControlCommands(point_C_, g_poseC.th, point_D, point_B_, speedCurrent, omega, speedL, speedR, angle_error_rad, target_angle_rad, heading_used_rad); //  Расчет управляющего сигнала
+		// }
+		// else // Тут без управления. Просто скорость на колеса со знаком
+		// {
 
-		}
-		else // Тут без управления. Просто скорость на колеса со знаком
-		{
+		// 	if ((speedCurrent) < 0.005) // Минимальная скорость
+		// 		speedCurrent = 0.005;	// Если получается что меньше то берет так чтобы одно колесо было минимум а другое нет
 
-			if ((speedCurrent) < 0.005) // Минимальная скорость
-				speedCurrent = 0.005;	// Если получается что меньше то берет так чтобы одно колесо было минимум а другое нет
+		// 	if (signed_velLen > 0) // Если скорость положительная то вращается в одну сторону или в другую
+		// 	{
+		// 		speedL = speedCurrent; // Скороть должна увеличивать до заданой или максимальной с учетом алогритма в data_node  а уменьшать будет по коефициету по ошибке
+		// 		speedR = speedCurrent;
+		// 	}
+		// 	else
+		// 	{
+		// 		speedL = -speedCurrent;
+		// 		speedR = -speedCurrent;
+		// 	}
+		// }
+		// A= (%+8.3f %+8.3f ) B= (%+8.3f %+8.3f ) point_A_.x, point_A_.y, 							point_B_.x, point_B_.y,
+		// D2= ( %+8.3f %+8.3f )point_D2.x, point_D2.y,
+		
+		logi.log("    pose C=' %+8.3f %+8.3f %+8.3f 'D= %+8.3f %+8.3f Mistake= %+8.5f |Vel= %+8.3f |speed L= %+8.3f R= %+8.3f '|%= %+6.1f ' omega= %+8.3f |heading= %+8.3f target_angle= %+8.3f angle_error= %+8.3f \n",
+				 point_C_.x, point_C_.y, RAD2DEG(g_poseC.th),
+				 point_D.x, point_D.y,
+				 vectorMistake, speedCurrent,
+				 speedL, speedR, (speedL / speedR) * 100, omega,
+				 RAD2DEG(heading_used_rad), RAD2DEG(target_angle_rad), RAD2DEG(angle_error_rad));
 
-			if (signed_velLen > 0) // Если скорость положительная то вращается в одну сторону или в другую
-			{
-				controlSpeed.control.speedL = speedCurrent; // Скороть должна увеличивать до заданой или максимальной с учетом алогритма в data_node  а уменьшать будет по коефициету по ошибке
-				controlSpeed.control.speedR = speedCurrent;
-			}
-			else
-			{
-				controlSpeed.control.speedL = -speedCurrent;
-				controlSpeed.control.speedR = -speedCurrent;
-			}
-		}
-			// A= (%+8.3f %+8.3f ) B= (%+8.3f %+8.3f ) point_A_.x, point_A_.y, 							point_B_.x, point_B_.y,
-			// D2= ( %+8.3f %+8.3f )point_D2.x, point_D2.y,
-			logi.log("    pose C=' %+8.3f %+8.3f %+8.3f 'D= %+8.3f %+8.3f Mistake= %+8.5f |Vel= %+8.3f |speed L= %+8.3f R= %+8.3f '|%= %+6.1f ' omega= %+8.3f |heading= %+8.3f target_angle= %+8.3f angle_error= %+8.3f \n",
-					 point_C_.x, point_C_.y, RAD2DEG(g_poseC.th),
-					 point_D.x, point_D.y,
-					 vectorMistake, speedCurrent, 
-					 speedL, speedR, (speedL / speedR) * 100, omega,
-					 RAD2DEG(heading_used_rad), RAD2DEG(target_angle_rad), RAD2DEG(angle_error_rad));
-			controlSpeed.control.speedL = speedL;
-			controlSpeed.control.speedR = speedR;
+		controlSpeed.control.speedL = speedL;
+		controlSpeed.control.speedR = speedR;
+		
 		// logi.log("    workVector mistake = %8.5f (%+9.5f, %+9.5f -> %+6.3f, %+6.3f) | V_max = %f | fact speedL = %f speedR = %f | dt = %f  accel = %f \n",
 		// 		 vectorMistake, point_C_.x, point_C_.y, point_B_.x, point_B_.y, V_max, controlSpeed.control.speedL, controlSpeed.control.speedR, dt, accel);
 	}
