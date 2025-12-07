@@ -556,9 +556,10 @@ private:
 
         ///------------- БЛОК где я должен приехать в точку откуда буду рисовать. Чтобы потом в ней передать управление по gcode
         // ros::Duration(10).sleep(); // Подождем пока
-        current_x_ = msg_PoseRotation.x.main;           // Заменяем координаты для правильного расчета
-        current_y_ = msg_PoseRotation.y.main;           // Заменяем координаты для правильного расчета
-        current_a_ = RAD2DEG(msg_PoseRotation.th.main); // Заменяем координаты для правильного расчета
+        current_x_ = g_poseC.x;           // Заменяем координаты для правильного расчета
+        current_y_ = g_poseC.y;           // Заменяем координаты для правильного расчета
+        current_a_ = RAD2DEG(g_poseC.th); // Заменяем координаты для правильного расчета
+        logi.log("    'point C x = %+8.3f y = %+8.3f th = %+8.3f '\n", g_poseC.x, g_poseC.y, RAD2DEG(g_poseC.th));
 
         logi.log_b("    REAL CURRENT: X=%.3f, Y=%.3f, A=%.3f°\n", current_x_, current_y_, current_a_);  // Считываем реальную позицию
         logi.log_b("    TARGET POINT: X=%.3f, Y=%.3f, A=%.3f°\n", cmd.x, cmd.y, normalizeAngle(cmd.a)); // Считываем реальную позицию
@@ -611,23 +612,25 @@ private:
         cmd_temp.has_p = true;
         executeG4(cmd_temp); // Выполняем G4.
 
+        // 2. Вычисляем целевой угол для симулятора (и для финального поворота)  Получаем новые значения. Если параметр не задан, оставляем текущее значение. 
+        float new_x = cmd.has_x ? cmd.x : current_x_;                 // Если X задан, берем его.
+        float new_y = cmd.has_y ? cmd.y : current_y_;                 // Если Y задан, берем его.
+        float new_a = cmd.has_a ? normalizeAngle(cmd.a) : current_a_; // Если A задан, берем его и нормализуем.// Угол, который ждет следующая команда!
+ 
+
         cmd_temp = {};           // Сброс значений
         cmd_temp.command = "G1"; // Поворот в угол 0
         cmd_temp.comment = "Manual command G1 for rotate to 0 gradus";
         cmd_temp.raw_line = "G1 Manual command G1 for rotate to 0 gradus";
         cmd_temp.f = 0.05; // Параметр F (общая скорость).
         cmd_temp.has_f = true;
-        cmd_temp.a = 0;
+        cmd_temp.a = new_a; // Цель G1 - это целевой угол миссии new_a
         cmd_temp.has_a = true;
 
         executeG1(cmd_temp); // Выполняем G1. Тут должен повернуться в угол 0
 
         ///------------------------------------------------------------------------------
 
-        // Получаем новые значения. Если параметр не задан, оставляем текущее значение.
-        float new_x = cmd.has_x ? cmd.x : current_x_;                 // Если X задан, берем его.
-        float new_y = cmd.has_y ? cmd.y : current_y_;                 // Если Y задан, берем его.
-        float new_a = cmd.has_a ? normalizeAngle(cmd.a) : current_a_; // Если A задан, берем его и нормализуем.
 
         // !!! ОБНОВЛЯЕМ СОСТОЯНИЕ СИМУЛЯТОРА !!!
         current_x_ = new_x; // Устанавливаем новую координату X.

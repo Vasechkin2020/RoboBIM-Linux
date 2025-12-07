@@ -3,10 +3,20 @@ G10 X1.000 Y2.000 A0.000 ; Initial required start point and angle in robot's loc
 
 G4 P2000
 G2 L1.0 F0.10  ; ЦВ в вершину
+
+G4 P2000 ;  
+G1 X3.0 Y3.00 F0.05 ;  
+G4 P2000 ;  
+G2 X3.0 Y3.00 F0.2; 
+
 G4 P2000
-G2 L1.0 F-0.10 ; Откат назад
+G2 L0.5 F-0.10 ; Откат назад
 G4 P2000
 
+G4 P2000 ;  
+G1 X1.0 Y3.00 F0.05 ;  
+G4 P2000 ;  
+G2 X1.0 Y3.00 F0.2; 
 
 
 ;G2 L0.5 F0.1

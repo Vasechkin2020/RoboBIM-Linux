@@ -46,10 +46,23 @@ int main(int argc, char **argv)
     readParam(); // Считывание переменных параметров из лаунч файла при запуске. Там офсеты и режимы работы
     // initCommandArray(verComand); // Заполнение маасива команд
 
-    GCodeParser parser; // Создание объекта парсера
-
     ros::spinOnce(); // Опрашиваем ядро ROS и по этой команде наши срабатывают колбеки. Нужно только для подписки на топики
-    parser.run();    // Запуск обработки
+
+    if (g_controlMode) // В зависимости от режима из yaml файла заполняем перменную и далее все опирается на нее.
+    {
+        g_poseC.x = msg_PoseRotation.x.main;
+        g_poseC.y = msg_PoseRotation.y.main;
+        g_poseC.th = msg_PoseRotation.th.main;
+    }
+    else
+    {
+        g_poseC.x = msg_PoseRotation.x.odom;
+        g_poseC.y = msg_PoseRotation.y.odom;
+        g_poseC.th = msg_PoseRotation.th.odom;
+    }
+
+    GCodeParser parser; // Создание объекта парсера
+    parser.run(); // Запуск обработки
 
     // static ros::Time time = ros::Time::now();      // Захватываем начальный момент времени
     static ros::Time timeStart = ros::Time::now(); // Захватываем начальный момент времени
@@ -90,12 +103,19 @@ int main(int argc, char **argv)
         {
             g_poseC.x = msg_PoseRotation.x.odom;
             g_poseC.y = msg_PoseRotation.y.odom;
-            g_poseC.th = msg_PoseRotation.th.main;
+            g_poseC.th = msg_PoseRotation.th.odom;
         }
 
         if (flagCommand)
         {
             flagCommand = false;
+            // Сбрасываем все активные режимы движения
+            flagAngle = false;
+            flagVector = false;
+            // Сбрасываем скорость на ноль
+            controlSpeed.control.speedL = 0.0;
+            controlSpeed.control.speedR = 0.0;
+
             float signed_distance; // Для учета направления движения
             logi.log("    command Array i= %i Mode = %i \n", i, commandArray[i].mode);
             switch (commandArray[i].mode)
