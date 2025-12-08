@@ -129,7 +129,7 @@ void CLaser::pillar_1(SMatrixPillar (&matrixLaserPillar_)[4][5], SMatrixPillar (
 // Расчет углов в локальной системе лазеров на столбы для передачи на нижний уровень для исполнения
 void CLaser::calcAnglePillarForLaser(CPillar::SPillar *pillar_, SPose &poseLidar_) // Берем координаты(положение) столбов и позицию лидара в глобальной системе
 {
-    // ROS_INFO("+++ calcAnglePillarForLaser");
+    logi.log("+++ calcAnglePillarForLaser \n");
     SPoint pointPillarInLidar[4]; // Координаты столбов в центральной системе координат "lidar"
     SPoint pointPillarInLaser[4]; // Координаты столбов в индивидуально лазерно системе координат "laser 0-3"
     SPose poseLidar = poseLidar_; // Выбираем результаты какого обсчета будем использовать
@@ -291,7 +291,6 @@ void CLaser::calcAnglePillarForLaser(CPillar::SPillar *pillar_, SPose &poseLidar
         }
         pillar_1(matrixLaserPillar, tableLaser, count); // Сопоставление столбов если их может однозначно обслуживать только один лазер
     }
-    ROS_INFO_THROTTLE(RATE_OUTPUT, "    Raspredelenie Pillar - %i", count);
 
     // printf("!!!! Pillar warn REZULTAT... % i", count);
     // printf(" === \n");
@@ -328,13 +327,13 @@ void CLaser::calcAnglePillarForLaser(CPillar::SPillar *pillar_, SPose &poseLidar
         g_angleLaser[i] = tableLaser[i].angle;       // Для топика ?
         g_numPillar[i] = tableLaser[i].n;
     }
-    ROS_INFO_THROTTLE(RATE_OUTPUT, "    numPillar %i -> %7.3f | numPillar %i -> %7.3f | numPillar %i -> %7.3f | numPillar %i -> %7.3f",
-                      g_numPillar[0], g_angleLaser[0],
-                      g_numPillar[1], g_angleLaser[1],
-                      g_numPillar[2], g_angleLaser[2],
-                      g_numPillar[3], g_angleLaser[3]);
-    // printf("\n");
-    // ROS_INFO("--- calcAnglePillarForLaser");
+    logi.log("    Raspredelenie Pillar - %i | numPillar %i -> %7.3f | numPillar %i -> %7.3f | numPillar %i -> %7.3f | numPillar %i -> %7.3f\n", 
+                    count,
+                    g_numPillar[0], g_angleLaser[0],
+                    g_numPillar[1], g_angleLaser[1],
+                    g_numPillar[2], g_angleLaser[2],
+                    g_numPillar[3], g_angleLaser[3]);
+    // logi.log("--- calcAnglePillarForLaser");
 }
 
 void CLaser::calcPointPillarFromLaser(CPillar::SPillar *pillar_) // Расчет положения столбов в лидарной системе на основании данных с датчиков

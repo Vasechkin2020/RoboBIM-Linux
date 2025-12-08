@@ -30,7 +30,7 @@ class RateLimitedLocalizer
 {
 public:
     double max_pos_step = 0.05; // Шаг на который приближаемся к измерению от модели
-    double max_angle_step = 0.05;
+    double max_angle_step = 0.50; // В градусах
 
     SPose fuse(const SPose &pose_model_in, // Входное положение Модели (const)
               const SPose &pose_meas_old, // Структура Измерения (старое, const)
@@ -47,19 +47,26 @@ public:
         normalizeAngle180(pose_meas_current.th);                                                       // Нормализация угла
 
         // --- Шаг 2: Коррекция (Rate-Limited) ---
+            double gain = 0.333;  // Общий коэффициент плавности
 
         // 2.1. Коррекция позиции
         double dx = pose_meas_current.x - pose_model.x; // разность по X между Прогнозным и Моделью
         double dy = pose_meas_current.y - pose_model.y; // разность по Y
-        double dist = hypot(dx, dy);                    // расстояние до прогнозируемой точки
+        double dist_error = hypot(dx, dy);                    // расстояние до прогнозируемой точки
 
-        if (dist > 0.001) // Если есть расхождение (1 мм)
+        if (dist_error > 0.001) // Если есть расхождение (1 мм)
         {
-            double ratio = max_pos_step / dist; // доля пути, которую можно пройти
-            if (ratio > 1.0)                    
-            {
-                ratio = 1.0; 
-            }
+
+            //ТАК БЫЛО В ПЕРВОМ ВАРИАНТЕ
+            // double ratio = max_pos_step / dist_error; // доля пути, которую можно пройти
+            // if (ratio > 1.0)                    
+            // {
+            //     ratio = 1.0; 
+            // }
+            
+            double move_dist = dist_error * gain;// Умная коррекция: хотим исправить 33% ошибки
+            if (move_dist > max_pos_step) move_dist = max_pos_step;// Но не больше чем max_pos_step
+            double ratio = move_dist / dist_error; // Считаем пропорцию для проекций dx/dy (сохраняем направление вектора ошибки)
 
             pose_model.x += dx * ratio; // плавно сдвигаем X Модели
             pose_model.y += dy * ratio; // плавно сдвигаем Y Модели
@@ -70,13 +77,23 @@ public:
 
         if (fabs(dtheta) > 0.005) // Если есть угловое расхождение (0.005 градус)
         {
-            double ratio = max_angle_step / fabs(dtheta); // доля угла для поворота
-            if (ratio > 1.0)                              
-            {
-                ratio = 1.0; 
-            }
+            //ТАК БЫЛО В ПЕРВОМ ВАРИАНТЕ
+            // double ratio = max_angle_step / fabs(dtheta); // доля угла для поворота
+            // if (ratio > 1.0)                              
+            // {
+            //     ratio = 1.0; 
+            // }
+            // pose_model.th += dtheta * ratio; // плавно поворачиваем Угол Модели
 
-            pose_model.th += dtheta * ratio; // плавно поворачиваем Угол Модели
+            // КОЭФФИЦИЕНТ СГЛАЖИВАНИЯ (Gain)   0.3 означает: исправляем 30% ошибки за один раз. Это уберет дерганье "перекрутил/недокрутил".
+            double correction = dtheta * gain;
+            // Ограничиваем максимальный шаг (твоя защита)
+            if (correction > max_angle_step) correction = max_angle_step;
+            if (correction < -max_angle_step) correction = -max_angle_step;
+
+            pose_model.th += correction;
+
+
             normalizeAngle180(pose_model.th);   // нормализуем
         }
         

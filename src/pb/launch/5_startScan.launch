@@ -1,8 +1,0 @@
-<launch>
-  <rosparam file="$(find pb)/src/config.yaml" command="load" />
-  
-  <node pkg="pb" type="scan_node" name="scan_node" output ="screen">
-
-  </node>
-  
-</launch> 

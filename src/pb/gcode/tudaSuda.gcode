@@ -1,11 +1,11 @@
 ; Initialize program
 ;G90 ; Set absolute coordinate mode
 
-G1 A175.0 F0.05 ; Rotate to angle 
+G1 A30.0 F0.05 ; Rotate to angle 
 G4 P3000 ; Pause for ... ms 
 G1 A0.0 F0.05 ; Rotate to angle 
 G4 P3000 ; Pause for ... ms 
-G1 A-175.0 F0.05 ; Rotate to angle 
+G1 A-30.0 F0.05 ; Rotate to angle 
 G4 P3000 ; Pause for ... ms 
 G1 A0.0 F0.05 ; Rotate to angle 
 G4 P3000 ; Pause for ... ms 

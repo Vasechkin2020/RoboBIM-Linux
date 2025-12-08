@@ -2,7 +2,8 @@
   
   <rosparam file="$(find pb)/src/config.yaml" command="load" />
 
-  <!--include file="$(find rplidar_ros)/launch/rplidar_s2.launch" /-->
+  <include file="$(find rplidar_ros)/launch/rplidar_s2.launch" />
+  <!--include file="$(find rplidar_ros)/launch/rplidar_a3.launch" /-->
   <node pkg="pb" type="data_node" name="data_node" output ="screen">
    
     <!--param name="modeModul" type="int" value="3" /-->

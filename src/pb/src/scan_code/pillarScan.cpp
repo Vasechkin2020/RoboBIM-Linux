@@ -22,7 +22,7 @@ PillarScanNode::PillarScanNode() : new_scan_available_(false),
     pub_fused_pillars = nh.advertise<visualization_msgs::Marker>("/rviz/fused_pillars", 1);
     pub_final_markers = nh.advertise<visualization_msgs::MarkerArray>("/rviz/final_pillars", 1);
     
-    pub_custom_struct = nh.advertise<pb_msgs::Struct_PoseScan>("/pb/Scan/Pose", 1);
+    pub_custom_struct = nh.advertise<pb_msgs::Struct_PoseScan>("/pb/Scan/PoseLidar", 1);
 
     // 2. Паблишер результата Umeyama (Калибровка)
     pub_calib_result = nh.advertise<geometry_msgs::PoseStamped>("/pb/scan/umeyama_pose", 1);

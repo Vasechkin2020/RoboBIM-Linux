@@ -8,7 +8,7 @@ AsyncFileLogger logi("/home/pi/RoboBIM-Linux/src/pb/log/", "pose_node");
 
 #include "pos_code/localizer.h"
 RateLimitedLocalizer rate_fuser;     // Экземпляр Rate-Limited
-const double lidar_latency_L = 0.05; // Задержка лидара/SLAM: 50 мс
+
 
 float g_angleMPU = 0;  // Глобальная перемнная угла получаемого с MPU куда смотрим
 float g_angleLaser[4]; // Углы на столбы которые передаем на нижний угол для управления
@@ -64,7 +64,7 @@ int main(int argc, char **argv)
 
     //----------------------------- ПОДПИСКИ НА ТОПИКИ -------НЕ УБИРАЮ В КЛАСС ТАК КАК НУЖНЫ ГЛОБАЛЬНЫЕ КОЛБЕКИ И ПРОЧАЯ ХЕРНЯ --------
     ros::Subscriber subscriber_Lidar = nh.subscribe<pb_msgs::Struct_PoseLidar>("pb/Lidar/Pose", 1, callback_Measurement, ros::TransportHints().tcpNoDelay(true)); // Измеренная позиция по лидару лазеру
-    ros::Subscriber subscriber_Scan = nh.subscribe<pb_msgs::Struct_PoseScan>("/pb/Scan/Pose", 1, callback_Scan, ros::TransportHints().tcpNoDelay(true));          // Измеренная позиция по лидару лазеру
+    ros::Subscriber subscriber_Scan = nh.subscribe<pb_msgs::Struct_PoseScan>("/pb/Scan/PoseLidar", 1, callback_Scan, ros::TransportHints().tcpNoDelay(true));          // Измеренная позиция по лидару лазеру
 
     ros::Subscriber subscriber_Modul = nh.subscribe<pb_msgs::Struct_Modul2Data>("pb/Data/Modul", 1, callback_Modul, ros::TransportHints().tcpNoDelay(true));
     ros::Subscriber subscriber_Driver = nh.subscribe<pb_msgs::Struct_Driver2Data>("pb/Data/Driver", 1, callback_Driver, ros::TransportHints().tcpNoDelay(true));
@@ -133,29 +133,29 @@ int main(int argc, char **argv)
             // g_poseRotation.mode10 = calcNewOdom2(g_poseRotation.mode10, g_linAngVel.fused, "mode10"); // На основе линейных скоростей считаем новую позицию и угол по колесам
 
             // РАСЧЕТ НАПРАВЛЕНИЯ УГЛОВ ЛАЗЕРОВ
-            laser.calcAnglePillarForLaser(pillar.pillar, g_poseLidar.main); // Расчет углов в локальной системе лазеров на столбы для передачи на нижний уровень для исполнения
-            topic.publicationControlModul();                                // Формируем и Публикуем команды для управления Modul
+            // laser.calcAnglePillarForLaser(pillar.pillar, g_poseLidar.main); // Расчет углов в локальной системе лазеров на столбы для передачи на нижний уровень для исполнения
+            // topic.publicationControlModul();                                // Формируем и Публикуем команды для управления Modul
 
             // angleMPU(); // Расчет угла положения на основе данных сдатчика MPU
             // calcEuler(); // Расчет угла yaw с датчика IMU
         }
 
         // Выполняется 10 -11 Hz как придут результаты ИЗМЕРЕНИЯ ***
-        if (flag_msgMeasurement) // Если пришло сообщение в топик от измерениям и мы уже разобрали данные по координатам машинки по расчету с колес и IMU
+        if (flag_msgScan) // Если пришло сообщение в топик от измерениям и мы уже разобрали данные по координатам машинки по расчету с колес и IMU
         {
-            flag_msgMeasurement = false;
-            logi.log_b("--- flag_msgMeasurement *** \n");
+            flag_msgScan = false;
+            logi.log_b("--- flag_msgScan *** \n");
 
             bool is_data_valid = true; // Флаг для дальнейших проверок
-            logi.log("    IN Data Pose main x = %+8.3f y = %+8.3f th = %+8.3f \n", g_poseLidar.main.x, g_poseLidar.main.y, g_poseLidar.main.th);
+            logi.log("    IN  Data Pose Main x = %+8.3f y = %+8.3f th = %+8.3f \n", g_poseLidar.main.x, g_poseLidar.main.y, g_poseLidar.main.th);
 
             g_poseLidar.meas.x = msg_Scan.x.fused; // Запоминаем данные ИЗМЕРЕНИЯ которые пришли
             g_poseLidar.meas.y = msg_Scan.y.fused;
             g_poseLidar.meas.th = msg_Scan.th.fused;
-            // g_poseLidar.meas.x = msg_Measurement.modeFused.x; // Запоминаем данные ИЗМЕРЕНИЯ которые пришли
-            // g_poseLidar.meas.y = msg_Measurement.modeFused.y;
-            // g_poseLidar.meas.th = msg_Measurement.modeFused.th;
-            logi.log("    IN Data Pose Measurement x = %+8.3f y = %+8.3f th = %+8.3f \n", g_poseLidar.meas.x, g_poseLidar.meas.y, g_poseLidar.meas.th);
+
+            g_poseRotation.meas = convertLidar2Rotation(g_poseLidar.meas, "meas"); // Обновляем 
+
+            logi.log("    IN  Data Pose Meas x = %+8.3f y = %+8.3f th = %+8.3f \n", g_poseLidar.meas.x, g_poseLidar.meas.y, g_poseLidar.meas.th);
 
             // --- ПРОВЕРКИ КАЧЕСТВА (Data Validation) ---
             // 1. Проверка RMSE (если приходит в сообщении) Допустим, 0.15 метра - это предел, дальше мусор.
@@ -194,9 +194,10 @@ int main(int argc, char **argv)
             else
             {
                 if (is_data_valid)
-                {
-                    // Вызываем СЛИЯНИЕ (Fusion) для Rate-Limited Fuser
-                    g_poseLidar.main = rate_fuser.fuse(g_poseLidar.main, g_poseLidar.meas, g_linAngVel.fused.vx, g_linAngVel.fused.vth, lidar_latency_L); // Состояние Модели (по ссылке) и Измерение (SPose)
+                {// Вызываем СЛИЯНИЕ (Fusion) для Rate-Limited Fuser
+                    const double lidar_latency_L = 0.18; // Задержка лидара/SLAM:  мс Посчитано ИИ экспериментально
+                    g_poseLidar.main = rate_fuser.fuse(g_poseLidar.main, g_poseLidar.meas, g_linAngVel.fused.vx, RAD2DEG(g_linAngVel.fused.vth), lidar_latency_L); // Состояние Модели (по ссылке) и Измерение (SPose)
+                    logi.log("    is_data_valid  lidar_latency_L= %+8.3f fused.vx= %+8.3f fused.vth= %+8.3f \n", lidar_latency_L, g_linAngVel.fused.vx, g_linAngVel.fused.vth);
 
                     g_poseRotation.main = convertLidar2Rotation(g_poseLidar.main, "main"); // Обновляем уже уточненным значением
                     // logi.log("    OUT 10Hz Data Pose Rotation Main x = %+8.3f y = %+8.3f th = %+8.3f \n", g_poseRotation.main.x, g_poseRotation.main.y, g_poseRotation.main.th);

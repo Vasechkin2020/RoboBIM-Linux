@@ -48,7 +48,7 @@ private:
 
     ros::Publisher pub_ControlModul = _nh.advertise<pb_msgs::Struct_Data2Modul>("pb/Pos/ControlModul", 1); // Это мы публикуем структуру которую отправляем к исполнению на драйвер
  
-    ros::Publisher pub_poseBase = _nh.advertise<pb_msgs::Struct_PoseBase>("pb/Pos/PoseBase", 1);          // Это мы публикуем итоговую информацию по позици лидара обобщенную
+    ros::Publisher pub_poseLidar = _nh.advertise<pb_msgs::Struct_PoseBase>("pb/Pos/PoseLidar", 1);          // Это мы публикуем итоговую информацию по позици лидара обобщенную
     ros::Publisher pub_poseRotation = _nh.advertise<pb_msgs::Struct_PoseRotation>("pb/Pos/PoseRotation", 1); // Это мы публикуем итоговую информацию по позици лидара обобщенную
 
     ros::Publisher pub_linAngVel = _nh.advertise<pb_msgs::SLinAngVel>("pb/Pos/LinAngVel", 1);                // Это мы публикуем итоговую информацию линейной скорости угловой
@@ -282,7 +282,7 @@ void CTopic::publicationPoseBase() // Формируем перемнную с �
     poseBase_msg.azimut[2] =  g_poseLidar.azimut[2];
     poseBase_msg.azimut[3] =  g_poseLidar.azimut[3];
 
-    pub_poseBase.publish(poseBase_msg); // Публикуем информацию по позиции лидара
+    pub_poseLidar.publish(poseBase_msg); // Публикуем информацию по позиции лидара
 }
 void CTopic::publicationPoseRotattion() // Вывод в топик данных с координатами и углом точки вращения Rotation
 {
