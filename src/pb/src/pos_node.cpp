@@ -116,7 +116,7 @@ int main(int argc, char **argv)
 
             logi.log_b("imu \n");
             // Передаем скорость колес, которую посчитали строчкой выше
-            g_linAngVel.imu = calcTwistFromImu(msg_Driver2Data, g_linAngVel.odom.vx);// Обработка пришедших данных. По ним считаем линейные скорости по осям и угловую по углу. Запоминаем dt
+            g_linAngVel.imu = calcTwistFromImu(msg_Driver2Data, g_linAngVel.odom.vx);     // Обработка пришедших данных. По ним считаем линейные скорости по осям и угловую по углу. Запоминаем dt
             g_poseRotation.imu = calcNewPose(g_poseRotation.imu, g_linAngVel.imu, "imu"); // На основе линейных скоростей считаем новую позицию и угол по колесам
 
             logi.log_b("fused \n");
@@ -146,6 +146,7 @@ int main(int argc, char **argv)
             flag_msgMeasurement = false;
             logi.log_b("--- flag_msgMeasurement *** \n");
 
+            bool is_data_valid = true; // Флаг для дальнейших проверок
             logi.log("    IN Data Pose main x = %+8.3f y = %+8.3f th = %+8.3f \n", g_poseLidar.main.x, g_poseLidar.main.y, g_poseLidar.main.th);
 
             g_poseLidar.meas.x = msg_Scan.x.fused; // Запоминаем данные ИЗМЕРЕНИЯ которые пришли
@@ -156,10 +157,33 @@ int main(int argc, char **argv)
             // g_poseLidar.meas.th = msg_Measurement.modeFused.th;
             logi.log("    IN Data Pose Measurement x = %+8.3f y = %+8.3f th = %+8.3f \n", g_poseLidar.meas.x, g_poseLidar.meas.y, g_poseLidar.meas.th);
 
+            // --- ПРОВЕРКИ КАЧЕСТВА (Data Validation) ---
+            // 1. Проверка RMSE (если приходит в сообщении) Допустим, 0.15 метра - это предел, дальше мусор.
+            if (msg_Scan.rmse.fused > 0.20)
+            {
+                is_data_valid = false;
+                logi.log_w("WARN: Bad RMSE %.3f. Skip measurement.\n", msg_Scan.rmse.fused);
+            }
+
+            // 2. Проверка скачка позиции (Innovation Gate) Считаем расстояние между тем, где мы ЕСТЬ (main), и ИЗМЕРЕНИЕМ (meas)
+            double dist_diff = hypot(g_poseLidar.meas.x - g_poseLidar.main.x, g_poseLidar.meas.y - g_poseLidar.main.y);
+            if (dist_diff > 0.5) // Если робот "телепортировался" на 0.5 метра - это ошибка распознавания
+            {
+                is_data_valid = false;
+                logi.log_w("WARN: Large jump detected %.3f m. Skip.\n", dist_diff);
+            }
+
+            // 3. Проверка на NaN (на всякий случай)
+            if (isnan(g_poseLidar.meas.x) || isnan(g_poseLidar.meas.y))
+            {
+                logi.log_r("ERROR: NaN. Skip.\n");
+                is_data_valid = false;
+            }
+
             static int firstData = 0;
             if (firstData == 0)
             {
-                firstData = 1;                                                                                 // Флаг что начальные знаения поменяли на лидарные
+                firstData = 1;                                                                                  // Флаг что начальные знаения поменяли на лидарные
                 g_poseRotation.odom = convertLidar2Rotation(g_poseLidar.meas, "First data measurement odom");   // Обновляем уже уточненным значением
                 g_poseRotation.imu = convertLidar2Rotation(g_poseLidar.meas, "First data measurement imu");     // Обновляем уже уточненным значением
                 g_poseRotation.fused = convertLidar2Rotation(g_poseLidar.meas, "First data measurement fused"); // Обновляем уже уточненным значением
@@ -169,14 +193,16 @@ int main(int argc, char **argv)
             }
             else
             {
-                // Вызываем СЛИЯНИЕ (Fusion) для Rate-Limited Fuser
-                g_poseLidar.main = rate_fuser.fuse(g_poseLidar.main, g_poseLidar.meas, g_linAngVel.fused.vx, g_linAngVel.fused.vth, lidar_latency_L); // Состояние Модели (по ссылке) и Измерение (SPose)
-                logi.log("    OUT Data Pose Main x = %+8.3f y = %+8.3f th = %+8.3f \n", g_poseLidar.main.x, g_poseLidar.main.y, g_poseLidar.main.th);
+                if (is_data_valid)
+                {
+                    // Вызываем СЛИЯНИЕ (Fusion) для Rate-Limited Fuser
+                    g_poseLidar.main = rate_fuser.fuse(g_poseLidar.main, g_poseLidar.meas, g_linAngVel.fused.vx, g_linAngVel.fused.vth, lidar_latency_L); // Состояние Модели (по ссылке) и Измерение (SPose)
 
-                g_poseRotation.main = convertLidar2Rotation(g_poseLidar.main, "main"); // Обновляем уже уточненным значением
-                logi.log("    OUT 10Hz Data Pose Rotation Main x = %+8.3f y = %+8.3f th = %+8.3f \n", g_poseRotation.main.x, g_poseRotation.main.y, g_poseRotation.main.th);
+                    g_poseRotation.main = convertLidar2Rotation(g_poseLidar.main, "main"); // Обновляем уже уточненным значением
+                    // logi.log("    OUT 10Hz Data Pose Rotation Main x = %+8.3f y = %+8.3f th = %+8.3f \n", g_poseRotation.main.x, g_poseRotation.main.y, g_poseRotation.main.th);
+                }
             }
-
+            logi.log("    OUT Data Pose Main x = %+8.3f y = %+8.3f th = %+8.3f \n", g_poseLidar.main.x, g_poseLidar.main.y, g_poseLidar.main.th);
         }
 
         // topic.visualPublishOdomMode_3();                                  // Отобращение стрелкой где начало и куда смотрит в Mode3
