@@ -182,7 +182,7 @@ SPose convertRotation2Base(SPose pose_, std::string stroka_)
 	SPose ret;
 	ret.x = pose_.x - (transformLidar2Rotation.x * cos(pose_.th));
 	ret.y = pose_.y - (transformLidar2Rotation.x * sin(pose_.th));
-	ret.th = RAD2DEG(pose_.th); // в g_poseBase угол в градусах
+	ret.th = RAD2DEG(pose_.th); // в g_poseLidar угол в градусах
 	// logi.log("    convert Rotation => Base %s x = %+8.3f y = %+8.3f theta = %+8.3f (gradus) %+8.3f rad \n", stroka_.c_str(), ret.x, ret.y, ret.th, pose_.th);
 	return ret;
 }
@@ -939,11 +939,11 @@ void calcMode0()
 	// printf("1 RAD2DEG(odomMode0.pose.th) = % .3f \n", RAD2DEG(odomMode0.pose.th));
 	g_poseRotation.odom = calcNewPose(g_poseRotation.odom, g_linAngVel.odom, "odom"); // На основе линейных скоростей считаем новую позицию и угол по колесам
 
-	// g_poseBase.mode0.x = odomMode0.pose.x;
-	// g_poseBase.mode0.y = odomMode0.pose.y;
-	// g_poseBase.mode0.th = RAD2DEG(odomMode0.pose.th);
+	// g_poseLidar.mode0.x = odomMode0.pose.x;
+	// g_poseLidar.mode0.y = odomMode0.pose.y;
+	// g_poseLidar.mode0.th = RAD2DEG(odomMode0.pose.th);
 
-	// ROS_WARN_THROTTLE(THROTTLE_PERIOD_3, "    MODE0 pose.x= %+8.3f y= %+8.3f theta= %+8.3f ", g_poseBase.mode0.x, g_poseBase.mode0.y, g_poseBase.mode0.th);
+	// ROS_WARN_THROTTLE(THROTTLE_PERIOD_3, "    MODE0 pose.x= %+8.3f y= %+8.3f theta= %+8.3f ", g_poseLidar.mode0.x, g_poseLidar.mode0.y, g_poseLidar.mode0.th);
 	ROS_INFO("--- calcMode0");
 }
 
@@ -952,9 +952,9 @@ void calcMode123()
 {
 	// ROS_INFO("+++ calcMode123");
 	// SPose pose;
-	// pose.x = (g_poseBase.mode1.x + g_poseBase.mode2.x + g_poseBase.mode3.x) / 3.0;
-	// pose.y = (g_poseBase.mode1.y + g_poseBase.mode2.y + g_poseBase.mode3.y) / 3.0;
-	// pose.th = (g_poseBase.mode1.th + g_poseBase.mode2.th + g_poseBase.mode3.th) / 3.0;
+	// pose.x = (g_poseLidar.mode1.x + g_poseLidar.mode2.x + g_poseLidar.mode3.x) / 3.0;
+	// pose.y = (g_poseLidar.mode1.y + g_poseLidar.mode2.y + g_poseLidar.mode3.y) / 3.0;
+	// pose.th = (g_poseLidar.mode1.th + g_poseLidar.mode2.th + g_poseLidar.mode3.th) / 3.0;
 	// if (isnan(pose.x) || isnan(pose.y) || isnan(pose.th))
 	// {
 	// 	ROS_ERROR("calcMode123 ERROR.");
@@ -962,8 +962,8 @@ void calcMode123()
 	// }
 	// else
 	// {
-	// 	g_poseBase.mode123 = pose;
-	// 	ROS_WARN_THROTTLE(THROTTLE_PERIOD_3, "    MODE123 pose.x= % .3f y= % .3f theta= %+8.3f", g_poseBase.mode123.x, g_poseBase.mode123.y, g_poseBase.mode123.th);
+	// 	g_poseLidar.mode123 = pose;
+	// 	ROS_WARN_THROTTLE(THROTTLE_PERIOD_3, "    MODE123 pose.x= % .3f y= % .3f theta= %+8.3f", g_poseLidar.mode123.x, g_poseLidar.mode123.y, g_poseLidar.mode123.th);
 	// }
 	// ROS_INFO("--- calcMode123.");
 }
@@ -1134,7 +1134,7 @@ void startColibrovka(CTopic &topic)
 	if (time1Colibrovka < millis() && flag1Colibrovka)
 	{
 		//  Считаем угол на столбы и считаем на какой угол от него надо отклониться чтобы гарантированно отсканировать столб
-		laser.calcAnglePillarForLaser(pillar.pillar, g_poseBase.mode1); // Расчет углов в локальной системе лазеров на столбы для передачи на нижний уровень для исполнения
+		laser.calcAnglePillarForLaser(pillar.pillar, g_poseLidar.mode1); // Расчет углов в локальной системе лазеров на столбы для передачи на нижний уровень для исполнения
 		// Включаем назерные датчики
 		dataControlModul.controlLaser.mode = 1;
 		dataControlModul.controlMotor.mode = 1;
@@ -1350,10 +1350,10 @@ void read_Param_StartPose()
 	g_angleEuler.yaw = startPose.th; // Присваиваем yaw углу начальное значение
 	// g_poseRotation.theta = DEG2RAD(startPose2d_.theta); // Присваиваем глобальному углу начальное значение
 
-	// g_poseBase.odom = startPose;
-	// g_poseBase.fused = startPose;
-	g_poseBase.main = startPose; // Устанавливаем координаты для что-бы по нему начало все считаться
-	g_poseBase.meas = startPose;
+	// g_poseLidar.odom = startPose;
+	// g_poseLidar.fused = startPose;
+	g_poseLidar.main = startPose; // Устанавливаем координаты для что-бы по нему начало все считаться
+	g_poseLidar.meas = startPose;
 
 	g_poseRotation.fused = convertBase2Rotation(startPose, "fused"); // Конвентируем координаты заданные для точки в системе Base в систему Rotation
 	g_poseRotation.odom = g_poseRotation.fused;						 // Первоначальная установка позиции

@@ -15,7 +15,7 @@ float g_angleLaser[4]; // Углы на столбы которые переда
 int g_numPillar[4];    // Номер столба до которого измеряем расстояние лазером
 
 SPoseRotation g_poseRotation; // Глобальная позиция в точке вращения робота. Все считается к ней.Она основная во всем. Расчет для лидарной точки mode1.2.3 потом пересчитывается в g_PoseRotation
-SPoseBase g_poseBase;         // Позиции лидара по расчетам Центральная система координат
+SPoseBase g_poseLidar;         // Позиции лидара по расчетам Центральная система координат
 SLinAngVel g_linAngVel;       // Линейная и угловая скорость полученная с колес и с датчика MPU IMU и может быть обьединенная как-то
 SEuler g_angleEuler;          // Углы Эллера
 SPose aver;                   // Усредненная позиция в моменты когда стоим на месте
@@ -112,7 +112,7 @@ int main(int argc, char **argv)
             g_linAngVel.odom = calcTwistFromWheel(msg_Speed);                                 // Обработка пришедших данных. По ним считаем линейные скорости по осям и угловую по углу. Запоминаем dt
             g_poseRotation.odom = calcNewPose(g_poseRotation.odom, g_linAngVel.odom, "odom"); // На основе линейных скоростей считаем новую позицию и угол по колесам
             // logi.log("    100Hz OUT Pose Rotation odom  x = %+8.3f y = %+8.3f th = %+8.3f \n", g_poseRotation.odom.x, g_poseRotation.odom.y, g_poseRotation.odom.th);
-            // g_poseBase.odom = convertRotation2Base(g_poseRotation.odom, "odom"); // Позиция для отладки и сравнения по результатм только одометрии
+            // g_poseLidar.odom = convertRotation2Base(g_poseRotation.odom, "odom"); // Позиция для отладки и сравнения по результатм только одометрии
 
             logi.log_b("imu \n");
             g_linAngVel.imu = calcTwistFromImu(msg_Driver2Data);                          // Обработка пришедших данных. По ним считаем линейные скорости по осям и угловую по углу. Запоминаем dt
@@ -122,18 +122,18 @@ int main(int argc, char **argv)
             g_linAngVel.fused = calcTwistFused(g_linAngVel.odom, g_linAngVel.imu); // Комплементация данных используя фильтр (Комплементарный или Калмана) тут написать функцию комплементации данных угловых скоростей с разными условиями когда и в каком соотношении скомплементировать скорсти с двух источников
             g_poseRotation.fused = calcNewPose(g_poseRotation.fused, g_linAngVel.fused, "fused"); // На основе линейных скоростей считаем новую позицию и угол по колесам
             // logi.log("    100Hz OUT Pose Rotation fused x = %+8.3f y = %+8.3f th = %+8.3f \n", g_poseRotation.fused.x, g_poseRotation.fused.y, g_poseRotation.fused.th);
-            // g_poseBase.fused = convertRotation2Base(g_poseRotation.fused, "fused"); // Позиция по результатам слияния одометрии и imu считаем РАСЧЕТОМ
+            // g_poseLidar.fused = convertRotation2Base(g_poseRotation.fused, "fused"); // Позиция по результатам слияния одометрии и imu считаем РАСЧЕТОМ
 
             g_poseRotation.main = calcNewPose(g_poseRotation.main, g_linAngVel.fused, "main"); // На основе линейных скоростей считаем новую позицию и угол по колесам
             // logi.log("    100Hz OUT Pose Rotation main x = %+8.3f y = %+8.3f th = %+8.3f \n", g_poseRotation.main.x, g_poseRotation.main.y, g_poseRotation.main.th);
-            g_poseBase.main = convertRotation2Base(g_poseRotation.main, "fused"); // Позиция по результатам слияния одометрии и imu считаем РАСЧЕТОМ
+            g_poseLidar.main = convertRotation2Base(g_poseRotation.main, "fused"); // Позиция по результатам слияния одометрии и imu считаем РАСЧЕТОМ
 
             // g_linAngVel.fused = calcTwistFromMpu(g_linAngVel.fused, msg_Modul2Data, g_linAngVel.odom); // Обработка пришедших данных для расчета линейных и угловых скоростей
             // g_poseRotation.mode10 = calcNewOdom2(g_poseRotation.mode10, g_linAngVel.fused, "mode10"); // На основе линейных скоростей считаем новую позицию и угол по колесам
 
             // РАСЧЕТ НАПРАВЛЕНИЯ УГЛОВ ЛАЗЕРОВ
-            // laser.calcAnglePillarForLaser(pillar.pillar, g_poseBase.odom); // Расчет углов в локальной системе лазеров на столбы для передачи на нижний уровень для исполнения
-            // topic.publicationControlModul();                               // Формируем и Публикуем команды для управления Modul
+            laser.calcAnglePillarForLaser(pillar.pillar, g_poseLidar.main); // Расчет углов в локальной системе лазеров на столбы для передачи на нижний уровень для исполнения
+            topic.publicationControlModul();                               // Формируем и Публикуем команды для управления Modul
 
             // angleMPU(); // Расчет угла положения на основе данных сдатчика MPU
             // calcEuler(); // Расчет угла yaw с датчика IMU
@@ -145,31 +145,31 @@ int main(int argc, char **argv)
             flag_msgMeasurement = false;
             logi.log_b("--- flag_msgMeasurement *** \n");
 
-            logi.log("    IN Data Pose main x = %+8.3f y = %+8.3f th = %+8.3f \n", g_poseBase.main.x, g_poseBase.main.y, g_poseBase.main.th);
+            logi.log("    IN Data Pose main x = %+8.3f y = %+8.3f th = %+8.3f \n", g_poseLidar.main.x, g_poseLidar.main.y, g_poseLidar.main.th);
 
-            g_poseBase.meas.x = msg_Measurement.modeFused.x; // Запоминаем данные ИЗМЕРЕНИЯ которые пришли
-            g_poseBase.meas.y = msg_Measurement.modeFused.y;
-            g_poseBase.meas.th = msg_Measurement.modeFused.th;
-            logi.log("    IN Data Pose Measurement x = %+8.3f y = %+8.3f th = %+8.3f \n", g_poseBase.meas.x, g_poseBase.meas.y, g_poseBase.meas.th);
+            g_poseLidar.meas.x = msg_Measurement.modeFused.x; // Запоминаем данные ИЗМЕРЕНИЯ которые пришли
+            g_poseLidar.meas.y = msg_Measurement.modeFused.y;
+            g_poseLidar.meas.th = msg_Measurement.modeFused.th;
+            logi.log("    IN Data Pose Measurement x = %+8.3f y = %+8.3f th = %+8.3f \n", g_poseLidar.meas.x, g_poseLidar.meas.y, g_poseLidar.meas.th);
 
             static int firstData = 0;
             if (firstData == 0)
             {
                 firstData = 1;                                                                                       // Флаг что начальные знаения поменяли на лидарные
-                g_poseRotation.odom = convertBase2Rotation(g_poseBase.meas, "First data measurement odom");   // Обновляем уже уточненным значением   
-                g_poseRotation.imu = convertBase2Rotation(g_poseBase.meas, "First data measurement imu");     // Обновляем уже уточненным значением
-                g_poseRotation.fused = convertBase2Rotation(g_poseBase.meas, "First data measurement fused"); // Обновляем уже уточненным значением
-                g_poseRotation.meas = convertBase2Rotation(g_poseBase.meas, "First data measurement main");   // Обновляем уже уточненным значением
-                g_poseRotation.main = convertBase2Rotation(g_poseBase.meas, "First data measurement main");   // Обновляем уже уточненным значением
+                g_poseRotation.odom = convertBase2Rotation(g_poseLidar.meas, "First data measurement odom");   // Обновляем уже уточненным значением   
+                g_poseRotation.imu = convertBase2Rotation(g_poseLidar.meas, "First data measurement imu");     // Обновляем уже уточненным значением
+                g_poseRotation.fused = convertBase2Rotation(g_poseLidar.meas, "First data measurement fused"); // Обновляем уже уточненным значением
+                g_poseRotation.meas = convertBase2Rotation(g_poseLidar.meas, "First data measurement main");   // Обновляем уже уточненным значением
+                g_poseRotation.main = convertBase2Rotation(g_poseLidar.meas, "First data measurement main");   // Обновляем уже уточненным значением
                 logi.log_b("=== FIRST Data Pose Rotation Measurement x = %+8.3f y = %+8.3f th = %+8.3f \n", g_poseRotation.odom.x, g_poseRotation.odom.y, g_poseRotation.odom.th);
             }
             else
             {
                 // Вызываем СЛИЯНИЕ (Fusion) для Rate-Limited Fuser
-                g_poseBase.main = rate_fuser.fuse(g_poseBase.main, g_poseBase.meas, g_linAngVel.fused.vx, g_linAngVel.fused.vth, lidar_latency_L); // Состояние Модели (по ссылке) и Измерение (SPose)
-                logi.log("    OUT Data Pose Main x = %+8.3f y = %+8.3f th = %+8.3f \n", g_poseBase.main.x, g_poseBase.main.y, g_poseBase.main.th);
+                g_poseLidar.main = rate_fuser.fuse(g_poseLidar.main, g_poseLidar.meas, g_linAngVel.fused.vx, g_linAngVel.fused.vth, lidar_latency_L); // Состояние Модели (по ссылке) и Измерение (SPose)
+                logi.log("    OUT Data Pose Main x = %+8.3f y = %+8.3f th = %+8.3f \n", g_poseLidar.main.x, g_poseLidar.main.y, g_poseLidar.main.th);
 
-                g_poseRotation.main = convertBase2Rotation(g_poseBase.main, "main"); // Обновляем уже уточненным значением
+                g_poseRotation.main = convertBase2Rotation(g_poseLidar.main, "main"); // Обновляем уже уточненным значением
                 logi.log("    OUT 10Hz Data Pose Rotation fused x = %+8.3f y = %+8.3f th = %+8.3f \n", g_poseRotation.fused.x, g_poseRotation.fused.y, g_poseRotation.fused.th);
             }
 
@@ -177,16 +177,16 @@ int main(int argc, char **argv)
             /*
                         if (dtStoping < 0.1) // Если меньше 0,2 секунды то возвращаем что есть
                         {
-                            aver.x = g_poseBase.measurement.x;
-                            aver.y = g_poseBase.measurement.y;
-                            aver.th = g_poseBase.measurement.th;
+                            aver.x = g_poseLidar.measurement.x;
+                            aver.y = g_poseLidar.measurement.y;
+                            aver.th = g_poseLidar.measurement.th;
                             averCount = 1;
                         }
                         else // Если прошло больше 0,2 секунды с момента остановки начинаем усреднять позицию
                         {
-                            aver.x = aver.x + g_poseBase.measurement.x;
-                            aver.y = aver.y + g_poseBase.measurement.y;
-                            aver.th = aver.th + g_poseBase.measurement.th;
+                            aver.x = aver.x + g_poseLidar.measurement.x;
+                            aver.y = aver.y + g_poseLidar.measurement.y;
+                            aver.th = aver.th + g_poseLidar.measurement.th;
                             averCount++;
                             // ROS_INFO("    averCount = %i aver.x = %+8.3f aver.x / averCount = %+8.3f", averCount, aver.x, aver.x / averCount);
 
@@ -201,19 +201,19 @@ int main(int argc, char **argv)
                             }
                         }
                         // ROS_INFO("    --- complementation Pose Average to Mode ---");
-                        g_poseBase.main.x = aver.x / averCount;
-                        g_poseBase.main.y = aver.y / averCount;
-                        g_poseBase.main.th = aver.th / averCount;
-                        g_poseRotation.fused = convertBase2Rotation(g_poseBase.main, "main -> fused");
+                        g_poseLidar.main.x = aver.x / averCount;
+                        g_poseLidar.main.y = aver.y / averCount;
+                        g_poseLidar.main.th = aver.th / averCount;
+                        g_poseRotation.fused = convertBase2Rotation(g_poseLidar.main, "main -> fused");
             */
         }
 
-        //     // odomMode12.pose.y = kalman12.calcY(g_poseBase.mode2.y, odomMode12.pose.y); // Фильр Калмана для координаты Y. На вход подаем измеренное значение по MODE1  и вычисленное значение по модели ускорение на время плюс старое знаение
+        //     // odomMode12.pose.y = kalman12.calcY(g_poseLidar.mode2.y, odomMode12.pose.y); // Фильр Калмана для координаты Y. На вход подаем измеренное значение по MODE1  и вычисленное значение по модели ускорение на время плюс старое знаение
 
         //     // topic.visualPoseLidarMode_1_2();                                // Отобращение стрелкой где начало и куда смотрит в Mode0 1 2
         //     topic.visualPublishOdomMode_1(); // Отобращение стрелкой где начало и куда смотрит в Mode0 1 2
 
-        //     if (isnan(g_poseBase.mode2.x) || isnan(g_poseBase.mode2.y) || isnan(g_poseBase.mode2.th))
+        //     if (isnan(g_poseLidar.mode2.x) || isnan(g_poseLidar.mode2.y) || isnan(g_poseLidar.mode2.th))
         //     {
         //         ROS_ERROR("STOP MODE 1-2");
         //         exit(0);
@@ -233,12 +233,12 @@ int main(int argc, char **argv)
            //  !!!!!!!!!!!!!!! тут надо смотреть что данные пришли от измерения куда надо, а не куда попало любые данные тспользуем только правильные датчики, а те что не те или не дали сигнал в расчетах не учитывать
            // Тут смотреть что в моменты переключения лазеров от столба к столбу значения не верные и не надо считать в эти моменты сравнивать угол откуда нужны данные и откуда пришли.
            // Менее 2 градусов разница должна быть и то это много...
-           pillar.getLocationMode3(g_poseBase.mode3, g_poseBase.mode10); // Считаем текущие координаты по столбам На вход позиция лидара общая скомплементированная, на выходе новая позиция лидара по расчету
+           pillar.getLocationMode3(g_poseLidar.mode3, g_poseLidar.mode10); // Считаем текущие координаты по столбам На вход позиция лидара общая скомплементированная, на выходе новая позиция лидара по расчету
 
-           // odomMode13.pose.x = kalman13.calcX(g_poseBase.mode3.x, odomMode13.pose.x); // Фильр Калмана для координаты Х. На вход подаем измеренное значение по MODE1  и вычисленное значение по модели ускорение на время плюс старое знаение
-           // odomMode13.pose.y = kalman13.calcY(g_poseBase.mode3.y, odomMode13.pose.y); // Фильр Калмана для координаты Х. На вход подаем измеренное значение по MODE1  и вычисленное значение по модели ускорение на время плюс старое знаение
+           // odomMode13.pose.x = kalman13.calcX(g_poseLidar.mode3.x, odomMode13.pose.x); // Фильр Калмана для координаты Х. На вход подаем измеренное значение по MODE1  и вычисленное значение по модели ускорение на время плюс старое знаение
+           // odomMode13.pose.y = kalman13.calcY(g_poseLidar.mode3.y, odomMode13.pose.y); // Фильр Калмана для координаты Х. На вход подаем измеренное значение по MODE1  и вычисленное значение по модели ускорение на время плюс старое знаение
 
-           if (isnan(g_poseBase.mode3.x) || isnan(g_poseBase.mode3.y) || isnan(g_poseBase.mode3.th))
+           if (isnan(g_poseLidar.mode3.x) || isnan(g_poseLidar.mode3.y) || isnan(g_poseLidar.mode3.th))
            {
                ROS_ERROR("STOP MODE 3");
                exit(3);
@@ -262,7 +262,7 @@ int main(int argc, char **argv)
         if (timeRviz <= millis()) // 30 Hz
         {
             // Публикуем тут так как если один раз опубликовать то они исчезают через некоторое время.
-            topic.transformBase(g_poseBase.main); // Публикуем трансформации систем координат, задаем по какому расчету трансформировать
+            topic.transformBase(g_poseLidar.main); // Публикуем трансформации систем координат, задаем по какому расчету трансформировать
             topic.transformLaser(laser);          // Публикуем трансформации систем координат, задаем по какому расчету трансформировать
             topic.transformRotation();            // Публикуем трансформации систем координат
 
