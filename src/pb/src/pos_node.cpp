@@ -64,6 +64,8 @@ int main(int argc, char **argv)
 
     //----------------------------- ПОДПИСКИ НА ТОПИКИ -------НЕ УБИРАЮ В КЛАСС ТАК КАК НУЖНЫ ГЛОБАЛЬНЫЕ КОЛБЕКИ И ПРОЧАЯ ХЕРНЯ --------
     ros::Subscriber subscriber_Lidar = nh.subscribe<pb_msgs::Struct_PoseLidar>("pb/Lidar/Pose", 1, callback_Measurement, ros::TransportHints().tcpNoDelay(true)); // Измеренная позиция по лидару лазеру
+    ros::Subscriber subscriber_Scan = nh.subscribe<pb_msgs::Struct_PoseScan>("/pb/Scan/Pose", 1, callback_Scan, ros::TransportHints().tcpNoDelay(true)); // Измеренная позиция по лидару лазеру
+
     ros::Subscriber subscriber_Modul = nh.subscribe<pb_msgs::Struct_Modul2Data>("pb/Data/Modul", 1, callback_Modul, ros::TransportHints().tcpNoDelay(true));
     ros::Subscriber subscriber_Driver = nh.subscribe<pb_msgs::Struct_Driver2Data>("pb/Data/Driver", 1, callback_Driver, ros::TransportHints().tcpNoDelay(true));
     ros::Subscriber subscriber_Speed = nh.subscribe<pb_msgs::SSetSpeed>("pb/Data/Speed", 1, callback_Speed, ros::TransportHints().tcpNoDelay(true));
@@ -110,7 +112,7 @@ int main(int argc, char **argv)
             g_linAngVel.odom = calcTwistFromWheel(msg_Speed);                                 // Обработка пришедших данных. По ним считаем линейные скорости по осям и угловую по углу. Запоминаем dt
             g_poseRotation.odom = calcNewPose(g_poseRotation.odom, g_linAngVel.odom, "odom"); // На основе линейных скоростей считаем новую позицию и угол по колесам
             // logi.log("    100Hz OUT Pose Rotation odom  x = %+8.3f y = %+8.3f th = %+8.3f \n", g_poseRotation.odom.x, g_poseRotation.odom.y, g_poseRotation.odom.th);
-            g_poseBase.odom = convertRotation2Base(g_poseRotation.odom, "odom"); // Позиция для отладки и сравнения по результатм только одометрии
+            // g_poseBase.odom = convertRotation2Base(g_poseRotation.odom, "odom"); // Позиция для отладки и сравнения по результатм только одометрии
 
             logi.log_b("imu \n");
             g_linAngVel.imu = calcTwistFromImu(msg_Driver2Data);                          // Обработка пришедших данных. По ним считаем линейные скорости по осям и угловую по углу. Запоминаем dt
@@ -118,10 +120,9 @@ int main(int argc, char **argv)
 
             logi.log_b("fused \n");
             g_linAngVel.fused = calcTwistFused(g_linAngVel.odom, g_linAngVel.imu); // Комплементация данных используя фильтр (Комплементарный или Калмана) тут написать функцию комплементации данных угловых скоростей с разными условиями когда и в каком соотношении скомплементировать скорсти с двух источников
-
             g_poseRotation.fused = calcNewPose(g_poseRotation.fused, g_linAngVel.fused, "fused"); // На основе линейных скоростей считаем новую позицию и угол по колесам
             // logi.log("    100Hz OUT Pose Rotation fused x = %+8.3f y = %+8.3f th = %+8.3f \n", g_poseRotation.fused.x, g_poseRotation.fused.y, g_poseRotation.fused.th);
-            g_poseBase.fused = convertRotation2Base(g_poseRotation.fused, "fused"); // Позиция по результатам слияния одометрии и imu считаем РАСЧЕТОМ
+            // g_poseBase.fused = convertRotation2Base(g_poseRotation.fused, "fused"); // Позиция по результатам слияния одометрии и imu считаем РАСЧЕТОМ
 
             g_poseRotation.main = calcNewPose(g_poseRotation.main, g_linAngVel.fused, "main"); // На основе линейных скоростей считаем новую позицию и угол по колесам
             // logi.log("    100Hz OUT Pose Rotation main x = %+8.3f y = %+8.3f th = %+8.3f \n", g_poseRotation.main.x, g_poseRotation.main.y, g_poseRotation.main.th);
@@ -146,25 +147,26 @@ int main(int argc, char **argv)
 
             logi.log("    IN Data Pose main x = %+8.3f y = %+8.3f th = %+8.3f \n", g_poseBase.main.x, g_poseBase.main.y, g_poseBase.main.th);
 
-            g_poseBase.measurement.x = msg_Measurement.modeFused.x; // Запоминаем данные ИЗМЕРЕНИЯ которые пришли
-            g_poseBase.measurement.y = msg_Measurement.modeFused.y;
-            g_poseBase.measurement.th = msg_Measurement.modeFused.th;
-            logi.log("    IN Data Pose Measurement x = %+8.3f y = %+8.3f th = %+8.3f \n", g_poseBase.measurement.x, g_poseBase.measurement.y, g_poseBase.measurement.th);
+            g_poseBase.meas.x = msg_Measurement.modeFused.x; // Запоминаем данные ИЗМЕРЕНИЯ которые пришли
+            g_poseBase.meas.y = msg_Measurement.modeFused.y;
+            g_poseBase.meas.th = msg_Measurement.modeFused.th;
+            logi.log("    IN Data Pose Measurement x = %+8.3f y = %+8.3f th = %+8.3f \n", g_poseBase.meas.x, g_poseBase.meas.y, g_poseBase.meas.th);
 
             static int firstData = 0;
             if (firstData == 0)
             {
                 firstData = 1;                                                                                       // Флаг что начальные знаения поменяли на лидарные
-                g_poseRotation.odom = convertBase2Rotation(g_poseBase.measurement, "First data measurement odom");   // Обновляем уже уточненным значением   
-                g_poseRotation.imu = convertBase2Rotation(g_poseBase.measurement, "First data measurement imu");     // Обновляем уже уточненным значением
-                g_poseRotation.fused = convertBase2Rotation(g_poseBase.measurement, "First data measurement fused"); // Обновляем уже уточненным значением
-                g_poseRotation.main = convertBase2Rotation(g_poseBase.measurement, "First data measurement main");   // Обновляем уже уточненным значением
+                g_poseRotation.odom = convertBase2Rotation(g_poseBase.meas, "First data measurement odom");   // Обновляем уже уточненным значением   
+                g_poseRotation.imu = convertBase2Rotation(g_poseBase.meas, "First data measurement imu");     // Обновляем уже уточненным значением
+                g_poseRotation.fused = convertBase2Rotation(g_poseBase.meas, "First data measurement fused"); // Обновляем уже уточненным значением
+                g_poseRotation.meas = convertBase2Rotation(g_poseBase.meas, "First data measurement main");   // Обновляем уже уточненным значением
+                g_poseRotation.main = convertBase2Rotation(g_poseBase.meas, "First data measurement main");   // Обновляем уже уточненным значением
                 logi.log_b("=== FIRST Data Pose Rotation Measurement x = %+8.3f y = %+8.3f th = %+8.3f \n", g_poseRotation.odom.x, g_poseRotation.odom.y, g_poseRotation.odom.th);
             }
             else
             {
                 // Вызываем СЛИЯНИЕ (Fusion) для Rate-Limited Fuser
-                g_poseBase.main = rate_fuser.fuse(g_poseBase.main, g_poseBase.measurement, g_linAngVel.fused.vx, g_linAngVel.fused.vth, lidar_latency_L); // Состояние Модели (по ссылке) и Измерение (SPose)
+                g_poseBase.main = rate_fuser.fuse(g_poseBase.main, g_poseBase.meas, g_linAngVel.fused.vx, g_linAngVel.fused.vth, lidar_latency_L); // Состояние Модели (по ссылке) и Измерение (SPose)
                 logi.log("    OUT Data Pose Main x = %+8.3f y = %+8.3f th = %+8.3f \n", g_poseBase.main.x, g_poseBase.main.y, g_poseBase.main.th);
 
                 g_poseRotation.main = convertBase2Rotation(g_poseBase.main, "main"); // Обновляем уже уточненным значением
@@ -260,7 +262,7 @@ int main(int argc, char **argv)
         if (timeRviz <= millis()) // 30 Hz
         {
             // Публикуем тут так как если один раз опубликовать то они исчезают через некоторое время.
-            topic.transformBase(g_poseBase.odom); // Публикуем трансформации систем координат, задаем по какому расчету трансформировать
+            topic.transformBase(g_poseBase.main); // Публикуем трансформации систем координат, задаем по какому расчету трансформировать
             topic.transformLaser(laser);          // Публикуем трансформации систем координат, задаем по какому расчету трансформировать
             topic.transformRotation();            // Публикуем трансформации систем координат
 

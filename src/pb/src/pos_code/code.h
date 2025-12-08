@@ -81,6 +81,11 @@ void callback_Measurement(pb_msgs::Struct_PoseLidar msg)
 	msg_Measurement = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
 	flag_msgMeasurement = true;
 }
+void callback_Scan(pb_msgs::Struct_PoseScan msg)
+{
+	msg_Scan = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
+	flag_msgScan = true;
+}
 void callback_Modul(pb_msgs::Struct_Modul2Data msg)
 {
 	msg_Modul2Data = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
@@ -1345,15 +1350,16 @@ void read_Param_StartPose()
 	g_angleEuler.yaw = startPose.th; // Присваиваем yaw углу начальное значение
 	// g_poseRotation.theta = DEG2RAD(startPose2d_.theta); // Присваиваем глобальному углу начальное значение
 
-	g_poseBase.odom = startPose;
-	g_poseBase.fused = startPose;
+	// g_poseBase.odom = startPose;
+	// g_poseBase.fused = startPose;
 	g_poseBase.main = startPose; // Устанавливаем координаты для что-бы по нему начало все считаться
-	g_poseBase.measurement = startPose;
+	g_poseBase.meas = startPose;
 
 	g_poseRotation.fused = convertBase2Rotation(startPose, "fused"); // Конвентируем координаты заданные для точки в системе Base в систему Rotation
 	g_poseRotation.odom = g_poseRotation.fused;						 // Первоначальная установка позиции
 	g_poseRotation.imu = g_poseRotation.fused;						 // Первоначальная установка позиции
 	g_poseRotation.main = g_poseRotation.fused;						 // Первоначальная установка позиции
+	g_poseRotation.meas = g_poseRotation.fused;						 // Первоначальная установка позиции
 	logi.log("    start g_poseRotation.fused x= %+8.3f y= %+8.3f theta= %+8.3f \n", g_poseRotation.fused.x, g_poseRotation.fused.y, g_poseRotation.fused.th);
 
 	logi.log_b("--- startPosition \n");

@@ -261,17 +261,17 @@ void CTopic::publicationPoseBase() // Формируем перемнную с �
 {
     pb_msgs::Struct_PoseBase poseBase_msg; // Обобщенные данные в моем формате о всех вариантах расчета позиции
 
-    poseBase_msg.x.odom = g_poseBase.odom.x;
-    poseBase_msg.y.odom = g_poseBase.odom.y;
-    poseBase_msg.th.odom = g_poseBase.odom.th;
+    // poseBase_msg.x.odom = g_poseBase.odom.x;
+    // poseBase_msg.y.odom = g_poseBase.odom.y;
+    // poseBase_msg.th.odom = g_poseBase.odom.th;
 
-    poseBase_msg.x.fused = g_poseBase.fused.x;
-    poseBase_msg.y.fused = g_poseBase.fused.y;
-    poseBase_msg.th.fused = g_poseBase.fused.th;
+    // poseBase_msg.x.fused = g_poseBase.fused.x;
+    // poseBase_msg.y.fused = g_poseBase.fused.y;
+    // poseBase_msg.th.fused = g_poseBase.fused.th;
 
-    poseBase_msg.x.measurement = g_poseBase.measurement.x;
-    poseBase_msg.y.measurement = g_poseBase.measurement.y;
-    poseBase_msg.th.measurement = g_poseBase.measurement.th;
+    poseBase_msg.x.meas = g_poseBase.meas.x;
+    poseBase_msg.y.meas = g_poseBase.meas.y;
+    poseBase_msg.th.meas = g_poseBase.meas.th;
 
     poseBase_msg.x.main = g_poseBase.main.x;
     poseBase_msg.y.main = g_poseBase.main.y;
@@ -293,16 +293,19 @@ void CTopic::publicationPoseRotattion() // Вывод в топик данных
     msg.x.odom = g_poseRotation.odom.x;
     msg.x.imu = g_poseRotation.imu.x;
     msg.x.fused = g_poseRotation.fused.x;
+    msg.x.meas = g_poseRotation.meas.x;
     msg.x.main = g_poseRotation.main.x;
 
     msg.y.odom = g_poseRotation.odom.y;
     msg.y.imu = g_poseRotation.imu.y;
     msg.y.fused = g_poseRotation.fused.y;
+    msg.y.meas = g_poseRotation.meas.y;
     msg.y.main = g_poseRotation.main.y;
     
     msg.th.odom = g_poseRotation.odom.th;
     msg.th.imu = g_poseRotation.imu.th;
     msg.th.fused = g_poseRotation.fused.th;
+    msg.th.meas = g_poseRotation.meas.th;
     msg.th.main = g_poseRotation.main.th;
    
     msg.theta = DEG2RAD(g_angleEuler.yaw);
