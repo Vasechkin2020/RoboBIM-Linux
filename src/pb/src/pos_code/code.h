@@ -34,8 +34,8 @@ void testFunction(); // Тест математических ипрочих ф�
 void angleMPU();  // Расчет угла положения на сонове данных сдатчика MPU
 void calcEuler(); // Расчет угла Эллера
 
-SPose convertRotation2Base(SPose pose_, std::string stroka_); // Конвертация координат из Rotattion в Lidar систему
-SPose convertBase2Rotation(SPose pose_, std::string stroka_); // Конвертация координат из Lidar в Rotattion систему
+SPose convertRotation2Lidar(SPose pose_, std::string stroka_); // Конвертация координат из Rotattion в Lidar систему
+SPose convertLidar2Rotation(SPose pose_, std::string stroka_); // Конвертация координат из Lidar в Rotattion систему
 
 float minDistance(float laserL_, float laserR_, float uzi1_); // Находим минимальную дистанцию из 3 датчиков
 
@@ -56,7 +56,7 @@ SPose calcNewPose(SPose odom_, STwistDt data_, std::string stroka_, float koef_)
 SPose calcNewPose(SPose pose_, STwistDt twist_, std::string stroka_);			  // --- Интеграция одометрии: метод средней точки (midpoint). На основании линейных и угловой скорости вычисляем новые координаты в глобальных координатах
 
 STwistDt calcTwistFromWheel(pb_msgs::SSetSpeed msg_Speed_);	 // --- Кинематика дифференциального привода. Расчет линейных и угловой скорости
-STwistDt calcTwistFromImu(pb_msgs::Struct_Driver2Data msg_); // Обсчитываем линейные и угловую скорость датчику IMU
+STwistDt calcTwistFromImu(pb_msgs::Struct_Driver2Data msg_, float odom_vx); // Обсчитываем линейные и угловую скорость датчику IMU
 // STwistDt calcTwistFromWheel(pb_msgs::SSetSpeed msg_Speed_);							  // Обсчитываем линейные и угловую скорость по данным скоростей от энкодера с колес
 STwistDt calcTwistFromMpu(STwistDt mpu_, pb_msgs::Struct_Modul2Data msg_Modul2Data_, STwistDt odom_); // Обсчитываем линейные и угловую скорость датчику IMU
 
@@ -176,9 +176,9 @@ void calcEuler()
 }
 
 // Конвертация координат из Rotattion в Lidar систему
-SPose convertRotation2Base(SPose pose_, std::string stroka_)
+SPose convertRotation2Lidar(SPose pose_, std::string stroka_)
 {
-	// ROS_INFO_THROTTLE(RATE_OUTPUT,"+++ convertRotation2Base %s", stroka_.c_str());
+	// ROS_INFO_THROTTLE(RATE_OUTPUT,"+++ convertRotation2Lidar %s", stroka_.c_str());
 	SPose ret;
 	ret.x = pose_.x - (transformLidar2Rotation.x * cos(pose_.th));
 	ret.y = pose_.y - (transformLidar2Rotation.x * sin(pose_.th));
@@ -187,9 +187,9 @@ SPose convertRotation2Base(SPose pose_, std::string stroka_)
 	return ret;
 }
 // Конвертация координат из Lidar в Rotattion систему
-SPose convertBase2Rotation(SPose pose_, std::string stroka_)
+SPose convertLidar2Rotation(SPose pose_, std::string stroka_)
 {
-	// ROS_INFO_THROTTLE(RATE_OUTPUT,"+++ convertBase2Rotation %s", stroka_.c_str());
+	// ROS_INFO_THROTTLE(RATE_OUTPUT,"+++ convertLidar2Rotation %s", stroka_.c_str());
 	SPose ret;
 	// g_poseRotation.theta = DEG2RAD(45);							  // Присваиваем глобальному углу начальное значение
 	ret.x = pose_.x + (transformLidar2Rotation.x * cos(DEG2RAD(pose_.th)));
@@ -589,7 +589,7 @@ inline double normalize_angle(double a)
 }
 
 // Обсчитываем линейные и угловую скорость датчику IMU
-STwistDt calcTwistFromImu(pb_msgs::Struct_Driver2Data msg_)
+STwistDt calcTwistFromImu(pb_msgs::Struct_Driver2Data msg_, float odom_vx)
 {
 
 	static double real_accel = msg_.icm.accel.y; // Начальная инициализация
@@ -617,7 +617,12 @@ STwistDt calcTwistFromImu(pb_msgs::Struct_Driver2Data msg_)
 	msg_LinAngVel.raw_accel = raw_accel;						//
 	real_accel = raw_accel - g_offsetX;							// Применяем bias
 	msg_LinAngVel.real_accel = real_accel;						// Пишем в переменную для опубликования в топик
-	ret.vx = ret.vx + (real_accel * dt);						// Считаем линейную скорость. Берем упрощенно данные акселерометра, подразумевая что гравитация у нас всегда вниз, поскольку датчик закреплен горизонтально и жестко к корпусу.
+
+	// ret.vx = ret.vx + (real_accel * dt);						// Считаем линейную скорость. Берем упрощенно данные акселерометра, подразумевая что гравитация у нас всегда вниз, поскольку датчик закреплен горизонтально и жестко к корпусу.
+	// Коэффициент утечки (доверия интегралу). 0.98 означает: на 98% мы верим интегралу (физике инерции),  а на 2% верим, что скорость колес правильная (убираем дрейф).
+	float alpha = 0.98; 
+	float v_predicted = ret.vx + (real_accel * dt); // Чистая физика Сама формула слияния ПРЯМО ВНУТРИ ИНТЕГРАТОРА
+	ret.vx = (v_predicted * alpha) + (odom_vx * (1.0 - alpha)); // Подтяжка к реальности
 
 	float kg = 0.5;
 	static double raw_gyro = 0;
@@ -632,7 +637,9 @@ STwistDt calcTwistFromImu(pb_msgs::Struct_Driver2Data msg_)
 	static double speedPred = 0;
 	static double speedPredPred = 0;
 
-	double speedNow = (msg_Speed.speedL + msg_Speed.speedR) * 0.5; // Текущая скорость робота
+	// double speedNow = (msg_Speed.speedL + msg_Speed.speedR) * 0.5; // Текущая скорость робота
+	
+    double speedNow = odom_vx; // Используем odom_vx как самую надежную опорную скорость
 	double accelNow = (speedNow - speedPredPred) / (2 * dt);	   // Текущее ускорение робота
 	speedPredPred = speedPred;									   // Запоминаем предыдущую скорость
 	speedPred = speedNow;										   // Запоминаем предыдущую скорость
@@ -647,7 +654,7 @@ STwistDt calcTwistFromImu(pb_msgs::Struct_Driver2Data msg_)
 	msg_LinAngVel.offsetX = g_offsetX; // Вывод в топик что насчитали
 	msg_LinAngVel.offsetYaw = g_offsetYaw;
 
-	// Проверяем условие остановки (например, от одометрии). Если стоим то неважно что выше насчитали.Все обнуляем.
+	// Проверяем условие остановки (например, от одометрии). Если стоим то неважно что выше насчитали.Все обнуляем. // --- 5. ZUPT (Полная остановка) ---
 	if (dtStoping >= 0.05) // Если стоим уже больше 0,1 секунды то
 	{
 		ret.vx = 0;								   // СБРАСЫВАЕМ ВСЕ СКОРОСТи В НОЛЬ Так как стоим на месте и никаких линейных скоростей быть не может. Стоим на месте.
@@ -828,18 +835,21 @@ STwistDt calcTwistFused(STwistDt odomTwist_, STwistDt imuTwist_)
 
 	//--------------------------------
 	//	Мы получаем линейную скорость. Поэтому сразу делаем слияния
-	float k_ = 0.9;													   // Коеффициент для слияния
+	float k_ = 0.95;	 //  Коеффициент для слияния  (95% колеса) 5% IMU									   
 	double v_lin_fused = odomTwist_.vx * k_ + imuTwist_.vx * (1 - k_); // Комплементация по весу
 
-	float k_filtr_lin_vel = 0.7;											 // Коеффициент для фильтрации
-	ret.vx = ret.vx * k_filtr_lin_vel + v_lin_fused * (1 - k_filtr_lin_vel); // Фильтруем
-
-	//--------------------------------
 	//	Мы получаем от колес угловую скорость и от гироскопа угловую скорость. Поэтому сразу делаем слияния
-	float k_fused_angle_vel = 0.1;																	   // Коеффициент для слияния
+	float k_fused_angle_vel = 0.05;			 // 5% колеса, 95% гироскоп		
 	float v_angl_fused = odomTwist_.vth * k_fused_angle_vel + imuTwist_.vth * (1 - k_fused_angle_vel); // Комплементация по весу
 
-	float k_filtr_angle_vel = 0.5;													// Коеффициент для фильтрации
+	//--------------------------------
+	// 2. ФИЛЬТРАЦИЯ (Smoothing) - Уменьшаем лаг!
+	// Если k = 0.2, мы берем 20% старого и 80% нового -> быстрая реакция
+
+	float k_filtr_lin_vel = 0.5;											 // Коеффициент для фильтрации
+	ret.vx = ret.vx * k_filtr_lin_vel + v_lin_fused * (1 - k_filtr_lin_vel); // Фильтруем
+
+	float k_filtr_angle_vel = 0.3;													// Коеффициент для фильтрации
 	ret.vth = ret.vth * k_filtr_angle_vel + v_angl_fused * (1 - k_filtr_angle_vel); // Фильтруем
 
 	//--------------------------------
@@ -1355,7 +1365,7 @@ void read_Param_StartPose()
 	g_poseLidar.main = startPose; // Устанавливаем координаты для что-бы по нему начало все считаться
 	g_poseLidar.meas = startPose;
 
-	g_poseRotation.fused = convertBase2Rotation(startPose, "fused"); // Конвентируем координаты заданные для точки в системе Base в систему Rotation
+	g_poseRotation.fused = convertLidar2Rotation(startPose, "fused"); // Конвентируем координаты заданные для точки в системе Base в систему Rotation
 	g_poseRotation.odom = g_poseRotation.fused;						 // Первоначальная установка позиции
 	g_poseRotation.imu = g_poseRotation.fused;						 // Первоначальная установка позиции
 	g_poseRotation.main = g_poseRotation.fused;						 // Первоначальная установка позиции
