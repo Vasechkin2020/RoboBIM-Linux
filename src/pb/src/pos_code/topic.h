@@ -265,17 +265,17 @@ void CTopic::publicationPoseBase() // Формируем перемнную с �
     // poseBase_msg.y.odom = g_poseLidar.odom.y;
     // poseBase_msg.th.odom = g_poseLidar.odom.th;
 
-    // poseBase_msg.x.fused = g_poseLidar.fused.x;
-    // poseBase_msg.y.fused = g_poseLidar.fused.y;
-    // poseBase_msg.th.fused = g_poseLidar.fused.th;
+    poseBase_msg.x.model = g_poseLidar.model.x;
+    poseBase_msg.y.model = g_poseLidar.model.y;
+    poseBase_msg.th.model = g_poseLidar.model.th;
 
     poseBase_msg.x.meas = g_poseLidar.meas.x;
     poseBase_msg.y.meas = g_poseLidar.meas.y;
     poseBase_msg.th.meas = g_poseLidar.meas.th;
 
-    poseBase_msg.x.main = g_poseLidar.main.x;
-    poseBase_msg.y.main = g_poseLidar.main.y;
-    poseBase_msg.th.main = g_poseLidar.main.th;
+    poseBase_msg.x.est = g_poseLidar.est.x;
+    poseBase_msg.y.est = g_poseLidar.est.y;
+    poseBase_msg.th.est = g_poseLidar.est.th;
 
     poseBase_msg.azimut[0] =  g_poseLidar.azimut[0];
     poseBase_msg.azimut[1] =  g_poseLidar.azimut[1];
@@ -292,21 +292,21 @@ void CTopic::publicationPoseRotattion() // Вывод в топик данных
 
     msg.x.odom = g_poseRotation.odom.x;
     msg.x.imu = g_poseRotation.imu.x;
-    msg.x.fused = g_poseRotation.fused.x;
+    msg.x.model = g_poseRotation.model.x;
     msg.x.meas = g_poseRotation.meas.x;
-    msg.x.main = g_poseRotation.main.x;
+    msg.x.est = g_poseRotation.est.x;
 
     msg.y.odom = g_poseRotation.odom.y;
     msg.y.imu = g_poseRotation.imu.y;
-    msg.y.fused = g_poseRotation.fused.y;
+    msg.y.model = g_poseRotation.model.y;
     msg.y.meas = g_poseRotation.meas.y;
-    msg.y.main = g_poseRotation.main.y;
+    msg.y.est = g_poseRotation.est.y;
     
     msg.th.odom = g_poseRotation.odom.th;
     msg.th.imu = g_poseRotation.imu.th;
-    msg.th.fused = g_poseRotation.fused.th;
+    msg.th.model = g_poseRotation.model.th;
     msg.th.meas = g_poseRotation.meas.th;
-    msg.th.main = g_poseRotation.main.th;
+    msg.th.est = g_poseRotation.est.th;
    
     msg.theta = DEG2RAD(g_angleEuler.yaw);
 

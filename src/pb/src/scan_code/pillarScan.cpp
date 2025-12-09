@@ -134,7 +134,7 @@ void PillarScanNode::performMnkCalculation(const AlignedPillarVector &pillars)
     // 6. ПУБЛИКАЦИЯ
     geometry_msgs::PoseStamped msg;
     msg.header.stamp = ros::Time::now();
-    msg.header.frame_id = "map"; // Global frame
+    msg.header.frame_id = "laser"; // Global frame
 
     msg.pose.position.x = result.A.x;
     msg.pose.position.y = result.A.y;
@@ -266,7 +266,7 @@ void PillarScanNode::fuseResults()
     // Публикация
     geometry_msgs::PoseStamped msg;
     msg.header.stamp = ros::Time::now();
-    msg.header.frame_id = "map";
+    msg.header.frame_id = "laser";
     msg.pose.position.x = x_gold;
     msg.pose.position.y = y_gold;
 
@@ -1627,7 +1627,7 @@ void PillarScanNode::saveCalibrationParameters()
 
     geometry_msgs::PoseStamped msg;
     msg.header.stamp = ros::Time::now();
-    msg.header.frame_id = "map"; // Или "world", или "odom" - твоя глобальная система
+    msg.header.frame_id = "laser"; // Или "world", или "odom" - твоя глобальная система
 
     // 1. Позиция (X, Y)
     msg.pose.position.x = lidar_calibration_.position.x();

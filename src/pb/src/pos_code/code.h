@@ -677,7 +677,7 @@ STwistDt calcTwistFromImu(pb_msgs::Struct_Driver2Data msg_, float odom_vx)
 
 	return ret;
 }
-
+/*
 // Обсчитываем линейные и угловую скорость датчику MPU
 STwistDt calcTwistFromMpu(STwistDt mpu_, pb_msgs::Struct_Modul2Data msg_Modul2Data_, STwistDt odom_)
 {
@@ -688,7 +688,7 @@ STwistDt calcTwistFromMpu(STwistDt mpu_, pb_msgs::Struct_Modul2Data msg_Modul2Da
 	float bias_linYaw;			 //
 	float a_lin_odom;			 //
 	static float pred_Angle = 0; // Предыдущий угол
-	static float fused_yaw_pred = 0;
+	static float model_yaw_pred = 0;
 	static float pred_Vel = 0;	 // Предыдущее значение линейной скорости по оси Х
 	static float pred_Accel = 0; // Предыдущее значение Ускорения по оси Х
 
@@ -701,8 +701,8 @@ STwistDt calcTwistFromMpu(STwistDt mpu_, pb_msgs::Struct_Modul2Data msg_Modul2Da
 	static bool flagAccel = false; // Флаг есть ускорение или нет. Влияет на то как считаем
 	static float pitch = 0.0f;
 
-	float fused_accel = 0;
-	float fused_yaw = 0;
+	float model_accel = 0;
+	float model_yaw = 0;
 	float g_x = 0;
 
 	float norm_angleDelta = 0;
@@ -724,7 +724,7 @@ STwistDt calcTwistFromMpu(STwistDt mpu_, pb_msgs::Struct_Modul2Data msg_Modul2Da
 		ret.vy = 0;																	 //
 		ret.vth = odom_.vth;														 // хорошая инициализация состояния
 		pred_Angle = convert_angle_360_to_pm180(msg_Modul2Data_.icm.angleEuler.yaw); // Сохраняем для следующего расчета
-		fused_yaw_pred = odom_.vth;
+		model_yaw_pred = odom_.vth;
 		pred_Vel = odom_.vx;				   // Предыдущая скорость
 		pred_Accel = a_lin_odom;			   // Сохраняем для следующего расчета
 		complX = msg_Modul2Data_.icm.linear.x; // Первое значение для фильтра
@@ -765,11 +765,11 @@ STwistDt calcTwistFromMpu(STwistDt mpu_, pb_msgs::Struct_Modul2Data msg_Modul2Da
 	//===
 	// Тут надо комплементацию с данными с одометрии делать Комплементировать и линейное ускорение и уголовую скорость
 	float ALFA_FUSED = 0.7;											   // Насколько верим IMU
-	fused_accel = complX * ALFA_FUSED + (1 - ALFA_FUSED) * a_lin_odom; // Взвешенное среднее двух ускорений
+	model_accel = complX * ALFA_FUSED + (1 - ALFA_FUSED) * a_lin_odom; // Взвешенное среднее двух ускорений
 
 	float ALFA_VX = 0.9; // Насколько верим IMU
-	// ret.vx = mpu_.vx + fused_accel * dt; // Линейное ускорение по оси метры за секунуду умножаем на интервал, получаем ускорение за интервал и суммируем в скорость линейную по оси
-	ret.vx = ALFA_VX * (mpu_.vx + (fused_accel * dt)) + (1 - ALFA_VX) * odom_.vx; // Комплементарный фильтр
+	// ret.vx = mpu_.vx + model_accel * dt; // Линейное ускорение по оси метры за секунуду умножаем на интервал, получаем ускорение за интервал и суммируем в скорость линейную по оси
+	ret.vx = ALFA_VX * (mpu_.vx + (model_accel * dt)) + (1 - ALFA_VX) * odom_.vx; // Комплементарный фильтр
 
 	//===
 
@@ -827,7 +827,7 @@ STwistDt calcTwistFromMpu(STwistDt mpu_, pb_msgs::Struct_Modul2Data msg_Modul2Da
 	// ROS_INFO("--- calcTwistFromMpu");
 	return ret;
 }
-
+*/
 // Функция комплементации угловых скоростей полученных с колес и с датчика MPU и угла поворота
 STwistDt calcTwistFused(STwistDt odomTwist_, STwistDt imuTwist_)
 {
@@ -1361,16 +1361,16 @@ void read_Param_StartPose()
 	// g_poseRotation.theta = DEG2RAD(startPose2d_.theta); // Присваиваем глобальному углу начальное значение
 
 	// g_poseLidar.odom = startPose;
-	// g_poseLidar.fused = startPose;
-	g_poseLidar.main = startPose; // Устанавливаем координаты для что-бы по нему начало все считаться
+	g_poseLidar.model = startPose;
 	g_poseLidar.meas = startPose;
+	g_poseLidar.est = startPose; // Устанавливаем координаты для что-бы по нему начало все считаться
 
-	g_poseRotation.fused = convertLidar2Rotation(startPose, "fused"); // Конвентируем координаты заданные для точки в системе Base в систему Rotation
-	g_poseRotation.odom = g_poseRotation.fused;						 // Первоначальная установка позиции
-	g_poseRotation.imu = g_poseRotation.fused;						 // Первоначальная установка позиции
-	g_poseRotation.main = g_poseRotation.fused;						 // Первоначальная установка позиции
-	g_poseRotation.meas = g_poseRotation.fused;						 // Первоначальная установка позиции
-	logi.log("    start g_poseRotation.fused x= %+8.3f y= %+8.3f theta= %+8.3f \n", g_poseRotation.fused.x, g_poseRotation.fused.y, g_poseRotation.fused.th);
+	g_poseRotation.model = convertLidar2Rotation(startPose, "fused"); // Конвентируем координаты заданные для точки в системе Base в систему Rotation
+	g_poseRotation.odom = g_poseRotation.model;						 // Первоначальная установка позиции
+	g_poseRotation.imu = g_poseRotation.model;						 // Первоначальная установка позиции
+	g_poseRotation.meas = g_poseRotation.model;						 // Первоначальная установка позиции
+	g_poseRotation.est = g_poseRotation.model;						 // Первоначальная установка позиции
+	logi.log("    start g_poseRotation.model x= %+8.3f y= %+8.3f theta= %+8.3f \n", g_poseRotation.model.x, g_poseRotation.model.y, g_poseRotation.model.th);
 
 	logi.log_b("--- startPosition \n");
 }

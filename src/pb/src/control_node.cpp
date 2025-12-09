@@ -2,7 +2,7 @@
 #include "logi.h" //Класс для моего формата логов
 AsyncFileLogger logi("/home/pi/RoboBIM-Linux/src/pb/log/", "control_node");
 
-int g_controlMode; // Выбор режима управления 0- по одометрии 1- по слиянию main
+int g_controlMode; // Выбор режима управления 0- по одометрии 1- по слиянию est
 
 #include "genStruct.h" // Тут все общие структуры. Истользуются и Data и Main и Control
 #include "control_code/config.h"
@@ -50,9 +50,9 @@ int main(int argc, char **argv)
 
     if (g_controlMode) // В зависимости от режима из yaml файла заполняем перменную и далее все опирается на нее.
     {
-        g_poseC.x = msg_PoseRotation.x.main;
-        g_poseC.y = msg_PoseRotation.y.main;
-        g_poseC.th = msg_PoseRotation.th.main;
+        g_poseC.x = msg_PoseRotation.x.est;
+        g_poseC.y = msg_PoseRotation.y.est;
+        g_poseC.th = msg_PoseRotation.th.est;
     }
     else
     {
@@ -79,7 +79,7 @@ int main(int argc, char **argv)
 
     logi.log_w("End Setup. Start loop.\n");
 
-    // g_controlMode = 0; // Выбор режима управления 0- по одометрии 1- по слиянию main
+    // g_controlMode = 0; // Выбор режима управления 0- по одометрии 1- по слиянию est
     if (g_controlMode)
         logi.log("+++ Start Control MAIN !!!\n");
     else
@@ -95,9 +95,9 @@ int main(int argc, char **argv)
 
         if (g_controlMode) // В зависимости от режима из yaml файла заполняем перменную и далее все опирается на нее.
         {
-            g_poseC.x = msg_PoseRotation.x.main;
-            g_poseC.y = msg_PoseRotation.y.main;
-            g_poseC.th = msg_PoseRotation.th.main;
+            g_poseC.x = msg_PoseRotation.x.est;
+            g_poseC.y = msg_PoseRotation.y.est;
+            g_poseC.th = msg_PoseRotation.th.est;
         }
         else
         {
@@ -167,7 +167,7 @@ int main(int argc, char **argv)
 
                 point_C.x = g_poseC.x; // Запоминаем те координаты которые были в момент начала движения
                 point_C.y = g_poseC.y;
-                logi.log("    'point C main  x = %+8.3f y = %+8.3f th = %+8.3f '\n", point_C.x, point_C.y, RAD2DEG(g_poseC.th));
+                logi.log("    'point C est  x = %+8.3f y = %+8.3f th = %+8.3f '\n", point_C.x, point_C.y, RAD2DEG(g_poseC.th));
 
                 time = millis() + 999999; // Огромное время ставим
                 flagVector = true;        // Флаг что теперь отслеживаем длину вектора
