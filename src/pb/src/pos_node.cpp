@@ -7,8 +7,7 @@ AsyncFileLogger logi("/home/pi/RoboBIM-Linux/src/pb/log/", "pose_node");
 #include "pos_code/config.h" // Конфигурационный файл
 
 #include "pos_code/localizer.h"
-RateLimitedLocalizer rate_fuser;     // Экземпляр Rate-Limited
-
+RateLimitedLocalizer rate_fuser; // Экземпляр Rate-Limited
 
 float g_angleMPU = 0;  // Глобальная перемнная угла получаемого с MPU куда смотрим
 float g_angleLaser[4]; // Углы на столбы которые передаем на нижний угол для управления
@@ -64,7 +63,7 @@ int main(int argc, char **argv)
 
     //----------------------------- ПОДПИСКИ НА ТОПИКИ -------НЕ УБИРАЮ В КЛАСС ТАК КАК НУЖНЫ ГЛОБАЛЬНЫЕ КОЛБЕКИ И ПРОЧАЯ ХЕРНЯ --------
     ros::Subscriber subscriber_Lidar = nh.subscribe<pb_msgs::Struct_PoseLidar>("pb/Lidar/Pose", 1, callback_Measurement, ros::TransportHints().tcpNoDelay(true)); // Измеренная позиция по лидару лазеру
-    ros::Subscriber subscriber_Scan = nh.subscribe<pb_msgs::Struct_PoseScan>("/pb/Scan/PoseLidar", 1, callback_Scan, ros::TransportHints().tcpNoDelay(true));          // Измеренная позиция по лидару лазеру
+    ros::Subscriber subscriber_Scan = nh.subscribe<pb_msgs::Struct_PoseScan>("/pb/Scan/PoseLidar", 1, callback_Scan, ros::TransportHints().tcpNoDelay(true));     // Измеренная позиция по лидару лазеру
 
     ros::Subscriber subscriber_Modul = nh.subscribe<pb_msgs::Struct_Modul2Data>("pb/Data/Modul", 1, callback_Modul, ros::TransportHints().tcpNoDelay(true));
     ros::Subscriber subscriber_Driver = nh.subscribe<pb_msgs::Struct_Driver2Data>("pb/Data/Driver", 1, callback_Driver, ros::TransportHints().tcpNoDelay(true));
@@ -153,7 +152,7 @@ int main(int argc, char **argv)
             g_poseLidar.meas.y = msg_Scan.y.fused;
             g_poseLidar.meas.th = msg_Scan.th.fused;
 
-            g_poseRotation.meas = convertLidar2Rotation(g_poseLidar.meas, "meas"); // Обновляем 
+            g_poseRotation.meas = convertLidar2Rotation(g_poseLidar.meas, "meas"); // Обновляем
 
             logi.log("    IN  Data Pose Meas x = %+8.3f y = %+8.3f th = %+8.3f \n", g_poseLidar.meas.x, g_poseLidar.meas.y, g_poseLidar.meas.th);
 
@@ -188,19 +187,95 @@ int main(int argc, char **argv)
                 g_poseRotation.imu = convertLidar2Rotation(g_poseLidar.meas, "First data measurement imu");     // Обновляем уже уточненным значением
                 g_poseRotation.model = convertLidar2Rotation(g_poseLidar.meas, "First data measurement model"); // Обновляем уже уточненным значением
                 g_poseRotation.meas = convertLidar2Rotation(g_poseLidar.meas, "First data measurement meas");   // Обновляем уже уточненным значением
-                g_poseRotation.est = convertLidar2Rotation(g_poseLidar.meas, "First data measurement est");   // Обновляем уже уточненным значением
+                g_poseRotation.est = convertLidar2Rotation(g_poseLidar.meas, "First data measurement est");     // Обновляем уже уточненным значением
                 logi.log_b("=== FIRST Data Pose Rotation Measurement x = %+8.3f y = %+8.3f th = %+8.3f \n", g_poseRotation.odom.x, g_poseRotation.odom.y, g_poseRotation.odom.th);
             }
             else
             {
                 if (is_data_valid)
-                {// Вызываем СЛИЯНИЕ (Fusion) для Rate-Limited Fuser
-                    const double lidar_latency_L = 0.18; // Задержка лидара/SLAM:  мс Посчитано ИИ экспериментально
+                {                                                                                                                                                // Вызываем СЛИЯНИЕ (Fusion) для Rate-Limited Fuser
+                    const double lidar_latency_L = 0.15;                                                                                                         // Задержка лидара/SLAM:  мс Посчитано ИИ экспериментально
                     g_poseLidar.est = rate_fuser.fuse(g_poseLidar.est, g_poseLidar.meas, g_linAngVel.model.vx, RAD2DEG(g_linAngVel.model.vth), lidar_latency_L); // Состояние Модели (по ссылке) и Измерение (SPose)
-                    logi.log("    is_data_valid  lidar_latency_L= %+8.3f model.vx= %+8.3f model.vth= %+8.3f \n", lidar_latency_L, g_linAngVel.model.vx, g_linAngVel.model.vth);
+                    logi.log("    is_data_valid  lidar_latency_L= %+8.3f model.vx= %+8.3f model.vth= %+8.3f | dtStoping = %+8.3f \n", lidar_latency_L, g_linAngVel.model.vx, g_linAngVel.model.vth,dtStoping);
 
                     g_poseRotation.est = convertLidar2Rotation(g_poseLidar.est, "est"); // Обновляем уже уточненным значением
-                    // logi.log("    OUT 10Hz Data Pose Rotation Est x = %+8.3f y = %+8.3f th = %+8.3f \n", g_poseRotation.est.x, g_poseRotation.est.y, g_poseRotation.est.th);
+                                                                                        // logi.log("    OUT 10Hz Data Pose Rotation Est x = %+8.3f y = %+8.3f th = %+8.3f \n", g_poseRotation.est.x, g_poseRotation.est.y, g_poseRotation.est.th);
+
+                    // // 3. МЯГКАЯ ПОДТЯЖКА MODEL К EST (Твоя идея) Коэффициент подтяжки. 0.05 (5%) означает, что за 1 секунду (10 тактов) модель уберет ~40% накопленного дрейфа. Это очень плавно.
+                    // double k_soft_sync = 0.005;  // Для корректировки в движении в основном. На месте мы разово корректиркем.
+
+                    // g_poseLidar.model.x += (g_poseLidar.est.x - g_poseLidar.model.x) * k_soft_sync; // Подтягиваем X
+                    // g_poseLidar.model.y += (g_poseLidar.est.y - g_poseLidar.model.y) * k_soft_sync; // Подтягиваем Y
+
+                    // double d_sync_th = angle_diff_deg(g_poseLidar.est.th, g_poseLidar.model.th); // Подтягиваем Угол (обязательно через разницу углов!)
+                    // g_poseLidar.model.th += d_sync_th * k_soft_sync;// Подтягиваем Угол
+                    // normalizeAngle180(g_poseLidar.model.th);// Нормализуем
+
+                    // g_poseRotation.model = convertLidar2Rotation(g_poseLidar.model, "model");                     // Обновляем и rotation для model, чтобы графики были актуальны
+
+                    // =========================================================================
+                    // ГИБРИДНАЯ СИНХРОНИЗАЦИЯ (Motion Soft Sync + Static Hard Sync)
+                    // =========================================================================
+
+                    static SPose sum_est = {0, 0, 0};        // Сумма для усреднения
+                    static int count_est = 0;                // Счетчик измерений
+                    static bool is_static_corrected = false; // Флаг, что мы уже скорректировались на стоянке
+
+                    // 1. ЕСЛИ РОБОТ ДВИЖЕТСЯ (или только что остановился)
+                    if (dtStoping < 0.1)
+                    {
+                        // Сбрасываем флаги статической коррекции
+                        is_static_corrected = false;
+                        sum_est = {0, 0, 0};
+                        count_est = 0;
+
+                        // --- Мягкая синхронизация на ходу (чтобы не въехать в стену) ---
+                        // Коэффициент очень маленький, чтобы не портить плавность пилой
+                        double k_motion = 0.01;
+
+                        g_poseLidar.model.x += (g_poseLidar.est.x - g_poseLidar.model.x) * k_motion;
+                        g_poseLidar.model.y += (g_poseLidar.est.y - g_poseLidar.model.y) * k_motion;
+
+                        double d_th = angle_diff_deg(g_poseLidar.est.th, g_poseLidar.model.th);
+                        g_poseLidar.model.th += d_th * k_motion;
+                        normalizeAngle180(g_poseLidar.model.th);
+                    }
+                    // 2. ЕСЛИ РОБОТ СТОИТ (Накапливаем данные)
+                    else if (dtStoping >= 0.3 && dtStoping < 0.8)
+                    {
+                        // Просто суммируем оценку (est)
+                        sum_est.x += g_poseLidar.est.x;
+                        sum_est.y += g_poseLidar.est.y;
+                        // С углами аккуратнее (сумма векторов), но для малых колебаний можно просто сумму
+                        // (Для идеала лучше усреднять sin/cos, но пока так сойдет, если угол не скачет через 180)
+                        sum_est.th += g_poseLidar.est.th;
+                        count_est++;
+                    }
+                    // 3. ПРИМЕНЯЕМ КОРРЕКЦИЮ (Один раз после накопления)
+                    else if (dtStoping >= 0.8 && !is_static_corrected && count_est > 0)
+                    {
+                        // Вычисляем среднее
+                        SPose avg_pose;
+                        avg_pose.x = sum_est.x / count_est;
+                        avg_pose.y = sum_est.y / count_est;
+                        avg_pose.th = sum_est.th / count_est;
+                        normalizeAngle180(avg_pose.th);
+
+                        logi.log_w("STATIC CORRECTION APPLIED. Drift fix: dist=%.3f angle=%.3f",
+                                   hypot(avg_pose.x - g_poseLidar.model.x, avg_pose.y - g_poseLidar.model.y),
+                                   angle_diff_deg(avg_pose.th, g_poseLidar.model.th));
+
+                        // Жестко переносим модель в усредненную точку
+                        g_poseLidar.model = avg_pose;
+
+                        is_static_corrected = true; // Больше не трогаем, пока не поедем
+                    }
+                    // 4. ЕСЛИ СТОИМ ДОЛГО (Просто держим позицию)
+                    else if (is_static_corrected)
+                    {
+                        // Можно ничего не делать, model стоит идеально.
+                        // Либо можно продолжать очень мягко (k=0.01) тянуться к est, если кто-то пнет робота.
+                    }
                 }
             }
             logi.log("    OUT Data Pose Est x = %+8.3f y = %+8.3f th = %+8.3f \n", g_poseLidar.est.x, g_poseLidar.est.y, g_poseLidar.est.th);
@@ -250,8 +325,8 @@ int main(int argc, char **argv)
         {
             // Публикуем тут так как если один раз опубликовать то они исчезают через некоторое время.
             topic.transformBase(g_poseLidar.est); // Публикуем трансформации систем координат, задаем по какому расчету трансформировать
-            topic.transformLaser(laser);           // Публикуем трансформации систем координат, задаем по какому расчету трансформировать
-            topic.transformRotation();             // Публикуем трансформации систем координат
+            topic.transformLaser(laser);          // Публикуем трансформации систем координат, задаем по какому расчету трансформировать
+            topic.transformRotation();            // Публикуем трансформации систем координат
 
             topic.visualStartPose();           // Отобращение стрелкой где начало стартовой позиции и куда направлен нос платформы
             topic.visualPillarPoint(pillar);   // Отображение места размещения столбов

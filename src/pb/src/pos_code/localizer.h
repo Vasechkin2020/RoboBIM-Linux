@@ -47,7 +47,7 @@ public:
         normalizeAngle180(pose_meas_current.th);                                                       // Нормализация угла
 
         // --- Шаг 2: Коррекция (Rate-Limited) ---
-            double gain = 0.333;  // Общий коэффициент плавности
+        double gain = 0.333;  // Общий коэффициент плавности
 
         // 2.1. Коррекция позиции
         double dx = pose_meas_current.x - pose_model.x; // разность по X между Прогнозным и Моделью
