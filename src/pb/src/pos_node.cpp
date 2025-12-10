@@ -199,35 +199,68 @@ int main(int argc, char **argv)
                     logi.log("    is_data_valid  lidar_latency_L= %+8.3f model.vx= %+8.3f model.vth= %+8.3f | dtStoping = %+8.3f \n", lidar_latency_L, g_linAngVel.model.vx, g_linAngVel.model.vth, dtStoping);
 
                     // =========================================================================
-                    // 2. СТАБИЛИЗАЦИЯ EST НА СТОЯНКЕ (Усреднение)
+                    // 2. СТАБИЛИЗАЦИЯ EST НА СТОЯНКЕ (МЕДИАННЫЙ ФИЛЬТР)
                     // =========================================================================
-                    static SPose sum_est_long = {0,0,0};
-                    static int count_est_long = 0;
+                    static std::vector<double> buf_x; // Статические буферы для накопления данных
+                    static std::vector<double> buf_y;
+                    static std::vector<double> buf_th;
 
                     // Если стоим дольше 0.5 сек, начинаем усреднять саму оценку, чтобы не дрожала
                     if (dtStoping >= 0.5) 
                     {
-                        // Накапливаем сумму
-                        if (count_est_long < 100) // ОГРАНИЧИТЕЛЬ: Если накопили 100 замеров (10 сек), хватит считать, результат уже точный.
+                        // ОГРАНИЧИТЕЛЬ: Копим до 100 измерений (хватит с головой)
+                        if (buf_x.size() < 100) 
                         {
-                            count_est_long++;
-                            // Накапливаем сумму
-                            sum_est_long.x += g_poseLidar.est.x;
-                            sum_est_long.y += g_poseLidar.est.y;
-                            sum_est_long.th += g_poseLidar.est.th;  // С углами аккуратнее (сумма векторов), но для малых колебаний можно просто сумму (Для идеала лучше усреднять sin/cos, но пока так сойдет, если угол не скачет через 180)
+                            buf_x.push_back(g_poseLidar.est.x);
+                            buf_y.push_back(g_poseLidar.est.y);
+                            buf_th.push_back(g_poseLidar.est.th);
                         }
+                        // Функция для поиска медианы (Лямбда-функция для компактности)
+                        auto get_median = [](std::vector<double> v) -> double 
+                        {
+                            if (v.empty()) return 0.0;
+                            size_t n = v.size() / 2;
+                            std::sort(v.begin(), v.end()); // Частичная сортировка быстрее полной, но на 100 элементах разницы нет. Используем полную для простоты.
+                            return v[n]; // Если четное число элементов, можно брать среднее двух центральных, но для наших целей достаточно просто взять центральный.
+                        };
 
-                        // Делим всегда на count, который замер на 100.  est замрет в идеальном усредненном положении и перестанет меняться вообще.
-                        g_poseLidar.est.x = sum_est_long.x / count_est_long;
-                        g_poseLidar.est.y = sum_est_long.y / count_est_long;
-                        g_poseLidar.est.th = sum_est_long.th / count_est_long; 
-                        normalizeAngle180(g_poseLidar.est.th);
+                        // Применяем медиану к текущей позиции  Теперь est не дрожит и игнорирует резкие скачки
+                        if (!buf_x.empty()) 
+                        {
+                            g_poseLidar.est.x = get_median(buf_x);
+                            g_poseLidar.est.y = get_median(buf_y);
+                            g_poseLidar.est.th = get_median(buf_th);
+                            normalizeAngle180(g_poseLidar.est.th);
+                        }
+                        // // Накапливаем сумму
+                        // if (count_est_long < 100) // ОГРАНИЧИТЕЛЬ: Если накопили 100 замеров (10 сек), хватит считать, результат уже точный.
+                        // {
+                        //     count_est_long++;
+                        //     // Накапливаем сумму
+                        //     sum_est_long.x += g_poseLidar.est.x;
+                        //     sum_est_long.y += g_poseLidar.est.y;
+                        //     sum_est_long.th += g_poseLidar.est.th;  // С углами аккуратнее (сумма векторов), но для малых колебаний можно просто сумму (Для идеала лучше усреднять sin/cos, но пока так сойдет, если угол не скачет через 180)
+                        // }
+
+                        // // Делим всегда на count, который замер на 100.  est замрет в идеальном усредненном положении и перестанет меняться вообще.
+                        // g_poseLidar.est.x = sum_est_long.x / count_est_long;
+                        // g_poseLidar.est.y = sum_est_long.y / count_est_long;
+                        // g_poseLidar.est.th = sum_est_long.th / count_est_long; 
+                        // normalizeAngle180(g_poseLidar.est.th);
                     }
                     else 
                     {
-                        // Если движемся или только встали - сбрасываем усреднитель
-                        count_est_long = 0;
-                        sum_est_long = {0,0,0};
+                        // // Если движемся или только встали - сбрасываем усреднитель
+                        // count_est_long = 0;
+                        // sum_est_long = {0,0,0};
+
+                        // Движемся - очищаем буферы Используем clear(), чтобы не перевыделять память лишний раз
+                        if (!buf_x.empty()) 
+                        {
+                            buf_x.clear();
+                            buf_y.clear();
+                            buf_th.clear();
+                        }
                     }
 
                     g_poseRotation.est = convertLidar2Rotation(g_poseLidar.est, "est"); // Обновляем уже уточненным значением
@@ -243,7 +276,7 @@ int main(int argc, char **argv)
                     static bool is_static_corrected = false; // Флаг, что мы уже скорректировались на стоянке
 
                     // 1. ЕСЛИ РОБОТ ДВИЖЕТСЯ (или только что остановился)
-                    if (dtStoping < 0.1)
+                    if (dtStoping < 0.2)
                     {
                         // Сбрасываем флаги статической коррекции
                         is_static_corrected = false;
@@ -259,34 +292,16 @@ int main(int argc, char **argv)
                         g_poseLidar.model.th += d_th * k_motion;
                         normalizeAngle180(g_poseLidar.model.th);
                     }
-                    // 2. ЕСЛИ РОБОТ СТОИТ (Накапливаем данные)
-                    else if (dtStoping >= 0.8 && dtStoping < 1.8)
-                    {
-                        // Просто суммируем оценку (est)
-                        sum_est.x += g_poseLidar.est.x;
-                        sum_est.y += g_poseLidar.est.y;
-                        sum_est.th += g_poseLidar.est.th;// С углами аккуратнее (сумма векторов), но для малых колебаний можно просто сумму (Для идеала лучше усреднять sin/cos, но пока так сойдет, если угол не скачет через 180)
-                        count_est++;
-                    }
                     // 3. ПРИМЕНЯЕМ КОРРЕКЦИЮ (Один раз после накопления)
-                    else if (dtStoping >= 1.8 && !is_static_corrected && count_est > 0)
+                    else if (dtStoping >= 1.9 && !is_static_corrected && buf_x.size() > 5)
                     {
-                        // Вычисляем среднее
-                        SPose avg_pose;
-                        avg_pose.x = sum_est.x / count_est;
-                        avg_pose.y = sum_est.y / count_est;
-                        avg_pose.th = sum_est.th / count_est;
-                        normalizeAngle180(avg_pose.th);
+                        // ПРОСТО БЕРЕМ ГОТОВУЮ EST Она к этому моменту уже идеально (она уже медианная!)
+                        logi.log_w("STATIC MEDIAN SYNC. Drift fix: dist=%.3f angle=%.3f samples=%d", 
+                                hypot(g_poseLidar.est.x - g_poseLidar.model.x, g_poseLidar.est.y - g_poseLidar.model.y), 
+                                angle_diff_deg(g_poseLidar.est.th, g_poseLidar.model.th), (int)buf_x.size());
 
-                        logi.log_w("STATIC CORRECTION APPLIED. Drift fix: dist=%.3f angle=%.3f count_est= %d \n", 
-                                hypot(avg_pose.x - g_poseLidar.model.x, avg_pose.y - g_poseLidar.model.y), angle_diff_deg(avg_pose.th, g_poseLidar.model.th), count_est);
-
-                        g_poseLidar.model = avg_pose; // Жестко переносим модель в усредненную точку
-                        is_static_corrected = true; // Больше не трогаем, пока не поедем
-                    }
-                    else if (is_static_corrected) // 4. ЕСЛИ СТОИМ ДОЛГО  (Постоянное усреднение / Удержание центра)
-                    {
-                        // Можно ничего не делать, model стоит идеально. Либо можно продолжать очень мягко (k=0.01) тянуться к est, если кто-то пнет робота.
+                        g_poseLidar.model = g_poseLidar.est; // <--- Простой и точный прыжок к красной линии
+                        is_static_corrected = true; 
                     }
                     g_poseRotation.model = convertLidar2Rotation(g_poseLidar.model, "model"); // Обновляем уже уточненным значением
                 }
