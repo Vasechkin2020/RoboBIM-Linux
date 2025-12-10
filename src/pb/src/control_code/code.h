@@ -325,33 +325,33 @@ void workAngle(float angle_, u_int64_t &time_, float velAngle_)
 
 	static float minAngleMistake = 0.02;			 // Минимальная ошибка по углу в Градусах
 	static float angleMistake = 0;					 // Текущая ошибка по углу в градусах
-	const float max_angular_acceleration_degs2 = 30; // Угловое ускорение/замедление в градусах в секунду
-	static float max_deceleration = 0.1;			 // Линейное Ускорение/замедление метры в секунду
+	const float max_angular_acceleration_degs2 = 15; // Угловое ускорение/замедление в градусах в секунду
+	// static float max_deceleration = 0.1;			 // Линейное Ускорение/замедление метры в секунду
 	static float speedCurrent = 0;
 
 	static unsigned long time = micros();		 // Время предыдущего расчета// Функция из WiringPi.// Замеряем интервалы по времени между запросами данных
 	unsigned long time_now = micros();			 // Время в которое делаем расчет
-	double dt = ((time_now - time) / 1000000.0); // Интервал расчета переводим сразу в секунды Находим интревал между текущим и предыдущим расчетом в секундах
-	time = time_now;
-	float accel = max_deceleration * dt; // Ускорение/замедление
-
-	float angleFact; // Угол который отслеживаем
-	// angleFact = msg_PoseRotation.th.odom;
-	// logi.log("    angleFact odom alfa= %+8.3f\n", angleFact);
-	angleFact = g_poseC.th; // Угол который отслеживаем
+	
+	// === ЛОГИКА ===
+	float angleFact = g_poseC.th; // Угол который отслеживаем
 	// logi.log("    angleFact main alfa= %+8.3f\n", angleFact);
-
 	angleMistake = angle_ - RAD2DEG(angleFact);		// Смотрим какой угол.// Смотрим куда нам надо Считаем ошибку по углу и включаем колеса в нужную сторону с учетом ошибки по углу и максимально заданой скорости на колесах
 	angleMistake = normalizeAngle180(angleMistake); // Нормализуем +-180
 
-	if (flagAngleFirst)
+	if (flagAngleFirst) // Первый запуск (Инициализация)
 	{
-		accel = 0; // Первый запуск
 		flagAngleFirst = false;
+		speedCurrent = 0;
+		time = time_now; // "Забываем" старое время
 		logi.log_r("    Angle Start fact= %+8.3f target= %+8.3f angle_angleMistake = %+8.3f gradus \n", RAD2DEG(angleFact), angle_, angleMistake);
 	}
+	
+	double dt = ((time_now - time) / 1000000.0); // Интервал расчета переводим сразу в секунды Находим интревал между текущим и предыдущим расчетом в секундах
+	time = time_now;
+	
+	if (dt > 0.2) dt = 0.1; // Ограничим 100мс  Если программа подвисла, не даем физике "улететь"
 
-	if ((abs(angleMistake) <= minAngleMistake)) // Когда ошибка по углу будет меньше заданной считаем что приехали и включаем время что-бы выйти из данного этапа алгоритма
+	if ((abs(angleMistake) <= minAngleMistake)) // Проверка достижения цели Когда ошибка по углу будет меньше заданной считаем что приехали и включаем время что-бы выйти из данного этапа алгоритма
 	{
 		speedCurrent = 0;
 		controlSpeed.control.speedL = 0;
@@ -363,17 +363,17 @@ void workAngle(float angle_, u_int64_t &time_, float velAngle_)
 	}
 	else
 	{
-		// static float angleKoef = 0.01;		 // P коефициент пид регулятора
-		// float speedCurrent = abs(angleMistake * angleKoef);
-		// ROS_INFO_THROTTLE(0.1, "    speedCurrent koef = %f", speedCurrent);
 
-		float V_max_ang = calculate_max_safe_angular_speed_degrees(angleMistake, max_angular_acceleration_degs2); // Считаем максимальную скорость с которой успеем остановиться
-		float V_max_lin = convert_angular_speed_to_linear_wheel_speed(V_max_ang, DISTANCE_WHEELS);				  // Преобразует угловую скорость робота (град/с) в линейную скорость колес (м/с).
+		float V_max_ang_braking = calculate_max_safe_angular_speed_degrees(angleMistake, max_angular_acceleration_degs2); // Считаем максимальную скорость с которой успеем остановиться Функция должна вернуть макс. скорость в град/сек
+		float V_max_lin_braking = convert_angular_speed_to_linear_wheel_speed(V_max_ang_braking, DISTANCE_WHEELS);				  // Преобразует угловую скорость робота (град/с) в линейную скорость колес (м/с).
 
-		speedCurrent = speedCurrent + accel; // Ускорение.Увеличиваем скорость
+		float linear_accel_per_sec = convert_angular_speed_to_linear_wheel_speed(max_angular_acceleration_degs2, DISTANCE_WHEELS); // Считаем ШАГ УСКОРЕНИЯ (Ramp Up) Синхронизируем разгон с торможением!
 
-		if (V_max_lin <= speedCurrent) // Если наша скорость больше чем допустимо то снижаем до допустимой  ЭТО ТОРМОЖЕНИЕ
-			speedCurrent = V_max_lin;
+		float accel_step  = linear_accel_per_sec * dt; // Ускорение/замедление
+		speedCurrent = speedCurrent + accel_step ; // Ускорение.Увеличиваем скорость Применяем разгон
+
+		if (V_max_lin_braking <= speedCurrent) // Если наша скорость больше чем допустимо то снижаем до допустимой  ЭТО ТОРМОЖЕНИЕ
+			speedCurrent = V_max_lin_braking;
 		else // ЭТО УСКОРЕНИЕ
 		{
 			if (speedCurrent > velAngle_) // Максимальная скорость
@@ -399,8 +399,8 @@ void workAngle(float angle_, u_int64_t &time_, float velAngle_)
 		point_C.x = g_poseC.x; //
 		point_C.y = g_poseC.y;
 
-		logi.log("    point C=' %+8.3f %+8.3f ' real= ' %+8.3f ' target= %+8.3f  mistake= %+8.3f | V_max_ang= %+8.3f  speedCurrent V_max_lin= %+8.3f | real L= %+8.3f R= %+8.3f \n",
-				 point_C.x, point_C.y, RAD2DEG(angleFact), angle_, angleMistake, V_max_ang, V_max_lin, controlSpeed.control.speedL, controlSpeed.control.speedR);
+		logi.log("    point C=' %+8.3f %+8.3f ' real= ' %+8.3f ' target= %+8.3f  mistake= %+8.3f | V_max_ang_braking= %+8.3f  V_max_lin_braking= %+8.3f | real L= %+8.3f R= %+8.3f \n",
+				 point_C.x, point_C.y, RAD2DEG(angleFact), angle_, angleMistake, V_max_ang_braking, V_max_lin_braking, controlSpeed.control.speedL, controlSpeed.control.speedR);
 	}
 }
 
