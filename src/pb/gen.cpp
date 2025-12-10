@@ -83,7 +83,7 @@ public:
             fprintf(fp, "G10 X%.3f Y%.3f A%.3f ; Initial required start point and angle in robot's local coordinates\n", 
                     first_x_local, first_y_local, t.angle_deg);
             // СТАРТОВЫЙ БЛОК НАСТРОЙКИ
-            fprintf(fp, "M5 T1000 ; Pen UP\n");
+            fprintf(fp, "M5 T2000 ; Pen UP\n");
             fprintf(fp, "G1 A0.000 F%.2f\n", SPEED_TURN);
             fprintf(fp, "G2 L%.3f F%.2f ; Initial align\n\n", MARKER_OFFSET, SPEED_BACKUP);
         } else {
@@ -119,7 +119,7 @@ public:
         fprintf(fp, "; ROBOT: (%.3f, %.3f) -> (%.3f, %.3f) | Ang: %.2f\n", l.x1, l.y1, l.x2, l.y2, angle_deg);
 
         // 1. Центр к началу
-        fprintf(fp, "M5 T1000\n");
+        fprintf(fp, "M5 T2000\n");
         fprintf(fp, "G2 X%.3f Y%.3f F%.2f ; Center to Start\n", l.x1, l.y1, SPEED_MOVE);
 
         // 2. Поворот
@@ -137,7 +137,7 @@ public:
         double target_y = l.y2 - off_y;
 
         // 5. Рисование
-        fprintf(fp, "M3 T1000\n");
+        fprintf(fp, "M3 T2000\n");
         fprintf(fp, "G2 X%.3f Y%.3f F%.2f\n\n", target_x, target_y, SPEED_DRAW);
     }
     
@@ -154,7 +154,7 @@ public:
     void finalize() {
         if (!fp) return;
         fprintf(fp, "\n; === END PROGRAM (Final commands before Input backup) ===\n"); 
-        fprintf(fp, "M5 T1000\n"); 
+        fprintf(fp, "M5 T2000\n"); 
         fprintf(fp, "G1 A0.000 F%.2f ; Final rotation to 0 degrees (Safe finish in place)\n", SPEED_TURN); 
     }
 

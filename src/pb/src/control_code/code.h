@@ -34,112 +34,11 @@ SPoint calculate_new_coordinates(SPoint point_A_, float angle_rad, float distanc
 // void collectCommand(); // //Функция формирования команды для нижнего уровня на основе всех полученных данных, датчиков и анализа ситуации
 
 // **********************************************************************************
-// float filtrComplem(float koef_, float oldData_, float newData_); // функция фильтрации, берем старое значение с некоторым весом
-
-// // функция фильтрации, берем старое значение с некоторым весом
-// float filtrComplem(float koef_, float oldData_, float newData_)
-// {
-// 	return (1 - koef_) * oldData_ + (koef_ * newData_);
-// }
-
 // void callback_Driver(pb_msgs::Struct_Driver2Data msg)
 // {
 // 	msg_Driver2Data = msg; // Пишнм в свою переменную пришедшее сообщение и потом его обрабатываем в основном цикле
 // 	flag_msgDriver = true;
 // }
-#include <cstddef> // Для size_t
-
-class StepBuffer
-{
-public:
-	// Конструктор: задаём глубину истории (N шагов назад)
-	StepBuffer(size_t N)
-	{
-		if (N == 0)
-		{
-			N_ = 1; // Защита от N=0
-		}
-		else
-		{
-			N_ = N; // Устанавливаем заданную глубину истории
-		}
-
-		buffer_ = new double[N_]; // Динамически выделяем память под буфер
-
-		reset(); // Инициализируем буфер, индекс и счетчик
-	}
-
-	// Деструктор: освобождаем память
-	~StepBuffer()
-	{
-		delete[] buffer_; // Освобождаем память
-	}
-
-	// Сброс буфера: обнуляет все переменные и содержимое массива
-	void
-	reset()
-	{
-		index_ = 0; // Сбрасываем индекс для записи на начало
-		count_ = 0; // Сбрасываем счетчик записанных значений
-
-		for (size_t i = 0; i < N_; ++i)
-		{
-			buffer_[i] = 0.0; // Заполняем буфер нулями
-		}
-	}
-
-	// Основная функция: Принимает текущее значение, возвращает старое
-	double
-	putAndGetOld(double current)
-	{
-		double oldValue;					// Переменная для хранения возвращаемого значения
-		size_t index_to_overwrite = index_; // Индекс самого старого значения
-
-		if (count_ < N_)
-		{
-			// Буфер не полон
-			if (count_ == 0)
-			{
-				// Шаг 1: Возвращает текущее значение, которое будет записано (E_i)
-				oldValue = current;
-			}
-			else
-			{
-				// Шаги 2...N: Возвращаем первое сохраненное значение (E_1)
-				oldValue = buffer_[0];
-			}
-		}
-		else
-		{
-			// Буфер полон (count_ >= N_).
-			// Возвращаем значение N шагов назад (E_{i-N})
-			oldValue = buffer_[index_to_overwrite];
-		}
-
-		// 1. Сохраняем новое значение
-		buffer_[index_to_overwrite] = current; // Записываем текущее значение
-
-		// 2. Обновляем счетчики
-		index_ = (index_ + 1) % N_; // Смещаем индекс
-
-		if (count_ < N_)
-		{
-			count_++; // Инкрементируем счетчик до заполнения
-		}
-
-		return oldValue; // Возвращаем значение
-	}
-
-private:
-	size_t N_;		 // Глубина истории (N)
-	size_t index_;	 // Текущий индекс для записи
-	size_t count_;	 // Количество записанных элементов
-	double *buffer_; // Динамически выделенный массив
-};
-
-const size_t HISTORY_DEPTH = 10;   // Глубина истории N=10
-StepBuffer history(HISTORY_DEPTH); // Создаем объект тут мы считаем и выдвем знаяение которые было у ошибке N шагов назад
-
 #include <cstddef> // Для size_t
 #include <limits>  // Для numeric_limits
 
@@ -355,6 +254,62 @@ SPose getPose_C(int controlMode_)
 		return linear_wheel_speed;
 	}
 
+	/**
+	 * @brief Вычисляет максимально допустимую скорость для остановки.
+	 * Рассчитывает максимальную скорость, которую должно иметь тело, чтобы успеть остановиться на расстоянии 'distance_to_stop' при условии немедленного применения максимального замедления 'max_deceleration'.
+	 * @param distance_to_stop Расстояние до точки остановки (метры).
+	 * @param max_deceleration Максимально возможное ускорение/замедление (м/с^2).  Должно быть положительным.
+	 * @return Максимально допустимая скорость (м/с). Возвращает 0.0, если расстояние < 0.
+	 *  * Рассчитывает торможение так, чтобы скорость упала в 0 за 'margin' метров ДО цели.
+	 */
+	float calculate_max_safe_speed(float distance_to_stop, float max_deceleration)
+	{
+		if (distance_to_stop <= 0.0 || max_deceleration <= 0.0) // Защита от отрицательного расстояния или нулевого ускорения
+        	return 0.0;
+
+		// ЗАПАС (Margin). Робот будет думать, что стена стоит на 1 см ближе, и оттормозится перед ней.
+		float margin = 0.01; // 10 мм
+		float dist_for_calc = distance_to_stop - margin; // Эффективная дистанция для расчета торможения
+
+		if (dist_for_calc <= 0.0)      // Если мы уже вошли в зону запаса (ближе 10 мм)
+			return 0.0; // Говорим "Стоп". Но в workVector сработает ограничитель минимальной скорости, и робот будет ползти.
+
+    	// Обычная формула, но для укороченной дистанции: v = sqrt(2 * a * S)
+		// Где:
+		// v - максимально допустимая скорость (м/с) 
+		// a - максимальное замедление (м/с^2)
+		// S - расстояние до остановки (метры)
+    	return std::sqrt(2.0 * max_deceleration * dist_for_calc);
+
+	}
+
+	/**
+	 * @brief Рассчитывает новые координаты на основе вектора движения и выводит их через printf.
+	 * * Предполагается, что angle_rad отсчитывается от положительной оси X (в радианах).
+	 * * @param current_x Текущая координата X (double)
+	 * @param current_y Текущая координата Y (double)
+	 * @param angle_rad Угол направления в радианах
+	 * @param distance Пройденное расстояние
+	 */
+	SPoint calculate_new_coordinates(SPoint point_A_, float angle_rad, float signed_distance)
+	{
+		// Расчет приращения по осям
+		float dx = signed_distance * std::cos(angle_rad);
+		float dy = signed_distance * std::sin(angle_rad);
+
+		SPoint point_B; // Новые координаты
+		point_B.x = point_A_.x + dx;
+		point_B.y = point_A_.y + dy;
+		// Вывод результатов с использованием printf
+		// Используем "%.4f" для вывода чисел с плавающей точкой с точностью до 4 знаков после запятой
+		logi.log_g("+++ Initial Position point_A (X, Y): (%.4f, %.4f)\n", point_A_.x, point_A_.y);
+		logi.log("    Movement Vector (signed_distance, Angle rad): '%.4f, %.4f'\n", signed_distance, angle_rad);
+		logi.log("    Delta Position (dX, dY): /%.4f, %.4f/\n", dx, dy);
+		logi.log_g("    New Position point_B (X', Y'): <%.4f, %.4f>\n", point_B.x, point_B.y);
+		return point_B;
+	}
+
+
 	// Тут отрабатываем алгоритм отслеживания угла при повороте
 	void workAngle(float angle_, u_int64_t &time_, float velAngle_)
 	{
@@ -441,57 +396,6 @@ SPose getPose_C(int controlMode_)
 		}
 	}
 
-	/**
-	 * @brief Вычисляет максимально допустимую скорость для остановки.
-	 * Рассчитывает максимальную скорость, которую должно иметь тело, чтобы успеть остановиться на расстоянии 'distance_to_stop' при условии немедленного применения максимального замедления 'max_deceleration'.
-	 * @param distance_to_stop Расстояние до точки остановки (метры).
-	 * @param max_deceleration Максимально возможное ускорение/замедление (м/с^2).  Должно быть положительным.
-	 * @return Максимально допустимая скорость (м/с). Возвращает 0.0, если расстояние < 0.
-	 */
-	float calculate_max_safe_speed(float distance_to_stop, float max_deceleration)
-	{
-
-		if (distance_to_stop <= 0.0) // Защита от отрицательного расстояния или нулевого ускорения
-			return 0.0;
-
-		if (max_deceleration <= 0.0) // Если ускорение равно 0, то безопасная скорость также 0,  так как мы не сможем остановиться, если уже движемся.
-			return 0.0;
-
-		// Формула: v = sqrt(2 * a * S)
-		// Где:
-		// v - максимально допустимая скорость (м/с)
-		// a - максимальное замедление (м/с^2)
-		// S - расстояние до остановки (метры)
-
-		return std::sqrt(2.0 * max_deceleration * distance_to_stop);
-	}
-
-	/**
-	 * @brief Рассчитывает новые координаты на основе вектора движения и выводит их через printf.
-	 * * Предполагается, что angle_rad отсчитывается от положительной оси X (в радианах).
-	 * * @param current_x Текущая координата X (double)
-	 * @param current_y Текущая координата Y (double)
-	 * @param angle_rad Угол направления в радианах
-	 * @param distance Пройденное расстояние
-	 */
-	SPoint calculate_new_coordinates(SPoint point_A_, float angle_rad, float signed_distance)
-	{
-		// Расчет приращения по осям
-		float dx = signed_distance * std::cos(angle_rad);
-		float dy = signed_distance * std::sin(angle_rad);
-
-		SPoint point_B; // Новые координаты
-		point_B.x = point_A_.x + dx;
-		point_B.y = point_A_.y + dy;
-		// Вывод результатов с использованием printf
-		// Используем "%.4f" для вывода чисел с плавающей точкой с точностью до 4 знаков после запятой
-		logi.log_g("+++ Initial Position point_A (X, Y): (%.4f, %.4f)\n", point_A_.x, point_A_.y);
-		logi.log("    Movement Vector (signed_distance, Angle rad): '%.4f, %.4f'\n", signed_distance, angle_rad);
-		logi.log("    Delta Position (dX, dY): /%.4f, %.4f/\n", dx, dy);
-		logi.log_g("    New Position point_B (X', Y'): <%.4f, %.4f>\n", point_B.x, point_B.y);
-		return point_B;
-	}
-
 	// Тут отрабатываем алгоритм отслеживания длины вектора при движении прямо
 	void workVector(float len_, SPoint point_A_, SPoint point_B_, u_int64_t &time_, float velLen_)
 	{
@@ -503,13 +407,7 @@ SPose getPose_C(int controlMode_)
 
 		static unsigned long time = micros();		 // Время предыдущего расчета// Функция из WiringPi.// Замеряем интервалы по времени между запросами данных
 		unsigned long time_now = micros();			 // Время в которое делаем расчет
-		double dt = ((time_now - time) / 1000000.0); // Интервал расчета переводим сразу в секунды Находим интревал между текущим и предыдущим расчетом в секундах
-		time = time_now;
-		float accel = max_deceleration * dt; // Ускорение
 
-		// point_C_.x = msg_PoseRotation.x.odom; // Текущие координаты робота
-		// point_C_.y = msg_PoseRotation.y.odom;
-		// logi.log("    point C odom    x = %+8.3f y = %+8.3f \n", point_C.x, point_C.y);
 
 		point_C_.x = g_poseC.x; // Текущие координаты робота
 		point_C_.y = g_poseC.y; // Текущие координаты робота
@@ -523,27 +421,33 @@ SPose getPose_C(int controlMode_)
 
 		if (flagVectorFirst)
 		{
-			accel = 0; // Первый запуск
 			flagVectorFirst = false;
+    		time = time_now; // И сброс таймера (как в workAngle)!
+    		speedCurrent = 0; // Если мы начинаем с места - сброс. Для начала считаем, что всегда стартуем с 0.
+			// accel = 0; // Первый запуск
 			logi.log_r("    Vector Start vectorMistake = %f metr (%+9.5f, %+9.5f -> %+6.3f, %+6.3f) \n", vectorMistake, point_C_.x, point_C_.y, point_B_.x, point_B_.y);
 		}
 
-		bool flagMistake = checker.check_for_rising_trend(abs(vectorMistake)); // Добавляем и получаем логическое true усли есть 3 значения подряд растет ошибка
-		// logi.log("    flagMistake= %d \n", flagMistake);
+		double dt = ((time_now - time) / 1000000.0); // Интервал расчета переводим сразу в секунды Находим интревал между текущим и предыдущим расчетом в секундах
+		time = time_now;
+		float accel = max_deceleration * dt; // Ускорение
+
+		bool flagTrendMistake = checker.check_for_rising_trend(abs(vectorMistake)); // Добавляем и получаем логическое true усли есть 3 значения подряд растет ошибка
+		// logi.log("    flagTrendMistake= %d \n", flagTrendMistake);
 
 		double speedL = 0; // OUT скорости колес ЛЕВОГО
 		double speedR = 0; // OUT скорости колес ПРАВОГО
 
-		if ((abs(vectorMistake) <= minVectorMistake) || flagMistake) // Когда ошибка по длине будет меньше заданной или начнет увеличиваться считаем что приехали и включаем время что-бы выйти из данного этапа алгоритма
+		if ((abs(vectorMistake) <= minVectorMistake) || flagTrendMistake) // Когда ошибка по длине будет меньше заданной или начнет увеличиваться считаем что приехали и включаем время что-бы выйти из данного этапа алгоритма
 		{
 			speedCurrent = 0; // Все скорости обнуляем
-			speedL = 0;
-			speedR = 0;
+        	controlSpeed.control.speedL = 0.0;// --- ИСПРАВЛЕНИЕ: Явно останавливаем моторы в структуре ---
+        	controlSpeed.control.speedR = 0.0;
 			flagVector = false;
 			flagVectorFirst = true;
 			time_ = millis();
-			if (flagMistake)
-				logi.log_r("+++ STOP on flagMistake +++ \n");
+			if (flagTrendMistake)
+				logi.log_r("+++ STOP on flagTrendMistake +++ \n");
 			logi.log_w("    Vector Final vectorMistake = %+6.3f metr (%+6.3f, %+6.3f -> %+6.3f, %+6.3f) \n", vectorMistake, point_C_.x, point_C_.y, point_B_.x, point_B_.y);
 		}
 		else
@@ -552,7 +456,7 @@ SPose getPose_C(int controlMode_)
 			speedCurrent = abs(speedCurrent);										 // Считаем всегда по модулю, а потом в зависимости от направления меняем знак на - если нужно
 			float V_max = calculate_max_safe_speed(vectorMistake, max_deceleration); // Считаем максимальную скорость с которой успеем остановиться
 			if (V_max <= speedCurrent)												 // Если наша скорость больше чем допустимо то снижаем до допустимой
-				speedCurrent = V_max;												 // ЭТО ТОРМОЖЕНИЕ
+				speedCurrent = V_max;												 // ЭТО ТОРМОЖЕНИЕ Тут speedCurrent станет 0 в зоне 10 мм
 			else																	 // ЭТО УСКОРЕНИЕ
 			{
 				speedCurrent = speedCurrent + accel; // Ускорение.Увеличиваем скорость
@@ -561,13 +465,14 @@ SPose getPose_C(int controlMode_)
 					speedCurrent = abs_velLen; // Если стала больше то ровняем
 				}
 			}
-			// if ((speedCurrent) < 0.005) // Минимальная скорость
-			// 	speedCurrent = 0.005;	// Если получается что меньше то берет так чтобы одно колесо было минимум а другое нет
+			if ((speedCurrent) < 0.005) // Минимальная скорость Это и есть режим "ползти", когда V_max уже обнулилась
+				speedCurrent = 0.005;	// Ползем
 
 			if (signed_velLen < 0) // Если скорость положительная то вращается в одну сторону или в другую
 			{
 				speedCurrent = -speedCurrent;
-				logi.log_b("=== speedCurrent = -speedCurrent %+8.3f \n", speedCurrent);
+				// logi.log_b("=== speedCurrent = -speedCurrent %+8.3f \n", speedCurrent);
+				
 			}
 
 			// ============================================== ЭТО УПРАВЛЕНИЕ ПО ТРАЕКТОРИИ. СТРАЕМСЯ ЕХАТЬ НА ТОЧКУ D, лежащуу на отрезке АВ =================================================

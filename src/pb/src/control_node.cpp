@@ -81,10 +81,12 @@ int main(int argc, char **argv)
     logi.log_w("End Setup. Start loop.\n");
 
     // g_controlMode = 0; // Выбор режима управления 0- по одометрии 1- по слиянию est
-    if (g_controlMode)
-        logi.log("+++ Start Control MAIN !!!\n");
-    else
+    if (g_controlMode == 0)
         logi.log("+++ Start Control ODOMETRY !!!\n");
+    else if (g_controlMode == 1)
+        logi.log("+++ Start Control MODEL !!!\n");
+    else
+        logi.log("+++ Start Control EST !!!\n");
 
     ros::Duration(3).sleep(); // Подождем пока
 
@@ -132,7 +134,6 @@ int main(int argc, char **argv)
                 time = millis() + 999999; // Огромное время ставим
                 flagAngle = true;         // Флаг что теперь отслеживаем угол
                 flagAngleFirst = true;
-                history.reset(); // СБРОС БУФЕРА
                 checker.reset(); // СБРОС БУФЕРА
 
                 point_A.x = commandArray[i].point_A_x;
@@ -149,7 +150,8 @@ int main(int argc, char **argv)
 
                 logi.log_b("    Start Angle \n");
                 break;
-            case 2: // Режим где движемся по координатам. даигаемся по длинне вектора.
+            case 2:              // Режим где движемся по координатам. даигаемся по длинне вектора.
+                checker.reset(); // СБРОС БУФЕРА
                 // point_A.x = msg_PoseRotation.x.odom; // Запоминаем те координаты которые были в момент начала движения
                 // point_A.y = msg_PoseRotation.y.odom;
                 // logi.log("    point A odom    x = %+8.3f y = %+8.3f \n",point_A.x,point_A.y);

@@ -2,8 +2,8 @@
 ; Output Filename: kvadrat.gcode
 ; Robot System Coordinate Origin on Map: X=0.000, Y=0.000, Angle=0.0
 ; Marker Offset: 0.0450
-M5 T2000 ; Pen UP
 G10 X1.000 Y1.000 A0.000 ; Initial required start point and angle in robot's local coordinates
+M5 T2000 ; Pen UP
 G1 A0.000 F0.05
 G2 L0.045 F-0.10 ; Initial align
 
@@ -59,7 +59,6 @@ G2 X1.000 Y1.045 F0.10
 ; === END PROGRAM (Final commands before Input backup) ===
 M5 T2000
 G1 A0.000 F0.05 ; Final rotation to 0 degrees (Safe finish in place)
-G2 L0.20 F-0.10 ; Back up
 
 ; === ORIGINAL INPUT LINES START (Input backup) ===
 ; kvadrat.gcode; Имя выходного файла
