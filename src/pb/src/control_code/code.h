@@ -326,7 +326,7 @@ void workAngle(float angle_, u_int64_t &time_, float velAngle_)
 	static float minAngleMistake = 0.02;			 // Минимальная ошибка по углу в Градусах
 	static float angleMistake = 0;					 // Текущая ошибка по углу в градусах
 	const float max_angular_acceleration_degs2 = 30; // Угловое ускорение/замедление в градусах в секунду
-	static float max_deceleration = 0.2;			 // Линейное Ускорение/замедление метры в секунду
+	static float max_deceleration = 0.1;			 // Линейное Ускорение/замедление метры в секунду
 	static float speedCurrent = 0;
 
 	static unsigned long time = micros();		 // Время предыдущего расчета// Функция из WiringPi.// Замеряем интервалы по времени между запросами данных
@@ -460,7 +460,7 @@ void workVector(float len_, SPoint point_A_, SPoint point_B_, u_int64_t &time_, 
 {
 	static float minVectorMistake = 0.001; // Минимальная ошибка по вектору в метрах 1 мм
 	static float vectorMistake = 0;		   // Текущая ошибка по длине в местрах
-	static float max_deceleration = 0.2;   // Ускорение/замедление метры в секунду
+	static float max_deceleration = 0.1;   // Ускорение/замедление метры в секунду
 	static SPoint point_C_;
 	static float speedCurrent; // Текущая скорость
 

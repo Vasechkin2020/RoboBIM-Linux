@@ -192,26 +192,47 @@ int main(int argc, char **argv)
             }
             else
             {
-                if (is_data_valid)
-                {                                                                                                                                                // Вызываем СЛИЯНИЕ (Fusion) для Rate-Limited Fuser
+                if (is_data_valid)// Вызываем СЛИЯНИЕ (Fusion) для Rate-Limited Fuser Используем скорости модели (плавные) для прогноза
+                {                                                                                                                                                
                     const double lidar_latency_L = 0.15;                                                                                                         // Задержка лидара/SLAM:  мс Посчитано ИИ экспериментально
                     g_poseLidar.est = rate_fuser.fuse(g_poseLidar.est, g_poseLidar.meas, g_linAngVel.model.vx, RAD2DEG(g_linAngVel.model.vth), lidar_latency_L); // Состояние Модели (по ссылке) и Измерение (SPose)
-                    logi.log("    is_data_valid  lidar_latency_L= %+8.3f model.vx= %+8.3f model.vth= %+8.3f | dtStoping = %+8.3f \n", lidar_latency_L, g_linAngVel.model.vx, g_linAngVel.model.vth,dtStoping);
+                    logi.log("    is_data_valid  lidar_latency_L= %+8.3f model.vx= %+8.3f model.vth= %+8.3f | dtStoping = %+8.3f \n", lidar_latency_L, g_linAngVel.model.vx, g_linAngVel.model.vth, dtStoping);
+
+                    // =========================================================================
+                    // 2. СТАБИЛИЗАЦИЯ EST НА СТОЯНКЕ (Усреднение)
+                    // =========================================================================
+                    static SPose sum_est_long = {0,0,0};
+                    static int count_est_long = 0;
+
+                    // Если стоим дольше 0.5 сек, начинаем усреднять саму оценку, чтобы не дрожала
+                    if (dtStoping >= 0.5) 
+                    {
+                        // Накапливаем сумму
+                        if (count_est_long < 100) // ОГРАНИЧИТЕЛЬ: Если накопили 100 замеров (10 сек), хватит считать, результат уже точный.
+                        {
+                            count_est_long++;
+                            // Накапливаем сумму
+                            sum_est_long.x += g_poseLidar.est.x;
+                            sum_est_long.y += g_poseLidar.est.y;
+                            sum_est_long.th += g_poseLidar.est.th;  // С углами аккуратнее (сумма векторов), но для малых колебаний можно просто сумму (Для идеала лучше усреднять sin/cos, но пока так сойдет, если угол не скачет через 180)
+                        }
+
+                        // Делим всегда на count, который замер на 100.  est замрет в идеальном усредненном положении и перестанет меняться вообще.
+                        g_poseLidar.est.x = sum_est_long.x / count_est_long;
+                        g_poseLidar.est.y = sum_est_long.y / count_est_long;
+                        g_poseLidar.est.th = sum_est_long.th / count_est_long; 
+                        normalizeAngle180(g_poseLidar.est.th);
+                    }
+                    else 
+                    {
+                        // Если движемся или только встали - сбрасываем усреднитель
+                        count_est_long = 0;
+                        sum_est_long = {0,0,0};
+                    }
 
                     g_poseRotation.est = convertLidar2Rotation(g_poseLidar.est, "est"); // Обновляем уже уточненным значением
-                                                                                        // logi.log("    OUT 10Hz Data Pose Rotation Est x = %+8.3f y = %+8.3f th = %+8.3f \n", g_poseRotation.est.x, g_poseRotation.est.y, g_poseRotation.est.th);
 
-                    // // 3. МЯГКАЯ ПОДТЯЖКА MODEL К EST (Твоя идея) Коэффициент подтяжки. 0.05 (5%) означает, что за 1 секунду (10 тактов) модель уберет ~40% накопленного дрейфа. Это очень плавно.
-                    // double k_soft_sync = 0.005;  // Для корректировки в движении в основном. На месте мы разово корректиркем.
-
-                    // g_poseLidar.model.x += (g_poseLidar.est.x - g_poseLidar.model.x) * k_soft_sync; // Подтягиваем X
-                    // g_poseLidar.model.y += (g_poseLidar.est.y - g_poseLidar.model.y) * k_soft_sync; // Подтягиваем Y
-
-                    // double d_sync_th = angle_diff_deg(g_poseLidar.est.th, g_poseLidar.model.th); // Подтягиваем Угол (обязательно через разницу углов!)
-                    // g_poseLidar.model.th += d_sync_th * k_soft_sync;// Подтягиваем Угол
-                    // normalizeAngle180(g_poseLidar.model.th);// Нормализуем
-
-                    // g_poseRotation.model = convertLidar2Rotation(g_poseLidar.model, "model");                     // Обновляем и rotation для model, чтобы графики были актуальны
+                    // logi.log("    OUT 10Hz Data Pose Rotation Est x = %+8.3f y = %+8.3f th = %+8.3f \n", g_poseRotation.est.x, g_poseRotation.est.y, g_poseRotation.est.th);
 
                     // =========================================================================
                     // ГИБРИДНАЯ СИНХРОНИЗАЦИЯ (Motion Soft Sync + Static Hard Sync)
@@ -229,9 +250,7 @@ int main(int argc, char **argv)
                         sum_est = {0, 0, 0};
                         count_est = 0;
 
-                        // --- Мягкая синхронизация на ходу (чтобы не въехать в стену) ---
-                        // Коэффициент очень маленький, чтобы не портить плавность пилой
-                        double k_motion = 0.01;
+                        double k_motion = 0.025; // --- Мягкая синхронизация на ходу Коэффициент очень маленький 2,5% примерно на столько у меня одометрия ошибается от рулетки
 
                         g_poseLidar.model.x += (g_poseLidar.est.x - g_poseLidar.model.x) * k_motion;
                         g_poseLidar.model.y += (g_poseLidar.est.y - g_poseLidar.model.y) * k_motion;
@@ -241,18 +260,16 @@ int main(int argc, char **argv)
                         normalizeAngle180(g_poseLidar.model.th);
                     }
                     // 2. ЕСЛИ РОБОТ СТОИТ (Накапливаем данные)
-                    else if (dtStoping >= 0.3 && dtStoping < 0.8)
+                    else if (dtStoping >= 0.8 && dtStoping < 1.8)
                     {
                         // Просто суммируем оценку (est)
                         sum_est.x += g_poseLidar.est.x;
                         sum_est.y += g_poseLidar.est.y;
-                        // С углами аккуратнее (сумма векторов), но для малых колебаний можно просто сумму
-                        // (Для идеала лучше усреднять sin/cos, но пока так сойдет, если угол не скачет через 180)
-                        sum_est.th += g_poseLidar.est.th;
+                        sum_est.th += g_poseLidar.est.th;// С углами аккуратнее (сумма векторов), но для малых колебаний можно просто сумму (Для идеала лучше усреднять sin/cos, но пока так сойдет, если угол не скачет через 180)
                         count_est++;
                     }
                     // 3. ПРИМЕНЯЕМ КОРРЕКЦИЮ (Один раз после накопления)
-                    else if (dtStoping >= 0.8 && !is_static_corrected && count_est > 0)
+                    else if (dtStoping >= 1.8 && !is_static_corrected && count_est > 0)
                     {
                         // Вычисляем среднее
                         SPose avg_pose;
@@ -261,21 +278,17 @@ int main(int argc, char **argv)
                         avg_pose.th = sum_est.th / count_est;
                         normalizeAngle180(avg_pose.th);
 
-                        logi.log_w("STATIC CORRECTION APPLIED. Drift fix: dist=%.3f angle=%.3f",
-                                   hypot(avg_pose.x - g_poseLidar.model.x, avg_pose.y - g_poseLidar.model.y),
-                                   angle_diff_deg(avg_pose.th, g_poseLidar.model.th));
+                        logi.log_w("STATIC CORRECTION APPLIED. Drift fix: dist=%.3f angle=%.3f count_est= %d \n", 
+                                hypot(avg_pose.x - g_poseLidar.model.x, avg_pose.y - g_poseLidar.model.y), angle_diff_deg(avg_pose.th, g_poseLidar.model.th), count_est);
 
-                        // Жестко переносим модель в усредненную точку
-                        g_poseLidar.model = avg_pose;
-
+                        g_poseLidar.model = avg_pose; // Жестко переносим модель в усредненную точку
                         is_static_corrected = true; // Больше не трогаем, пока не поедем
                     }
-                    // 4. ЕСЛИ СТОИМ ДОЛГО (Просто держим позицию)
-                    else if (is_static_corrected)
+                    else if (is_static_corrected) // 4. ЕСЛИ СТОИМ ДОЛГО  (Постоянное усреднение / Удержание центра)
                     {
-                        // Можно ничего не делать, model стоит идеально.
-                        // Либо можно продолжать очень мягко (k=0.01) тянуться к est, если кто-то пнет робота.
+                        // Можно ничего не делать, model стоит идеально. Либо можно продолжать очень мягко (k=0.01) тянуться к est, если кто-то пнет робота.
                     }
+                    g_poseRotation.model = convertLidar2Rotation(g_poseLidar.model, "model"); // Обновляем уже уточненным значением
                 }
             }
             logi.log("    OUT Data Pose Est x = %+8.3f y = %+8.3f th = %+8.3f \n", g_poseLidar.est.x, g_poseLidar.est.y, g_poseLidar.est.th);
