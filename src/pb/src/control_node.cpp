@@ -48,21 +48,22 @@ int main(int argc, char **argv)
 
     ros::spinOnce(); // Опрашиваем ядро ROS и по этой команде наши срабатывают колбеки. Нужно только для подписки на топики
 
-    if (g_controlMode) // В зависимости от режима из yaml файла заполняем перменную и далее все опирается на нее.
-    {
-        g_poseC.x = msg_PoseRotation.x.est;
-        g_poseC.y = msg_PoseRotation.y.est;
-        g_poseC.th = msg_PoseRotation.th.est;
-    }
-    else
-    {
-        g_poseC.x = msg_PoseRotation.x.odom;
-        g_poseC.y = msg_PoseRotation.y.odom;
-        g_poseC.th = msg_PoseRotation.th.odom;
-    }
+    // if (g_controlMode) // В зависимости от режима из yaml файла заполняем перменную и далее все опирается на нее.
+    // {
+    //     g_poseC.x = msg_PoseRotation.x.est;
+    //     g_poseC.y = msg_PoseRotation.y.est;
+    //     g_poseC.th = msg_PoseRotation.th.est;
+    // }
+    // else
+    // {
+    //     g_poseC.x = msg_PoseRotation.x.odom;
+    //     g_poseC.y = msg_PoseRotation.y.odom;
+    //     g_poseC.th = msg_PoseRotation.th.odom;
+    // }
+    g_poseC = getPose_C(g_controlMode);
 
     GCodeParser parser; // Создание объекта парсера
-    parser.run(); // Запуск обработки
+    parser.run();       // Запуск обработки
 
     // static ros::Time time = ros::Time::now();      // Захватываем начальный момент времени
     static ros::Time timeStart = ros::Time::now(); // Захватываем начальный момент времени
@@ -93,18 +94,19 @@ int main(int argc, char **argv)
         // ROS_INFO("loop \n");        // С новой строки в логе новый цикл
         ros::spinOnce(); // Опрашиваем ядро ROS и по этой команде наши срабатывают колбеки. Нужно только для подписки на топики
 
-        if (g_controlMode) // В зависимости от режима из yaml файла заполняем перменную и далее все опирается на нее.
-        {
-            g_poseC.x = msg_PoseRotation.x.est;
-            g_poseC.y = msg_PoseRotation.y.est;
-            g_poseC.th = msg_PoseRotation.th.est;
-        }
-        else
-        {
-            g_poseC.x = msg_PoseRotation.x.odom;
-            g_poseC.y = msg_PoseRotation.y.odom;
-            g_poseC.th = msg_PoseRotation.th.odom;
-        }
+        // if (g_controlMode) // В зависимости от режима из yaml файла заполняем перменную и далее все опирается на нее.
+        // {
+        //     g_poseC.x = msg_PoseRotation.x.est;
+        //     g_poseC.y = msg_PoseRotation.y.est;
+        //     g_poseC.th = msg_PoseRotation.th.est;
+        // }
+        // else
+        // {
+        //     g_poseC.x = msg_PoseRotation.x.odom;
+        //     g_poseC.y = msg_PoseRotation.y.odom;
+        //     g_poseC.th = msg_PoseRotation.th.odom;
+        // }
+        g_poseC = getPose_C(g_controlMode);
 
         if (flagCommand)
         {
@@ -253,6 +255,9 @@ int main(int argc, char **argv)
         timeCycle(timeStart, timeNow); // Выводим справочно время работы цикла и время с начала работы программы
         r.sleep();                     // Интеллектуальная задержка на указанную частоту
     }
+    // Сбрасываем скорость на ноль
+    controlSpeed.control.speedL = 0.0;
+    controlSpeed.control.speedR = 0.0;
     logi.log_r("=== сontrol_node shutdown = STOP \n");
     return 0;
 }
