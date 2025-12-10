@@ -152,37 +152,28 @@ add_executable(data_node src/data_node.cpp)
 target_link_libraries(data_node ${catkin_LIBRARIES} -lwiringPi -lpthread)
 
 add_executable(pos_node src/pos_node.cpp)
-target_link_libraries(pos_node ${catkin_LIBRARIES} -lwiringPi -lpthread)
+target_link_libraries(pos_node ${catkin_LIBRARIES} -lpthread)
 
 add_executable(control_node src/control_node.cpp)
-target_link_libraries(control_node ${catkin_LIBRARIES} -lwiringPi -lpthread)
-
-add_executable(calibr_node src/calibr_node.cpp)
-target_link_libraries(calibr_node ${catkin_LIBRARIES} -lwiringPi -lpthread)
+target_link_libraries(control_node ${catkin_LIBRARIES} -lpthread)
 
 add_executable(write_node src/write_node.cpp)
-target_link_libraries(write_node ${catkin_LIBRARIES} -lwiringPi -lpthread)
+target_link_libraries(write_node ${catkin_LIBRARIES} -lpthread)
 
 add_executable(lidar_node src/lidar_node.cpp)
 target_link_libraries(lidar_node ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 
 add_executable(scan_node 
-    src/scan_node.cpp 
+src/scan_node.cpp 
     src/scan_code/pillarScan.cpp # <--- ДОБАВЬ ЭТУ СТРОКУ
-)
-target_link_libraries(scan_node 
-    ${catkin_LIBRARIES}
-    atomic   # <--- ДОБАВИТЬ ЭТУ СТРОКУ
     )
+target_link_libraries(scan_node 
+${catkin_LIBRARIES}
+atomic   # <--- ДОБАВИТЬ ЭТУ СТРОКУ
+)
 
-#add_executable(chatgpt src/chatgpt.cpp)
-#target_link_libraries(chatgpt ${catkin_LIBRARIES} ${PCL_LIBRARIES})
-
-#add_executable(qween src/qween.cpp)
-#target_link_libraries(qween ${catkin_LIBRARIES} ${PCL_LIBRARIES})
-
-#add_executable(deepseek src/deepseek.cpp)
-#target_link_libraries(deepseek ${catkin_LIBRARIES} ${PCL_LIBRARIES})
+#add_executable(calibr_node src/calibr_node.cpp)
+#target_link_libraries(calibr_node ${catkin_LIBRARIES} -lpthread)
 
 #add_executable(pillar_node src/pillar_node.cpp)
 #target_link_libraries(pillar_node ${catkin_LIBRARIES})

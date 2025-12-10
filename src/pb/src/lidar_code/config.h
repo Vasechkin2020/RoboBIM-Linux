@@ -9,7 +9,25 @@
 #include <std_msgs/String.h>
 #include <cmath> // Библиотека для математических функций
 
-#include <wiringPi.h>
+// #include <wiringPi.h>
+// --- ЗАМЕНА WIRINGPI TIME ---
+
+// Возвращает миллисекунды (как в Arduino/WiringPi), но на основе времени ROS
+inline uint64_t millis()
+{
+    // Получаем текущее время ROS
+    ros::Time now = ros::Time::now();
+    // Переводим секунды в мс + наносекунды в мс
+    return (uint64_t)now.sec * 1000 + (uint64_t)now.nsec / 1000000;
+}
+
+// Возвращает микросекунды (нужно для расчета dt в твоих функциях)
+inline uint64_t micros()
+{
+    ros::Time now = ros::Time::now();
+    // Переводим секунды в мкс + наносекунды в мкс
+    return (uint64_t)now.sec * 1000000 + (uint64_t)now.nsec / 1000;
+}
 
 #include <sensor_msgs/LaserScan.h>
 #include <sensor_msgs/PointCloud.h>

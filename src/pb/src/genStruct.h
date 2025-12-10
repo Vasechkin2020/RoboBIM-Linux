@@ -350,4 +350,6 @@ inline double angle_diff_deg(double phi, double theta)
   return normalizeAngle180(diff); // Нормализуем разницу для получения кратчайшего пути
 }
 
+
+
 #endif

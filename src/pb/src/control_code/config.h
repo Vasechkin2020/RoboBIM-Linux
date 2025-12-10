@@ -5,7 +5,6 @@
 #include <tf/transform_broadcaster.h>
 #include <std_msgs/String.h>
 
-#include <wiringPi.h>
 
 #include <geometry_msgs/PointStamped.h>
 #include <geometry_msgs/Pose2D.h>
@@ -33,6 +32,28 @@
 
 #include <pb_msgs/SSetSpeed.h>
 #include <list>
+
+// #include <wiringPi.h>
+// --- ЗАМЕНА WIRINGPI TIME ---
+
+// Возвращает миллисекунды (как в Arduino/WiringPi), но на основе времени ROS
+inline uint64_t millis()
+{
+    // Получаем текущее время ROS
+    ros::Time now = ros::Time::now();
+    // Переводим секунды в мс + наносекунды в мс
+    return (uint64_t)now.sec * 1000 + (uint64_t)now.nsec / 1000000;
+}
+
+// Возвращает микросекунды (нужно для расчета dt в твоих функциях)
+inline uint64_t micros()
+{
+    ros::Time now = ros::Time::now();
+    // Переводим секунды в мкс + наносекунды в мкс
+    return (uint64_t)now.sec * 1000000 + (uint64_t)now.nsec / 1000;
+}
+
+
 
 pb_msgs::Struct_Data2Driver controlSpeed; // Переменная в которую записываем данные из массива команд после gcode
 pb_msgs::Struct_Data2Print controlPrint; // Переменная в которую записываем данные из массива команд после gcode
