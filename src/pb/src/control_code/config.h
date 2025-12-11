@@ -34,23 +34,26 @@
 #include <list>
 
 // #include <wiringPi.h>
-// --- ЗАМЕНА WIRINGPI TIME ---
+// --- ЗАМЕНА WIRINGPI TIME ---  Возвращает миллисекунды (как в Arduino/WiringPi), но на основе времени ROS
+static ros::Time g_start_time_offset(0); // Переменная для хранения времени старта (инициализируется нулем)
 
-// Возвращает миллисекунды (как в Arduino/WiringPi), но на основе времени ROS
-inline uint64_t millis()
+inline uint64_t millis() // Возвращает миллисекунды от старта программы (на базе ROS времени)
 {
-    // Получаем текущее время ROS
-    ros::Time now = ros::Time::now();
-    // Переводим секунды в мс + наносекунды в мс
-    return (uint64_t)now.sec * 1000 + (uint64_t)now.nsec / 1000000;
+    // Если это первый вызов (или после сброса) — запоминаем время старта
+    if (g_start_time_offset.isZero()) {
+        g_start_time_offset = ros::Time::now();
+    }
+    ros::Duration duration = ros::Time::now() - g_start_time_offset;    // Считаем разницу между "сейчас" и "стартом"
+    return (uint64_t)(duration.toNSec() / 1000000);    // Возвращаем миллисекунды (наносекунды / 1 000 000)
 }
 
-// Возвращает микросекунды (нужно для расчета dt в твоих функциях)
-inline uint64_t micros()
+inline uint64_t micros() // Возвращает микросекунды от старта программы (для расчета dt)
 {
-    ros::Time now = ros::Time::now();
-    // Переводим секунды в мкс + наносекунды в мкс
-    return (uint64_t)now.sec * 1000000 + (uint64_t)now.nsec / 1000;
+    if (g_start_time_offset.isZero()) {
+        g_start_time_offset = ros::Time::now();
+    }
+    ros::Duration duration = ros::Time::now() - g_start_time_offset;
+    return (uint64_t)(duration.toNSec() / 1000);     // Возвращаем микросекунды (наносекунды / 1 000)
 }
 
 
