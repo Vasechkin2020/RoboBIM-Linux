@@ -6,6 +6,10 @@ int g_controlMode; // Выбор режима управления 0- по од�
 
 #include "genStruct.h" // Тут все общие структуры. Истользуются и Data и Main и Control
 #include "control_code/config.h"
+#include "control_code/statistic.h"
+
+SystemStatistics stats;
+
 #include "control_code/topic.h" // Файл для функций для формирования топиков в нужном виде и формате
 #include "control_code/code.h"
 #include "control_code/gCodeParser.h"
