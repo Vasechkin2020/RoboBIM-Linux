@@ -6,9 +6,10 @@ int g_controlMode; // Выбор режима управления 0- по од�
 
 #include "genStruct.h" // Тут все общие структуры. Истользуются и Data и Main и Control
 #include "control_code/config.h"
-#include "control_code/statistic.h"
 
+#include "control_code/statistic.h"
 SystemStatistics stats;
+SPose g_coord_offset = {0, 0, 0}; // И оффсет тоже, если еще нет
 
 #include "control_code/topic.h" // Файл для функций для формирования топиков в нужном виде и формате
 #include "control_code/code.h"
@@ -99,19 +100,9 @@ int main(int argc, char **argv)
         timeNow = ros::Time::now(); // Захватываем текущий момент времени начала цикла
         // ROS_INFO("loop \n");        // С новой строки в логе новый цикл
         ros::spinOnce(); // Опрашиваем ядро ROS и по этой команде наши срабатывают колбеки. Нужно только для подписки на топики
+        
+        stats.update(msg_PoseRotation); // ОБНОВЛЕНИЕ ДАННЫХ В КЛАССЕ СТАТИСТИКИ (1 раз за цикл!)
 
-        // if (g_controlMode) // В зависимости от режима из yaml файла заполняем перменную и далее все опирается на нее.
-        // {
-        //     g_poseC.x = msg_PoseRotation.x.est;
-        //     g_poseC.y = msg_PoseRotation.y.est;
-        //     g_poseC.th = msg_PoseRotation.th.est;
-        // }
-        // else
-        // {
-        //     g_poseC.x = msg_PoseRotation.x.odom;
-        //     g_poseC.y = msg_PoseRotation.y.odom;
-        //     g_poseC.th = msg_PoseRotation.th.odom;
-        // }
         g_poseC = getPose_C(g_controlMode);
 
         if (flagCommand)
@@ -153,21 +144,14 @@ int main(int argc, char **argv)
                 logi.log("    'point C x = %+8.3f y = %+8.3f th = %+8.3f '\n", point_C.x, point_C.y, RAD2DEG(g_poseC.th));
 
                 logi.log_b("    Start Angle \n");
+                
+                stats.begin_move(i); // Без аргументов! Только номер команды для лога // Передаем индекс 'i' для красоты логов
                 break;
             case 2:              // Режим где движемся по координатам. даигаемся по длинне вектора.
                 checker.reset(); // СБРОС БУФЕРА
-                // point_A.x = msg_PoseRotation.x.odom; // Запоминаем те координаты которые были в момент начала движения
-                // point_A.y = msg_PoseRotation.y.odom;
-                // logi.log("    point A odom    x = %+8.3f y = %+8.3f \n",point_A.x,point_A.y);
                 point_A.x = commandArray[i].point_A_x;
                 point_A.y = commandArray[i].point_A_y;
                 logi.log("    point A table  x = %+8.3f y = %+8.3f \n", commandArray[i].point_A_x, commandArray[i].point_A_y);
-
-                // signed_distance = commandArray[i].len;
-                // if (commandArray[i].velLen < 0) // Если скорость орицательная то надо учитывать при расчетах
-                //     signed_distance = -commandArray[i].len;
-                // point_B = calculate_new_coordinates(point_A, msg_PoseRotation.th.odom, signed_distance); // Посчитали конечные координаты точки В
-                // logi.log("    point B calc x = %+8.3f y = %+8.3f \n", point_B.x,point_B.y);
 
                 point_B.x = commandArray[i].point_B_x;
                 point_B.y = commandArray[i].point_B_y;
@@ -179,8 +163,11 @@ int main(int argc, char **argv)
 
                 time = millis() + 999999; // Огромное время ставим
                 flagVector = true;        // Флаг что теперь отслеживаем длину вектора
+
                 logi.log_b("    Start Vector. len = %f \n", commandArray[i].len);
+                stats.begin_move(i); // Без аргументов! Только номер команды для лога // Передаем индекс 'i' для красоты логов
                 break;
+
             case 3: // Напечатать
                 controlPrint.id++;
                 controlPrint.controlPrint.mode = 0;     // 0 - работать по командам
@@ -189,6 +176,7 @@ int main(int argc, char **argv)
                 time = millis() + commandArray[i].duration;
                 logi.log_b("    Print Start \n");
                 break;
+
             case 5: // Отменить печать
                 controlPrint.id++;
                 controlPrint.controlPrint.mode = 0;      // 0 - работать по командам
@@ -196,6 +184,18 @@ int main(int argc, char **argv)
                 controlPrint.controlPrint.torque = -2.0; // Вручную задаю силу с которой отводим маркер в течении 50 милисекунд
                 time = millis() + commandArray[i].duration;
                 logi.log_b("    Print Cancel \n");
+                break;
+
+            case 6: // G10 - Установка системы координат
+
+                // Мы хотим, чтобы: Реальность = Карта + Оффсет. Значит: Оффсет = Реальность (g_poseC) - Карта (point_A из команды)
+                // g_coord_offset.x = g_poseC.x - commandArray[i].point_A_x;     // Рассчитываем смещение по X
+                // g_coord_offset.y = g_poseC.y - commandArray[i].point_A_y; // Рассчитываем смещение по Y
+                
+                // g_coord_offset.th = normalizeAngle180(g_poseC.th - DEG2RAD(commandArray[i].point_A_a)); // Рассчитываем смещение по Углу (с нормализацией) commandArray хранит градусы, g_poseC хранит радианы (обычно). Приводим к радианам.
+
+                stats.start_session();                 // Сбрасываем статистику, так как начинается "чистое" выполнение задания
+                logi.log_w(">>> G10 OFFSET APPLIED & STATS STARTED <<<\n");
                 break;
             }
         }
@@ -213,6 +213,8 @@ int main(int argc, char **argv)
             }
             if (i >= commandArray.size())
             {
+                
+                stats.print_report(); // Печатаем финальный отчет
                 logi.log_r("    commandArray.size shutdown.\n");
                 ros::shutdown();
             }

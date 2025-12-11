@@ -352,6 +352,8 @@ SPose getPose_C(int controlMode_)
 			flagAngleFirst = true;
 			time_ = millis();
 			logi.log_w("    Angle Final angleMistake = %f gradus \n", angleMistake);
+			 
+        	stats.end_move(0.0, true); // Передаем 0.0 (теория в метрах равна 0) и true (это поворот)
 		}
 		else
 		{
@@ -449,6 +451,8 @@ SPose getPose_C(int controlMode_)
 			if (flagTrendMistake)
 				logi.log_r("+++ STOP on flagTrendMistake +++ \n");
 			logi.log_w("    Vector Final vectorMistake = %+6.3f metr (%+6.3f, %+6.3f -> %+6.3f, %+6.3f) \n", vectorMistake, point_C_.x, point_C_.y, point_B_.x, point_B_.y);
+        	
+        	stats.end_move(len_, false); // Передаем len_ (теорию) и false (это не поворот, а движение)// Передаем только теорию и тип
 		}
 		else
 		{
