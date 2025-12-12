@@ -194,7 +194,7 @@ int main(int argc, char **argv)
             {
                 if (is_data_valid)// Вызываем СЛИЯНИЕ (Fusion) для Rate-Limited Fuser Используем скорости модели (плавные) для прогноза
                 {                                                                                                                                                
-                    const double lidar_latency_L = 0.35;                                                                                                         // Задержка лидара/SLAM:  мс Посчитано ИИ экспериментально
+                    const double lidar_latency_L = 0.25;                                                                                                         // Задержка лидара/SLAM:  мс Посчитано ИИ экспериментально
                     g_poseLidar.est = rate_fuser.fuse(g_poseLidar.est, g_poseLidar.meas, g_linAngVel.model.vx, RAD2DEG(g_linAngVel.model.vth), lidar_latency_L); // Состояние Модели (по ссылке) и Измерение (SPose)
                     logi.log("    is_data_valid  lidar_latency_L= %+8.3f model.vx= %+8.3f model.vth= %+8.3f | dtStoping = %+8.3f \n", lidar_latency_L, g_linAngVel.model.vx, g_linAngVel.model.vth, dtStoping);
 

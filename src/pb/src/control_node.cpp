@@ -10,6 +10,7 @@ int g_controlMode; // Выбор режима управления 0- по од�
 #include "control_code/statistic.h"
 SystemStatistics stats;
 SPose g_coord_offset = {0, 0, 0}; // И оффсет тоже, если еще нет
+SPose g_transition_offset = {0, 0, 0}; // Хранит разницу (Est - Model) в момент переключения
 
 #include "control_code/topic.h" // Файл для функций для формирования топиков в нужном виде и формате
 #include "control_code/code.h"
@@ -67,7 +68,7 @@ int main(int argc, char **argv)
     //     g_poseC.y = msg_PoseRotation.y.odom;
     //     g_poseC.th = msg_PoseRotation.th.odom;
     // }
-    g_poseC = getPose_C(g_controlMode);
+    g_poseC = getPose_C(g_controlMode,false);
 
     GCodeParser parser; // Создание объекта парсера
     parser.run();       // Запуск обработки
@@ -105,7 +106,13 @@ int main(int argc, char **argv)
         
         stats.update(msg_PoseRotation); // ОБНОВЛЕНИЕ ДАННЫХ В КЛАССЕ СТАТИСТИКИ (1 раз за цикл!)
 
-        g_poseC = getPose_C(g_controlMode);
+        // Определяем, нужен ли плавный режим для текущей команды
+        bool current_use_smooth = false;
+        if (i < commandArray.size()) 
+            current_use_smooth = commandArray[i].use_model_logic;
+
+        // g_poseC = getPose_C(g_controlMode);
+        g_poseC = getPose_C(g_controlMode, current_use_smooth);
 
         if (flagCommand)
         {
@@ -116,6 +123,30 @@ int main(int argc, char **argv)
             // Сбрасываем скорость на ноль
             controlSpeed.control.speedL = 0.0;
             controlSpeed.control.speedR = 0.0;
+
+            // Проверяем, требует ли НОВАЯ команда плавности (use_model_logic)
+            if (i < commandArray.size() && commandArray[i].use_model_logic)
+            {
+                // Считаем разницу: Offset = Est (где мы сейчас) - Model (где плавная одометрия)
+                g_transition_offset.x = msg_PoseRotation.x.est - msg_PoseRotation.x.model;
+                g_transition_offset.y = msg_PoseRotation.y.est - msg_PoseRotation.y.model;
+                
+                // Для угла считаем разницу с нормализацией (-PI...PI)
+                double d_th = msg_PoseRotation.th.est - msg_PoseRotation.th.model;
+                while (d_th > M_PI) d_th -= 2*M_PI; 
+                while (d_th <= -M_PI) d_th += 2*M_PI;
+                g_transition_offset.th = d_th;
+                
+                logi.log_b(">>> MODE: MODEL (Smooth). Offset captured: x=%.3f y=%.3f th=%.3f\n", 
+                           g_transition_offset.x, g_transition_offset.y, RAD2DEG(g_transition_offset.th));
+            }
+            else
+            {
+                // Если едем по Est, оффсет не важен (getPose_C его проигнорирует), 
+                // но для порядка можно обнулить или просто написать лог.
+                logi.log_b(">>> MODE: EST (Global). Using raw Lidar data.\n");
+            }
+
 
             float signed_distance; // Для учета направления движения
             logi.log("    command Array i= %i Mode = %i \n", i, commandArray[i].mode);
@@ -206,6 +237,7 @@ int main(int argc, char **argv)
         {
             flagCommand = true;
             i++;
+            logi.log_g("===============================================================================================================================");
             logi.log("    i = %i => mode = %i \n", i, commandArray[i].mode);
 
             if (commandArray[i].mode == 9)
@@ -226,7 +258,11 @@ int main(int argc, char **argv)
 
         if (flagAngle) // Отслеживание угла
         {
-            workAngle(commandArray[i].angle, time, commandArray[i].velAngle); // Тут отрабатываем алгоритм отслеживания угла при повороте
+            // СЧИТАЕМ ЧИСТУЮ ТЕОРИЮ ИЗ G-КОДА Берем конечный угол (point_B_a) и начальный (point_A_a) из текущей команды
+            float theory_angle = abs(normalizeAngle180(commandArray[i].point_B_a - commandArray[i].point_A_a));
+
+            // Передаем theory_angle в функцию
+            workAngle(commandArray[i].angle, theory_angle, time, commandArray[i].velAngle); // Тут отрабатываем алгоритм отслеживания угла при повороте
         }
 
         if (flagVector) // Отслеживание длины вектора

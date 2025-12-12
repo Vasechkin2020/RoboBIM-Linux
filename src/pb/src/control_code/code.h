@@ -22,7 +22,7 @@ void readParam(); // Считывание переменных параметр�
 
 void initCommandArray(int verCommand_); // Заполнение маасива команд
 
-void workAngle(float angle_, u_int64_t &time_, float velAngle_);											   // Тут отрабатываем алгоритм отслеживания угла при повороте
+void workAngle(float angle_, float theory_delta, u_int64_t &time_, float velAngle_);						   // Тут отрабатываем алгоритм отслеживания угла при повороте
 void workVector(float len_, SPoint point_A_, SPoint point_B_, u_int64_t &time_, float velLen_);				   // Тут отрабатываем алгоритм отслеживания длины вектора при движении прямо
 float calculate_max_safe_speed(float distance_to_stop, float max_deceleration);								   // Вычисляет максимально допустимую скорость для остановки.
 float calculate_max_safe_angular_speed_degrees(float angular_error_deg, float max_angular_acceleration_degs2); // Вычисляет максимально допустимую угловую скорость для поворота на месте, используя ГРАДУСЫ.
@@ -169,42 +169,99 @@ void initCommandArray(int verCommand_)
 	}
 }
 // Возвращаем точку С в зависимости от выбранного режима управления
-SPose getPose_C(int controlMode_)
+// SPose getPose_C(int controlMode_)
+// {
+// 	SPose pose;
+// 	switch (controlMode_)
+// 	{
+// 		case 0:
+// 		{
+// 			pose.x = msg_PoseRotation.x.odom;
+// 			pose.y = msg_PoseRotation.y.odom;
+// 			pose.th = msg_PoseRotation.th.odom;
+// 			break; // <--- ОБЯЗАТЕЛЬНО
+// 		}
+// 		case 1:
+// 		{
+// 			pose.x = msg_PoseRotation.x.model;
+// 			pose.y = msg_PoseRotation.y.model;
+// 			pose.th = msg_PoseRotation.th.model;
+// 			break; // <--- ОБЯЗАТЕЛЬНО
+// 		}
+// 		case 2:
+// 		{
+// 			pose.x = msg_PoseRotation.x.est;
+// 			pose.y = msg_PoseRotation.y.est;
+// 			pose.th = msg_PoseRotation.th.est;
+// 			break; // <--- ОБЯЗАТЕЛЬНО
+// 		}
+// 		default:
+// 		{
+// 			pose.x = msg_PoseRotation.x.odom;
+// 			pose.y = msg_PoseRotation.y.odom;
+// 			pose.th = msg_PoseRotation.th.odom;
+// 			break; // <--- ОБЯЗАТЕЛЬНО
+// 		}
+// 	}
+// 	return pose;
+// }
+
+// Возвращаем точку С. 
+// controlMode_ - глобальная настройка (0=odom, 2=est)
+// use_smooth_logic - флаг из текущей команды (ехать плавно по модели)
+SPose getPose_C(int controlMode_, bool use_smooth_logic)
 {
-	SPose pose;
-	switch (controlMode_)
-	{
-		case 0:
-		{
-			pose.x = msg_PoseRotation.x.odom;
-			pose.y = msg_PoseRotation.y.odom;
-			pose.th = msg_PoseRotation.th.odom;
-			break; // <--- ОБЯЗАТЕЛЬНО
-		}
-		case 1:
-		{
-			pose.x = msg_PoseRotation.x.model;
-			pose.y = msg_PoseRotation.y.model;
-			pose.th = msg_PoseRotation.th.model;
-			break; // <--- ОБЯЗАТЕЛЬНО
-		}
-		case 2:
-		{
-			pose.x = msg_PoseRotation.x.est;
-			pose.y = msg_PoseRotation.y.est;
-			pose.th = msg_PoseRotation.th.est;
-			break; // <--- ОБЯЗАТЕЛЬНО
-		}
-		default:
-		{
-			pose.x = msg_PoseRotation.x.odom;
-			pose.y = msg_PoseRotation.y.odom;
-			pose.th = msg_PoseRotation.th.odom;
-			break; // <--- ОБЯЗАТЕЛЬНО
-		}
-	}
-	return pose;
+    // 1. ПРИОРИТЕТ: Если команда требует плавности (Model + Offset)
+    if (use_smooth_logic)
+    {
+        SPose p;
+        // Берем модель и добавляем замороженный оффсет Мы переходим на управление по Модели.
+        // Чтобы робот не дернулся, Модель должна "подхватить" текущую позицию Оценки. Считаем разницу: Offset = Est - Model
+        p.x = msg_PoseRotation.x.model + g_transition_offset.x;
+        p.y = msg_PoseRotation.y.model + g_transition_offset.y;
+        
+        // Угол складываем и нормализуем  Для угла важно использовать нормализацию разности!
+        // Функция normalizeAngle180 должна быть доступна (или аналог) Если нет функции, используй ручной расчет разницы радианов
+        double th_sum = msg_PoseRotation.th.model + g_transition_offset.th;
+        while (th_sum > M_PI) th_sum -= 2*M_PI; 
+        while (th_sum <= -M_PI) th_sum += 2*M_PI;
+        p.th = th_sum;
+        
+        return p; 
+    }
+
+    // 2. ОБЫЧНЫЙ РЕЖИМ (Если плавность не нужна)
+    SPose pose;
+    switch (controlMode_)
+    {
+        case 0: // Odom
+            pose.x = msg_PoseRotation.x.odom;
+            pose.y = msg_PoseRotation.y.odom;
+            pose.th = msg_PoseRotation.th.odom;
+            break; 
+        
+        case 1: // Pure Model (без оффсета, обычно не используется для управления)
+            pose.x = msg_PoseRotation.x.model;
+            pose.y = msg_PoseRotation.y.model;
+            pose.th = msg_PoseRotation.th.model;
+            break; 
+        
+        case 2: // Est (По умолчанию)
+            pose.x = msg_PoseRotation.x.est;
+            pose.y = msg_PoseRotation.y.est;
+            pose.th = msg_PoseRotation.th.est;
+            break; 
+            
+        default:
+            pose.x = msg_PoseRotation.x.est; // Безопасный дефолт
+            pose.y = msg_PoseRotation.y.est;
+            pose.th = msg_PoseRotation.th.est;
+            break;
+    }
+    return pose;
 }
+
+
 	void readParam() // Считывание переменных параметров из лаунч или yaml файла при запуске. Там офсеты и режимы работы
 	{
 		ros::NodeHandle nh_global;										   // <--- Используется для доступа к /pb_config/ // Создаем ГЛОБАЛЬНЫЙ обработчик, который ищет параметры, начиная с корня (/).
@@ -311,7 +368,7 @@ SPose getPose_C(int controlMode_)
 
 
 	// Тут отрабатываем алгоритм отслеживания угла при повороте
-	void workAngle(float angle_, u_int64_t &time_, float velAngle_)
+	void workAngle(float angle_, float theory_delta, u_int64_t &time_, float velAngle_)
 	{
 
 		static float minAngleMistake = 0.02;			 // Минимальная ошибка по углу в Градусах
@@ -322,7 +379,7 @@ SPose getPose_C(int controlMode_)
 
 		static unsigned long time = micros(); // Время предыдущего расчета// Функция из WiringPi.// Замеряем интервалы по времени между запросами данных
 		unsigned long time_now = micros();	  // Время в которое делаем расчет
-
+		
 		// === ЛОГИКА ===
 		float angleFact = g_poseC.th; // Угол который отслеживаем
 		// logi.log("    angleFact main alfa= %+8.3f\n", angleFact);
@@ -351,9 +408,8 @@ SPose getPose_C(int controlMode_)
 			flagAngle = false;
 			flagAngleFirst = true;
 			time_ = millis();
+	        stats.end_move(theory_delta, true);  // Передаем theory_angle_delta в статистику как "длину теории" для поворота
 			logi.log_w("    Angle Final angleMistake = %f gradus \n", angleMistake);
-			 
-        	stats.end_move(0.0, true); // Передаем 0.0 (теория в метрах равна 0) и true (это поворот)
 		}
 		else
 		{
@@ -393,8 +449,11 @@ SPose getPose_C(int controlMode_)
 			point_C.x = g_poseC.x; //
 			point_C.y = g_poseC.y;
 
+			if (adv_log)
+			{
 			logi.log("    point C=' %+8.3f %+8.3f ' real= ' %+8.3f ' target= %+8.3f  mistake= %+8.3f | V_max_ang_braking= %+8.3f  V_max_lin_braking= %+8.3f | real L= %+8.3f R= %+8.3f \n",
 					 point_C.x, point_C.y, RAD2DEG(angleFact), angle_, angleMistake, V_max_ang_braking, V_max_lin_braking, controlSpeed.control.speedL, controlSpeed.control.speedR);
+			}
 		}
 	}
 
@@ -514,14 +573,15 @@ SPose getPose_C(int controlMode_)
 			// }
 			// A= (%+8.3f %+8.3f ) B= (%+8.3f %+8.3f ) point_A_.x, point_A_.y, 							point_B_.x, point_B_.y,
 			// D2= ( %+8.3f %+8.3f )point_D2.x, point_D2.y,
-
+			if (adv_log)
+			{
 			logi.log("    pose C=' %+8.3f %+8.3f %+8.3f 'D= %+8.3f %+8.3f Mistake= %+8.5f |Vel= %+8.3f |speed L= %+8.3f R= %+8.3f '|%= %+6.1f ' omega= %+8.3f |heading= %+8.3f target_angle= %+8.3f angle_error= %+8.3f \n",
 					 point_C_.x, point_C_.y, RAD2DEG(g_poseC.th),
 					 point_D.x, point_D.y,
 					 vectorMistake, speedCurrent,
 					 speedL, speedR, (speedL / speedR) * 100, omega,
 					 RAD2DEG(heading_used_rad), RAD2DEG(target_angle_rad), RAD2DEG(angle_error_rad));
-
+			}
 			controlSpeed.control.speedL = speedL;
 			controlSpeed.control.speedR = speedR;
 

@@ -373,6 +373,7 @@ private:
 
         SCommand command;               // Создаем команду для массива.
         command.mode = 1;               // Режим G1 (поворот).
+        command.use_model_logic = true; // ВСЕГДА включаем плавный режим для поворотов
         command.angle = target_angle;   // Целевой угол.
         command.velAngle = wheel_speed; // Скорость колес при повороте.
         // Сохраняем траекторию
@@ -488,6 +489,12 @@ private:
 
         SCommand command;                  // Создаем команду для массива.
         command.mode = 2;                  // Режим G2 (линейное движение).
+
+        if (cmd.has_l) 
+            command.use_model_logic = true;  // Если задана Длина (L) - едем по Модели (точно и плавно)
+        else 
+            command.use_model_logic = false;// Если заданы Координаты (X/Y) - едем по Оценке (глобально)
+            
         command.len = length;              // Длина пути (абсолютная).
         command.velLen = signed_feed_rate; // Скорость движения (со знаком F для направления!).
         // Сохраняем траекторию
