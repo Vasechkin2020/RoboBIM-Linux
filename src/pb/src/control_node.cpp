@@ -36,9 +36,11 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "control_node");
     log4cxx::MDC::put("node", "|control_node|");
     ros::NodeHandle nh;
+    
+    stats.init(nh); // Инициализация топиков статистики (motion_lin, drift_lin и т.д.)
     CTopic topic; // Экземпляр класса для всех публикуемых топиков
 
-    //----------------------------- ПОДПИСКИ НА ТОПИКИ -------НЕ УБИРАЮ В КЛАСС ТАК КАК НУЖНЫ ГЛОБАЛЬНЫЕ КОЛБЕКИ И ПРОЧАЯ ХЕРНЯ --------
+    //----------------------------- ПОДПИСКИ НА ТОПИКИ -------
     // ros::Subscriber subscriber_Driver = nh.subscribe<pb_msgs::Struct_Driver2Data>("pbData/Driver", 1, callback_Driver);
     ros::Subscriber subscriber_Speed = nh.subscribe<pb_msgs::SSetSpeed>("pb/Data/Speed", 1, callback_Speed, ros::TransportHints().tcpNoDelay(true));
     ros::Subscriber subscriber_Pose = nh.subscribe<pb_msgs::Struct_PoseRotation>("pb/Pos/PoseRotation", 1, callback_Pose, ros::TransportHints().tcpNoDelay(true));

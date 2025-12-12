@@ -164,53 +164,58 @@ public:
 
     // КОНЕЦ ДВИЖЕНИЯ (Вызывать в code.h когда speed=0)
     // Считает, сколько мы проехали (Motion)
-    void end_move(double theory_len, bool is_rotation)
-    {
-        if (!is_active)
-            return; // Если не активно, выходим
+    // КОНЕЦ ДВИЖЕНИЯ
+    void end_move(double theory_len, bool is_rotation) {
+        if (!is_active) return;
 
-        // Лог заголовка
-        if (is_rotation)
-            logi.log_g("=== FINISH ANGLE ===\n");
-        else
-            logi.log_g("=== FINISH VECTOR ===\n");
-
-        // Лог текущих координат финиша
+        if (is_rotation) logi.log_g("=== FINISH ANGLE ===\n");
+        else             logi.log_g("=== FINISH VECTOR ===\n");
+        
         print_state("END ODOM ", curr_odom);
         print_state("END MODEL", curr_model);
         print_state("END EST  ", curr_est);
 
-        geometry_msgs::Vector3 msg; // Сообщение для ROS
+        // 1. Считаем ЛИНЕЙНОЕ смещение (для всех режимов!)
+        double dist_odom  = get_dist(curr_odom, pose_start_move_odom);
+        double dist_model = get_dist(curr_model, pose_start_move_model);
+        double dist_est   = get_dist(curr_est, pose_start_move_est);
 
-        if (is_rotation)
-        {
-            // --- ЭТО ПОВОРОТ (Считаем градусы) ---
-            msg.x = get_angle_diff(curr_odom, pose_start_move_odom);   // Угол Odom
-            msg.y = get_angle_diff(curr_model, pose_start_move_model); // Угол Model
-            msg.z = get_angle_diff(curr_est, pose_start_move_est);     // Угол Est
-            pub_motion_ang.publish(msg);                               // Публикуем
+        // 2. Считаем УГЛОВОЕ смещение
+        double ang_odom  = get_angle_diff(curr_odom, pose_start_move_odom);
+        double ang_model = get_angle_diff(curr_model, pose_start_move_model);
+        double ang_est   = get_angle_diff(curr_est, pose_start_move_est);
 
-            logi.log(">>> DELTA ANGLE: Odom=%.1f, Model=%.1f, Est=%.1f (deg)\n", msg.x, msg.y, msg.z);
+        // 3. Обновляем ГЛОБАЛЬНЫЕ НАКОПИТЕЛИ (Суммируем всё!)
+        // Даже если мы крутились на месте, линейное смещение - это реальный пробег (ошибка), 
+        // его надо добавить в статистику.
+        total_theory += theory_len;
+        sum_motion_lin_odom  += dist_odom; 
+        sum_motion_lin_model += dist_model; 
+        sum_motion_lin_est   += dist_est;
+
+        // 4. Логирование и Публикация
+        if (is_rotation) {
+            // Для поворота главным является угол
+            logi.log(">>> DELTA ANGLE: Odom=%.1f, Model=%.1f, Est=%.1f (deg)\n", ang_odom, ang_model, ang_est);
+            
+            // НО! Мы добавляем вывод линейного смещения (твоя просьба)
+            // theory_len для поворота обычно 0.0
+            logi.log(">>> LINEAR SHIFT: Theory=%.3f, Odom=%.3f, Model=%.3f, Est=%.3f (m)\n", theory_len, dist_odom, dist_model, dist_est);
+
+            // Публикуем угол в график
+            geometry_msgs::Vector3 msg; msg.x = ang_odom; msg.y = ang_model; msg.z = ang_est;
+            pub_motion_ang.publish(msg); 
+        } 
+        else {
+            // Для вектора главным является путь
+            logi.log(">>> DELTA DIST : Theory=%.3f, Odom=%.3f, Model=%.3f, Est=%.3f (m)\n", theory_len, dist_odom, dist_model, dist_est);
+            
+            // Публикуем путь в график
+            geometry_msgs::Vector3 msg; msg.x = dist_odom; msg.y = dist_model; msg.z = dist_est;
+            pub_motion_lin.publish(msg); 
         }
-        else
-        {
-            // --- ЭТО ЛИНЕЙНОЕ ДВИЖЕНИЕ (Считаем метры) ---
-            msg.x = get_dist(curr_odom, pose_start_move_odom);   // Путь Odom
-            msg.y = get_dist(curr_model, pose_start_move_model); // Путь Model
-            msg.z = get_dist(curr_est, pose_start_move_est);     // Путь Est
-            pub_motion_lin.publish(msg);                         // Публикуем
 
-            logi.log(">>> DELTA DIST: Theory=%.3f, Odom=%.3f, Model=%.3f, Est=%.3f (m)\n",
-                     theory_len, msg.x, msg.y, msg.z);
-
-            // В итоговую таблицу метров идут только линейные движения
-            total_theory += theory_len;    // Копим теорию
-            sum_motion_lin_odom += msg.x;  // Копим факт Odom
-            sum_motion_lin_model += msg.y; // Копим факт Model
-            sum_motion_lin_est += msg.z;   // Копим факт Est
-        }
-
-        // Запоминаем финиш для расчета следующего дрейфа
+        // Запоминаем финиш
         pose_finish_prev_odom = curr_odom;
         pose_finish_prev_model = curr_model;
         pose_finish_prev_est = curr_est;
