@@ -558,9 +558,9 @@ SPose getPose_C(int controlMode_, bool use_smooth_logic)
 
 			// if (g_controlMode) // Тут управление колесами. Берем общую скорость как основу и по расчету притормаживаем одно и ускоряем другое колесо.
 			// {
-			double L_lookahead = 0.4;											  // Дистанция упреждения L
+			double L_lookahead = 0.25;											  // Дистанция упреждения L
 			static L1GuidanceController controller(L_lookahead, DISTANCE_WHEELS); // Создание контроллера:
-			controller.setMaxOmega(0.10);
+			controller.setMaxOmega(0.20);
 			controller.setMaxSteeringRatio(1.0);
 
 			point_D = controller.findNearestPointD_Exact(point_A_, point_B_, point_C_);																								// Находим точку D на прямой между точками А и В

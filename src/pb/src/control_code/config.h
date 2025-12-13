@@ -1,6 +1,7 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+
 #include <ros/ros.h>
 #include <tf/transform_broadcaster.h>
 #include <std_msgs/String.h>
@@ -32,6 +33,8 @@
 
 #include <pb_msgs/SSetSpeed.h>
 #include <list>
+
+bool adv_log = 1; // Выводить ли расширенные логи
 
 // #include <wiringPi.h>
 // --- ЗАМЕНА WIRINGPI TIME ---  Возвращает миллисекунды (как в Arduino/WiringPi), но на основе времени ROS
@@ -83,7 +86,6 @@ bool flag_msgPose = false;   // Флаг что пришло сообщение 
 
 int verComand = 0; // Параметр какой массив команд загружать
 
-bool adv_log = false; // Выводить ли расширенные логи
 
 bool flagCommand = true;     // Флаг можно исполнять каманду
 bool flagAngle = false;      // Флаг отслеживания угла из топика
