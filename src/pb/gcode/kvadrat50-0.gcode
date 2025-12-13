@@ -1,8 +1,8 @@
-; === GENERATED G-CODE (v3.9.1) ===
+; === GENERATED G-CODE (v3.8) ===
 ; Output Filename: kvadrat50.gcode
 ; Robot System Coordinate Origin on Map: X=0.000, Y=0.000, Angle=0.0
 ; Marker Offset: 0.0450
-G10 X1.250 Y1.250 A0.000 ; Initial required start point and angle
+G10 X1.250 Y1.250 A0.000 ; Initial required start point and angle in robot's local coordinates
 M5 T2000 ; Pen UP
 G1 A0.000 F0.05
 G2 L0.045 F-0.10 ; Initial align
@@ -23,6 +23,7 @@ G2 X1.705 Y1.250 F0.10
 ; CAD:   (1.750, 1.250) -> (1.750, 1.750)
 ; ROBOT: (1.750, 1.250) -> (1.750, 1.750) | Ang: 90.00
 M5 T2000
+G4 P2000
 G2 X1.750 Y1.250 F0.10 ; Center to Start
 G4 P2000
 G1 A90.000 F0.05
@@ -55,17 +56,10 @@ G2 L0.045 F-0.10 ; Back up
 M3 T2000
 G2 X1.250 Y1.295 F0.10
 
-; === FINALIZE SEQUENCE ===
-M5 T2000 ; Pen UP
-G2 X1.250 Y1.250 F0.10 ; Align Center to Last Point (Undo Offset)
-G4 P1000
-G1 A-135.000 F0.05 ; Rotate to Park
-G4 P1000
-G2 X1.000 Y1.000 F0.10 ; Move to Park Position
-G4 P1000
-G1 A0.000 F0.05 ; Final rotation to 0 degrees
 
-; === END PROGRAM ===
+; === END PROGRAM (Final commands before Input backup) ===
+M5 T2000
+G1 A0.000 F0.05 ; Final rotation to 0 degrees (Safe finish in place)
 
 ; === ORIGINAL INPUT LINES START (Input backup) ===
 ; kvadrat50.gcode; Имя выходного файла
@@ -75,5 +69,4 @@ G1 A0.000 F0.05 ; Final rotation to 0 degrees
 ; 1.75 1.25 1.75 1.75
 ; 1.75 1.75 1.25 1.75
 ; 1.25 1.75 1.25 1.25
-; 1.0 1.0
 ; === ORIGINAL INPUT LINES END ===

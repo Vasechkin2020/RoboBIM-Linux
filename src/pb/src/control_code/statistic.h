@@ -206,9 +206,9 @@ public:
             snprintf(buf, sizeof(buf), "%6.3fm (%5.1f%%)", val, pct);
             return std::string(buf);
         };
-        logi.log_g("==========================================================================================\n");
+        logi.log_g("============================================================================================\n");
         logi.log_g("                             FINAL ROUTE STATISTICS                               \n");
-        logi.log_g("==========================================================================================\n");
+        logi.log_g("============================================================================================\n");
         logi.log("PARAMETER      | THEORY           | ODOM             | MODEL            | EST              |\n");
         logi.log("---------------+------------------+------------------+------------------+------------------+\n");
         logi.log("Active Motion  | %s | %s | %s | %s |\n", fmt(total_theory, total_theory).c_str(), fmt(sum_motion_lin_odom, total_odom).c_str(), fmt(sum_motion_lin_model, total_model).c_str(), fmt(sum_motion_lin_est, total_est).c_str());
@@ -220,7 +220,7 @@ public:
         double err_perc = (total_theory > 0) ? (err_est / total_theory) * 100.0 : 0.0;
         logi.log_w("EST TOTAL LINEAR ERROR: %+.3f m (%+.2f %%)\n", err_est, err_perc);
         logi.log_w("EST TOTAL ANGULAR DRIFT: %.2f deg\n", sum_drift_ang_est);
-        logi.log_g("===========================================================================================\n");
+        logi.log_g("=============================================================================================\n");
     }
 };
 

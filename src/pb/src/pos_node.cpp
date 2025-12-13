@@ -283,7 +283,7 @@ int main(int argc, char **argv)
                         sum_est = {0, 0, 0};
                         count_est = 0;
 
-                        double k_motion = 0.025; // --- Мягкая синхронизация на ходу Коэффициент очень маленький 2,5% примерно на столько у меня одометрия ошибается от рулетки
+                        double k_motion = 0.02; // --- Мягкая синхронизация на ходу Коэффициент очень маленький 2,0% примерно на столько у меня одометрия ошибается от рулетки
 
                         g_poseLidar.model.x += (g_poseLidar.est.x - g_poseLidar.model.x) * k_motion;
                         g_poseLidar.model.y += (g_poseLidar.est.y - g_poseLidar.model.y) * k_motion;

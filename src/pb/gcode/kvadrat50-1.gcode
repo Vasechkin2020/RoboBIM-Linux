@@ -59,10 +59,6 @@ G2 X1.250 Y1.295 F0.10
 M5 T2000 ; Pen UP
 G2 X1.250 Y1.250 F0.10 ; Align Center to Last Point (Undo Offset)
 G4 P1000
-G1 A-135.000 F0.05 ; Rotate to Park
-G4 P1000
-G2 X1.000 Y1.000 F0.10 ; Move to Park Position
-G4 P1000
 G1 A0.000 F0.05 ; Final rotation to 0 degrees
 
 ; === END PROGRAM ===
@@ -75,5 +71,4 @@ G1 A0.000 F0.05 ; Final rotation to 0 degrees
 ; 1.75 1.25 1.75 1.75
 ; 1.75 1.75 1.25 1.75
 ; 1.25 1.75 1.25 1.25
-; 1.0 1.0
 ; === ORIGINAL INPUT LINES END ===
