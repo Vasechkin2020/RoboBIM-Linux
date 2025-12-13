@@ -34,7 +34,7 @@
 #include <pb_msgs/SSetSpeed.h>
 #include <list>
 
-bool adv_log = 1; // Выводить ли расширенные логи
+bool adv_log = 0; // Выводить ли расширенные логи
 
 // #include <wiringPi.h>
 // --- ЗАМЕНА WIRINGPI TIME ---  Возвращает миллисекунды (как в Arduino/WiringPi), но на основе времени ROS
