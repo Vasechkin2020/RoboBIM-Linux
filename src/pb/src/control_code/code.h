@@ -487,6 +487,16 @@ SPose getPose_C(int controlMode_, bool use_smooth_logic)
     		speedCurrent = 0; // Если мы начинаем с места - сброс. Для начала считаем, что всегда стартуем с 0.
 			// accel = 0; // Первый запуск
 			logi.log_r("    Vector Start vectorMistake = %f metr (%+9.5f, %+9.5f -> %+6.3f, %+6.3f) \n", vectorMistake, point_C_.x, point_C_.y, point_B_.x, point_B_.y);
+			 
+			 // --- ДОБАВКА: РАСЧЕТ ТОРМОЗНОГО ПУТИ ---
+            // Считаем, сколько метров нужно роботу, чтобы остановиться с максимальной скорости (velLen) Формула: S = V^2 / (2 * a)
+            float v_target = abs(velLen_);
+            float braking_dist = (v_target * v_target) / (2.0 * max_deceleration);
+            
+            logi.log_b("    [DYNAMICS CHECK] Target V=%.3f m/s. Required Braking Dist=%.3f m.\n", v_target, braking_dist);
+            if (braking_dist > vectorMistake) 
+                logi.log_r("    WARNING: Path too short for full speed! Will not reach %.3f m/s.\n", v_target);
+            
 		}
 
 		double dt = ((time_now - time) / 1000000.0); // Интервал расчета переводим сразу в секунды Находим интревал между текущим и предыдущим расчетом в секундах

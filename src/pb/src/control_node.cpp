@@ -9,7 +9,7 @@ int g_controlMode; // Выбор режима управления 0- по од�
 
 #include "control_code/statistic.h"
 SystemStatistics stats;
-SPose g_coord_offset = {0, 0, 0}; // И оффсет тоже, если еще нет
+SPose g_coord_offset = {0, 0, 0};      // И оффсет тоже, если еще нет
 SPose g_transition_offset = {0, 0, 0}; // Хранит разницу (Est - Model) в момент переключения
 
 #include "control_code/topic.h" // Файл для функций для формирования топиков в нужном виде и формате
@@ -37,9 +37,9 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "control_node");
     log4cxx::MDC::put("node", "|control_node|");
     ros::NodeHandle nh;
-    
+
     stats.init(nh); // Инициализация топиков статистики (motion_lin, drift_lin и т.д.)
-    CTopic topic; // Экземпляр класса для всех публикуемых топиков
+    CTopic topic;   // Экземпляр класса для всех публикуемых топиков
 
     //----------------------------- ПОДПИСКИ НА ТОПИКИ -------
     // ros::Subscriber subscriber_Driver = nh.subscribe<pb_msgs::Struct_Driver2Data>("pbData/Driver", 1, callback_Driver);
@@ -68,7 +68,7 @@ int main(int argc, char **argv)
     //     g_poseC.y = msg_PoseRotation.y.odom;
     //     g_poseC.th = msg_PoseRotation.th.odom;
     // }
-    g_poseC = getPose_C(g_controlMode,false);
+    g_poseC = getPose_C(g_controlMode, false);
 
     GCodeParser parser; // Создание объекта парсера
     parser.run();       // Запуск обработки
@@ -103,12 +103,12 @@ int main(int argc, char **argv)
         timeNow = ros::Time::now(); // Захватываем текущий момент времени начала цикла
         // ROS_INFO("loop \n");        // С новой строки в логе новый цикл
         ros::spinOnce(); // Опрашиваем ядро ROS и по этой команде наши срабатывают колбеки. Нужно только для подписки на топики
-        
+
         stats.update(msg_PoseRotation); // ОБНОВЛЕНИЕ ДАННЫХ В КЛАССЕ СТАТИСТИКИ (1 раз за цикл!)
 
         // Определяем, нужен ли плавный режим для текущей команды
         bool current_use_smooth = false;
-        if (i < commandArray.size()) 
+        if (i < commandArray.size())
             current_use_smooth = commandArray[i].use_model_logic;
 
         // g_poseC = getPose_C(g_controlMode);
@@ -124,112 +124,141 @@ int main(int argc, char **argv)
             controlSpeed.control.speedL = 0.0;
             controlSpeed.control.speedR = 0.0;
 
-            // Проверяем, требует ли НОВАЯ команда плавности (use_model_logic)
-            if (i < commandArray.size() && commandArray[i].use_model_logic)
+            if (i < commandArray.size()) // Проверка на выход за границы
             {
-                // Считаем разницу: Offset = Est (где мы сейчас) - Model (где плавная одометрия)
-                g_transition_offset.x = msg_PoseRotation.x.est - msg_PoseRotation.x.model;
-                g_transition_offset.y = msg_PoseRotation.y.est - msg_PoseRotation.y.model;
-                
-                // Для угла считаем разницу с нормализацией (-PI...PI)
-                double d_th = msg_PoseRotation.th.est - msg_PoseRotation.th.model;
-                while (d_th > M_PI) d_th -= 2*M_PI; 
-                while (d_th <= -M_PI) d_th += 2*M_PI;
-                g_transition_offset.th = d_th;
-                
-                logi.log_b(">>> MODE: MODEL (Smooth). Offset captured: x=%.3f y=%.3f th=%.3f\n", 
-                           g_transition_offset.x, g_transition_offset.y, RAD2DEG(g_transition_offset.th));
-            }
-            else
-            {
-                // Если едем по Est, оффсет не важен (getPose_C его проигнорирует), 
-                // но для порядка можно обнулить или просто написать лог.
-                logi.log_b(">>> MODE: EST (Global). Using raw Lidar data.\n");
-            }
+                // --- ЛОГИКА ВЫБОРА РЕЖИМА И ОТЛАДКА ---
+                bool is_model_mode = commandArray[i].use_model_logic;
+                int cmd_mode = commandArray[i].mode;
+
+                // Проверяем, требует ли НОВАЯ команда плавности (use_model_logic)
+                if (is_model_mode)
+                {
+                    // === РЕЖИМ MODEL (ПЛАВНОСТЬ) ===
+                    // Считаем разницу: Offset = Est (где мы сейчас) - Model (где плавная одометрия)
+                    g_transition_offset.x = msg_PoseRotation.x.est - msg_PoseRotation.x.model;
+                    g_transition_offset.y = msg_PoseRotation.y.est - msg_PoseRotation.y.model;
+
+                    // Для угла считаем разницу с нормализацией (-PI...PI)
+                    double d_th = msg_PoseRotation.th.est - msg_PoseRotation.th.model;
+                    while (d_th > M_PI)
+                        d_th -= 2 * M_PI;
+                    while (d_th <= -M_PI)
+                        d_th += 2 * M_PI;
+                    g_transition_offset.th = d_th;
+
+                    logi.log_w(">>> [CMD %d] EXECUTION MODE: MODEL (Smooth / Local)\n", i);
+                    logi.log("    Reason: Precise maneuver (G1 Rotate or G2 Length).\n");
+                    logi.log("    Transition Offset: X=%+.4f Y=%+.4f Th=%+.3f deg\n", 
+                             g_transition_offset.x, g_transition_offset.y, RAD2DEG(g_transition_offset.th));
+                }
+                else
+                {
+                    // === РЕЖИМ EST (ТОЧНОСТЬ) ===
+                    // Если едем по Est, оффсет не важен (getPose_C его проигнорирует), но для порядка можно обнулить или просто написать лог.
+                    logi.log_g(">>> [CMD %d] EXECUTION MODE: EST (Global / Map)\n", i);
+                    logi.log("    Reason: Global navigation to coordinates (G2 X/Y).\n");
+                    logi.log("    Lidar Correction: ACTIVE\n");
+                }
+
+            // --- ДОПОЛНИТЕЛЬНАЯ ИНФА О ЦЕЛИ ---
+                    // Показываем, куда именно в мире мы хотим приехать
+                    // (Если это G2 X/Y - координаты уже глобальные (с учетом g_coord_offset))
+                    // (Если это G2 L - координаты локальные, но point_B содержит расчетную цель)
+                    logi.log("    GLOBAL TARGET: X=%.3f Y=%.3f\n", 
+                             commandArray[i].point_B_x + (cmd_mode == 2 && !commandArray[i].use_model_logic ? g_coord_offset.x : 0), 
+                             commandArray[i].point_B_y + (cmd_mode == 2 && !commandArray[i].use_model_logic ? g_coord_offset.y : 0));
+                    // Примечание: тут логика вывода зависит от того, применил ли ты уже g_coord_offset к массиву или делаешь это в switch. 
+                    // Если делаешь в switch, то лучше вывести просто raw points из массива.
+                    logi.log("    RAW CMD TARGET: A(%.3f, %.3f) -> B(%.3f, %.3f)\n", 
+                             commandArray[i].point_A_x, commandArray[i].point_A_y,
+                             commandArray[i].point_B_x, commandArray[i].point_B_y);
+                    logi.log("    TARGET ANGLE: %.3f deg (Speed: %.2f)\n", commandArray[i].angle, commandArray[i].velAngle);
 
 
-            float signed_distance; // Для учета направления движения
-            logi.log("    command Array i= %i Mode = %i \n", i, commandArray[i].mode);
-            switch (commandArray[i].mode)
-            {
-            case 0:                                                 // Режим где управляем только скоростями колес отдельно каждым и временем сколько выполняется
-                controlSpeed.control.speedL = commandArray[i].velL; //
-                controlSpeed.control.speedR = commandArray[i].velR;
-                time = millis() + commandArray[i].duration;
-                logi.log_b("    Start Time \n");
-                break;
-            case 1:                       // Режим где управляем только углом и добиваемся что в него повернули. Время не учитываем.
-                time = millis() + 999999; // Огромное время ставим
-                flagAngle = true;         // Флаг что теперь отслеживаем угол
-                flagAngleFirst = true;
-                checker.reset(); // СБРОС БУФЕРА
+                float signed_distance; // Для учета направления движения
+                logi.log("    command Array i= %i Mode = %i \n", i, commandArray[i].mode);
+                switch (commandArray[i].mode)
+                {
+                case 0:                                                 // Режим где управляем только скоростями колес отдельно каждым и временем сколько выполняется
+                    controlSpeed.control.speedL = commandArray[i].velL; //
+                    controlSpeed.control.speedR = commandArray[i].velR;
+                    time = millis() + commandArray[i].duration;
+                    logi.log_b("    Start Time \n");
+                    break;
+                case 1:                       // Режим где управляем только углом и добиваемся что в него повернули. Время не учитываем.
+                    time = millis() + 999999; // Огромное время ставим
+                    flagAngle = true;         // Флаг что теперь отслеживаем угол
+                    flagAngleFirst = true;
+                    checker.reset(); // СБРОС БУФЕРА
 
-                point_A.x = commandArray[i].point_A_x;
-                point_A.y = commandArray[i].point_A_y;
-                logi.log("    point A table  x = %+8.3f y = %+8.3f \n", commandArray[i].point_A_x, commandArray[i].point_A_y);
+                    point_A.x = commandArray[i].point_A_x;
+                    point_A.y = commandArray[i].point_A_y;
+                    logi.log("    point A table  x = %+8.3f y = %+8.3f \n", commandArray[i].point_A_x, commandArray[i].point_A_y);
 
-                point_B.x = commandArray[i].point_B_x;
-                point_B.y = commandArray[i].point_B_y;
-                logi.log("    point B table  x = %+8.3f y = %+8.3f \n", commandArray[i].point_B_x, commandArray[i].point_B_y);
+                    point_B.x = commandArray[i].point_B_x;
+                    point_B.y = commandArray[i].point_B_y;
+                    logi.log("    point B table  x = %+8.3f y = %+8.3f \n", commandArray[i].point_B_x, commandArray[i].point_B_y);
 
-                point_C.x = g_poseC.x; // Запоминаем те координаты которые были в момент начала движения
-                point_C.y = g_poseC.y;
-                logi.log("    'point C x = %+8.3f y = %+8.3f th = %+8.3f '\n", point_C.x, point_C.y, RAD2DEG(g_poseC.th));
+                    point_C.x = g_poseC.x; // Запоминаем те координаты которые были в момент начала движения
+                    point_C.y = g_poseC.y;
+                    logi.log("    'point C x = %+8.3f y = %+8.3f th = %+8.3f '\n", point_C.x, point_C.y, RAD2DEG(g_poseC.th));
 
-                logi.log_b("    Start Angle \n");
-                
-                stats.begin_move(i); // Без аргументов! Только номер команды для лога // Передаем индекс 'i' для красоты логов
-                break;
-            case 2:              // Режим где движемся по координатам. даигаемся по длинне вектора.
-                checker.reset(); // СБРОС БУФЕРА
-                point_A.x = commandArray[i].point_A_x;
-                point_A.y = commandArray[i].point_A_y;
-                logi.log("    point A table  x = %+8.3f y = %+8.3f \n", commandArray[i].point_A_x, commandArray[i].point_A_y);
+                    logi.log_b("    Start Angle \n");
 
-                point_B.x = commandArray[i].point_B_x;
-                point_B.y = commandArray[i].point_B_y;
-                logi.log("    point B table  x = %+8.3f y = %+8.3f \n", commandArray[i].point_B_x, commandArray[i].point_B_y);
+                    stats.begin_move(i); // Без аргументов! Только номер команды для лога // Передаем индекс 'i' для красоты логов
+                    break;
+                case 2:              // Режим где движемся по координатам. даигаемся по длинне вектора.
+                    checker.reset(); // СБРОС БУФЕРА
+                    point_A.x = commandArray[i].point_A_x;
+                    point_A.y = commandArray[i].point_A_y;
+                    logi.log("    point A table  x = %+8.3f y = %+8.3f \n", commandArray[i].point_A_x, commandArray[i].point_A_y);
 
-                point_C.x = g_poseC.x; // Запоминаем те координаты которые были в момент начала движения
-                point_C.y = g_poseC.y;
-                logi.log("    'point C est  x = %+8.3f y = %+8.3f th = %+8.3f '\n", point_C.x, point_C.y, RAD2DEG(g_poseC.th));
+                    point_B.x = commandArray[i].point_B_x;
+                    point_B.y = commandArray[i].point_B_y;
+                    logi.log("    point B table  x = %+8.3f y = %+8.3f \n", commandArray[i].point_B_x, commandArray[i].point_B_y);
 
-                time = millis() + 999999; // Огромное время ставим
-                flagVector = true;        // Флаг что теперь отслеживаем длину вектора
+                    point_C.x = g_poseC.x; // Запоминаем те координаты которые были в момент начала движения
+                    point_C.y = g_poseC.y;
+                    logi.log("    'point C est  x = %+8.3f y = %+8.3f th = %+8.3f '\n", point_C.x, point_C.y, RAD2DEG(g_poseC.th));
 
-                logi.log_b("    Start Vector. len = %f \n", commandArray[i].len);
-                stats.begin_move(i); // Без аргументов! Только номер команды для лога // Передаем индекс 'i' для красоты логов
-                break;
+                    time = millis() + 999999; // Огромное время ставим
+                    flagVector = true;        // Флаг что теперь отслеживаем длину вектора
 
-            case 3: // Напечатать
-                controlPrint.id++;
-                controlPrint.controlPrint.mode = 0;     // 0 - работать по командам
-                controlPrint.controlPrint.status = 1;   // 1- печатать 0- не печатать
-                controlPrint.controlPrint.torque = 0.5; // Вручную задаю силу прижатия маркера к полу
-                time = millis() + commandArray[i].duration;
-                logi.log_b("    Print Start \n");
-                break;
+                    logi.log_b("    Start Vector. len = %f \n", commandArray[i].len);
+                    stats.begin_move(i); // Без аргументов! Только номер команды для лога // Передаем индекс 'i' для красоты логов
+                    break;
 
-            case 5: // Отменить печать
-                controlPrint.id++;
-                controlPrint.controlPrint.mode = 0;      // 0 - работать по командам
-                controlPrint.controlPrint.status = 0;    // 1- печатать 0- не печатать
-                controlPrint.controlPrint.torque = -2.0; // Вручную задаю силу с которой отводим маркер в течении 50 милисекунд
-                time = millis() + commandArray[i].duration;
-                logi.log_b("    Print Cancel \n");
-                break;
+                case 3: // Напечатать
+                    controlPrint.id++;
+                    controlPrint.controlPrint.mode = 0;     // 0 - работать по командам
+                    controlPrint.controlPrint.status = 1;   // 1- печатать 0- не печатать
+                    controlPrint.controlPrint.torque = 0.5; // Вручную задаю силу прижатия маркера к полу
+                    time = millis() + commandArray[i].duration;
+                    logi.log_b("    Print Start \n");
+                    break;
 
-            case 6: // G10 - Установка системы координат
+                case 5: // Отменить печать
+                    controlPrint.id++;
+                    controlPrint.controlPrint.mode = 0;      // 0 - работать по командам
+                    controlPrint.controlPrint.status = 0;    // 1- печатать 0- не печатать
+                    controlPrint.controlPrint.torque = -2.0; // Вручную задаю силу с которой отводим маркер в течении 50 милисекунд
+                    time = millis() + commandArray[i].duration;
+                    logi.log_b("    Print Cancel \n");
+                    break;
 
-                // Мы хотим, чтобы: Реальность = Карта + Оффсет. Значит: Оффсет = Реальность (g_poseC) - Карта (point_A из команды)
-                // g_coord_offset.x = g_poseC.x - commandArray[i].point_A_x;     // Рассчитываем смещение по X
-                // g_coord_offset.y = g_poseC.y - commandArray[i].point_A_y; // Рассчитываем смещение по Y
-                
-                // g_coord_offset.th = normalizeAngle180(g_poseC.th - DEG2RAD(commandArray[i].point_A_a)); // Рассчитываем смещение по Углу (с нормализацией) commandArray хранит градусы, g_poseC хранит радианы (обычно). Приводим к радианам.
+                case 6: // G10 - Установка системы координат
 
-                stats.start_session();                 // Сбрасываем статистику, так как начинается "чистое" выполнение задания
-                logi.log_w(">>> G10 OFFSET APPLIED & STATS STARTED <<<\n");
-                break;
+                    // Мы хотим, чтобы: Реальность = Карта + Оффсет. Значит: Оффсет = Реальность (g_poseC) - Карта (point_A из команды)
+                    // g_coord_offset.x = g_poseC.x - commandArray[i].point_A_x;     // Рассчитываем смещение по X
+                    // g_coord_offset.y = g_poseC.y - commandArray[i].point_A_y; // Рассчитываем смещение по Y
+
+                    // g_coord_offset.th = normalizeAngle180(g_poseC.th - DEG2RAD(commandArray[i].point_A_a)); // Рассчитываем смещение по Углу (с нормализацией) commandArray хранит градусы, g_poseC хранит радианы (обычно). Приводим к радианам.
+
+                    stats.start_session(); // Сбрасываем статистику, так как начинается "чистое" выполнение задания
+                    time = millis() + 1000; //Пауза 1 секунду
+                    logi.log_w(">>> G10 OFFSET APPLIED & STATS STARTED <<<\n");
+                    break;
+                }
             }
         }
 
@@ -247,7 +276,7 @@ int main(int argc, char **argv)
             }
             if (i >= commandArray.size())
             {
-                
+
                 stats.print_report(); // Печатаем финальный отчет
                 logi.log_r("    commandArray.size shutdown.\n");
                 ros::shutdown();
