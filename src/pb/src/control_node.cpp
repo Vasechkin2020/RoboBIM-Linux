@@ -146,7 +146,10 @@ int main(int argc, char **argv)
                     g_transition_offset.y = msg_PoseRotation.y.est - msg_PoseRotation.y.odom;
 
                     double d_th = msg_PoseRotation.th.est - msg_PoseRotation.th.odom;
-                    while (d_th > M_PI) d_th -= 2 * M_PI; while (d_th <= -M_PI) d_th += 2 * M_PI;
+                    while (d_th > M_PI)
+                        d_th -= 2 * M_PI;
+                    while (d_th <= -M_PI)
+                        d_th += 2 * M_PI;
                     g_transition_offset.th = d_th;
 
                     logi.log_w(">>> [CMD %d] EXECUTION MODE: ODOM (Blind / Local)\n", i);
@@ -161,7 +164,10 @@ int main(int argc, char **argv)
                     g_transition_offset.y = msg_PoseRotation.y.est - msg_PoseRotation.y.model;
 
                     double d_th = msg_PoseRotation.th.est - msg_PoseRotation.th.model;
-                    while (d_th > M_PI) d_th -= 2 * M_PI; while (d_th <= -M_PI) d_th += 2 * M_PI;
+                    while (d_th > M_PI)
+                        d_th -= 2 * M_PI;
+                    while (d_th <= -M_PI)
+                        d_th += 2 * M_PI;
                     g_transition_offset.th = d_th;
 
                     logi.log_w(">>> [CMD %d] EXECUTION MODE: MODEL (Smooth / Gyro)\n", i);
@@ -189,7 +195,7 @@ int main(int argc, char **argv)
                 logi.log("    RAW CMD TARGET: A(%.3f, %.3f) -> B(%.3f, %.3f)\n",
                          commandArray[i].point_A_x, commandArray[i].point_A_y,
                          commandArray[i].point_B_x, commandArray[i].point_B_y);
-                
+
                 logi.log("    TARGET ANGLE: %.3f deg (Speed: %.2f)\n", commandArray[i].angle, commandArray[i].velAngle);
 
                 float signed_distance; // Для учета направления движения
@@ -225,7 +231,7 @@ int main(int argc, char **argv)
 
                     stats.begin_move(i); // Без аргументов! Только номер команды для лога // Передаем индекс 'i' для красоты логов
                     break;
-                case 2:              // Режим где движемся по координатам. даигаемся по длинне вектора.
+                case 2: // Режим где движемся по координатам. даигаемся по длинне вектора.
                 {
                     checker.reset(); // СБРОС БУФЕРА
                     // point_A.x = commandArray[i].point_A_x;
@@ -244,8 +250,8 @@ int main(int argc, char **argv)
                     {
                         // 1. Определяем базовую точку (откуда берем координаты)
                         // Если режим 0 (ODOM) - берем odom. Если 1 (MODEL) - берем model.
-                        double base_x  = (source == 0) ? msg_PoseRotation.x.odom  : msg_PoseRotation.x.model;
-                        double base_y  = (source == 0) ? msg_PoseRotation.y.odom  : msg_PoseRotation.y.model;
+                        double base_x = (source == 0) ? msg_PoseRotation.x.odom : msg_PoseRotation.x.model;
+                        double base_y = (source == 0) ? msg_PoseRotation.y.odom : msg_PoseRotation.y.model;
                         double base_th = (source == 0) ? msg_PoseRotation.th.odom : msg_PoseRotation.th.model;
 
                         // 2. Рассчитываем текущую "виртуальную" позицию (База + Оффсет)
@@ -253,9 +259,12 @@ int main(int argc, char **argv)
                         SPose curr_p;
                         curr_p.x = base_x + g_transition_offset.x;
                         curr_p.y = base_y + g_transition_offset.y;
-                        
-                        double curr_th = base_th + g_transition_offset.th; 
-                        while (curr_th > M_PI) curr_th -= 2*M_PI; while (curr_th <= -M_PI) curr_th += 2*M_PI;
+
+                        double curr_th = base_th + g_transition_offset.th;
+                        while (curr_th > M_PI)
+                            curr_th -= 2 * M_PI;
+                        while (curr_th <= -M_PI)
+                            curr_th += 2 * M_PI;
                         curr_p.th = curr_th;
 
                         // 3. Точка А = Текущая позиция (Старт с места)
@@ -269,13 +278,15 @@ int main(int argc, char **argv)
                         point_B.x = point_A.x + (dist * dir * cos(curr_p.th));
                         point_B.y = point_A.y + (dist * dir * sin(curr_p.th));
 
-                        if (source == 0) logi.log_w("    [RECALC] ODOM TARGET (Blind). L=%.3f\n", dist);
-                        else             logi.log_w("    [RECALC] MODEL TARGET (Gyro). L=%.3f\n", dist);
-                        
+                        if (source == 0)
+                            logi.log_w("    [RECALC] ODOM TARGET (Blind). L=%.3f\n", dist);
+                        else
+                            logi.log_w("    [RECALC] MODEL TARGET (Gyro). L=%.3f\n", dist);
+
                         logi.log("    Real Start: x=%.3f y=%.3f th=%.3f\n", point_A.x, point_A.y, RAD2DEG(curr_p.th));
                         logi.log("    Real End  : x=%.3f y=%.3f\n", point_B.x, point_B.y);
                     }
-                    else 
+                    else
                     {
                         // ОБЫЧНЫЙ РЕЖИМ (EST) - Едем по координатам из G-кода
                         point_A.x = commandArray[i].point_A_x + g_coord_offset.x;
@@ -289,7 +300,6 @@ int main(int argc, char **argv)
                     logi.log("    point A final  x = %+8.3f y = %+8.3f \n", point_A.x, point_A.y);
                     logi.log("    point B final  x = %+8.3f y = %+8.3f \n", point_B.x, point_B.y);
 
-
                     point_C.x = g_poseC.x; // Запоминаем те координаты которые были в момент начала движения
                     point_C.y = g_poseC.y;
                     logi.log("    'point C x = %+8.3f y = %+8.3f th = %+8.3f '\n", point_C.x, point_C.y, RAD2DEG(g_poseC.th));
@@ -300,7 +310,7 @@ int main(int argc, char **argv)
                     logi.log_b("    Start Vector. len = %f \n", commandArray[i].len);
                     stats.begin_move(i); // Без аргументов! Только номер команды для лога // Передаем индекс 'i' для красоты логов
                     break;
-                    }
+                }
                 case 3: // Напечатать
                     controlPrint.id++;
                     controlPrint.controlPrint.mode = 0;     // 0 - работать по командам
@@ -369,13 +379,12 @@ int main(int argc, char **argv)
 
         if (flagVector) // Отслеживание длины вектора
         {
-            // Определяем, можно ли использовать остановку по тренду
-            // Если ODOM (0) - НЕЛЬЗЯ (едем слепо до упора)
-            // Если MODEL/EST - МОЖНО (защита от перелета)
-            // bool use_trend = (commandArray[i].control_source != 0);
-
-            // workVector(commandArray[i].len, point_A, point_B, time, commandArray[i].velLen, use_trend); 
-            workVector(commandArray[i].len, point_A, point_B, time, commandArray[i].velLen); 
+            // --- ВЫБОР ЗАПАСА ТОРМОЖЕНИЯ (MARGIN) ---
+            float current_margin = 0.010; // По умолчанию 10 мм (для EST/Global)
+            if (commandArray[i].control_source == 0)
+                current_margin = 0.002; // Если едем по ODOM (L-команды, микро-маневры), уменьшаем запас до 2 мм,чтобы робот не полз пол-пути.
+            // ----------------------------------------
+            workVector(commandArray[i].len, point_A, point_B, time, commandArray[i].velLen, current_margin); // Передаем current_margin в функцию
         }
 
         topic.publicationControlDriver(); // Формируем и Публикуем команды для управления Driver

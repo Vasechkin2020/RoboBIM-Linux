@@ -22,9 +22,8 @@ void readParam(); // Считывание переменных параметр�
 
 void initCommandArray(int verCommand_); // Заполнение маасива команд
 
-void workAngle(float angle_, float theory_delta, u_int64_t &time_, float velAngle_);						   // Тут отрабатываем алгоритм отслеживания угла при повороте
-void workVector(float len_, SPoint point_A_, SPoint point_B_, u_int64_t &time_, float velLen_);				   // Тут отрабатываем алгоритм отслеживания длины вектора при движении прямо
-float calculate_max_safe_speed(float distance_to_stop, float max_deceleration);								   // Вычисляет максимально допустимую скорость для остановки.
+void workVector(float len_, SPoint point_A_, SPoint point_B_, u_int64_t &time_, float velLen_, float braking_margin); 			   // Тут отрабатываем алгоритм отслеживания длины вектора при движении прямо
+float calculate_max_safe_speed(float distance_to_stop, float max_deceleration, float margin); 				   // Вычисляет максимально допустимую скорость для остановки.
 float calculate_max_safe_angular_speed_degrees(float angular_error_deg, float max_angular_acceleration_degs2); // Вычисляет максимально допустимую угловую скорость для поворота на месте, используя ГРАДУСЫ.
 float convert_angular_speed_to_linear_wheel_speed(float angular_speed_degs, float wheel_base_m);			   // Преобразует угловую скорость робота (град/с) в линейную скорость колес (м/с).
 void callback_Joy(sensor_msgs::Joy msg);																	   // Функция обраьтного вызова по подпичке на топик джойстика nh.subscribe("joy", 16, callback_Joy);
@@ -393,13 +392,12 @@ float convert_angular_speed_to_linear_wheel_speed(float angular_speed_degs, floa
  * @return Максимально допустимая скорость (м/с). Возвращает 0.0, если расстояние < 0.
  *  * Рассчитывает торможение так, чтобы скорость упала в 0 за 'margin' метров ДО цели.
  */
-float calculate_max_safe_speed(float distance_to_stop, float max_deceleration)
+float calculate_max_safe_speed(float distance_to_stop, float max_deceleration, float margin) 
 {
 	if (distance_to_stop <= 0.0 || max_deceleration <= 0.0) // Защита от отрицательного расстояния или нулевого ускорения
 		return 0.0;
 
 	// ЗАПАС (Margin). Робот будет думать, что стена стоит на 1 см ближе, и оттормозится перед ней.
-	float margin = 0.01;							 // 10 мм
 	float dist_for_calc = distance_to_stop - margin; // Эффективная дистанция для расчета торможения
 
 	if (dist_for_calc <= 0.0) // Если мы уже вошли в зону запаса (ближе 10 мм)
@@ -530,8 +528,7 @@ void workAngle(float angle_, float theory_delta, u_int64_t &time_, float velAngl
 }
 
 // Тут отрабатываем алгоритм отслеживания длины вектора при движении прямо
-void workVector(float len_, SPoint point_A_, SPoint point_B_, u_int64_t &time_, float velLen_)
-// void workVector(float len_, SPoint point_A_, SPoint point_B_, u_int64_t &time_, float velLen_, bool enable_trend_check)
+void workVector(float len_, SPoint point_A_, SPoint point_B_, u_int64_t &time_, float velLen_, float braking_margin) 
 {
 	static float minVectorMistake = 0.001; // Минимальная ошибка по вектору в метрах 1 мм
 	static float vectorMistake = 0;		   // Текущая ошибка по длине в местрах
@@ -557,7 +554,13 @@ void workVector(float len_, SPoint point_A_, SPoint point_B_, u_int64_t &time_, 
 		flagVectorFirst = false;
 		time = time_now;  // И сброс таймера (как в workAngle)!
 		speedCurrent = 0; // Если мы начинаем с места - сброс. Для начала считаем, что всегда стартуем с 0.
-		// accel = 0; // Первый запуск
+						  // accel = 0; // Первый запуск
+
+		// --- ОБНОВЛЕННЫЙ ЛОГ С УЧЕТОМ MARGIN ---
+        if (velLen_ < 0) logi.log_r(">>> [REVERSE] MOVING BACKWARD <<< (L=%.3f, Margin=%.3f)\n", len_, braking_margin);
+        else             logi.log_b(">>> [FORWARD] MOVING STRAIGHT >>> (L=%.3f, Margin=%.3f)\n", len_, braking_margin);
+		// -----------------------------------------
+
 		logi.log_r("    Vector Start vectorMistake = %f metr (%+9.5f, %+9.5f -> %+6.3f, %+6.3f) \n", vectorMistake, point_C_.x, point_C_.y, point_B_.x, point_B_.y);
 
 		// --- ДОБАВКА: РАСЧЕТ ТОРМОЗНОГО ПУТИ ---
@@ -574,10 +577,7 @@ void workVector(float len_, SPoint point_A_, SPoint point_B_, u_int64_t &time_, 
 	time = time_now;
 	float accel = max_deceleration * dt; // Ускорение
 
-	// РАСЧЕТ ТРЕНДА // Вызываем проверку всегда (чтобы чекер обновлял свое состояние), но результат используем только если разрешено.
-    // bool is_rising = checker.check_for_rising_trend(abs(vectorMistake)); // Добавляем и получаем логическое true усли есть 3 значения подряд растет ошибка 
-    // bool flagTrendMistake = enable_trend_check && is_rising; // Флаг ошибки активен ТОЛЬКО если он включен в аргументах
-    bool flagTrendMistake  = checker.check_for_rising_trend(abs(vectorMistake)); // Добавляем и получаем логическое true усли есть 3 значения подряд растет ошибка 
+	bool flagTrendMistake = checker.check_for_rising_trend(abs(vectorMistake)); // Добавляем и получаем логическое true усли есть 3 значения подряд растет ошибка
 
 	double speedL = 0; // OUT скорости колес ЛЕВОГО
 	double speedR = 0; // OUT скорости колес ПРАВОГО
@@ -600,7 +600,8 @@ void workVector(float len_, SPoint point_A_, SPoint point_B_, u_int64_t &time_, 
 	{
 		// ============================================== ЭТО УПРАВЛЕНИЕ ОБЩЕЙ СКОРОСТЬ  =================================================
 		speedCurrent = abs(speedCurrent);										 // Считаем всегда по модулю, а потом в зависимости от направления меняем знак на - если нужно
-		float V_max = calculate_max_safe_speed(vectorMistake, max_deceleration); // Считаем максимальную скорость с которой успеем остановиться
+		// ПЕРЕДАЕМ MARGIN В РАСЧЕТ ТОРМОЖЕНИЯ
+        float V_max = calculate_max_safe_speed(vectorMistake, max_deceleration, braking_margin); // Считаем максимальную скорость с которой успеем остановиться
 		if (V_max <= speedCurrent)												 // Если наша скорость больше чем допустимо то снижаем до допустимой
 			speedCurrent = V_max;												 // ЭТО ТОРМОЖЕНИЕ Тут speedCurrent станет 0 в зоне 10 мм
 		else																	 // ЭТО УСКОРЕНИЕ
