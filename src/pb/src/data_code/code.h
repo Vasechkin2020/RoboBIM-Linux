@@ -251,10 +251,17 @@ void readParam() // Считывание переменных параметро
 	
 	nh_global.param<int>("/pb_config/modul/mode", modeModul, 5 );
 
-	logi.log_b("+++ Start node with parametrs:\n");
+	nh_global.param<int>("/pb_config/unit_driver", unitDriver, 0);
+	nh_global.param<int>("/pb_config/unit_modul", unitModul, 0);
+	nh_global.param<int>("/pb_config/unit_print", unitPrint, 0);
+
+	logi.log_b("+++ =========================================");
+	logi.log("    Start node with parametrs:\n");
 	logi.log("    offSetLaser0 = %+8.3f offSetLaser1 = %+8.3f offSetLaser2 = %+8.3f offSetLaser3 = %+8.3f \n", offSetLaser[0], offSetLaser[1], offSetLaser[2], offSetLaser[3]);
 	logi.log("    offSetLaserL = %+8.3f offSetLaserR = %+8.3f \n", offSetLaserL, offSetLaserR);
 	logi.log("    offSetUZI = %+8.3f \n", offSetUzi);
 	logi.log("    modeModul = %i \n", modeModul);
+	logi.log("    unit_driver = %i unit_modul = %i unit_print = %i \n", unitDriver, unitModul, unitPrint);
+	logi.log_b("+++ =========================================");
 }
 #endif

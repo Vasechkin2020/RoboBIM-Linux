@@ -1,13 +1,37 @@
 <launch>
   
-  <rosparam file="$(find pb)/src/config.yaml" command="load" />
+<!-- 1. Путь к конфигу -->
+  <arg name="cfg_path" value="$(find pb)/src/config.yaml" />
 
-  <include file="$(find rplidar_ros)/launch/rplidar_s2.launch" />
+  <!-- 2. Загрузка параметров (как обычно) -->
+  <rosparam file="$(arg cfg_path)" command="load" />
+
+  <!-- 
+     3. БЕЗОПАСНЫЙ ПАРСИНГ (БЕЗ ЦИКЛОВ И ИМПОРТОВ):
+     Мы берем весь текст после "unit_lidar:", отрезаем конец строки, 
+     отрезаем комментарии и превращаем в число.
+  -->
+  <arg name="lidar_type" 
+       value="$(eval int(open(arg('cfg_path'), 'r').read().split('unit_lidar:')[1].split('\n')[0].split('#')[0].strip()))" />
+
+  <!-- Отладка -->
+  <param name="debug/lidar_read_from_yaml" value="$(arg lidar_type)" />
+
+  <!-- 4. Условия запуска -->
+  
+  <!-- A3 -->
+  <group if="$(eval arg('lidar_type') == 3)">
+    <include file="$(find rplidar_ros)/launch/rplidar_a3.launch" />
+  </group>
+  
+  <!-- S2 -->
+  <group if="$(eval arg('lidar_type') == 2)">
+    <include file="$(find rplidar_ros)/launch/rplidar_s2.launch" />
+  </group>
+  <!--include file="$(find rplidar_ros)/launch/rplidar_s2.launch" /-->
   <!--include file="$(find rplidar_ros)/launch/rplidar_a3.launch" /-->
-  <node pkg="pb" type="data_node" name="data_node" output ="screen">
-   
-    <!--param name="modeModul" type="int" value="3" /-->
-    <!--param name="modeModul" type="int" value="$(arg modeModul)" /-->
 
-  </node>
+  <!--node pkg="pb" type="data_node" name="data_node" output ="screen"-->
+   
+  <!--/node-->
 </launch> 

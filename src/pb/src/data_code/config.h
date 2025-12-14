@@ -134,6 +134,10 @@ unsigned char bufferModul[SIZE_BUFF_MODUL]; // Буфер в 1 байт в ко�
 
 int modeModul = 0;
 
+int unitDriver = false; // Переменные для определения с какими модулями работаем
+int unitModul = false;
+int unitPrint = false;
+
 STest Modul2Test;
 STest Test2Modul;
 
