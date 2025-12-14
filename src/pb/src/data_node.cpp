@@ -50,21 +50,22 @@ int main(int argc, char **argv)
     // double dt = (current_time - last_time).toSec();
 
     ros::Duration(1).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
-                              /*
-                                  logi.log_b("+++ test laser... Waiting 7 sec...\n");
-                          
-                                  // Data2Modul.id++;                                       //= 0x1F1F1F1F;
-                                  // Data2Modul.controlMotor.mode = 0;                      // Ручной вариант проверка
-                                  // Data2Modul.cheksum = measureCheksum(Data2Modul);       // Считаем контрольную сумму отправляемой структуры// тут нужно посчитать контрольную сумму структуры
-                                  // sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
-                                  // ros::Duration(1).sleep();                      // Подождем пока все обьявится и инициализируется внутри ROS
-                                  Data2Modul.id++;                                       //= 0x1F1F1F1F;
-                                  Data2Modul.controlMotor.mode = 9;                      // Ручной вариант проверка
-                                  Data2Modul.controlLaser.mode = 0;                      // Ручной вариант проверка
-                                  Data2Modul.cheksum = measureCheksum(Data2Modul);       // Считаем контрольную сумму отправляемой структуры// тут нужно посчитать контрольную сумму структуры
-                                  sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
-                                  ros::Duration(7).sleep();                              // Подождем пока все обьявится и инициализируется внутри ROS
-                              */
+
+    /*
+        logi.log_b("+++ test laser... Waiting 7 sec...\n");
+
+        // Data2Modul.id++;                                       //= 0x1F1F1F1F;
+        // Data2Modul.controlMotor.mode = 0;                      // Ручной вариант проверка
+        // Data2Modul.cheksum = measureCheksum(Data2Modul);       // Считаем контрольную сумму отправляемой структуры// тут нужно посчитать контрольную сумму структуры
+        // sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
+        // ros::Duration(1).sleep();                      // Подождем пока все обьявится и инициализируется внутри ROS
+        Data2Modul.id++;                                       //= 0x1F1F1F1F;
+        Data2Modul.controlMotor.mode = 9;                      // Ручной вариант проверка
+        Data2Modul.controlLaser.mode = 0;                      // Ручной вариант проверка
+        Data2Modul.cheksum = measureCheksum(Data2Modul);       // Считаем контрольную сумму отправляемой структуры// тут нужно посчитать контрольную сумму структуры
+        sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
+        ros::Duration(7).sleep();                              // Подождем пока все обьявится и инициализируется внутри ROS
+    */
     // Data2Modul.id++;                                       //= 0x1F1F1F1F;
     // Data2Modul.controlMotor.mode = 1;                      // Ручной вариант проверка
     // Data2Modul.cheksum = measureCheksum(Data2Modul);       // Считаем контрольную сумму отправляемой структуры// тут нужно посчитать контрольную сумму структуры
@@ -141,30 +142,30 @@ int main(int argc, char **argv)
         status_age = Data2Print.controlPrint.status;
         if (unitModul)
         {
-                // --------------------------- ОТПРАВКА ДАННЫХ на нижний уровень и разборка и публикация данных полученных с нижнего уровня---------------------------------------------------------------------
-                Data2Modul.id++;                                 //= 0x1F1F1F1F;
-                Data2Modul.cheksum = measureCheksum(Data2Modul); // Считаем контрольную сумму отправляемой структуры// тут нужно посчитать контрольную сумму структуры
-                                                                 // printf("Отправляем: Id %i, чек= %i  ", Data2Modul.id, Data2Modul.cheksum);
-                                                                 // rezModul = sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
+            // --------------------------- ОТПРАВКА ДАННЫХ на нижний уровень и разборка и публикация данных полученных с нижнего уровня---------------------------------------------------------------------
+            Data2Modul.id++;                                 //= 0x1F1F1F1F;
+            Data2Modul.cheksum = measureCheksum(Data2Modul); // Считаем контрольную сумму отправляемой структуры// тут нужно посчитать контрольную сумму структуры
+                                                             // printf("Отправляем: Id %i, чек= %i  ", Data2Modul.id, Data2Modul.cheksum);
+                                                             // rezModul = sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
 
-                // rezModul = sendData2Modul(SPI_CHANNAL_0, Modul2Test, Test2Modul); // Обмен данными с нижним уровнем
-                rezModul = sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
+            // rezModul = sendData2Modul(SPI_CHANNAL_0, Modul2Test, Test2Modul); // Обмен данными с нижним уровнем
+            rezModul = sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
 
-                // uint8_t test[4]{0x01, 0x04, 0xFF, 0xAA};
-                // uint8_t test[2]{0x01, 0x02};
-                // digitalWrite(PIN_SPI_MODUL, 0);
-                // delayMicroseconds(1);
-                // printf("out- %#x %#x %#x %#x\n", test[0], test[1], test[2], test[3]);
-                // rez = wiringPiSPIDataRW(SPI_CHANNAL_0, test, 4); // Передаем и одновременно получаем данные
-                // printf(" in- %#X %#X %#X %#X\n\n", test[0], test[1], test[2], test[3]);
-                // delayMicroseconds(1);
-                // digitalWrite(PIN_SPI_MODUL, 1);
+            // uint8_t test[4]{0x01, 0x04, 0xFF, 0xAA};
+            // uint8_t test[2]{0x01, 0x02};
+            // digitalWrite(PIN_SPI_MODUL, 0);
+            // delayMicroseconds(1);
+            // printf("out- %#x %#x %#x %#x\n", test[0], test[1], test[2], test[3]);
+            // rez = wiringPiSPIDataRW(SPI_CHANNAL_0, test, 4); // Передаем и одновременно получаем данные
+            // printf(" in- %#X %#X %#X %#X\n\n", test[0], test[1], test[2], test[3]);
+            // delayMicroseconds(1);
+            // digitalWrite(PIN_SPI_MODUL, 1);
 
-                if (rezModul) // Если пришли хорошие данные с нижнего уровня, то обрабатываем их и публикуем данные в ROS
-                {
-                    // СДЕЛАТЬ СКОРОСТЬ ПУБЛИКАЦИИ ЕСЛИ БУДЕТ 100Герц то нафига так часто визуализацию публиковать
-                    topic.processing_Modul2Data(); // Обрабатываем данные
-                }
+            if (rezModul) // Если пришли хорошие данные с нижнего уровня, то обрабатываем их и публикуем данные в ROS
+            {
+                // СДЕЛАТЬ СКОРОСТЬ ПУБЛИКАЦИИ ЕСЛИ БУДЕТ 100Герц то нафига так часто визуализацию публиковать
+                topic.processing_Modul2Data(); // Обрабатываем данные
+            }
         }
         if (unitPrint)
         {
