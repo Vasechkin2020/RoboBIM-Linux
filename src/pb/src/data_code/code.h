@@ -260,8 +260,8 @@ void readParam() // Считывание переменных параметро
 	logi.log("    offSetLaser0 = %+8.3f offSetLaser1 = %+8.3f offSetLaser2 = %+8.3f offSetLaser3 = %+8.3f \n", offSetLaser[0], offSetLaser[1], offSetLaser[2], offSetLaser[3]);
 	logi.log("    offSetLaserL = %+8.3f offSetLaserR = %+8.3f \n", offSetLaserL, offSetLaserR);
 	logi.log("    offSetUZI = %+8.3f \n", offSetUzi);
-	logi.log("    modeModul = %i \n", modeModul);
 	logi.log("    unit_driver = %i unit_modul = %i unit_print = %i \n", unitDriver, unitModul, unitPrint);
+	logi.log("    modeModul = %i \n", modeModul);
 	logi.log_b("+++ =========================================");
 }
 #endif

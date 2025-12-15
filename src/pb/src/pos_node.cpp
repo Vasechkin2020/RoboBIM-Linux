@@ -132,8 +132,8 @@ int main(int argc, char **argv)
             // g_poseRotation.mode10 = calcNewOdom2(g_poseRotation.mode10, g_linAngVel.model, "mode10"); // На основе линейных скоростей считаем новую позицию и угол по колесам
 
             // РАСЧЕТ НАПРАВЛЕНИЯ УГЛОВ ЛАЗЕРОВ
-            // laser.calcAnglePillarForLaser(pillar.pillar, g_poseLidar.est); // Расчет углов в локальной системе лазеров на столбы для передачи на нижний уровень для исполнения
-            // topic.publicationControlModul();                                // Формируем и Публикуем команды для управления Modul
+            laser.calcAnglePillarForLaser(pillar.pillar, g_poseLidar.est); // Расчет углов в локальной системе лазеров на столбы для передачи на нижний уровень для исполнения
+            topic.publicationControlModul();                                // Формируем и Публикуем команды для управления Modul
 
             // angleMPU(); // Расчет угла положения на основе данных сдатчика MPU
             // calcEuler(); // Расчет угла yaw с датчика IMU

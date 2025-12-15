@@ -1,23 +1,17 @@
 ; Initialize program
 ;G90 ; Set absolute coordinate mode
 
-G1 A45.0 F0.05 ; Rotate to angle 
-G4 P5000 ; Pause for ... ms 
+G1 A40.0 F0.05 ; Rotate to angle 
+G4 P10000 ; Pause for ... ms 
 
-G1 A90.0 F0.05 ; Rotate to angle 
-G4 P5000 ; Pause for ... ms 
+;G1 A0.0 F0.05 ; Rotate to angle 
+;G4 P10000 ; Pause for ... ms 
 
-G1 A0.0 F0.05 ; Rotate to angle 
-G4 P5000 ; Pause for ... ms 
+G1 A-40.0 F0.05 ; Rotate to angle 
+G4 P10000 ; Pause for ... ms 
 
-G1 A-45.0 F0.05 ; Rotate to angle 
-G4 P5000 ; Pause for ... ms 
-
-G1 A-90.0 F0.05 ; Rotate to angle 
-G4 P5000 ; Pause for ... ms 
-
-G1 A0.0 F0.05 ; Rotate to angle 
-G4 P5000 ; Pause for ... ms 
+;G1 A0.0 F0.05 ; Rotate to angle 
+;G4 P10000 ; Pause for ... ms 
 
 ;G2 L1.0 F0.2 ; Linear move 1.0 m
 ;G4 P3000 ; Pause for ... ms 
@@ -50,4 +44,4 @@ G4 P5000 ; Pause for ... ms
 ;G0 F_L0.1 F_R0.1 T3000 ; Linear move 
 ;G4 P1000 ; Pause for ... ms 
 
-;G9 ; Cicle...
+G9 ; Cicle...
