@@ -29,7 +29,7 @@
 class RateLimitedLocalizer
 {
 public:
-    double max_pos_step = 0.05; // Шаг на который приближаемся к измерению от модели
+    double max_pos_step = 0.02; // Шаг на который приближаемся к измерению от модели
     double max_angle_step = 0.50; // В градусах
 
     SPose fuse(const SPose &pose_model_in, // Входное положение Модели (const)

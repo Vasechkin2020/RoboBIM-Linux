@@ -308,7 +308,7 @@ void CTopic::publicationPoseRotattion() // Вывод в топик данных
     msg.th.meas = g_poseRotation.meas.th;
     msg.th.est = g_poseRotation.est.th;
    
-    msg.theta = DEG2RAD(g_angleEuler.yaw);
+    // msg.theta = DEG2RAD(g_angleEuler.yaw);
 
     pub_poseRotation.publish(msg); // Публикуем информацию по позиции лидара
 }

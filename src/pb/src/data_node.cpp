@@ -51,27 +51,37 @@ int main(int argc, char **argv)
 
     ros::Duration(1).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
 
-    /*
-        logi.log_b("+++ test laser... Waiting 7 sec...\n");
+    logi.log_b("+++ test laser... Waiting 7 sec...\n");
 
-        // Data2Modul.id++;                                       //= 0x1F1F1F1F;
-        // Data2Modul.controlMotor.mode = 0;                      // Ручной вариант проверка
-        // Data2Modul.cheksum = measureCheksum(Data2Modul);       // Считаем контрольную сумму отправляемой структуры// тут нужно посчитать контрольную сумму структуры
-        // sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
-        // ros::Duration(1).sleep();                      // Подождем пока все обьявится и инициализируется внутри ROS
-        Data2Modul.id++;                                       //= 0x1F1F1F1F;
-        Data2Modul.controlMotor.mode = 9;                      // Ручной вариант проверка
-        Data2Modul.controlLaser.mode = 0;                      // Ручной вариант проверка
-        Data2Modul.cheksum = measureCheksum(Data2Modul);       // Считаем контрольную сумму отправляемой структуры// тут нужно посчитать контрольную сумму структуры
-        sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
-        ros::Duration(7).sleep();                              // Подождем пока все обьявится и инициализируется внутри ROS
-    */
-    // Data2Modul.id++;                                       //= 0x1F1F1F1F;
-    // Data2Modul.controlMotor.mode = 1;                      // Ручной вариант проверка
-    // Data2Modul.cheksum = measureCheksum(Data2Modul);       // Считаем контрольную сумму отправляемой структуры// тут нужно посчитать контрольную сумму структуры
-    // sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
-    // ros::Duration(1).sleep();                              // Подождем пока все обьявится и инициализируется внутри ROS
-    // logi.log("--- test laser\n");
+    Data2Modul.id++;                                       //= 0x1F1F1F1F;
+    Data2Modul.controlMotor.mode = 0;                      // Ручной вариант проверка
+    Data2Modul.cheksum = measureCheksum(Data2Modul);       // Считаем контрольную сумму отправляемой структуры// тут нужно посчитать контрольную сумму структуры
+    sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
+    ros::Duration(1).sleep();                              // Подождем пока все обьявится и инициализируется внутри ROS
+
+    Data2Modul.id++;                                       //= 0x1F1F1F1F;
+    Data2Modul.controlMotor.mode = 9;                      // Ручной вариант проверка
+    Data2Modul.controlLaser.mode = 0;                      // Ручной вариант проверка
+    Data2Modul.cheksum = measureCheksum(Data2Modul);       // Считаем контрольную сумму отправляемой структуры// тут нужно посчитать контрольную сумму структуры
+    sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
+    ros::Duration(7).sleep();                              // Подождем пока все обьявится и инициализируется внутри ROS
+
+    Data2Modul.id++;                                       //= 0x1F1F1F1F;
+    Data2Modul.controlMotor.mode = 1;       // Ручной вариант проверка
+    Data2Modul.controlLaser.mode = 0;       // Ручной вариант проверка
+    Data2Modul.controlMotor.angle[0] = 90;  //
+    Data2Modul.controlMotor.angle[1] = 90; //
+    Data2Modul.controlMotor.angle[2] = 90;  //
+    Data2Modul.controlMotor.angle[3] = 90; //
+    Data2Modul.controlMotor.numPillar[0] = 0;
+    Data2Modul.controlMotor.numPillar[1] = 1;
+    Data2Modul.controlMotor.numPillar[2] = 2;
+    Data2Modul.controlMotor.numPillar[3] = 3;
+
+    Data2Modul.cheksum = measureCheksum(Data2Modul);       // Считаем контрольную сумму отправляемой структуры// тут нужно посчитать контрольную сумму структуры
+    sendData2Modul(SPI_CHANNAL_0, Modul2Data, Data2Modul); // Обмен данными с нижним уровнем
+    ros::Duration(5).sleep();                              // Подождем пока все обьявится и инициализируется внутри ROS
+    logi.log("--- test laser\n");
 
     uint64_t timeWork = millis(); // Время работы ноды
     logi.log_w("+++ End Setup. Start loop.\n");

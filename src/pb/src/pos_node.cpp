@@ -16,7 +16,7 @@ int g_numPillar[4];    // Номер столба до которого изме
 SPoseRotation g_poseRotation; // Глобальная позиция в точке вращения робота. Все считается к ней.Она основная во всем. Расчет для лидарной точки mode1.2.3 потом пересчитывается в g_PoseRotation
 SPoseBase g_poseLidar;        // Позиции лидара по расчетам Центральная система координат
 SLinAngVel g_linAngVel;       // Линейная и угловая скорость полученная с колес и с датчика MPU IMU и может быть обьединенная как-то
-SEuler g_angleEuler;          // Углы Эллера
+// SEuler g_angleEuler;          // Углы Эллера
 SPose aver;                   // Усредненная позиция в моменты когда стоим на месте
 uint32_t averCount = 0;       // Счетчик усреднений
 
@@ -74,7 +74,7 @@ int main(int argc, char **argv)
 
     pillar.parsingPillar(msg_pillar); // Разбираем пришедшие данные Заполняем массив правильных координат.
 
-    ros::Rate rate(100);      // Частота в Герцах основного цикла
+    ros::Rate rate(3);      // Частота в Герцах основного цикла
     ros::Duration(1).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
     static bool flagPublish = false;
 
@@ -83,9 +83,9 @@ int main(int argc, char **argv)
     ROS_INFO("Topic received. Starting the calibration phase.");                                  // Топик получен. Начинаем фазу калибровки.
 
     calibr_accel_gyro(); // Калибровка гироскопа и акселерометра в момент запуска ноды
-    initKalman();        // Задаем коэфициенты для Калмана
+    // initKalman();        // Задаем коэфициенты для Калмана
 
-    rate_fuser.max_pos_step = 0.01; // Настройка параметров слияния Максимальный шаг коррекции позиции (0.01 м)
+    // rate_fuser.max_pos_step = 0.01; // Настройка параметров слияния Максимальный шаг коррекции позиции (0.01 м)
 
     ROS_WARN("++++ End Setup. Start loop.");
     ros::Duration(3).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
@@ -148,6 +148,7 @@ int main(int argc, char **argv)
             bool is_data_valid = true; // Флаг для дальнейших проверок
             logi.log("    IN  Data Pose Est x = %+8.3f y = %+8.3f th = %+8.3f \n", g_poseLidar.est.x, g_poseLidar.est.y, g_poseLidar.est.th);
 
+            // 1. СНАЧАЛА ЧИТАЕМ ДАННЫЕ
             g_poseLidar.meas.x = msg_Scan.x.fused; // Запоминаем данные ИЗМЕРЕНИЯ которые пришли
             g_poseLidar.meas.y = msg_Scan.y.fused;
             g_poseLidar.meas.th = msg_Scan.th.fused;
@@ -189,6 +190,14 @@ int main(int argc, char **argv)
                 g_poseRotation.meas = convertLidar2Rotation(g_poseLidar.meas, "First data measurement meas");   // Обновляем уже уточненным значением
                 g_poseRotation.est = convertLidar2Rotation(g_poseLidar.meas, "First data measurement est");     // Обновляем уже уточненным значением
                 logi.log_b("=== FIRST Data Pose Rotation Measurement x = %+8.3f y = %+8.3f th = %+8.3f \n", g_poseRotation.odom.x, g_poseRotation.odom.y, g_poseRotation.odom.th);
+                
+                // Принудительно обновляем оценки в системе Lidar, чтобы в следующем цикле не срабатывал Jump Detector
+                g_poseLidar.est = g_poseLidar.meas;   
+                g_poseLidar.model = g_poseLidar.meas; 
+                
+                // Сбрасываем скорости модели, чтобы не было инерции от ложного прыжка
+                g_linAngVel.model.vx = 0;
+                g_linAngVel.model.vth = 0;
             }
             else
             {

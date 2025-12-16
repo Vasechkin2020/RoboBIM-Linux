@@ -14,7 +14,7 @@ void callback_Modul(pb_msgs::Struct_Modul2Data msg);
 void callback_Speed(pb_msgs::SSetSpeed msg);
 void callback_Driver(pb_msgs::Struct_Driver2Data msg); //
 
-SPose startPose;				   // Стартовая позиция считываем из параметров рос
+SPose startPose{0,0,0};				   // Стартовая позиция 
 pb_msgs::SLinAngVel msg_LinAngVel; // Обобщенные данные в моем формате о всех вариантах расчета позиции
 
 void read_Param_StartPose(); // Считывание переменных параметров из лаунч файла при запуске. Там офсеты и режимы работы
@@ -162,7 +162,7 @@ float minDistance(float laserL_, float laserR_, float uzi1_)
 	}
 	return min;
 }
-
+/*
 // Расчет угла theta
 void calcEuler()
 {
@@ -174,7 +174,7 @@ void calcEuler()
 	prev_yaw = msg_Modul2Data.bno.angleEuler.yaw;
 	ROS_INFO_THROTTLE(RATE_OUTPUT, "    msg_Modul2Data.bno.angleEuler.yaw = %+8.3f g_angleEuler.yaw = %+8.3f (gradus) %+8.3f rad", msg_Modul2Data.bno.angleEuler.yaw, g_angleEuler.yaw, DEG2RAD(g_angleEuler.yaw));
 }
-
+*/
 // Конвертация координат из Rotattion в Lidar систему
 SPose convertRotation2Lidar(SPose pose_, std::string stroka_)
 {
@@ -355,6 +355,7 @@ SPose calcNewPose_old(SPose odom_, STwistDt data_, std::string stroka_, float ko
 	// ROS_INFO("--- calcNewPose");
 	return odom_;
 }
+/*
 // Обработка пришедших данных.Обсчитываем одометрию по энкодеру
 SPose calcNewOdom2(SPose odom_, STwistDt data_, std::string stroka_) // На вход подаются старая одометрия и новые угловая угловая скорость. Возвращается новая позиция по данным угловым скоростям
 {
@@ -390,7 +391,7 @@ SPose calcNewOdom2(SPose odom_, STwistDt data_, std::string stroka_) // На в�
 
 	return odom_;
 }
-
+*/
 // --- Кинематика дифференциального привода. Расчет линейных и угловой скорости
 STwistDt calcTwistFromWheel(pb_msgs::SSetSpeed msg_Speed_)
 {
@@ -1328,14 +1329,14 @@ void read_Param_StartPose()
 	ros::NodeHandle nh_global; // <--- Используется для доступа к /pb_config/ // Создаем ГЛОБАЛЬНЫЙ обработчик, который ищет параметры, начиная с корня (/).
 
 	// printf("\n--- Считывание смещений массива лазеров ---\n"); // Разделитель секции...
-	nh_global.param<float>("/pb_config/pillars/pillar_0_x", msg_pillar.pillar[0].x, 0.11); // Если не найдено, laser_b0 = -0.0001
-	nh_global.param<float>("/pb_config/pillars/pillar_0_y", msg_pillar.pillar[0].y, 0.11); // Если не найдено, laser_b0 = -0.0001
-	nh_global.param<float>("/pb_config/pillars/pillar_1_x", msg_pillar.pillar[1].x, 1.11); // Если не найдено, laser_b0 = -0.0001
-	nh_global.param<float>("/pb_config/pillars/pillar_1_y", msg_pillar.pillar[1].y, 1.11); // Если не найдено, laser_b0 = -0.0001
-	nh_global.param<float>("/pb_config/pillars/pillar_2_x", msg_pillar.pillar[2].x, 2.11); // Если не найдено, laser_b0 = -0.0001
-	nh_global.param<float>("/pb_config/pillars/pillar_2_y", msg_pillar.pillar[2].y, 2.11); // Если не найдено, laser_b0 = -0.0001
-	nh_global.param<float>("/pb_config/pillars/pillar_3_x", msg_pillar.pillar[3].x, 3.11); // Если не найдено, laser_b0 = -0.0001
-	nh_global.param<float>("/pb_config/pillars/pillar_3_y", msg_pillar.pillar[3].y, 3.11); // Если не найдено, laser_b0 = -0.0001
+	nh_global.param<float>("/pb_config/pillars/pillar_0_x", msg_pillar.pillar[0].x, 0.0); // Если не найдено, 
+	nh_global.param<float>("/pb_config/pillars/pillar_0_y", msg_pillar.pillar[0].y, 0.0); // Если не найдено,
+	nh_global.param<float>("/pb_config/pillars/pillar_1_x", msg_pillar.pillar[1].x, 0.0); // Если не найдено,
+	nh_global.param<float>("/pb_config/pillars/pillar_1_y", msg_pillar.pillar[1].y, 0.0); // Если не найдено, 
+	nh_global.param<float>("/pb_config/pillars/pillar_2_x", msg_pillar.pillar[2].x, 0.0); // Если не найдено, 
+	nh_global.param<float>("/pb_config/pillars/pillar_2_y", msg_pillar.pillar[2].y, 0.0); // Если не найдено, 
+	nh_global.param<float>("/pb_config/pillars/pillar_3_x", msg_pillar.pillar[3].x, 0.0); // Если не найдено,
+	nh_global.param<float>("/pb_config/pillars/pillar_3_y", msg_pillar.pillar[3].y, 0.0); // Если не найдено, 
 
 	logi.log("    start PillarPose \n");
 	logi.log("    x0= %+8.3f y0 = %+8.3f \n", msg_pillar.pillar[0].x, msg_pillar.pillar[0].y);
@@ -1343,24 +1344,23 @@ void read_Param_StartPose()
 	logi.log("    x2= %+8.3f y2 = %+8.3f \n", msg_pillar.pillar[2].x, msg_pillar.pillar[2].y);
 	logi.log("    x3= %+8.3f y3 = %+8.3f \n", msg_pillar.pillar[3].x, msg_pillar.pillar[3].y);
 
-	logi.log_b("--- read_Param_StartPose \n");
-
-	logi.log_b("+++ startPosition \n");
-
-	nh_global.param<double>("/pb_config/start_pose/x", startPose.x, 0.0);
-	nh_global.param<double>("/pb_config/start_pose/y", startPose.y, 0.0);
-	nh_global.param<double>("/pb_config/start_pose/th", startPose.th, 0.0);
-
-	logi.log("    startPose x = %+8.3f y = %+8.3f theta = %+8.3f \n", startPose.x, startPose.y, startPose.th);
-
+	logi.log_b("+++ transformLidar2Rotation \n");
 	transformLidar2Rotation.x = 0.095; // Данные для трасформации из Lidar в Rotation 95 мм
 	transformLidar2Rotation.y = 0;
 	transformLidar2Rotation.th = 0;
 
-	g_angleEuler.yaw = startPose.th; // Присваиваем yaw углу начальное значение
+	logi.log_b("+++ startPosition \n");
+	
+	// nh_global.param<double>("/pb_config/start_pose/x", startPose.x, 0.0);
+	// nh_global.param<double>("/pb_config/start_pose/y", startPose.y, 0.0);
+	// nh_global.param<double>("/pb_config/start_pose/th", startPose.th, 0.0);
+
+	logi.log("    startPose x = %+8.3f y = %+8.3f theta = %+8.3f \n", startPose.x, startPose.y, startPose.th);
+
+
+	// g_angleEuler.yaw = startPose.th; // Присваиваем yaw углу начальное значение
 	// g_poseRotation.theta = DEG2RAD(startPose2d_.theta); // Присваиваем глобальному углу начальное значение
 
-	// g_poseLidar.odom = startPose;
 	g_poseLidar.model = startPose;
 	g_poseLidar.meas = startPose;
 	g_poseLidar.est = startPose; // Устанавливаем координаты для что-бы по нему начало все считаться
@@ -1371,8 +1371,6 @@ void read_Param_StartPose()
 	g_poseRotation.meas = g_poseRotation.model;						 // Первоначальная установка позиции
 	g_poseRotation.est = g_poseRotation.model;						 // Первоначальная установка позиции
 	logi.log("    start g_poseRotation.model x= %+8.3f y= %+8.3f theta= %+8.3f \n", g_poseRotation.model.x, g_poseRotation.model.y, g_poseRotation.model.th);
-
-	logi.log_b("--- startPosition \n");
 }
 
 // Функция для вычисления разницы между углами
