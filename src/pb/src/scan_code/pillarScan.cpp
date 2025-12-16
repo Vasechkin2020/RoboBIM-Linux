@@ -2509,6 +2509,31 @@ void PillarScanNode::initReferenceSystem()
                        reference_centers_[i].x(), reference_centers_[i].y());
     }
 
+        // =================================================================================
+        // [НОВОЕ] ЗАПИСЬ ОПТИМИЗИРОВАННЫХ КООРДИНАТ В ROSPARAM
+        // =================================================================================
+        logi.log("--- 💾 UPDATING ROS PARAMS (Global Reference) ---\n");
+        
+        // Пишем в те же пути, что указаны в твоем .yaml (/pb_config/pillars/...)
+        // Это позволит другим нодам читать уточненные данные, как будто они были в конфиге.
+        for (int i = 0; i < 4; ++i)
+        {
+            std::string param_base = "/pb_config/pillars/pillar_" + std::to_string(i);
+            
+            // Преобразуем float (Eigen) в double (ROS param)
+            double x_val = (double)reference_centers_[i].x();
+            double y_val = (double)reference_centers_[i].y();
+
+            nh.setParam(param_base + "_x", x_val);
+            nh.setParam(param_base + "_y", y_val);
+            
+            // logi.log("  Set %s_x/y: [%.4f, %.4f]\n", param_base.c_str(), x_val, y_val);
+        }
+        logi.log_g("✅ Optimized pillar coordinates saved to Parameter Server.\n");
+        // =================================================================================
+
+
+
     logi.log("==============================================\n");
 }
 

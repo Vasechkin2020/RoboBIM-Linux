@@ -138,14 +138,14 @@ void CLaser::calcAnglePillarForLaser(CPillar::SPillar *pillar_, SPose &poseLidar
     {
         anglePillarInLaser[i] = 0; // Обнуляем угол что-бы сразу увидеть что лазер не используется. Он встанет в нулевое(нерабочее) положение если мы не присвоим правильный угол
     }
-    // Перебираем столбы и для каждого находим его координаты(положение) в системе координат "Base"
+    // Перебираем столбы и для каждого находим его координаты(положение) в системе координат "Lidar"
     for (int i = 0; i < 4; i++)
     {
         SPoint pointGlobal;
         pointGlobal.x = pillar_[i].x_true; // Берем глобальные истинные координаты столба
         pointGlobal.y = pillar_[i].y_true;
-        pointPillarInLidar[i] = pointGlobal2LocalRos(pointGlobal, poseLidar); // получим координаты столба в системе "Base"
-        // ROS_INFO("Koordinat %i in /Base/ x= % .3f y= % .3f \n", i, pointPillarInLidar[i].x, pointPillarInLidar[i].y);
+        pointPillarInLidar[i] = pointGlobal2LocalRos(pointGlobal, poseLidar); // получим координаты столба в системе "Lidar"
+        logi.log("    Koordinat %i in /Lidar/ x= % .3f y= % .3f \n", i, pointPillarInLidar[i].x, pointPillarInLidar[i].y);
     }
     // printf("----\n");
 
@@ -159,13 +159,13 @@ void CLaser::calcAnglePillarForLaser(CPillar::SPillar *pillar_, SPose &poseLidar
     {
         lenPillar[i] = sqrt(pow(pointPillarInLidar[i].x, 2) + pow(pointPillarInLidar[i].y, 2)); // Теорема Пифагора // Находим длинну до столба от центра системы координат
         angPillar[i] = RAD2DEG(atan2(pointPillarInLidar[i].y, pointPillarInLidar[i].x));        // Находим его и правим его смотря в какой чатверти круга он находится
-        // ROS_INFO("    angPillar[%i] = %+8.3f x = %+8.3f y = %+8.3f len = %+8.3f", i, angPillar[i], pointPillarInLidar[i].x, pointPillarInLidar[i].y, lenPillar[i]);
+        logi.log("    angPillar[%i] = %+8.3f x = %+8.3f y = %+8.3f len = %+8.3f \n", i, angPillar[i], pointPillarInLidar[i].x, pointPillarInLidar[i].y, lenPillar[i]);
 
         g_poseLidar.azimut[i] = angPillar[i];
 
         lenMotor[i] = sqrt(pow(_poseLaser[i].x, 2) + pow(_poseLaser[i].y, 2)); // Теорема Пифагора // Находим длинну до мотора от центра системы координат
         angMotor[i] = RAD2DEG(atan2(_poseLaser[i].y, _poseLaser[i].x));        // Находим его и правим его смотря в какой чатверти круга он находится
-        // ROS_INFO("    angMotor[%i]  = %+8.3f x = %+8.3f y = %+8.3f len = %+8.3f \n", i, angMotor[i], _poseLaser[i].x, _poseLaser[i].y, lenMotor[i]);
+        logi.log("    angMotor[%i]  = %+8.3f x = %+8.3f y = %+8.3f len = %+8.3f \n", i, angMotor[i], _poseLaser[i].x, _poseLaser[i].y, lenMotor[i]);
     }
     //************** Функция расчета углов на моторы. Используется как проверка основного расчета. По формуле Максима Вадима.
     for (int i = 0; i < 4; i++) // Перебираем моторы
