@@ -190,7 +190,7 @@ void CTopic::processing_Modul2Data()
 		Modul2Data_msg.motor[i].destination = Modul2Data.motor[i].destination; //
 
 		Modul2Data_msg.laser[i].status = Modul2Data.laser[i].status;					  //
-		Modul2Data_msg.laser[i].distance = Modul2Data.laser[i].distance + offSetLaser[i]; // Прибавляем поправочные значения полученные при калибровке
+		Modul2Data_msg.laser[i].distance = Modul2Data.laser[i].distance; // 
 		Modul2Data_msg.laser[i].signalQuality = Modul2Data.laser[i].signalQuality;		  //
 		Modul2Data_msg.laser[i].angle = Modul2Data.laser[i].angle;						  //
 		Modul2Data_msg.laser[i].time = Modul2Data.laser[i].time;						  //

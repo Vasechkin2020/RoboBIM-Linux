@@ -243,12 +243,6 @@ void readParam() // Считывание переменных параметро
 	nh_global.param<double>("/pb_config/laser_L_bias", offSetLaserL, -0.01);
 	nh_global.param<double>("/pb_config/laser_R_bias", offSetLaserR, -0.01);
 
-	// printf("\n--- Считывание смещений массива лазеров ---\n"); // Разделитель секции...
-	nh_global.param<double>("/pb_config/laser/bias_0", offSetLaser[0], -0.0001); // Если не найдено, laser_b0 = -0.0001
-	nh_global.param<double>("/pb_config/laser/bias_1", offSetLaser[1], -0.0001);
-	nh_global.param<double>("/pb_config/laser/bias_2", offSetLaser[2], -0.0001);
-	nh_global.param<double>("/pb_config/laser/bias_3", offSetLaser[3], -0.0001);
-	
 	nh_global.param<int>("/pb_config/modul/mode", modeModul, 5 );
 
 	nh_global.param<int>("/pb_config/unit_driver", unitDriver, 0);
@@ -257,7 +251,6 @@ void readParam() // Считывание переменных параметро
 
 	logi.log_b("+++ =========================================");
 	logi.log("    Start node with parametrs:\n");
-	logi.log("    offSetLaser0 = %+8.3f offSetLaser1 = %+8.3f offSetLaser2 = %+8.3f offSetLaser3 = %+8.3f \n", offSetLaser[0], offSetLaser[1], offSetLaser[2], offSetLaser[3]);
 	logi.log("    offSetLaserL = %+8.3f offSetLaserR = %+8.3f \n", offSetLaserL, offSetLaserR);
 	logi.log("    offSetUZI = %+8.3f \n", offSetUzi);
 	logi.log("    unit_driver = %i unit_modul = %i unit_print = %i \n", unitDriver, unitModul, unitPrint);

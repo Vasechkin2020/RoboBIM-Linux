@@ -129,8 +129,6 @@ unsigned char bufferModul[SIZE_BUFF_MODUL]; // Буфер в 1 байт в ко�
 	double offSetUzi = 0;
 	double offSetLaserL = 0;
 	double offSetLaserR = 0;
-	double offSetLaser[4]{0, 0, 0, 0};
-
 
 int modeModul = 0;
 
