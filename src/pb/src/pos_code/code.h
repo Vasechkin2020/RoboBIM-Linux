@@ -1344,6 +1344,15 @@ void read_Param_StartPose()
 	logi.log("    x2= %+8.3f y2 = %+8.3f \n", msg_pillar.pillar[2].x, msg_pillar.pillar[2].y);
 	logi.log("    x3= %+8.3f y3 = %+8.3f \n", msg_pillar.pillar[3].x, msg_pillar.pillar[3].y);
 
+	// Считываем калибровочные офсеты моторов лазеров ()
+    nh_global.param<float>("/pb_config/lasers/offset_0", laser.offsets[0], 0.0); // Лазер 0
+    nh_global.param<float>("/pb_config/lasers/offset_1", laser.offsets[1], 0.0); // Лазер 1
+    nh_global.param<float>("/pb_config/lasers/offset_2", laser.offsets[2], 0.0); // Лазер 2
+    nh_global.param<float>("/pb_config/lasers/offset_3", laser.offsets[3], 0.0); // Лазер 3
+
+    logi.log_b("+++ Lasers Notor Offsets: %.3f %.3f %.3f %.3f\n", laser.offsets[0], laser.offsets[1], laser.offsets[2], laser.offsets[3]);
+
+
 	logi.log_b("+++ transformLidar2Rotation \n");
 	transformLidar2Rotation.x = 0.095; // Данные для трасформации из Lidar в Rotation 95 мм
 	transformLidar2Rotation.y = 0;

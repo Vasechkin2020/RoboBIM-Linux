@@ -17,8 +17,8 @@ SPoseRotation g_poseRotation; // Глобальная позиция в точк
 SPoseBase g_poseLidar;        // Позиции лидара по расчетам Центральная система координат
 SLinAngVel g_linAngVel;       // Линейная и угловая скорость полученная с колес и с датчика MPU IMU и может быть обьединенная как-то
 // SEuler g_angleEuler;          // Углы Эллера
-SPose aver;                   // Усредненная позиция в моменты когда стоим на месте
-uint32_t averCount = 0;       // Счетчик усреднений
+SPose aver;             // Усредненная позиция в моменты когда стоим на месте
+uint32_t averCount = 0; // Счетчик усреднений
 
 #include "pos_code/laser.h"
 CLaser laser;
@@ -74,7 +74,7 @@ int main(int argc, char **argv)
 
     pillar.parsingPillar(msg_pillar); // Разбираем пришедшие данные Заполняем массив правильных координат.
 
-    ros::Rate rate(3);      // Частота в Герцах основного цикла
+    ros::Rate rate(100);      // Частота в Герцах основного цикла
     ros::Duration(1).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
     static bool flagPublish = false;
 
@@ -88,7 +88,7 @@ int main(int argc, char **argv)
     // rate_fuser.max_pos_step = 0.01; // Настройка параметров слияния Максимальный шаг коррекции позиции (0.01 м)
 
     ROS_WARN("++++ End Setup. Start loop.");
-    ros::Duration(3).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
+    ros::Duration(1).sleep(); // Подождем пока все обьявится и инициализируется внутри ROS
 
     while (ros::ok())
     {
@@ -133,7 +133,7 @@ int main(int argc, char **argv)
 
             // РАСЧЕТ НАПРАВЛЕНИЯ УГЛОВ ЛАЗЕРОВ
             laser.calcAnglePillarForLaser(pillar.pillar, g_poseLidar.est); // Расчет углов в локальной системе лазеров на столбы для передачи на нижний уровень для исполнения
-            topic.publicationControlModul();                                // Формируем и Публикуем команды для управления Modul
+            topic.publicationControlModul();                               // Формируем и Публикуем команды для управления Modul
 
             // angleMPU(); // Расчет угла положения на основе данных сдатчика MPU
             // calcEuler(); // Расчет угла yaw с датчика IMU
@@ -190,19 +190,19 @@ int main(int argc, char **argv)
                 g_poseRotation.meas = convertLidar2Rotation(g_poseLidar.meas, "First data measurement meas");   // Обновляем уже уточненным значением
                 g_poseRotation.est = convertLidar2Rotation(g_poseLidar.meas, "First data measurement est");     // Обновляем уже уточненным значением
                 logi.log_b("=== FIRST Data Pose Rotation Measurement x = %+8.3f y = %+8.3f th = %+8.3f \n", g_poseRotation.odom.x, g_poseRotation.odom.y, g_poseRotation.odom.th);
-                
+
                 // Принудительно обновляем оценки в системе Lidar, чтобы в следующем цикле не срабатывал Jump Detector
-                g_poseLidar.est = g_poseLidar.meas;   
-                g_poseLidar.model = g_poseLidar.meas; 
-                
+                g_poseLidar.est = g_poseLidar.meas;
+                g_poseLidar.model = g_poseLidar.meas;
+
                 // Сбрасываем скорости модели, чтобы не было инерции от ложного прыжка
                 g_linAngVel.model.vx = 0;
                 g_linAngVel.model.vth = 0;
             }
             else
             {
-                if (is_data_valid)// Вызываем СЛИЯНИЕ (Fusion) для Rate-Limited Fuser Используем скорости модели (плавные) для прогноза
-                {                                                                                                                                                
+                if (is_data_valid) // Вызываем СЛИЯНИЕ (Fusion) для Rate-Limited Fuser Используем скорости модели (плавные) для прогноза
+                {
                     const double lidar_latency_L = 0.25;                                                                                                         // Задержка лидара/SLAM:  мс Посчитано ИИ экспериментально
                     g_poseLidar.est = rate_fuser.fuse(g_poseLidar.est, g_poseLidar.meas, g_linAngVel.model.vx, RAD2DEG(g_linAngVel.model.vth), lidar_latency_L); // Состояние Модели (по ссылке) и Измерение (SPose)
                     logi.log("    is_data_valid  lidar_latency_L= %+8.3f model.vx= %+8.3f model.vth= %+8.3f | dtStoping = %+8.3f \n", lidar_latency_L, g_linAngVel.model.vx, g_linAngVel.model.vth, dtStoping);
@@ -214,59 +214,49 @@ int main(int argc, char **argv)
                     static std::vector<double> buf_y;
                     static std::vector<double> buf_th;
 
+                    const size_t WINDOW_SIZE = 20; // Размер окна (2 секунды при 10 Гц)
+
                     // Если стоим дольше 0.5 сек, начинаем усреднять саму оценку, чтобы не дрожала
-                    if (dtStoping >= 0.5) 
+                    if (dtStoping >= 0.5)
                     {
-                        // ОГРАНИЧИТЕЛЬ: Копим до 100 измерений (хватит с головой)
-                        if (buf_x.size() < 100) 
+                        // 1. Добавляем новые данные всегда!
+                        buf_x.push_back(g_poseLidar.meas.x);
+                        buf_y.push_back(g_poseLidar.meas.y);
+                        buf_th.push_back(g_poseLidar.meas.th);
+
+                        // 2. Если буфер переполнен - удаляем старые (Скользящее окно)
+                        if (buf_x.size() > WINDOW_SIZE)
                         {
-                            buf_x.push_back(g_poseLidar.est.x);
-                            buf_y.push_back(g_poseLidar.est.y);
-                            buf_th.push_back(g_poseLidar.est.th);
+                            buf_x.erase(buf_x.begin()); // Удаляем самый старый элемент (первый)
+                            buf_y.erase(buf_y.begin());
+                            buf_th.erase(buf_th.begin());
                         }
+
                         // Функция для поиска медианы (Лямбда-функция для компактности)
-                        auto get_median = [](std::vector<double> v) -> double 
+                        auto get_median = [](std::vector<double> v) -> double
                         {
-                            if (v.empty()) return 0.0;
+                            if (v.empty())
+                                return 0.0;
                             size_t n = v.size() / 2;
                             std::sort(v.begin(), v.end()); // Частичная сортировка быстрее полной, но на 100 элементах разницы нет. Используем полную для простоты.
-                            return v[n]; // Если четное число элементов, можно брать среднее двух центральных, но для наших целей достаточно просто взять центральный.
+                            return v[n];                   // Если четное число элементов, можно брать среднее двух центральных, но для наших целей достаточно просто взять центральный.
                         };
 
-                        // Применяем медиану к текущей позиции  Теперь est не дрожит и игнорирует резкие скачки
-                        if (!buf_x.empty()) 
+                        // Применяем медиану к текущей позиции  Теперь est не дрожит и игнорирует резкие скачки Теперь est будет "живой": если сдвинуть робота, через ~1 сек est поедет за ним
+                        if (!buf_x.empty())
                         {
                             g_poseLidar.est.x = get_median(buf_x);
                             g_poseLidar.est.y = get_median(buf_y);
                             g_poseLidar.est.th = get_median(buf_th);
                             normalizeAngle180(g_poseLidar.est.th);
                         }
-                        // // Накапливаем сумму
-                        // if (count_est_long < 100) // ОГРАНИЧИТЕЛЬ: Если накопили 100 замеров (10 сек), хватит считать, результат уже точный.
-                        // {
-                        //     count_est_long++;
-                        //     // Накапливаем сумму
-                        //     sum_est_long.x += g_poseLidar.est.x;
-                        //     sum_est_long.y += g_poseLidar.est.y;
-                        //     sum_est_long.th += g_poseLidar.est.th;  // С углами аккуратнее (сумма векторов), но для малых колебаний можно просто сумму (Для идеала лучше усреднять sin/cos, но пока так сойдет, если угол не скачет через 180)
-                        // }
-
-                        // // Делим всегда на count, который замер на 100.  est замрет в идеальном усредненном положении и перестанет меняться вообще.
-                        // g_poseLidar.est.x = sum_est_long.x / count_est_long;
-                        // g_poseLidar.est.y = sum_est_long.y / count_est_long;
-                        // g_poseLidar.est.th = sum_est_long.th / count_est_long; 
-                        // normalizeAngle180(g_poseLidar.est.th);
                     }
-                    else 
+                    else
                     {
-                        // // Если движемся или только встали - сбрасываем усреднитель
-                        // count_est_long = 0;
-                        // sum_est_long = {0,0,0};
-
-                        // Движемся - очищаем буферы Используем clear(), чтобы не перевыделять память лишний раз
-                        if (!buf_x.empty()) 
+                        // Движемся - очищаем буферы, чтобы не тянуть старые данные в следующую остановку 
+                        if (!buf_x.empty())
                         {
-                            buf_x.clear();
+                            buf_x.clear(); //Используем clear(), чтобы не перевыделять память лишний раз
                             buf_y.clear();
                             buf_th.clear();
                         }
@@ -305,12 +295,12 @@ int main(int argc, char **argv)
                     else if (dtStoping >= 1.9 && !is_static_corrected && buf_x.size() > 5)
                     {
                         // ПРОСТО БЕРЕМ ГОТОВУЮ EST Она к этому моменту уже идеально (она уже медианная!)
-                        logi.log_w("STATIC MEDIAN SYNC. Drift fix: dist=%.3f angle=%.3f samples=%d", 
-                                hypot(g_poseLidar.est.x - g_poseLidar.model.x, g_poseLidar.est.y - g_poseLidar.model.y), 
-                                angle_diff_deg(g_poseLidar.est.th, g_poseLidar.model.th), (int)buf_x.size());
+                        logi.log_w("STATIC MEDIAN SYNC. Drift fix: dist=%.3f angle=%.3f samples=%d",
+                                   hypot(g_poseLidar.est.x - g_poseLidar.model.x, g_poseLidar.est.y - g_poseLidar.model.y),
+                                   angle_diff_deg(g_poseLidar.est.th, g_poseLidar.model.th), (int)buf_x.size());
 
                         g_poseLidar.model = g_poseLidar.est; // <--- Простой и точный прыжок к красной линии
-                        is_static_corrected = true; 
+                        is_static_corrected = true;
                     }
                     g_poseRotation.model = convertLidar2Rotation(g_poseLidar.model, "model"); // Обновляем уже уточненным значением
                 }

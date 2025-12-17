@@ -26,12 +26,14 @@ public:
     void pillar_1(SMatrixPillar (&matrixLaserPillar_)[4][5], SMatrixPillar (&tableLaser_)[4], int &count_); // Сопоставление столба если может обслужить только 1 лазер
     float anglePillarInLidar[4];                                                                            // угол на этот столб из точки где находится лидар в Лидарной системе координат
     float anglePillarInLaser[4];                                                                            // Углы в локальных системах Лазеров, которые передаем на нижний уровень к исполнению
+    float offsets[4];                                                                                       // Массив для калибровочных офсетов (из yaml)
+
     CLaser(/* args */);
     ~CLaser();
     SPose _poseLaser[4]; // Позиции систем координат лазеров в Центральной системе координат "lidar"
 
 private:
-    float offset = 0;             // Смещение от точки откуда производим измерения лазером до оси вращения мотора (центра системы координат лазера)
+    float offset = 0; // Смещение от точки откуда производим измерения лазером до оси вращения мотора (центра системы координат лазера)
 
     SMatrixPillar matrixLaserPillar[4][5]; // Матрица Лазеров-Столбов. В ней строки - номера лазеров, столюцы - номера столбов которые лазер может обслуживать Столбец 5 для записи количества столбов
 };
@@ -39,9 +41,9 @@ private:
 CLaser::CLaser(/* args */)
 {
     const float bias = 0.0636396; // Смещение от нулевой точки в солидворкс Установлена на одинаковом удалении от осей Х и У. Симметрично.
-    _poseLaser[0].x = bias;  // Смещение от нулевой точки в солидворкс
-    _poseLaser[0].y = -bias; // Смещение от нулевой точки в солидворкс
-    _poseLaser[0].th = 45;   // Направление оси X относительно оси X Центральнйо системы координат Вращение против часовй, по стандарту РОС
+    _poseLaser[0].x = bias;       // Смещение от нулевой точки в солидворкс
+    _poseLaser[0].y = -bias;      // Смещение от нулевой точки в солидворкс
+    _poseLaser[0].th = 45;        // Направление оси X относительно оси X Центральнйо системы координат Вращение против часовй, по стандарту РОС
     //---
     _poseLaser[1].x = -bias; // Смещение от нулевой точки в солидворкс
     _poseLaser[1].y = -bias; // Смещение от нулевой точки в солидворкс
@@ -55,6 +57,10 @@ CLaser::CLaser(/* args */)
     _poseLaser[3].y = bias; // Смещение от нулевой точки в солидворкс
     _poseLaser[3].th = 135; // Направление оси X относительно оси X Центральнйо системы координат Вращение против часовй, по стандарту РОС
     //---
+
+    for (int i = 0; i < 4; i++)
+        offsets[i] = 0.0; // Инициализация офсетов для углов моторов
+
     offset = 30; // Смещение от точки откуда производим измерения лазером до оси вращения мотора (центра системы координат лазера)
 }
 
@@ -145,11 +151,11 @@ void CLaser::calcAnglePillarForLaser(CPillar::SPillar *pillar_, SPose &poseLidar
         pointGlobal.x = pillar_[i].x_true; // Берем глобальные истинные координаты столба
         pointGlobal.y = pillar_[i].y_true;
         pointPillarInLidar[i] = pointGlobal2LocalRos(pointGlobal, poseLidar); // получим координаты столба в системе "Lidar"
-        logi.log("    Koordinat %i in /Global/ x= % +8.3f y= % +8.3f  /Lidar/ x= % +8.3f y= % +8.3f\n",
-                 i, pointGlobal.x, pointGlobal.y,
-                 pointPillarInLidar[i].x, pointPillarInLidar[i].y);
+        // logi.log("    Koordinat %i in /Global/ x= % +8.3f y= % +8.3f  /Lidar/ x= % +8.3f y= % +8.3f\n",
+        //          i, pointGlobal.x, pointGlobal.y,
+        //          pointPillarInLidar[i].x, pointPillarInLidar[i].y);
     }
-    logi.log("    ---\n");
+    // logi.log("    ---\n");
 
     float lenPillar[4] = {0}; // Длинна вектора от центра координат до столба
     float lenMotor[4] = {0};  // Длинна вектора от центра координат до моторов
@@ -161,13 +167,13 @@ void CLaser::calcAnglePillarForLaser(CPillar::SPillar *pillar_, SPose &poseLidar
     {
         lenPillar[i] = sqrt(pow(pointPillarInLidar[i].x, 2) + pow(pointPillarInLidar[i].y, 2)); // Теорема Пифагора // Находим длинну до столба от центра системы координат
         angPillar[i] = RAD2DEG(atan2(pointPillarInLidar[i].y, pointPillarInLidar[i].x));        // Находим его и правим его смотря в какой чатверти круга он находится
-        logi.log("    angPillar[%i] = %+8.3f x = %+8.3f y = %+8.3f len = %+8.3f \n", i, angPillar[i], pointPillarInLidar[i].x, pointPillarInLidar[i].y, lenPillar[i]);
+        // logi.log("    angPillar[%i] = %+8.3f x = %+8.3f y = %+8.3f len = %+8.3f \n", i, angPillar[i], pointPillarInLidar[i].x, pointPillarInLidar[i].y, lenPillar[i]);
 
         g_poseLidar.azimut[i] = angPillar[i];
 
         lenMotor[i] = sqrt(pow(_poseLaser[i].x, 2) + pow(_poseLaser[i].y, 2)); // Теорема Пифагора // Находим длинну до мотора от центра системы координат
         angMotor[i] = RAD2DEG(atan2(_poseLaser[i].y, _poseLaser[i].x));        // Находим его и правим его смотря в какой чатверти круга он находится
-        logi.log("    angMotor[%i]  = %+8.3f x = %+8.3f y = %+8.3f len = %+8.3f \n\n", i, angMotor[i], _poseLaser[i].x, _poseLaser[i].y, lenMotor[i]);
+        // logi.log("    angMotor[%i]  = %+8.3f x = %+8.3f y = %+8.3f len = %+8.3f \n\n", i, angMotor[i], _poseLaser[i].x, _poseLaser[i].y, lenMotor[i]);
     }
     //************** Функция расчета углов на моторы. Используется как проверка основного расчета. По формуле Максима Вадима.
     for (int i = 0; i < 4; i++) // Перебираем моторы
@@ -219,12 +225,12 @@ void CLaser::calcAnglePillarForLaser(CPillar::SPillar *pillar_, SPose &poseLidar
         for (int j = 0; j < 4; j++) // Перебираем столбы
         {
             SPoint pointTemp = pointGlobal2LocalRos(pointPillarInLidar[j], _poseLaser[i]); // получим координаты столба в лазерной системе /laser/
-            float alfa = -angleThetaFromPointRos(pointTemp); // Получаем угол в лазерной системе ставим МИНУС так как у меня положительные углы для шаговый моторов по часовой а в РОС против часовой и ответ приходит как в РОС
-            
-            logi.log("   laser= %i pillar= %i in /Lidar/ x= %+8.3f y= %+8.3f /Laser/ x= %+8.3f y= %+8.3f | angle Alfa in /Laser/ = % +8.3f  \n",
-                   i, j, pointPillarInLidar[j].x, pointPillarInLidar[j].y, pointTemp.x, pointTemp.y, alfa);
+            float alfa = -angleThetaFromPointRos(pointTemp);                               // Получаем угол в лазерной системе ставим МИНУС так как у меня положительные углы для шаговый моторов по часовой а в РОС против часовой и ответ приходит как в РОС
 
-            if (alfa > 10 && alfa < 170)                     // Сектор в котором мы обслуживаем лазеры
+            // logi.log("   laser= %i pillar= %i in /Lidar/ x= %+8.3f y= %+8.3f /Laser/ x= %+8.3f y= %+8.3f | angle Alfa in /Laser/ = % +8.3f  \n",
+            //        i, j, pointPillarInLidar[j].x, pointPillarInLidar[j].y, pointTemp.x, pointTemp.y, alfa);
+
+            if (alfa > 10 && alfa < 170) // Сектор в котором мы обслуживаем лазеры
             {
                 matrixLaserPillar[i][matrixLaserPillar[i][4].n].n = j;        // Записываем номер столба который можем обслужить этим лазером
                 matrixLaserPillar[i][matrixLaserPillar[i][4].n].angle = alfa; // Записываем угол в /Laser/ системе при котором попадаем на столб
@@ -233,7 +239,7 @@ void CLaser::calcAnglePillarForLaser(CPillar::SPillar *pillar_, SPose &poseLidar
                 // printf("mojet obsujit %i \n", j);
             }
         }
-        logi.log("    ---\n");
+        // logi.log("    ---\n");
     }
     // printf("---\n");
     SMatrixPillar tableLaser[4]; // {-1, -1, -1, -1}; // Таблица в которую собираем итоговые сопоставления лазеров и столбов
@@ -252,9 +258,9 @@ void CLaser::calcAnglePillarForLaser(CPillar::SPillar *pillar_, SPose &poseLidar
 
     for (int i = 0; i < 4; i++)
     {
-        logi.log("    Raspred past pillar_1 - numPillar11= %i angle_pillar % .3f \n", tableLaser[i].n, tableLaser[i].angle);
+        // logi.log("    Raspred past pillar_1 - numPillar11= %i angle_pillar % .3f \n", tableLaser[i].n, tableLaser[i].angle);
     }
-        logi.log("    ---\n");
+    // logi.log("    ---\n");
 
     for (int k = 0; k < 4; k++) // Делаем 4 поиска лазеров с 2 столбом. Это максимум возможных вариантов
     {
@@ -329,12 +335,31 @@ void CLaser::calcAnglePillarForLaser(CPillar::SPillar *pillar_, SPose &poseLidar
     // }
     for (int i = 0; i < 4; i++)
     {
+        g_numPillar[i] = tableLaser[i].n; // Записываем номер столба
+
         anglePillarInLaser[i] = tableLaser[i].angle; // Для визуализации в RVIZ
-        g_angleLaser[i] = tableLaser[i].angle;       // Для топика ?
-        g_numPillar[i] = tableLaser[i].n;
+
+        // g_angleLaser[i] = tableLaser[i].angle;       // Для топика ?
+        
+        // Если столб назначен, применяем расчетный угол + ОФСЕТ из файла
+        if (tableLaser[i].n != -1)
+        {
+            
+            float final_angle = tableLaser[i].angle + offsets[i]; // Математический угол + Поправка на кривизну установки магнита
+            
+            // Нормализуем, чтобы не ушло за 360 (опционально, у нас от 0до 180 типа не надо но для порядка)
+            // while (final_angle > 180) final_angle -= 360;
+            // while (final_angle <= -180) final_angle += 360;
+
+            g_angleLaser[i] = final_angle;
+        }
+        else
+        {
+            g_angleLaser[i] = 0; // Или парковочное положение
+        }
+
     }
-    logi.log("    Raspredelenie Pillar - %i | numPillar %i -> %7.3f | numPillar %i -> %7.3f | numPillar %i -> %7.3f | numPillar %i -> %7.3f\n",
-             count,
+    logi.log("    Raspredelenie Pillar | numPillar %i -> %7.3f | numPillar %i -> %7.3f | numPillar %i -> %7.3f | numPillar %i -> %7.3f\n",
              g_numPillar[0], g_angleLaser[0],
              g_numPillar[1], g_angleLaser[1],
              g_numPillar[2], g_angleLaser[2],
