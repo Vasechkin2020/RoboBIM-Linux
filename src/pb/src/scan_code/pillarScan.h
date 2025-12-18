@@ -215,9 +215,6 @@ private:
     int n_max_points_norm;
     double w_method[4];
 
-    // Офсеты для дальномеров (0-3)
-    double dist_offsets_[4]; 
-
     // --- Параметры кластеризации (НОВЫЕ, v5.8) ---
     double min_cluster_width_; // Минимальная физическая ширина кластера [м]
     double max_cluster_width_; // Максимальная физическая ширина кластера [м]

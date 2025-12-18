@@ -26,15 +26,12 @@ public:
     void pillar_1(SMatrixPillar (&matrixLaserPillar_)[4][5], SMatrixPillar (&tableLaser_)[4], int &count_); // Сопоставление столба если может обслужить только 1 лазер
     float anglePillarInLidar[4];                                                                            // угол на этот столб из точки где находится лидар в Лидарной системе координат
     float anglePillarInLaser[4];                                                                            // Углы в локальных системах Лазеров, которые передаем на нижний уровень к исполнению
-    float offsets[4];                                                                                       // Массив для калибровочных офсетов (из yaml)
 
     CLaser(/* args */);
     ~CLaser();
     SPose _poseLaser[4]; // Позиции систем координат лазеров в Центральной системе координат "lidar"
 
 private:
-    float offset = 0; // Смещение от точки откуда производим измерения лазером до оси вращения мотора (центра системы координат лазера)
-
     SMatrixPillar matrixLaserPillar[4][5]; // Матрица Лазеров-Столбов. В ней строки - номера лазеров, столюцы - номера столбов которые лазер может обслуживать Столбец 5 для записи количества столбов
 };
 
@@ -57,11 +54,6 @@ CLaser::CLaser(/* args */)
     _poseLaser[3].y = bias; // Смещение от нулевой точки в солидворкс
     _poseLaser[3].th = 135; // Направление оси X относительно оси X Центральнйо системы координат Вращение против часовй, по стандарту РОС
     //---
-
-    for (int i = 0; i < 4; i++)
-        offsets[i] = 0.0; // Инициализация офсетов для углов моторов
-
-    offset = 30; // Смещение от точки откуда производим измерения лазером до оси вращения мотора (центра системы координат лазера)
 }
 
 CLaser::~CLaser()
@@ -335,35 +327,13 @@ void CLaser::calcAnglePillarForLaser(CPillar::SPillar *pillar_, SPose &poseLidar
     // }
     for (int i = 0; i < 4; i++)
     {
-        g_numPillar[i] = tableLaser[i].n; // Записываем номер столба
-
+        g_numPillar[i] = tableLaser[i].n;            // Записываем номер столба
         anglePillarInLaser[i] = tableLaser[i].angle; // Для визуализации в RVIZ
-
-        // g_angleLaser[i] = tableLaser[i].angle;       // Для топика ?
-        
-        // Если столб назначен, применяем расчетный угол + ОФСЕТ из файла
-        if (tableLaser[i].n != -1)
-        {
-            
-            float final_angle = tableLaser[i].angle + offsets[i]; // Математический угол + Поправка на кривизну установки магнита
-            
-            // Нормализуем, чтобы не ушло за 360 (опционально, у нас от 0до 180 типа не надо но для порядка)
-            // while (final_angle > 180) final_angle -= 360;
-            // while (final_angle <= -180) final_angle += 360;
-
-            g_angleLaser[i] = final_angle;
-        }
-        else
-        {
-            g_angleLaser[i] = 0; // Или парковочное положение
-        }
-
+        g_angleLaser[i] = tableLaser[i].angle;       // Для топика
     }
+
     logi.log("    Raspredelenie Pillar | numPillar %i -> %7.3f | numPillar %i -> %7.3f | numPillar %i -> %7.3f | numPillar %i -> %7.3f\n",
-             g_numPillar[0], g_angleLaser[0],
-             g_numPillar[1], g_angleLaser[1],
-             g_numPillar[2], g_angleLaser[2],
-             g_numPillar[3], g_angleLaser[3]);
+             g_numPillar[0], g_angleLaser[0], g_numPillar[1], g_angleLaser[1], g_numPillar[2], g_angleLaser[2], g_numPillar[3], g_angleLaser[3]);
     // logi.log("--- calcAnglePillarForLaser");
 }
 

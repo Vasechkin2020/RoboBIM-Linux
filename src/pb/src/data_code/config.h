@@ -129,6 +129,9 @@ unsigned char bufferModul[SIZE_BUFF_MODUL]; // Буфер в 1 байт в ко�
 	double offSetUzi = 0;
 	double offSetLaserL = 0;
 	double offSetLaserR = 0;
+  
+  double dist_offsets[4];        // Офсеты для дальномеров (0-3)
+  double angle_offsets[4];       // Массив для калибровочных офсетов (из yaml)
 
 int modeModul = 0;
 

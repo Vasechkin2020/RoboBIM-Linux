@@ -243,18 +243,34 @@ void readParam() // Считывание переменных параметро
 	nh_global.param<double>("/pb_config/laser_L_bias", offSetLaserL, -0.01);
 	nh_global.param<double>("/pb_config/laser_R_bias", offSetLaserR, -0.01);
 
-	nh_global.param<int>("/pb_config/modul/mode", modeModul, 5 );
+	nh_global.param<int>("/pb_config/modul/mode", modeModul, 5);
 
 	nh_global.param<int>("/pb_config/unit_driver", unitDriver, 0);
 	nh_global.param<int>("/pb_config/unit_modul", unitModul, 0);
 	nh_global.param<int>("/pb_config/unit_print", unitPrint, 0);
 
-	logi.log_b("+++ =========================================");
-	logi.log("    Start node with parametrs:\n");
+	// --- Чтение дистанционных офсетов ---
+	// Предполагаем, что в YAML они лежат внутри секции pb_config -> lasers
+	nh_global.param<double>("/pb_config/lasers/dist_offset_0", dist_offsets[0], 0.0);
+	nh_global.param<double>("/pb_config/lasers/dist_offset_1", dist_offsets[1], 0.0);
+	nh_global.param<double>("/pb_config/lasers/dist_offset_2", dist_offsets[2], 0.0);
+	nh_global.param<double>("/pb_config/lasers/dist_offset_3", dist_offsets[3], 0.0);
+
+	// Считываем калибровочные офсеты моторов лазеров ()
+    nh_global.param<double>("/pb_config/lasers/offset_0", angle_offsets[0], 0.0); // Лазер 0
+    nh_global.param<double>("/pb_config/lasers/offset_1", angle_offsets[1], 0.0); // Лазер 1
+    nh_global.param<double>("/pb_config/lasers/offset_2", angle_offsets[2], 0.0); // Лазер 2
+    nh_global.param<double>("/pb_config/lasers/offset_3", angle_offsets[3], 0.0); // Лазер 3
+
+	// Логируем, чтобы убедиться, что загрузилось
+	logi.log_b("+++ =========================================\n");
+	logi.log_g("    Start node with parametrs:\n");
+    logi.log("    Angle Motor Offsets: %+8.3f %+8.3f %+8.3f %+8.3f\n", angle_offsets[0], angle_offsets[1], angle_offsets[2], angle_offsets[3]);
+	logi.log("    Dist offSetLaser0 = %+8.3f offSetLaser1 = %+8.3f offSetLaser2 = %+8.3f offSetLaser3 = %+8.3f \n", dist_offsets[0], dist_offsets[1], dist_offsets[2], dist_offsets[3]);
 	logi.log("    offSetLaserL = %+8.3f offSetLaserR = %+8.3f \n", offSetLaserL, offSetLaserR);
 	logi.log("    offSetUZI = %+8.3f \n", offSetUzi);
 	logi.log("    unit_driver = %i unit_modul = %i unit_print = %i \n", unitDriver, unitModul, unitPrint);
 	logi.log("    modeModul = %i \n", modeModul);
-	logi.log_b("+++ =========================================");
+	logi.log_b("+++ =========================================\n\n");
 }
 #endif

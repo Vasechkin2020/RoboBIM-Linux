@@ -17,8 +17,8 @@ void collect_Data2Modul(int data_) // Данные для передачи на 
 		Data2Modul.controlMotor.mode = msg_ControlModul.controlMotor.mode; //
 		for (int i = 0; i < 4; i++)
 		{
-			Data2Modul.controlMotor.angle[i] = msg_ControlModul.controlMotor.angle[i];		   //
-			Data2Modul.controlMotor.numPillar[i] = msg_ControlModul.controlMotor.numPillar[i]; //
+			Data2Modul.controlMotor.angle[i] = msg_ControlModul.controlMotor.angle[i] + angle_offsets[i]; // Прибавляем оффсет чтобы компенсировать ошибку по углу между углом что лазер посчитал и углом мотора в модуле
+			Data2Modul.controlMotor.numPillar[i] = msg_ControlModul.controlMotor.numPillar[i];			  //
 		}
 	}
 	else
@@ -124,9 +124,9 @@ bool sendData2Modul(int channel_, Struct_Modul2Data &structura_receive_, Struct_
 	// printf(" measureCheksum= %i \n", cheksum_receive);
 
 	if (prevId == structura_receive_temp.id) // Если ID не изменился значит модуль завис и шлет повторно одни и теже данные
-		{
-			ROS_ERROR("ID Modul NOT CHANGE = %lu", structura_receive_temp.id);
-		}
+	{
+		ROS_ERROR("ID Modul NOT CHANGE = %lu", structura_receive_temp.id);
+	}
 	prevId == structura_receive_temp.id; // Запоминаем ID
 
 	if (cheksum_receive != structura_receive_temp.cheksum || structura_receive_temp.cheksum == 0) // Если наша чек сумма совпадает с последним байтом где чексума переданных данных

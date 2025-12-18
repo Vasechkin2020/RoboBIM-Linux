@@ -2253,19 +2253,6 @@ void PillarScanNode::loadParameters()
     logi.log("    pillar_1_3 RT-LB (surf): %.4f -> (center): %.4f\n", d_surf[4], d_center[4]);
     logi.log("    pillar_2_3 LT-LB (surf): %.4f -> (center): %.4f\n", d_surf[5], d_center[5]);
 
-
-    // --- Чтение дистанционных офсетов ---
-    // Предполагаем, что в YAML они лежат внутри секции pb_config -> lasers
-    loadParam("/pb_config/lasers/dist_offset_0", dist_offsets_[0], 0.0, "dist_offset_0");
-    loadParam("/pb_config/lasers/dist_offset_1", dist_offsets_[1], 0.0, "dist_offset_1");
-    loadParam("/pb_config/lasers/dist_offset_2", dist_offsets_[2], 0.0, "dist_offset_2");
-    loadParam("/pb_config/lasers/dist_offset_3", dist_offsets_[3], 0.0, "dist_offset_3");
-
-    // Логируем, чтобы убедиться, что загрузилось
-    logi.log("    Rangefinder Dist Offsets: [%.4f, %.4f, %.4f, %.4f]\n", 
-             dist_offsets_[0], dist_offsets_[1], dist_offsets_[2], dist_offsets_[3]);
-
-
     // --- Параметры фильтрации кластеров ---
     loadParam("/pb_config/scan_node/min_cluster_width", min_cluster_width_, 0.20, "min_cluster_width");
     loadParam("/pb_config/scan_node/max_cluster_width", max_cluster_width_, 0.40, "max_cluster_width");

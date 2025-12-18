@@ -22,19 +22,19 @@ public:
 private:
 	ros::NodeHandle _nh;
 	//--------------------------------- ПУБЛИКАЦИЯ В ТОПИКИ -------------------------------------------------
-	pb_msgs::Struct_Driver2Data Driver2Data_msg;														 // Это структуры которые мы заполняем и потом публикуем
+	pb_msgs::Struct_Driver2Data Driver2Data_msg;														  // Это структуры которые мы заполняем и потом публикуем
 	ros::Publisher publish_Driver2Data = _nh.advertise<pb_msgs::Struct_Driver2Data>("pb/Data/Driver", 3); // Это мы публикуем структуру которую получили с драйвера
 
-	pb_msgs::Struct_Modul2Data Modul2Data_msg;														  // Это структуры которые мы заполняем и потом публикуем
+	pb_msgs::Struct_Modul2Data Modul2Data_msg;														   // Это структуры которые мы заполняем и потом публикуем
 	ros::Publisher publish_Modul2Data = _nh.advertise<pb_msgs::Struct_Modul2Data>("pb/Data/Modul", 3); // Это мы создаем публикатор и определяем название топика в рос
 
-	pb_msgs::Struct_Print2Data Print2Data_msg;														  // Это структуры которые мы заполняем и потом публикуем
+	pb_msgs::Struct_Print2Data Print2Data_msg;														   // Это структуры которые мы заполняем и потом публикуем
 	ros::Publisher publish_Print2Data = _nh.advertise<pb_msgs::Struct_Print2Data>("pb/Data/Print", 3); // Это мы создаем публикатор и определяем название топика в рос
 
-	pb_msgs::Struct_Info_SPI spi_msg;													   // Это структуры которые мы заполняем и потом публикуем
+	pb_msgs::Struct_Info_SPI spi_msg;														// Это структуры которые мы заполняем и потом публикуем
 	ros::Publisher publish_Spi = _nh.advertise<pb_msgs::Struct_Info_SPI>("pb/Data/Spi", 3); // Это мы создаем публикатор и определяем название топика в рос
 
-	pb_msgs::SSetSpeed setSpeed_msg;													 // Это структуры которые мы заполняем и потом публикуем
+	pb_msgs::SSetSpeed setSpeed_msg;													  // Это структуры которые мы заполняем и потом публикуем
 	ros::Publisher publish_Speed = _nh.advertise<pb_msgs::SSetSpeed>("pb/Data/Speed", 3); // Это мы создаем публикатор и определяем название топика в рос
 
 	// ros::Publisher pub_JoyData = _nh.advertise<pb_msgs::SJoy>("pbInfo/JoyData", 16);                       // Это мы публикуем структуру которую сформировали по данным с джойстика
@@ -138,64 +138,64 @@ void CTopic::processing_Modul2Data()
 	//***************** BNO 055 *********************************
 	Modul2Data_msg.bno.status = Modul2Data.bno.status;
 	Modul2Data_msg.bno.rate = Modul2Data.bno.rate;
-	
+
 	Modul2Data_msg.bno.angleEuler.roll = Modul2Data.bno.angleEuler.x;
 	Modul2Data_msg.bno.angleEuler.pitch = Modul2Data.bno.angleEuler.y;
 	Modul2Data_msg.bno.angleEuler.yaw = Modul2Data.bno.angleEuler.z;
-	
+
 	Modul2Data_msg.bno.linear.x = Modul2Data.bno.linear.x;
 	Modul2Data_msg.bno.linear.y = Modul2Data.bno.linear.y;
 	Modul2Data_msg.bno.linear.z = Modul2Data.bno.linear.z;
-	
+
 	Modul2Data_msg.bno.accel.x = Modul2Data.bno.accel.x;
 	Modul2Data_msg.bno.accel.y = Modul2Data.bno.accel.y;
 	Modul2Data_msg.bno.accel.z = Modul2Data.bno.accel.z;
-	
+
 	Modul2Data_msg.bno.gyro.x = Modul2Data.bno.gyro.x;
 	Modul2Data_msg.bno.gyro.y = Modul2Data.bno.gyro.y;
 	Modul2Data_msg.bno.gyro.z = Modul2Data.bno.gyro.z;
-	
+
 	Modul2Data_msg.bno.mag.x = Modul2Data.bno.mag.x;
 	Modul2Data_msg.bno.mag.y = Modul2Data.bno.mag.y;
 	Modul2Data_msg.bno.mag.z = Modul2Data.bno.mag.z;
 
-		//***************** ICM 20948 *********************************
+	//***************** ICM 20948 *********************************
 	Modul2Data_msg.icm.status = Modul2Data.icm.status;
 	Modul2Data_msg.icm.rate = Modul2Data.icm.rate;
-	
+
 	Modul2Data_msg.icm.angleEuler.roll = Modul2Data.icm.angleEuler.x;
 	Modul2Data_msg.icm.angleEuler.pitch = Modul2Data.icm.angleEuler.y;
 	Modul2Data_msg.icm.angleEuler.yaw = Modul2Data.icm.angleEuler.z;
-	
+
 	Modul2Data_msg.icm.linear.x = Modul2Data.icm.linear.x;
 	Modul2Data_msg.icm.linear.y = Modul2Data.icm.linear.y;
 	Modul2Data_msg.icm.linear.z = Modul2Data.icm.linear.z;
-	
+
 	Modul2Data_msg.icm.accel.x = Modul2Data.icm.accel.x;
 	Modul2Data_msg.icm.accel.y = Modul2Data.icm.accel.y;
 	Modul2Data_msg.icm.accel.z = Modul2Data.icm.accel.z;
-	
+
 	Modul2Data_msg.icm.gyro.x = Modul2Data.icm.gyro.x;
 	Modul2Data_msg.icm.gyro.y = Modul2Data.icm.gyro.y;
 	Modul2Data_msg.icm.gyro.z = Modul2Data.icm.gyro.z;
-	
+
 	Modul2Data_msg.icm.mag.x = Modul2Data.icm.mag.x;
 	Modul2Data_msg.icm.mag.y = Modul2Data.icm.mag.y;
 	Modul2Data_msg.icm.mag.z = Modul2Data.icm.mag.z;
 
 	for (int i = 0; i < 4; i++)
 	{
-		Modul2Data_msg.motor[i].status = Modul2Data.motor[i].status;		   //
-		Modul2Data_msg.motor[i].position = Modul2Data.motor[i].position;	   //
-		Modul2Data_msg.motor[i].destination = Modul2Data.motor[i].destination; //
+		Modul2Data_msg.motor[i].status = Modul2Data.motor[i].status;							  //
+		Modul2Data_msg.motor[i].position = Modul2Data.motor[i].position - angle_offsets[i];		  // Отнимаем оффсет поскольку прибавляли когда угол отправляли в прибор
+		Modul2Data_msg.motor[i].destination = Modul2Data.motor[i].destination - angle_offsets[i]; // Отнимаем оффсет поскольку прибавляли когда угол отправляли в прибор
 
-		Modul2Data_msg.laser[i].status = Modul2Data.laser[i].status;					  //
-		Modul2Data_msg.laser[i].distance = Modul2Data.laser[i].distance; // 
-		Modul2Data_msg.laser[i].signalQuality = Modul2Data.laser[i].signalQuality;		  //
-		Modul2Data_msg.laser[i].angle = Modul2Data.laser[i].angle;						  //
-		Modul2Data_msg.laser[i].time = Modul2Data.laser[i].time;						  //
-		Modul2Data_msg.laser[i].numPillar = Modul2Data.laser[i].numPillar;				  //
-		Modul2Data_msg.laser[i].rate = Modul2Data.laser[i].rate;						  //
+		Modul2Data_msg.laser[i].status = Modul2Data.laser[i].status;					   //
+		Modul2Data_msg.laser[i].distance = Modul2Data.laser[i].distance + dist_offsets[i]; // Прибавляем поправочные значения полученные при калибровке
+		Modul2Data_msg.laser[i].signalQuality = Modul2Data.laser[i].signalQuality;		   //
+		Modul2Data_msg.laser[i].angle = Modul2Data.laser[i].angle - angle_offsets[i];	   // Положение при последнем измерении
+		Modul2Data_msg.laser[i].time = Modul2Data.laser[i].time;						   //
+		Modul2Data_msg.laser[i].numPillar = Modul2Data.laser[i].numPillar;				   //
+		Modul2Data_msg.laser[i].rate = Modul2Data.laser[i].rate;						   //
 
 		Modul2Data_msg.micric[i] = Modul2Data.micric[i]; // Состояние концевиков
 	}
