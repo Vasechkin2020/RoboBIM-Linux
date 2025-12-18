@@ -277,11 +277,6 @@ void CTopic::publicationPoseBase() // Формируем перемнную с �
     poseBase_msg.y.est = g_poseLidar.est.y;
     poseBase_msg.th.est = g_poseLidar.est.th;
 
-    poseBase_msg.azimut[0] =  g_poseLidar.azimut[0];
-    poseBase_msg.azimut[1] =  g_poseLidar.azimut[1];
-    poseBase_msg.azimut[2] =  g_poseLidar.azimut[2];
-    poseBase_msg.azimut[3] =  g_poseLidar.azimut[3];
-
     pub_poseLidar.publish(poseBase_msg); // Публикуем информацию по позиции лидара
 }
 void CTopic::publicationPoseRotattion() // Вывод в топик данных с координатами и углом точки вращения Rotation

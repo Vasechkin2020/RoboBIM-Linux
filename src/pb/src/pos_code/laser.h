@@ -161,8 +161,6 @@ void CLaser::calcAnglePillarForLaser(CPillar::SPillar *pillar_, SPose &poseLidar
         angPillar[i] = RAD2DEG(atan2(pointPillarInLidar[i].y, pointPillarInLidar[i].x));        // Находим его и правим его смотря в какой чатверти круга он находится
         // logi.log("    angPillar[%i] = %+8.3f x = %+8.3f y = %+8.3f len = %+8.3f \n", i, angPillar[i], pointPillarInLidar[i].x, pointPillarInLidar[i].y, lenPillar[i]);
 
-        g_poseLidar.azimut[i] = angPillar[i];
-
         lenMotor[i] = sqrt(pow(_poseLaser[i].x, 2) + pow(_poseLaser[i].y, 2)); // Теорема Пифагора // Находим длинну до мотора от центра системы координат
         angMotor[i] = RAD2DEG(atan2(_poseLaser[i].y, _poseLaser[i].x));        // Находим его и правим его смотря в какой чатверти круга он находится
         // logi.log("    angMotor[%i]  = %+8.3f x = %+8.3f y = %+8.3f len = %+8.3f \n\n", i, angMotor[i], _poseLaser[i].x, _poseLaser[i].y, lenMotor[i]);
