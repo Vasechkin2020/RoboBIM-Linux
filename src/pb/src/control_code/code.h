@@ -430,10 +430,10 @@ SPoint calculate_new_coordinates(SPoint point_A_, float angle_rad, float signed_
 	point_B.y = point_A_.y + dy;
 	// Вывод результатов с использованием printf
 	// Используем "%.4f" для вывода чисел с плавающей точкой с точностью до 4 знаков после запятой
-	logi.log_g("+++ Initial Position point_A (X, Y): (%.4f, %.4f)\n", point_A_.x, point_A_.y);
-	logi.log("    Movement Vector (signed_distance, Angle rad): '%.4f, %.4f'\n", signed_distance, angle_rad);
-	logi.log("    Delta Position (dX, dY): /%.4f, %.4f/\n", dx, dy);
-	logi.log_g("    New Position point_B (X', Y'): <%.4f, %.4f>\n", point_B.x, point_B.y);
+	logi.log_g("+++ Initial Position point_A (X, Y): (%+8.3f, %+8.3f)\n", point_A_.x, point_A_.y);
+	logi.log("    Movement Vector (signed_distance, Angle rad): '%+8.3f, %+8.3f'\n", signed_distance, angle_rad);
+	logi.log("    Delta Position (dX, dY): /%+8.3f, %+8.3f/\n", dx, dy);
+	logi.log_g("    New Position point_B (X', Y'): <%+8.3f, %+8.3f>\n", point_B.x, point_B.y);
 	return point_B;
 }
 

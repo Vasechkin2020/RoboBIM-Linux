@@ -303,8 +303,8 @@ private:
                                  const pb_msgs::Struct_Modul2Data &data,
                                  double robot_x, double robot_y, double robot_th_deg,
                                  double &out_corrected_dist,
-                                 Eigen::Vector2d &out_pillar_global);
-
+                                 Eigen::Vector2d &out_pillar_global,
+                                 std::string &log_str); // <--- НОВЫЙ АРГУМЕНТ
 
     const std::vector<std::string> PILLAR_NAMES = {"RB", "RT", "LT", "LB"}; // Имена столбов для удобства
 
