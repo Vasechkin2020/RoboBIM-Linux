@@ -25,6 +25,7 @@
 #include <geometry_msgs/Point.h>            // Для точек внутри маркеров
 #include <geometry_msgs/PoseStamped.h>      // <-- ДОБАВИТЬ ЭТУ СТРОКУ
 #include <pb_msgs/Struct_PoseScan.h>
+#include <pb_msgs/Struct_Modul2Data.h> // Подключаем сообщение от Modul
 
 #include "../genStruct.h"        // Тут все общие структуры. Истользуются и Data и Main и Head
 #include "trilaterationSolver.h" // Файл для функций для формирования топиков в нужном виде и формате
@@ -195,9 +196,9 @@ private:
 
     ros::Publisher pub_fused_pillars;
     ros::Publisher pub_final_markers;
-    ros::Publisher pub_calib_result; // <-- НОВЫЙ ПАБЛИШЕР
-    ros::Publisher pub_mnk_result;   // <--- НОВЫЙ: MNK (Trilateration)
-    ros::Publisher pub_fused_result; // Не забудь добавить в конструктор: nh.advertise...("/pb/scan/fused_pose", 1);
+    ros::Publisher pub_calib_result;  // <-- НОВЫЙ ПАБЛИШЕР
+    ros::Publisher pub_mnk_result;    // <--- НОВЫЙ: MNK (Trilateration)
+    ros::Publisher pub_fused_result;  // Не забудь добавить в конструктор: nh.advertise...("/pb/scan/fused_pose", 1);
     ros::Publisher pub_custom_struct; // Наш новый супер-топик
 
     // --- Параметры ---
@@ -261,6 +262,49 @@ private:
     geometry_msgs::PoseStamped mnk_pose_result_;      // Результаты MNK для слияния
     double mnk_rmse_result_ = 0.0;
     double mnk_yaw_deg_result_ = 0.0; // <--- НОВОЕ ПОЛЕ
+
+    // --- НОВОЕ: Лазерные дальномеры ---
+    ros::Subscriber sub_modul;                  // Подписчик на данные модуля
+    pb_msgs::Struct_Modul2Data last_modul_msg_; // Хранение последнего сообщения
+    std::mutex modul_mutex_;                    // Мьютекс для защиты данных
+    bool has_modul_data_ = false;               // Флаг, что данные вообще приходили
+
+    // Параметры конфигурации лазеров
+    double lasers_dist_offset_box_; // 0.042
+    double lasers_motor_bias_;      // 0.0636... (половина стороны)
+
+    ros::Time last_modul_rcv_time_; // Время получения последнего пакета ROS
+
+    // Структура для хранения геометрии мотора
+    struct LaserMountConfig
+    {
+        double x_loc;        // Локальный X относительно центра
+        double y_loc;        // Локальный Y относительно центра
+        double mount_th_deg; // Угол установки корпуса мотора
+    };
+    LaserMountConfig laser_configs_[4]; // Конфигурация 4-х моторов
+
+    // Результаты расчета "Только Лазеры" (для вывода в топик и лог)
+    struct LaserResult
+    {
+        double x = 0.0;
+        double y = 0.0;
+        double rmse = 0.0;
+        int used_count = 0;
+        bool valid = false;
+    } laser_only_result_;
+
+    // --- НОВЫЕ МЕТОДЫ ---
+    void modulCallback(const pb_msgs::Struct_Modul2Data::ConstPtr &msg);
+    void processLasers(); // Основной метод обработки лазеров
+
+    // Вспомогательный метод валидации одного измерения
+    bool validateAndPrepareLaser(int laser_idx,
+                                 const pb_msgs::Struct_Modul2Data &data,
+                                 double robot_x, double robot_y, double robot_th_deg,
+                                 double &out_corrected_dist,
+                                 Eigen::Vector2d &out_pillar_global);
+
 
     const std::vector<std::string> PILLAR_NAMES = {"RB", "RT", "LT", "LB"}; // Имена столбов для удобства
 
@@ -328,24 +372,23 @@ private:
 
         // 6. Пропуски столбов (Blind Spots)
         std::map<std::string, long long> missing_counts;
-        
+
         long long hybrid_math_dominant = 0; // Сколько раз победил fitCircle
         long long hybrid_phys_dominant = 0; // Сколько раз победила Медиана
-        
-        double sum_mnk_rmse = 0.0;        // Накопленная ошибка MNK
-        long long mnk_better_count = 0;   // Сколько раз MNK был точнее Umeyama
+
+        double sum_mnk_rmse = 0.0;      // Накопленная ошибка MNK
+        long long mnk_better_count = 0; // Сколько раз MNK был точнее Umeyama
 
         // Итоговое качество
-        double sum_fused_rmse = 0.0;      // Накопленная ошибка после слияния
-        double max_fused_rmse = 0.0;      // Худшая ошибка слияния
-        
+        double sum_fused_rmse = 0.0; // Накопленная ошибка после слияния
+        double max_fused_rmse = 0.0; // Худшая ошибка слияния
+
         // Производительность
-        double sum_latency_ms = 0.0;      // Накопленное время обработки (мс)
-        double max_latency_ms = 0.0;      // Максимальное время обработки (мс)
+        double sum_latency_ms = 0.0; // Накопленное время обработки (мс)
+        double max_latency_ms = 0.0; // Максимальное время обработки (мс)
     };
 
     SessionStats stats_; // Экземпляр статистики
-
 
     //*********************
 
