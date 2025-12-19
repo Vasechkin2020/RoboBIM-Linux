@@ -19,17 +19,24 @@ int main(int argc, char **argv)
     PillarScanNode node;
     node.init(); // Старт
 
-    ros::Rate rate(20); // 20 Гц
+    // ЗАПУСКАЕМ АСИНХРОННЫЙ СПИННЕР
+    // 2 потока: один может считать callback лидара, другой - лазера
+    ros::AsyncSpinner spinner(2); 
+    spinner.start();
 
-    logi.log("Starting main loop...\n");
+    ros::Rate rate(100); // 100 Гц
+
+    logi.log("Starting main loop (Async)...\n");
 
     while (ros::ok())
     {
-        ros::spinOnce();
+         // ros::spinOnce(); <--- ЭТО БОЛЬШЕ НЕ НУЖНО внедрили AsyncSpinner
         node.process(); // Обработка каждого скана
         rate.sleep();
     }
-
+    
+    spinner.stop();
+    
     logi.log("Node finished execution gracefully.\n");
     return 0;
 

@@ -267,6 +267,7 @@ private:
     ros::Subscriber sub_modul;                  // Подписчик на данные модуля
     pb_msgs::Struct_Modul2Data last_modul_msg_; // Хранение последнего сообщения
     std::mutex modul_mutex_;                    // Мьютекс для защиты данных
+    std::mutex scan_mutex_;                     // <--- Добавляем мьютекс для скана
     bool has_modul_data_ = false;               // Флаг, что данные вообще приходили
 
     // Параметры конфигурации лазеров
@@ -328,6 +329,18 @@ private:
     };
 
     LidarCalibration lidar_calibration_; //  для хранения калибровки
+
+    // Структура для хранения готового к слиянию измерения
+    struct FusionLaserMeas
+    {
+        SPoint beacon; // Координаты идеального столба
+        double dist;   // Скорректированная дистанция (Центр -> Столб)
+        double weight; // Вес (будем ставить большой)
+        int id;        // ID лазера для логов
+    };
+
+    // Буфер для передачи данных из processLasers в fuseResults
+    std::vector<FusionLaserMeas> lasers_for_fusion_;
 
     // --- СТАТИСТИКА (Бортовой самописец) ---
     struct SessionStats

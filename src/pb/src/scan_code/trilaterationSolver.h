@@ -120,7 +120,7 @@ public:
 
     // Методы добавления данных
     int get_circle_count() const;                                                // Получить текущее количество окружностей
-    void add_circle_from_distance(SPoint P_beacon, double distance);             // Добавление окружности из дальности
+    void add_circle_from_distance(SPoint P_beacon, double distance, double weight = 1.0);             // Добавление окружности из дальности Добавлен аргумент weight со значением по умолчанию 1.0
     void add_filtered_circle_from_angle(SPoint P1, SPoint P2, double angle_deg); // Добавление окружности из угла (с ДИНАМИЧЕСКИМ ВЕСОМ)
 
     // МЕТОДЫ РЕШЕНИЯ
@@ -189,7 +189,7 @@ inline int TrilaterationSolver::get_circle_count() const
     return all_circles.size(); // Получить количество окружностей
 }
 
-inline void TrilaterationSolver::add_circle_from_distance(SPoint P_beacon, double distance)
+inline void TrilaterationSolver::add_circle_from_distance(SPoint P_beacon, double distance, double weight)
 {
     // printf("+++ add_circle_from_distance \n");
     // Отладочный вывод: Добавление измерения дальности
@@ -197,11 +197,11 @@ inline void TrilaterationSolver::add_circle_from_distance(SPoint P_beacon, doubl
     //        P_beacon.x,                                            // X-coordinate of beacon
     //        P_beacon.y,                                            // Y-coordinate of beacon
     //        distance,                                              // Measured distance
-    //        WEIGHT_DISTANCE_NORM                                   // Assigned weight
+    //        weight                                   // Assigned weight
     // );                                                            // Выводим координаты, расстояние и вес
 
-    // Вес дистанционного измерения ВСЕГДА 1.0 (наш эталон)
-    all_circles.push_back({P_beacon.x, P_beacon.y, distance, WEIGHT_DISTANCE_NORM, true}); // Добавляем маяк с весом 1.0 и флагом active=true
+    // Вес дистанционного измерения ВСЕГДА 1.0 (наш эталон)// Было: WEIGHT_DISTANCE_NORM (которое равно 1.0)     // Стало: используем переданный weight
+    all_circles.push_back({P_beacon.x, P_beacon.y, distance, weight, true}); // Добавляем маяк с весом 1.0 и флагом active=true
 }
 
 inline void TrilaterationSolver::add_filtered_circle_from_angle(SPoint P1, SPoint P2, double angle_deg)

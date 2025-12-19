@@ -87,8 +87,17 @@ void PillarScanNode::performMnkCalculation(const AlignedPillarVector &pillars)
         // Восстанавливаем её: L_center = dist(0,0) до local
         double dist_to_center = p.local.norm();
 
-        mnk_solver_->add_circle_from_distance(beacon, dist_to_center);
+        mnk_solver_->add_circle_from_distance(beacon, dist_to_center, 1.0); // Используем дефолтный вес 1.0 (или явно пишем 1.0)
         count_circles++;
+    }
+
+    // --- Б. ДОБАВЛЯЕМ ДАННЫЕ ЛАЗЕРОВ (Вес 20.0 - высокий приоритет) ---
+    // (Этот вектор мы заполнили в processLasers только свежими данными)
+    for (const auto &las : lasers_for_fusion_)
+    {
+        mnk_solver_->add_circle_from_distance(las.beacon, las.dist, las.weight);
+        count_circles++;
+        logi.log("    + Fusion Laser L%d: Dist=%.4f Weight=%.1f\n", las.id, las.dist, las.weight);
     }
 
     // 3. Добавляем УГЛЫ (C(4,2) = 6 измерений)
@@ -2201,6 +2210,7 @@ void PillarScanNode::init()
 // Коллбек: только копирует данные
 void PillarScanNode::scanCallback(const sensor_msgs::LaserScan::ConstPtr &scan)
 {
+    std::lock_guard<std::mutex> lock(scan_mutex_); // <--- Защита
     current_scan_ = *scan;
     new_scan_available_ = true;
     if (meta_scan.header.frame_id.empty())
@@ -2210,11 +2220,15 @@ void PillarScanNode::scanCallback(const sensor_msgs::LaserScan::ConstPtr &scan)
 // Метод обработки (вызываем в цикле)
 void PillarScanNode::process()
 {
-    if (!initialized_ || !new_scan_available_)
-        return;
-    new_scan_available_ = false;
-
-    processPipeline(current_scan_); // Запускаем пайплайн для одного скана
+    sensor_msgs::LaserScan scan_copy;
+    {
+        std::lock_guard<std::mutex> lock(scan_mutex_); // <--- Защита
+        if (!initialized_ || !new_scan_available_)
+            return;
+        scan_copy = current_scan_; // Копируем данные, чтобы быстро освободить мьютекс
+        new_scan_available_ = false;
+    }
+    processPipeline(scan_copy); // Запускаем пайплайн для одного скана Дальше работаем с scan_copy вместо current_scan_
     publishVisuals();               // Публикуем результат
 }
 
@@ -2700,7 +2714,10 @@ void PillarScanNode::initReferenceSystem()
 
 void PillarScanNode::processLasers()
 {
-    // Сброс результата в начале
+    // Очищаем буфер слияния перед новым циклом
+    lasers_for_fusion_.clear();
+
+    // Сброс результата в начале "Laser Only"
     laser_only_result_.valid = false;
     laser_only_result_.x = 0;
     laser_only_result_.y = 0;
@@ -2711,12 +2728,11 @@ void PillarScanNode::processLasers()
     pb_msgs::Struct_Modul2Data data;
     std::string fail_reason = "";
 
-    {
+    { // Фигурные скобки { ... } здесь создают область видимости (scope). Это критически важно для работы с многопоточностью и мьютексами (std::lock_guard).
         std::lock_guard<std::mutex> lock(modul_mutex_);
 
-        if (!has_modul_data_)
+        if (!has_modul_data_) // Данные еще ни разу не приходили
         {
-            // Данные еще ни разу не приходили
             logi.log("LASER SKIP: Waiting for first packet...\n");
             return; // Тут можно молча выйти, чтобы не спамить при старте, или раскомментить лог
         }
@@ -2729,7 +2745,7 @@ void PillarScanNode::processLasers()
         }
 
         data = last_modul_msg_; // Копируем данные
-    }
+    } // Мьютекс будет разблокирован автоматически, когда переменная lock уничтожится. Переменная lock уничтожается, когда выполнение кода доходит до закрывающей скобки }.
 
     // --- ЭТАП 2: Проверка готовности системы ---
     if (!calibration_done_)
@@ -2746,43 +2762,119 @@ void PillarScanNode::processLasers()
     double robot_th = lidar_calibration_.rotation_deg;
 
     TrilaterationSolver local_solver({robot_x, robot_y});
-    int valid_lasers = 0;
+    int valid_local_cnt = 0;
     std::string debug_status = ""; // Строка для накопления статусов по каждому лазеру (L0:OK L1:Fail...)
+
+    // int valid_lasers = 0;
+    // for (int i = 0; i < 4; ++i)
+    // {
+    //     double corrected_dist = 0;
+    //     Eigen::Vector2d pillar_global;
+
+    //     // Передаем debug_status по ссылке, чтобы validate функция дописала туда причину
+    //     if (validateAndPrepareLaser(i, data, robot_x, robot_y, robot_th, corrected_dist, pillar_global, debug_status))
+    //     {
+    //         SPoint beacon = {pillar_global.x(), pillar_global.y()};
+    //         local_solver.add_circle_from_distance(beacon, corrected_dist);
+    //         valid_lasers++;
+    //     }
+    // }
+
+    // Пороги времени (мс)
+    const int TIME_LIMIT_LOCAL = 333; // Для статистики (мягкий)
+    const int TIME_LIMIT_FUSION = 90; // Для управления (жесткий!)
+    const double LASER_WEIGHT = 20.0; // Вес лазера в общем котле (Лидар = 1.0)
 
     for (int i = 0; i < 4; ++i)
     {
         double corrected_dist = 0;
         Eigen::Vector2d pillar_global;
+        std::string log_part = "";
 
-        // Передаем debug_status по ссылке, чтобы validate функция дописала туда причину
-        if (validateAndPrepareLaser(i, data, robot_x, robot_y, robot_th, corrected_dist, pillar_global, debug_status))
+        // 1. Базовая валидация (Геометрия + Статус + Грубый порог времени 333мс)
+        // ВАЖНО: В validateAndPrepareLaser убедись, что стоит проверка if (meas.time > 333)
+        if (validateAndPrepareLaser(i, data, robot_x, robot_y, robot_th, corrected_dist, pillar_global, log_part))
         {
+            // Данные геометрически верны и моложе 333 мс
+
+            // А. Добавляем в ЛОКАЛЬНЫЙ решатель (для статистики)
             SPoint beacon = {pillar_global.x(), pillar_global.y()};
-            local_solver.add_circle_from_distance(beacon, corrected_dist);
-            valid_lasers++;
+            local_solver.add_circle_from_distance(beacon, corrected_dist); // Вес 1.0 тут не важен, т.к. одни лазеры
+            valid_local_cnt++;
+
+            // Б. Проверяем свежесть для FUSION (строгий отбор)
+            int age = data.laser[i].time;
+            if (age <= TIME_LIMIT_FUSION)
+            {
+                // Данные свежие! Добавляем в буфер для общего MNK
+                FusionLaserMeas fusion_item;
+                fusion_item.beacon = beacon;
+                fusion_item.dist = corrected_dist;
+                fusion_item.weight = LASER_WEIGHT;
+                fusion_item.id = i;
+                lasers_for_fusion_.push_back(fusion_item);
+
+                // Помечаем в логе, что ушло в Fusion
+                debug_status += "L" + std::to_string(i) + ":FUSION ";
+            }
+            else
+            {
+                // Валидно, но старовато для управления
+                debug_status += "L" + std::to_string(i) + ":LocalOnly(" + std::to_string(age) + "ms) ";
+            }
+        }
+        else
+        {
+            // Не прошло валидацию
+            debug_status += log_part;
         }
     }
 
     // --- ЭТАП 4: Решение и Финальный лог ---
 
-    if (valid_lasers >= 3)
+    if (valid_local_cnt >= 3)
     {
         SPoint_Q result = local_solver.find_A_by_mnk_simple();
 
         laser_only_result_.x = result.A.x;
         laser_only_result_.y = result.A.y;
         laser_only_result_.rmse = result.quality;
-        laser_only_result_.used_count = valid_lasers;
+        laser_only_result_.used_count = valid_local_cnt;
         laser_only_result_.valid = true;
 
-        logi.log_g("LASER SUCCESS: Used %d/4 | Pos: %.3f, %.3f | RMSE: %.3f | Details: %s\n",
-                   valid_lasers, result.A.x, result.A.y, result.quality, debug_status.c_str());
+        // // Лог с акцентом на то, сколько ушло в Fusion
+        // logi.log_g("LASER STATS: Local=%d/4 | ToFusion=%lu | Pos: %.3f, %.3f | Details: %s\n",
+        //            valid_local_cnt, lasers_for_fusion_.size(), result.A.x, result.A.y, debug_status.c_str());
+
+        // --- НОВАЯ СТРОКА ЛОГА ---
+        // X, Y - координаты
+        // RMSE - точность в миллиметрах
+        // Used - сколько лазеров участвовало в геометрии
+        // Fusion - сколько из них пошло в общий котел (свежие)
+        // Sts - детальный статус
+        logi.log_g("LASER_CALC: Pos=[%.4f, %.4f] | RMSE=%.1f mm | Used=%d/4 (Fusion=%lu) | Sts: %s\n", 
+                   result.A.x, 
+                   result.A.y, 
+                   result.quality * 1000.0, // Переводим метры в мм для удобства
+                   valid_local_cnt, 
+                   lasers_for_fusion_.size(), 
+                   debug_status.c_str());
     }
     else
     {
-        // Вот тут мы пишем, почему не посчитали, даже если связь есть
-        logi.log_w("LASER FAIL: Not enough valid (%d/4). Threshold >= 3. Reasons: %s\n",
-                   valid_lasers, debug_status.c_str());
+        // // Вот тут мы пишем, почему не посчитали, даже если связь есть
+        // logi.log_w("LASER FAIL: Not enough valid (%d/4). Threshold >= 3. Reasons: %s\n",
+        //            valid_lasers, debug_status.c_str());
+        // Если лазеров мало для локального расчета, но для Fusion они есть - это нормально
+        if (!lasers_for_fusion_.empty())
+        {
+            logi.log("LASER PARTIAL: Local calc skipped (%d < 3), but %lu sent to Fusion. Details: %s\n",
+                     valid_local_cnt, lasers_for_fusion_.size(), debug_status.c_str());
+        }
+        else
+        {
+            logi.log_w("LASER FAIL: No valid data. %s\n", debug_status.c_str());
+        }
     }
 }
 
@@ -2964,7 +3056,7 @@ void PillarScanNode::processLasers()
 
 //     if (err_dist > 0.3)
 //     { // 30 см
-    
+
 //         double beam_deg = beam_global_rad * 180.0 / M_PI;// Добавим вывод угла луча в градусах для отладки
 //         snprintf(buf, sizeof(buf), "L%d:Gate(%.1fm,Beam%.0f) ", laser_idx, err_dist, beam_deg);
 //         log_str += buf;
@@ -2998,37 +3090,40 @@ void PillarScanNode::processLasers()
 //     return true;
 // }
 
-bool PillarScanNode::validateAndPrepareLaser(int laser_idx, 
+bool PillarScanNode::validateAndPrepareLaser(int laser_idx,
                                              const pb_msgs::Struct_Modul2Data &data,
                                              double robot_x, double robot_y, double robot_th_deg,
-                                             double &out_corrected_dist, 
+                                             double &out_corrected_dist,
                                              Eigen::Vector2d &out_pillar_global,
                                              std::string &log_str)
 {
-    const auto& meas = data.laser[laser_idx]; // Ссылка на данные
-    char buf[32]; 
+    const auto &meas = data.laser[laser_idx]; // Ссылка на данные
+    char buf[32];
 
     // --- ЛОГ СЫРЫХ ДАННЫХ (DEBUG) ---
     // Выводим всё, что пришло, чтобы исключить глюки парсинга
-    logi.log("  [DEBUG L%d] RAW: Dist=%.4f, Ang=%.2f, Time=%d, Stat=%d, TgtPillar=%d\n", 
-             laser_idx, meas.distance, meas.angle, meas.time, meas.status, meas.numPillar);
+    // logi.log("  [DEBUG L%d] RAW: Dist=%.4f, Ang=%.2f, Time=%d, Stat=%d, TgtPillar=%d\n",
+    //          laser_idx, meas.distance, meas.angle, meas.time, meas.status, meas.numPillar);
 
     // 1. Статус
-    if (meas.status != 0) {
+    if (meas.status != 0)
+    {
         snprintf(buf, sizeof(buf), "L%d:ErrStat(%d) ", laser_idx, meas.status);
         log_str += buf;
         return false;
     }
-    
+
     // 2. Номер столба
-    if (meas.numPillar < 0 || meas.numPillar > 3) {
+    if (meas.numPillar < 0 || meas.numPillar > 3)
+    {
         snprintf(buf, sizeof(buf), "L%d:NoPillar ", laser_idx);
         log_str += buf;
         return false;
     }
 
     // 3. Время (Обновили порог до 333 мс)
-    if (meas.time > 333) {
+    if (meas.time > 333)
+    {
         snprintf(buf, sizeof(buf), "L%d:Old(%dms) ", laser_idx, meas.time);
         log_str += buf;
         return false;
@@ -3038,7 +3133,7 @@ bool PillarScanNode::validateAndPrepareLaser(int laser_idx,
 
     // А. Фактическое расстояние (Вал -> Столб)
     double r_fact = meas.distance + lasers_dist_offset_box_ + pillar_radius_;
-    
+
     // Б. Конфигурация мотора
     double mount_th_deg = laser_configs_[laser_idx].mount_th_deg;
     double lx = laser_configs_[laser_idx].x_loc;
@@ -3046,16 +3141,16 @@ bool PillarScanNode::validateAndPrepareLaser(int laser_idx,
 
     // В. Глобальная позиция мотора
     double robot_th_rad = robot_th_deg * M_PI / 180.0;
-    
+
     // Поворот вектора смещения (lx, ly) на угол робота
     double dx_rot = lx * cos(robot_th_rad) - ly * sin(robot_th_rad);
     double dy_rot = lx * sin(robot_th_rad) + ly * cos(robot_th_rad);
-    
+
     double mx_global = robot_x + dx_rot;
     double my_global = robot_y + dy_rot;
 
-    logi.log("  [DEBUG L%d] GEOM: Robot(%.3f, %.3f, %.1f°) -> MountLoc(%.3f, %.3f) -> MotorGlobal(%.3f, %.3f)\n",
-             laser_idx, robot_x, robot_y, robot_th_deg, lx, ly, mx_global, my_global);
+    // logi.log("  [DEBUG L%d] GEOM: Robot(%.3f, %.3f, %.1f°) -> MountLoc(%.3f, %.3f) -> MotorGlobal(%.3f, %.3f)\n",
+    //          laser_idx, robot_x, robot_y, robot_th_deg, lx, ly, mx_global, my_global);
 
     // Г. Угол луча
     // angle - угол башни. mount_th - установочный. robot_th - робота.
@@ -3063,8 +3158,8 @@ bool PillarScanNode::validateAndPrepareLaser(int laser_idx,
     double beam_global_deg = robot_th_deg + mount_th_deg + (-meas.angle); // Знак минус делаем так как у меня моторы плюс по часовой
     double beam_global_rad = beam_global_deg * M_PI / 180.0;
 
-    logi.log("  [DEBUG L%d] ANGLE: Rob(%.1f) + Mnt(%.1f) + Turret(%.1f) = BeamGlobal(%.1f°)\n",
-             laser_idx, robot_th_deg, mount_th_deg, meas.angle, beam_global_deg);
+    // logi.log("  [DEBUG L%d] ANGLE: Rob(%.1f) + Mnt(%.1f) + Turret(%.1f) = BeamGlobal(%.1f°)\n",
+    //          laser_idx, robot_th_deg, mount_th_deg, meas.angle, beam_global_deg);
 
     // Д. Точка удара (Виртуальный столб)
     double hit_x = mx_global + r_fact * cos(beam_global_rad);
@@ -3073,16 +3168,18 @@ bool PillarScanNode::validateAndPrepareLaser(int laser_idx,
     // Е. Идеальный столб (Цель)
     int pid = meas.numPillar;
     // Защита от выхода за границы массива (на всякий случай)
-    if (pid >= reference_centers_.size()) return false; 
+    if (pid >= reference_centers_.size())
+        return false;
     Eigen::Vector2d ideal_pillar = reference_centers_[pid].cast<double>();
 
     // Ж. Гейтинг
     double err_dist = sqrt(pow(hit_x - ideal_pillar.x(), 2) + pow(hit_y - ideal_pillar.y(), 2));
 
-    logi.log("  [DEBUG L%d] CHECK: R_fact=%.3f -> Hit(%.3f, %.3f) vs Ideal_P%d(%.3f, %.3f) | Err=%.3f m\n",
-             laser_idx, r_fact, hit_x, hit_y, pid, ideal_pillar.x(), ideal_pillar.y(), err_dist);
+    // logi.log("  [DEBUG L%d] CHECK: R_fact=%.3f -> Hit(%.3f, %.3f) vs Ideal_P%d(%.3f, %.3f) | Err=%.3f m\n",
+    //          laser_idx, r_fact, hit_x, hit_y, pid, ideal_pillar.x(), ideal_pillar.y(), err_dist);
 
-    if (err_dist > 0.3) { 
+    if (err_dist > 0.1) // Насколько центры столбов могут не совпадать и все равно пройдет столб проверку
+    {
         snprintf(buf, sizeof(buf), "L%d:Gate(%.2fm) ", laser_idx, err_dist);
         log_str += buf;
         return false;
@@ -3094,8 +3191,9 @@ bool PillarScanNode::validateAndPrepareLaser(int laser_idx,
 
     double v_cp_x = ideal_pillar.x() - robot_x;
     double v_cp_y = ideal_pillar.y() - robot_y;
-    double len_cp = sqrt(v_cp_x*v_cp_x + v_cp_y*v_cp_y);
-    if (len_cp < 0.001) len_cp = 0.001;
+    double len_cp = sqrt(v_cp_x * v_cp_x + v_cp_y * v_cp_y);
+    if (len_cp < 0.001)
+        len_cp = 0.001;
     v_cp_x /= len_cp;
     v_cp_y /= len_cp;
 
@@ -3103,8 +3201,8 @@ bool PillarScanNode::validateAndPrepareLaser(int laser_idx,
     out_corrected_dist = r_fact + projection;
     out_pillar_global = ideal_pillar;
 
-    logi.log("  [DEBUG L%d] PROJ: Center->Motor (%.3f, %.3f) proj on Center->Pillar = %.4f. Final Dist=%.4f\n",
-             laser_idx, v_cm_x, v_cm_y, projection, out_corrected_dist);
+    // logi.log("  [DEBUG L%d] PROJ: Center->Motor (%.3f, %.3f) proj on Center->Pillar = %.4f. Final Dist=%.4f\n",
+    //          laser_idx, v_cm_x, v_cm_y, projection, out_corrected_dist);
 
     snprintf(buf, sizeof(buf), "L%d:OK ", laser_idx);
     log_str += buf;
