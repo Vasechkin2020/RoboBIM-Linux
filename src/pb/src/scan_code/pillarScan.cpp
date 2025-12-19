@@ -3189,8 +3189,27 @@ bool PillarScanNode::validateAndPrepareLaser(int laser_idx,
     double err_dist = sqrt(pow(hit_x - ideal_pillar.x(), 2) + pow(hit_y - ideal_pillar.y(), 2));
 
     // --- ЗАПИСЬ В ЛОГ (ДЕТАЛИ) ---
-    // Выводим: Время (ms) и Ошибку (mm) в понятном формате с выравниванием
-    snprintf(buf, sizeof(buf), "L%d:[%3dms, Err:%5.1fmm] ", laser_idx, meas.time, err_dist * 1000.0);
+    // // Выводим: Время (ms) и Ошибку (mm) в понятном формате с выравниванием
+    // snprintf(buf, sizeof(buf), "L%d:[%3dms, Err:%5.1fmm] ", laser_idx, meas.time, err_dist * 1000.0);
+
+    // --- ОБНОВЛЕННЫЙ ЛОГ (С Дистанцией и Углом) ---
+    // L0:[ 79ms, D:1.183m, A:-131°, Err:  4.5mm]
+    // D - Raw Distance (что видит датчик)
+    // A - Global Beam Angle (куда смотрит луч в градусах)
+    // Err - Ошибка попадания в центр столба
+    
+    // Нормализуем угол для красоты вывода (-180..180)
+    double log_angle = beam_global_deg;
+    while (log_angle > 180) log_angle -= 360;
+    while (log_angle <= -180) log_angle += 360;
+
+    snprintf(buf, sizeof(buf), "L%d:[%3dms, D:%.3fm, A:%4.0f°, Err:%5.1fmm] ", 
+             laser_idx, 
+             meas.time, 
+             meas.distance, 
+             log_angle,
+             err_dist * 1000.0);
+             
     log_str += buf;
 
     // --- ПРОВЕРКИ (ФИЛЬТРЫ) ---

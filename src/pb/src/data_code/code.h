@@ -273,4 +273,26 @@ void readParam() // Считывание переменных параметро
 	logi.log("    modeModul = %i \n", modeModul);
 	logi.log_b("+++ =========================================\n\n");
 }
+
+
+void updateParam() 
+{
+    // Используем static, чтобы не пересоздавать хендл каждый раз (экономия тактов)
+    static ros::NodeHandle nh_global; 
+
+    // getParamCached возвращает true, если значение в кэше есть, и обновляет переменную моментально
+    // Это НЕ вызывает тормозов, можно вызывать хоть в каждом цикле (без счетчика)
+    
+    nh_global.getParamCached("/pb_config/lasers/dist_offset_0", dist_offsets[0]);
+    nh_global.getParamCached("/pb_config/lasers/dist_offset_1", dist_offsets[1]);
+    nh_global.getParamCached("/pb_config/lasers/dist_offset_2", dist_offsets[2]);
+    nh_global.getParamCached("/pb_config/lasers/dist_offset_3", dist_offsets[3]);
+    
+    nh_global.getParamCached("/pb_config/lasers/offset_0", angle_offsets[0]);
+    nh_global.getParamCached("/pb_config/lasers/offset_1", angle_offsets[1]);
+    nh_global.getParamCached("/pb_config/lasers/offset_2", angle_offsets[2]);
+    nh_global.getParamCached("/pb_config/lasers/offset_3", angle_offsets[3]);
+}
+
+
 #endif

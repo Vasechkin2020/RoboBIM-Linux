@@ -89,6 +89,8 @@ int main(int argc, char **argv)
     while (ros::ok())
     {
         double current_time_sec = ros::Time::now().toSec(); // Текущее время в секундах
+        
+        updateParam(); // Вставляем сюда. Это займет ~0.005 мс, на цикл не повлияет. Обновление офсетов из rosparam на ходу.
         // ROS_INFO(""); // С новой строки в логе новый цикл
         led_status = 1 - led_status; // Мигаем с частотой работы цикла
         digitalWrite(PIN_LED_BLUE, led_status);
