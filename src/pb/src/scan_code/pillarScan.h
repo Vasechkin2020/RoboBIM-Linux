@@ -201,6 +201,11 @@ private:
     ros::Publisher pub_fused_result;  // Не забудь добавить в конструктор: nh.advertise...("/pb/scan/fused_pose", 1);
     ros::Publisher pub_custom_struct; // Наш новый супер-топик
 
+    // Пороги времени (мс)
+    const int TIME_LIMIT_LOCAL = 333; // Для статистики (мягкий)
+    const int TIME_LIMIT_FUSION = 90; // Для управления (жесткий!)
+    const double LASER_WEIGHT = 20.0; // Вес лазера в общем котле (Лидар = 1.0)
+    
     // --- Параметры ---
     double pillar_diam_;
     double pillar_radius_;
