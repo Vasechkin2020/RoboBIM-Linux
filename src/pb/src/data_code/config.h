@@ -10,6 +10,8 @@
 #include <wiringPi.h>
 #include <wiringPiSPI.h>
 
+#include "spiDriver.h" // Новый системный драйвер вместо wiringPi
+
 #include <pb_msgs/SControl.h>
 #include <pb_msgs/SLed.h>
 
