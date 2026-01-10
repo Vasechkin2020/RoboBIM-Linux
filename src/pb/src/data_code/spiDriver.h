@@ -23,6 +23,9 @@
 // --- Подключение вашего логгера ---
 extern AsyncFileLogger logi;
 
+// Добавляем строку для хранения пути к чипу
+std::string gpio_chip_path;
+
 // Класс-обертка для работы с SPI и GPIO на Raspberry Pi
 class SpiDriver
 {

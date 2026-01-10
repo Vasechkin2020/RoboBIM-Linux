@@ -79,11 +79,11 @@ void Led_Blink(int led_, unsigned long time_)
 
 void init_Gpio() // Настройка пинов
 {
-	// 1. Инициализация чипа (для Pi 4 это chip0)
-	if (!spi_drv.beginGPIO("/dev/gpiochip0"))
+	// 1. Инициализация чипа (для Pi 4 это chip0) Используем c_str(), так как функция ожидает const char*
+    if (!spi_drv.beginGPIO(gpio_chip_path.c_str())) 
 	{
-		ROS_ERROR("Failed to init GPIO chip");
-		exit(1);
+        ROS_ERROR("Failed to init GPIO chip: %s", gpio_chip_path.c_str());
+        exit(EXIT_FAILURE);
 	}
 
 	// 2. Настройка пинов (1 = Output, 1 = High/Initial Value)
@@ -321,6 +321,9 @@ void readParam() // Считывание переменных параметро
 	nh_global.param<double>("/pb_config/lasers/offset_2", angle_offsets[2], 0.0); // Лазер 2
 	nh_global.param<double>("/pb_config/lasers/offset_3", angle_offsets[3], 0.0); // Лазер 3
 
+	// Читаем путь к чипу.     // По умолчанию ставим для Pi 4 ("/dev/gpiochip0").    // Для Pi 5 в launch-файле напишем "/dev/gpiochip4".
+    nh_global.param<std::string>("/pb_config/gpio_chip_path", gpio_chip_path, "/dev/gpiochip0");
+
 	// Логируем, чтобы убедиться, что загрузилось
 	logi.log_b("+++ =========================================\n");
 	logi.log_g("    Start node with parametrs:\n");
@@ -330,6 +333,7 @@ void readParam() // Считывание переменных параметро
 	logi.log("    offSetUZI = %+8.3f \n", offSetUzi);
 	logi.log("    unit_driver = %i unit_modul = %i unit_print = %i \n", unitDriver, unitModul, unitPrint);
 	logi.log("    modeModul = %i \n", modeModul);
+    logi.log("    GPIO Chip Path: %s\n", gpio_chip_path.c_str());
 	logi.log_b("+++ =========================================\n\n");
 }
 
