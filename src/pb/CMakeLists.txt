@@ -151,26 +151,26 @@ add_definitions(${PCL_DEFINITIONS})
 add_executable(data_node src/data_node.cpp)
 target_link_libraries(data_node ${catkin_LIBRARIES} -lwiringPi -lpthread)
 
-add_executable(pos_node src/pos_node.cpp)
-target_link_libraries(pos_node ${catkin_LIBRARIES} -lpthread)
+#add_executable(pos_node src/pos_node.cpp)
+#target_link_libraries(pos_node ${catkin_LIBRARIES} -lpthread)
 
-add_executable(control_node src/control_node.cpp)
-target_link_libraries(control_node ${catkin_LIBRARIES} -lpthread)
+#add_executable(control_node src/control_node.cpp)
+#target_link_libraries(control_node ${catkin_LIBRARIES} -lpthread)
 
-add_executable(write_node src/write_node.cpp)
-target_link_libraries(write_node ${catkin_LIBRARIES} -lpthread)
+#add_executable(write_node src/write_node.cpp)
+#target_link_libraries(write_node ${catkin_LIBRARIES} -lpthread)
 
-add_executable(lidar_node src/lidar_node.cpp)
-target_link_libraries(lidar_node ${catkin_LIBRARIES} ${PCL_LIBRARIES})
+#add_executable(lidar_node src/lidar_node.cpp)
+#target_link_libraries(lidar_node ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 
-add_executable(scan_node 
-src/scan_node.cpp 
-    src/scan_code/pillarScan.cpp # <--- ДОБАВЬ ЭТУ СТРОКУ
-    )
-target_link_libraries(scan_node 
-${catkin_LIBRARIES}
-atomic   # <--- ДОБАВИТЬ ЭТУ СТРОКУ
-)
+#add_executable(scan_node 
+#src/scan_node.cpp 
+#    src/scan_code/pillarScan.cpp # <--- ДОБАВЬ ЭТУ СТРОКУ
+#    )
+#target_link_libraries(scan_node 
+#${catkin_LIBRARIES}
+#atomic   # <--- ДОБАВИТЬ ЭТУ СТРОКУ
+#)
 
 #add_executable(calibr_node src/calibr_node.cpp)
 #target_link_libraries(calibr_node ${catkin_LIBRARIES} -lpthread)
