@@ -20,15 +20,8 @@
 // --- Подключение библиотеки GPIO ---
 #include <gpiod.h> // libgpiod v1: стандарт работы с GPIO в современном Linux
 
-// --- Макросы для логирования (совместимость с ROS) ---
-#ifdef ROS_BUILD                                                                        // Если компилируем в среде ROS
-#include <ros/console.h>                                                                // Подключаем консоль ROS
-#define LOG_ERROR(fmt, ...) ROS_ERROR(fmt, ##__VA_ARGS__)                               // Макрос ошибки ROS
-#define LOG_INFO(fmt, ...) ROS_INFO(fmt, ##__VA_ARGS__)                                 // Макрос инфо ROS
-#else                                                                                   // Если обычная компиляция (g++)
-#define LOG_ERROR(fmt, ...) fprintf(stderr, "[SPI_DRV ERROR] " fmt "\n", ##__VA_ARGS__) // Вывод ошибки в stderr
-#define LOG_INFO(fmt, ...) printf("[SPI_DRV INFO] " fmt "\n", ##__VA_ARGS__)            // Вывод инфо в stdout
-#endif
+// --- Подключение вашего логгера ---
+extern AsyncFileLogger logi;
 
 // Класс-обертка для работы с SPI и GPIO на Raspberry Pi
 class SpiDriver
@@ -104,7 +97,7 @@ public:
         fd_spi = open(device, O_RDWR); // Открываем устройство SPI для чтения и записи
         if (fd_spi < 0)
         {                                                                       // Проверка на ошибку открытия
-            LOG_ERROR("Can't open SPI device %s: %s", device, strerror(errno)); // Логируем системную ошибку
+            logi.log_r("Can't open SPI device %s: %s\n", device, strerror(errno)); // Логируем системную ошибку
             return false;                                                       // Возвращаем неудачу
         }
 
@@ -112,7 +105,7 @@ public:
         // Отправляем команду ядру на установку режима
         if (ioctl(fd_spi, SPI_IOC_WR_MODE, &mode) == -1)
         {
-            LOG_ERROR("Can't set SPI mode: %s", strerror(errno)); // Лог ошибки
+            logi.log_r("Can't set SPI mode: %s\n", strerror(errno)); // Лог ошибки
             closeSpiFd();
             return false; // Закрываем файл и выходим
         }
@@ -121,7 +114,7 @@ public:
         // Отправляем команду ядру на установку битности
         if (ioctl(fd_spi, SPI_IOC_WR_BITS_PER_WORD, &bits) == -1)
         {
-            LOG_ERROR("Can't set bits: %s", strerror(errno)); // Лог ошибки
+            logi.log_r("Can't set bits: %s\n", strerror(errno)); // Лог ошибки
             closeSpiFd();
             return false; // Закрываем файл и выходим
         }
@@ -129,7 +122,7 @@ public:
         // Отправляем команду ядру на установку скорости
         if (ioctl(fd_spi, SPI_IOC_WR_MAX_SPEED_HZ, &speed_hz) == -1)
         {
-            LOG_ERROR("Can't set speed: %s", strerror(errno)); // Лог ошибки
+            logi.log_r("Can't set speed: %s\n", strerror(errno)); // Лог ошибки
             closeSpiFd();
             return false; // Закрываем файл и выходим
         }
@@ -142,12 +135,12 @@ public:
     {
         if (fd_spi < 0)
         {                                                   // Проверка: инициализирован ли SPI?
-            LOG_ERROR("SPI transfer attempt without init"); // Лог ошибки
+            logi.log_r("SPI transfer attempt without init\n"); // Лог ошибки
             return false;                                   // Выход
         }
         if (!buffer || len == 0)
         {                                                      // Проверка аргументов
-            LOG_ERROR("SPI transfer with invalid buffer/len"); // Лог ошибки
+            logi.log_r("SPI transfer with invalid buffer/len\n"); // Лог ошибки
             return false;                                      // Выход
         }
 
@@ -164,7 +157,7 @@ public:
         int ret = ioctl(fd_spi, SPI_IOC_MESSAGE(1), &tr);
         if (ret < 1)
         {                                                          // Если результат меньше 1, значит ошибка
-            LOG_ERROR("SPI Transfer failed: %s", strerror(errno)); // Лог системной ошибки
+            logi.log_r("SPI Transfer failed: %s\n", strerror(errno)); // Лог системной ошибки
             return false;                                          // Выход
         }
         return true; // Успешная передача
@@ -181,7 +174,7 @@ public:
         chip = gpiod_chip_open(chip_path); // Открываем устройство GPIO
         if (!chip)
         {                                                                         // Проверка успеха
-            LOG_ERROR("Can't open GPIO chip %s: %s", chip_path, strerror(errno)); // Лог ошибки
+            logi.log_r("Can't open GPIO chip %s: %s\n", chip_path, strerror(errno)); // Лог ошибки
             return false;                                                         // Выход
         }
         return true; // Успех
@@ -192,7 +185,7 @@ public:
     { // direction: 1=OUT, 0=IN
         if (!chip)
         {                                                                    // Проверяем, открыт ли чип
-            LOG_ERROR("GPIO chip not initialized. Call beginGPIO() first."); // Лог ошибки
+            logi.log_r("GPIO chip not initialized. Call beginGPIO() first.\n"); // Лог ошибки
             return false;                                                    // Выход
         }
 
@@ -207,7 +200,7 @@ public:
         struct gpiod_line *line = gpiod_chip_get_line(chip, pin);
         if (!line)
         {                                               // Если пин не найден
-            LOG_ERROR("Pin %d not found on chip", pin); // Лог ошибки
+            logi.log_r("Pin %d not found on chip\n", pin); // Лог ошибки
             return false;                               // Выход
         }
 
@@ -225,7 +218,7 @@ public:
 
         if (ret < 0)
         {                                                                          // Если запрос не удался (например, пин занят другим процессом)
-            LOG_ERROR("Request line failed for pin %d: %s", pin, strerror(errno)); // Лог ошибки
+            logi.log_r("Request line failed for pin %d: %s\n", pin, strerror(errno)); // Лог ошибки
             return false;                                                          // Выход
         }
 
@@ -239,7 +232,7 @@ public:
         auto it = lines.find(pin); // Ищем пин в нашей карте
         if (it == lines.end())
         {                                                                         // Если пин не найден (не был настроен)
-            LOG_ERROR("CRITICAL: Attempt to write to uninitialized pin %d", pin); // Лог критической ошибки
+            logi.log_r("CRITICAL: Attempt to write to uninitialized pin %d\n", pin); // Лог критической ошибки
             return false;                                                         // Возвращаем неудачу
         }
 
@@ -247,7 +240,7 @@ public:
         int ret = gpiod_line_set_value(it->second, value);
         if (ret < 0)
         {                                                                    // Если запись не удалась на уровне ядра
-            LOG_ERROR("GPIO write failed pin %d: %s", pin, strerror(errno)); // Лог ошибки
+            logi.log_r("GPIO write failed pin %d: %s\n", pin, strerror(errno)); // Лог ошибки
             return false;                                                    // Неудача
         }
         return true; // Успех
@@ -259,7 +252,7 @@ public:
         auto it = lines.find(pin); // Ищем пин
         if (it == lines.end())
         {                                                           // Если не найден
-            LOG_ERROR("Attempt to read uninitialized pin %d", pin); // Лог ошибки
+            logi.log_r("Attempt to read uninitialized pin %d\n", pin); // Лог ошибки
             return -1;                                              // Возвращаем -1 как признак ошибки
         }
         return gpiod_line_get_value(it->second); // Возвращаем 0 или 1
@@ -268,26 +261,26 @@ public:
     // ======================== УДОБНЫЕ ФУНКЦИИ (CS С ЗАЩИТОЙ) ========================
 
     // Передача с ручным управлением Chip Select и проверками
-    bool transferWithCS(int cs_pin, uint8_t *buffer, size_t len, uint32_t delay_us = 10)
+    bool transferWithCS(int cs_pin, uint8_t *buffer, size_t len, uint32_t delay_us = 3)
     {
         // 1. Проверяем, инициализирован ли SPI
         if (fd_spi < 0)
         {
-            LOG_ERROR("transferWithCS: SPI not initialized"); // Лог
+            logi.log_r("transferWithCS: SPI not initialized\n"); // Лог
             return false;                                     // Выход
         }
 
         // 2. Проверяем, настроен ли пин CS
         if (lines.find(cs_pin) == lines.end())
         {
-            LOG_ERROR("transferWithCS: CS pin %d not initialized! Call gpioMode first.", cs_pin); // Лог
+            logi.log_r("transferWithCS: CS pin %d not initialized! Call gpioMode first.\n", cs_pin); // Лог
             return false;                                                                         // Выход
         }
 
         // 3. Опускаем CS в 0 (активный уровень)
         if (!gpioWrite(cs_pin, 0))
         {
-            LOG_ERROR("transferWithCS: Failed to pull CS Low. Aborting transfer."); // Лог
+            logi.log_r("transferWithCS: Failed to pull CS Low. Aborting transfer.\n"); // Лог
             return false;                                                           // Не начинаем передачу, если CS не сработал
         }
 
@@ -299,7 +292,7 @@ public:
         bool transferSuccess = transferRW(buffer, len);
         if (!transferSuccess)
         {                                                      // Если передача не удалась
-            LOG_ERROR("transferWithCS: Data transfer failed"); // Лог
+            logi.log_r("transferWithCS: Data transfer failed\n"); // Лог
             // Мы все равно пойдем дальше, чтобы поднять CS
         }
 
@@ -310,7 +303,7 @@ public:
         // 5. Поднимаем CS в 1 (неактивный уровень) ВСЕГДА
         if (!gpioWrite(cs_pin, 1))
         {
-            LOG_ERROR("transferWithCS: CRITICAL! Failed to pull CS High. Device may be stuck."); // Критический лог
+            logi.log_r("transferWithCS: CRITICAL! Failed to pull CS High. Device may be stuck.\n"); // Критический лог
         }
 
         return transferSuccess; // Возвращаем результат самой передачи данных

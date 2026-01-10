@@ -52,6 +52,8 @@ bool sendData2Modul(int channel_, Struct_Modul2Data &structura_receive_, Struct_
 	Struct_Data2Modul *buffer_send = (Struct_Data2Modul *)bufferModul; // Создаем переменную в которую записываем адрес буфера в нужном формате
 	// STest *buffer_send = (STest *)buffer; // Создаем переменную в которую записываем адрес буфера в нужном формате
 	*buffer_send = structura_send_; // Переписываем по этому адресу данные в буфер
+	data_modul_all++;
+	// printf("   data_modul_all= %i \n",data_modul_all);
 
 	// for (int i = 0; i < 16; i++)
 	// {
@@ -67,12 +69,23 @@ bool sendData2Modul(int channel_, Struct_Modul2Data &structura_receive_, Struct_
 
 	// data_Modul_all++;
 	//  int aa = micros();
-	data_modul_all++;
-	digitalWrite(PIN_SPI_MODUL, 0);
-	delayMicroseconds(3);
-	rez = wiringPiSPIDataRW(channel_, bufferModul, sizeof(bufferModul)); // Передаем и одновременно получаем данные
-	delayMicroseconds(3);
-	digitalWrite(PIN_SPI_MODUL, 1);
+	
+	// digitalWrite(PIN_SPI_MODUL, 0);
+	// delayMicroseconds(3);
+	// rez = wiringPiSPIDataRW(channel_, bufferModul, sizeof(bufferModul)); // Передаем и одновременно получаем данные
+	// delayMicroseconds(3);
+	// digitalWrite(PIN_SPI_MODUL, 1);
+
+	if (spi_drv.transferWithCS(PIN_SPI_MODUL, bufferModul, sizeof(bufferModul), 1)) 
+	{
+        rez = true;
+    } else 
+	{
+        rez = false;
+        ROS_ERROR("SPI Transfer to Modul failed");
+    }
+
+
 	// int time_transfer = micros() - aa;
 	// float time_transfer_sec = time_transfer / 1000000.0;
 

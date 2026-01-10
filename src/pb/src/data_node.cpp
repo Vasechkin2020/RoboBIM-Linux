@@ -15,7 +15,7 @@ AsyncFileLogger logi("/home/pi/RoboBIM-Linux/src/pb/log/", "data_node");
 int main(int argc, char **argv)
 {
 
-    logi.log_b("*** Data_Node *** ver. 1.51 08-01-26 *** printBIM.ru *** 2025 ***\n");
+    logi.log_b("*** Data_Node *** ver. 1.51 10-01-26 *** printBIM.ru *** 2025 ***\n");
     logi.log_b("-------------------------------------------------------- \n");
 
     logi.logf("Это сообщение попадёт ТОЛЬКО в файл.\n");                // 1) Только в файл
@@ -30,6 +30,7 @@ int main(int argc, char **argv)
     ros::NodeHandle nh;
     CTopic topic; // Экземпляр класса для всех публикуемых топиков
     ros::Rate r(RATE);
+    get_global_start_time() = ros::Time::now(); // ВАЖНО: Должно быть строго ПОСЛЕ ros::init и NodeHandle. Мы принудительно записываем текущее время как "Точку старта" для millis()
 
     ros::Subscriber sub_ControlModul = nh.subscribe("pb/Pos/ControlModul", 3, callback_ControlModul, ros::TransportHints().tcpNoDelay(true));        // Это мы подписываемся на то что публигует Main для Modul
     ros::Subscriber sub_ControlPrint = nh.subscribe("pb/Control/ControlPrint", 3, callback_ControlPrint, ros::TransportHints().tcpNoDelay(true));    // Это мы подписываемся на то что публигует Main для Print
@@ -96,7 +97,8 @@ int main(int argc, char **argv)
         updateParam(); // Вставляем сюда. Это займет ~0.005 мс, на цикл не повлияет. Обновление офсетов из rosparam на ходу.
         // ROS_INFO(""); // С новой строки в логе новый цикл
         led_status = 1 - led_status; // Мигаем с частотой работы цикла
-        digitalWrite(PIN_LED_BLUE, led_status);
+        // digitalWrite(PIN_LED_BLUE, led_status);
+        spi_drv.gpioWrite(PIN_LED_BLUE, led_status); // Запись через новый драйвер
 
         static ros::Time start_cicle_time = ros::Time::now(); // Захватываем начальный момент времени
         ros::Time now_time = ros::Time::now();                // Захватываем текущий момент времени
@@ -110,9 +112,9 @@ int main(int argc, char **argv)
         if (time_print <= current_time_sec)          // Если время становиться больше чем текущее то выводим на печать
         {
             time_print += 1.0; // раз в секунду
-            logi.log("%u msec. SPI Modul %u/%u %u/%u | Driver %u/%u %u/%u | Print %u/%u %u/%u | \n", millis(),
-                     Modul2Data.spi.all, Modul2Data.spi.bed, data_modul_all, data_modul_bed,
+            logi.log("%llu msec. SPI Driver OUT %u/%u IN %u/%u | Modul OUT %u/%u IN %u/%u | Print OUT %u/%u IN %u/%u | \n", millis(),
                      Driver2Data.spi.all, Driver2Data.spi.bed, data_driver_all, data_driver_bed,
+                     Modul2Data.spi.all, Modul2Data.spi.bed, data_modul_all, data_modul_bed,
                      Print2Data.spi.all, Print2Data.spi.bed, data_print_all, data_print_bed);
         }
         //-----------------------------------------------------------------------------------------------------------------------------------

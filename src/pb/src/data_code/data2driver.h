@@ -22,11 +22,23 @@ bool sendData2Driver(int channel_, Struct_Driver2Data &structura_receive_, Struc
 	*buffer_send = structura_send_;									// Переписываем по этому адресу данные в буфер
 
 	data_driver_all++;
-	digitalWrite(PIN_SPI_DRIVER, 0);
-	delayMicroseconds(3);
-	rez = wiringPiSPIDataRW(channel_, bufferDriver, sizeof(bufferDriver)); // Передаем и одновременно получаем данные
-	delayMicroseconds(3);
-	digitalWrite(PIN_SPI_DRIVER, 1);
+	// printf("   data_driver_all= %i \n",data_driver_all);
+
+	// digitalWrite(PIN_SPI_DRIVER, 0);
+	// delayMicroseconds(3);
+	// rez = wiringPiSPIDataRW(channel_, bufferDriver, sizeof(bufferDriver)); // Передаем и одновременно получаем данные
+	// delayMicroseconds(3);
+	// digitalWrite(PIN_SPI_DRIVER, 1);
+
+	// Используем новый метод с защитой     // PIN_SPI_DRIVER - номер пина CS    // bufferDriver - буфер данных    // 3 - задержка в микросекундах (как у тебя было)
+    if (spi_drv.transferWithCS(PIN_SPI_DRIVER, bufferDriver, sizeof(bufferDriver), 1)) 
+	{
+        rez = true;
+    } else 
+	{
+        rez = false;
+        ROS_ERROR("SPI Transfer to Driver failed");
+    }
 
 	// Извлекаем из буфера данные в формате структуры и копирум данные
 	Struct_Driver2Data *copy_buf_master_receive = (Struct_Driver2Data *)bufferDriver; // Создаем переменную в которую пишем адрес буфера в нужном формате

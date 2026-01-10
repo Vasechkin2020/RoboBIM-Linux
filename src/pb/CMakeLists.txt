@@ -149,7 +149,7 @@ add_definitions(${PCL_DEFINITIONS})
 # ВЗЯТО отсюда https://wiki.ros.org/navigation/Tutorials/RobotSetup/TF
 
 add_executable(data_node src/data_node.cpp)
-target_link_libraries(data_node ${catkin_LIBRARIES} -lwiringPi -lpthread -lgpiod)
+target_link_libraries(data_node ${catkin_LIBRARIES} -lpthread -lgpiod)
 
 #add_executable(pos_node src/pos_node.cpp)
 #target_link_libraries(pos_node ${catkin_LIBRARIES} -lpthread)

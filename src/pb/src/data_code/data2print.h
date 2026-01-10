@@ -22,11 +22,22 @@ bool sendData2Print(int channel_, Struct_Print2Data &structura_receive_, Struct_
 	*buffer_send = structura_send_;									   // Переписываем по этому адресу данные в буфер
 
 	data_print_all++;
-	digitalWrite(PIN_SPI_PRINT, 0);
-	delayMicroseconds(3);
-	rez = wiringPiSPIDataRW(channel_, bufferPrint, sizeof(bufferPrint)); // Передаем и одновременно получаем данные
-	delayMicroseconds(3);
-	digitalWrite(PIN_SPI_PRINT, 1);
+
+	// digitalWrite(PIN_SPI_PRINT, 0);
+	// delayMicroseconds(3);
+	// rez = wiringPiSPIDataRW(channel_, bufferPrint, sizeof(bufferPrint)); // Передаем и одновременно получаем данные
+	// delayMicroseconds(3);
+	// digitalWrite(PIN_SPI_PRINT, 1);
+
+	if (spi_drv.transferWithCS(PIN_SPI_PRINT, bufferPrint, sizeof(bufferPrint), 1)) 
+	{
+        rez = true;
+    } 
+	else 
+	{
+        rez = false;
+        ROS_ERROR("SPI Transfer to Print failed");
+    }
 
 	// Извлекаем из буфера данные в формате структуры и копирум данные
 	Struct_Print2Data *copy_buf_master_receive = (Struct_Print2Data *)bufferPrint; // Создаем переменную в которую пишем адрес буфера в нужном формате

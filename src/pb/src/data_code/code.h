@@ -27,7 +27,9 @@ uint16_t getMax_size_Struct(uint16_t stru1_, uint16_t stru2_)
 // Настройка светодиодов
 void set_PIN_Led()
 {
-	pinMode(PIN_LED_BLUE, OUTPUT); // Красный светодиод
+	// pinMode(PIN_LED_BLUE, OUTPUT); // Красный светодиод
+	
+	spi_drv.gpioMode(PIN_LED_BLUE, 1); // 1 = OUTPUT // Используем новый драйвер для настройки пина (GPIO 25)
 }
 // Функция мигания светодиодом в осномном цикле что программа не зависла и работает
 void Led_Blink(int led_, unsigned long time_)
@@ -37,7 +39,10 @@ void Led_Blink(int led_, unsigned long time_)
 	if ((millis() - led_time) > time_)
 	{
 		led_status = 1 - led_status;
-		digitalWrite(led_, led_status);
+
+		// digitalWrite(led_, led_status);
+		spi_drv.gpioWrite(led_, led_status); // Запись через новый драйвер
+
 		led_time = millis();
 		// ROS_INFO("%s led_time = %i.", NN, led_time);
 		printf("+ \n");
@@ -45,49 +50,103 @@ void Led_Blink(int led_, unsigned long time_)
 }
 
 // Настройка пинов
-void init_Gpio()
+// void init_Gpio()
+// {
+// 	int rez = wiringPiSetup(); // Инициализация библиотеки
+// 	// //rez = wiringPiSetupGpio(); // При такой инициализациипины имеют другие номера, как изначально в распбери ПИ.
+// 	pinMode(PIN_SPI_MODUL, OUTPUT);	 //
+// 	pinMode(PIN_SPI_DRIVER, OUTPUT); //
+// 	pinMode(PIN_SPI_PRINT, OUTPUT);	 //
+
+// 	digitalWrite(PIN_SPI_MODUL, 1);
+// 	digitalWrite(PIN_SPI_DRIVER, 1);
+// 	digitalWrite(PIN_SPI_PRINT, 1);
+
+// 	// pinMode(PIN_MODUL_MOSI_2G, OUTPUT);  //
+// 	// digitalWrite(PIN_MODUL_MOSI_2G, 1);
+// 	// pinMode(PIN_MODUL_MISO_3G, OUTPUT);  //
+// 	// digitalWrite(PIN_MODUL_MISO_3G, 1);
+// 	// pinMode(PIN_MODUL_CLK_4G, OUTPUT);  //
+// 	// digitalWrite(PIN_MODUL_CLK_4G, 1);
+
+// 	// pinMode(PIN_PRINT_MOSI_1G, OUTPUT);  //
+// 	// digitalWrite(PIN_PRINT_MOSI_1G, 1);
+// 	// pinMode(PIN_PRINT_MISO_4G, OUTPUT);  //
+// 	// digitalWrite(PIN_PRINT_MISO_4G, 1);
+// 	// pinMode(PIN_PRINT_CLK_3G, OUTPUT);  //
+// 	// digitalWrite(PIN_PRINT_CLK_3G, 1);
+// }
+
+void init_Gpio() // Настройка пинов
 {
-	int rez = wiringPiSetup(); // Инициализация библиотеки
-	// //rez = wiringPiSetupGpio(); // При такой инициализациипины имеют другие номера, как изначально в распбери ПИ.
-	pinMode(PIN_SPI_MODUL, OUTPUT);	 //
-	pinMode(PIN_SPI_DRIVER, OUTPUT); //
-	pinMode(PIN_SPI_PRINT, OUTPUT);	 //
+	// 1. Инициализация чипа (для Pi 4 это chip0)
+	if (!spi_drv.beginGPIO("/dev/gpiochip0"))
+	{
+		ROS_ERROR("Failed to init GPIO chip");
+		exit(1);
+	}
 
-	digitalWrite(PIN_SPI_MODUL, 1);
-	digitalWrite(PIN_SPI_DRIVER, 1);
-	digitalWrite(PIN_SPI_PRINT, 1);
+	// 2. Настройка пинов (1 = Output, 1 = High/Initial Value)
+	// beginGPIO уже открыл чип, теперь настраиваем линии
+	// 2. Настройка пинов CS на выход (Active High по умолчанию 1)     // PIN_SPI_MODUL = 26 (BCM), PIN_SPI_DRIVER = 23 (BCM), PIN_SPI_PRINT = 21 (BCM)
 
-	// pinMode(PIN_MODUL_MOSI_2G, OUTPUT);  //
-	// digitalWrite(PIN_MODUL_MOSI_2G, 1);
-	// pinMode(PIN_MODUL_MISO_3G, OUTPUT);  //
-	// digitalWrite(PIN_MODUL_MISO_3G, 1);
-	// pinMode(PIN_MODUL_CLK_4G, OUTPUT);  //
-	// digitalWrite(PIN_MODUL_CLK_4G, 1);
+	// Пин MODUL
+	if (!spi_drv.gpioMode(PIN_SPI_MODUL, 1)) { ROS_ERROR("Err PIN_SPI_MODUL"); exit(1); }
+    spi_drv.gpioWrite(PIN_SPI_MODUL, 1);
 
-	// pinMode(PIN_PRINT_MOSI_1G, OUTPUT);  //
-	// digitalWrite(PIN_PRINT_MOSI_1G, 1);
-	// pinMode(PIN_PRINT_MISO_4G, OUTPUT);  //
-	// digitalWrite(PIN_PRINT_MISO_4G, 1);
-	// pinMode(PIN_PRINT_CLK_3G, OUTPUT);  //
-	// digitalWrite(PIN_PRINT_CLK_3G, 1);
+	// // Пин DRIVER
+    if (!spi_drv.gpioMode(PIN_SPI_DRIVER, 1)) { ROS_ERROR("Err PIN_SPI_DRIVER"); exit(1); }
+    spi_drv.gpioWrite(PIN_SPI_DRIVER, 1);
+
+	// // Пин PRINT
+    if (!spi_drv.gpioMode(PIN_SPI_PRINT, 1)) { ROS_ERROR("Err PIN_SPI_PRINT"); exit(1); }
+    spi_drv.gpioWrite(PIN_SPI_PRINT, 1);
+
+    // Внимание: Пины MOSI/MISO/CLK (GPIO 7, 9, 10, 11) настраивать как OUTPUT не нужно!
+    // Драйвер ядра spidev сам управляет ими в альтернативной функции (ALT0).
+    // Если их трогать через GPIO, SPI может отвалиться. 
+
+
+	// Пин Светодиода
+	spi_drv.gpioMode(PIN_LED_BLUE, 1);
 }
 
 // Инициализация канала шины SPI
+// void init_SPI(int channel_, int speed_)
+// {
+// 	uint8_t errSpi = 0; // Ошибка при инициализации шины SPI
+// 	logi.log_b("+++ Init SPI start... \n");
+
+// 	if ((errSpi = wiringPiSPISetup(channel_, speed_)) < 0) // Инициализация канало 0 это чип селект 0
+// 	{
+// 		logi.log_r("    Can't open the SPI bus 0: %s\n", NN, strerror(errno));
+// 		logi.log_r("    errSpi: %s\n", errSpi);
+// 		exit(EXIT_FAILURE);
+// 	}
+// 	else
+// 	{
+// 		logi.log("    SPI ok!\n");
+// 	}
+// }
+
 void init_SPI(int channel_, int speed_)
 {
-	uint8_t errSpi = 0; // Ошибка при инициализации шины SPI
-	logi.log_b("+++ Init SPI start... \n");
+    logi.log_b("+++ Init SPI start... \n");
 
-	if ((errSpi = wiringPiSPISetup(channel_, speed_)) < 0) // Инициализация канало 0 это чип селект 0
-	{
-		logi.log_r("    Can't open the SPI bus 0: %s\n", NN, strerror(errno));
-		logi.log_r("    errSpi: %s\n", errSpi);
-		exit(EXIT_FAILURE);
-	}
-	else
-	{
-		logi.log("    SPI ok!\n");
-	}
+    // Формируем путь к файлу: /dev/spidev0.0 или /dev/spidev0.1
+    char device_path[32];
+    snprintf(device_path, sizeof(device_path), "/dev/spidev0.%d", channel_);
+
+    // Инициализируем через наш драйвер
+    if (!spi_drv.beginSPI(device_path, speed_)) 
+    {
+        logi.log_r("    Can't open SPI: %s\n", strerror(errno));
+        exit(EXIT_FAILURE);
+    }
+    else
+    {
+        logi.log("    SPI ok!\n");
+    }
 }
 
 // Обратный вызов при опросе топика
@@ -257,15 +316,15 @@ void readParam() // Считывание переменных параметро
 	nh_global.param<double>("/pb_config/lasers/dist_offset_3", dist_offsets[3], 0.0);
 
 	// Считываем калибровочные офсеты моторов лазеров ()
-    nh_global.param<double>("/pb_config/lasers/offset_0", angle_offsets[0], 0.0); // Лазер 0
-    nh_global.param<double>("/pb_config/lasers/offset_1", angle_offsets[1], 0.0); // Лазер 1
-    nh_global.param<double>("/pb_config/lasers/offset_2", angle_offsets[2], 0.0); // Лазер 2
-    nh_global.param<double>("/pb_config/lasers/offset_3", angle_offsets[3], 0.0); // Лазер 3
+	nh_global.param<double>("/pb_config/lasers/offset_0", angle_offsets[0], 0.0); // Лазер 0
+	nh_global.param<double>("/pb_config/lasers/offset_1", angle_offsets[1], 0.0); // Лазер 1
+	nh_global.param<double>("/pb_config/lasers/offset_2", angle_offsets[2], 0.0); // Лазер 2
+	nh_global.param<double>("/pb_config/lasers/offset_3", angle_offsets[3], 0.0); // Лазер 3
 
 	// Логируем, чтобы убедиться, что загрузилось
 	logi.log_b("+++ =========================================\n");
 	logi.log_g("    Start node with parametrs:\n");
-    logi.log("    Angle Motor Offsets: %+8.3f %+8.3f %+8.3f %+8.3f\n", angle_offsets[0], angle_offsets[1], angle_offsets[2], angle_offsets[3]);
+	logi.log("    Angle Motor Offsets: %+8.3f %+8.3f %+8.3f %+8.3f\n", angle_offsets[0], angle_offsets[1], angle_offsets[2], angle_offsets[3]);
 	logi.log("    Dist offSetLaser0 = %+8.3f offSetLaser1 = %+8.3f offSetLaser2 = %+8.3f offSetLaser3 = %+8.3f \n", dist_offsets[0], dist_offsets[1], dist_offsets[2], dist_offsets[3]);
 	logi.log("    offSetLaserL = %+8.3f offSetLaserR = %+8.3f \n", offSetLaserL, offSetLaserR);
 	logi.log("    offSetUZI = %+8.3f \n", offSetUzi);
@@ -274,25 +333,23 @@ void readParam() // Считывание переменных параметро
 	logi.log_b("+++ =========================================\n\n");
 }
 
-
-void updateParam() 
+void updateParam()
 {
-    // Используем static, чтобы не пересоздавать хендл каждый раз (экономия тактов)
-    static ros::NodeHandle nh_global; 
+	// Используем static, чтобы не пересоздавать хендл каждый раз (экономия тактов)
+	static ros::NodeHandle nh_global;
 
-    // getParamCached возвращает true, если значение в кэше есть, и обновляет переменную моментально
-    // Это НЕ вызывает тормозов, можно вызывать хоть в каждом цикле (без счетчика)
-    
-    nh_global.getParamCached("/pb_config/lasers/dist_offset_0", dist_offsets[0]);
-    nh_global.getParamCached("/pb_config/lasers/dist_offset_1", dist_offsets[1]);
-    nh_global.getParamCached("/pb_config/lasers/dist_offset_2", dist_offsets[2]);
-    nh_global.getParamCached("/pb_config/lasers/dist_offset_3", dist_offsets[3]);
-    
-    nh_global.getParamCached("/pb_config/lasers/offset_0", angle_offsets[0]);
-    nh_global.getParamCached("/pb_config/lasers/offset_1", angle_offsets[1]);
-    nh_global.getParamCached("/pb_config/lasers/offset_2", angle_offsets[2]);
-    nh_global.getParamCached("/pb_config/lasers/offset_3", angle_offsets[3]);
+	// getParamCached возвращает true, если значение в кэше есть, и обновляет переменную моментально
+	// Это НЕ вызывает тормозов, можно вызывать хоть в каждом цикле (без счетчика)
+
+	nh_global.getParamCached("/pb_config/lasers/dist_offset_0", dist_offsets[0]);
+	nh_global.getParamCached("/pb_config/lasers/dist_offset_1", dist_offsets[1]);
+	nh_global.getParamCached("/pb_config/lasers/dist_offset_2", dist_offsets[2]);
+	nh_global.getParamCached("/pb_config/lasers/dist_offset_3", dist_offsets[3]);
+
+	nh_global.getParamCached("/pb_config/lasers/offset_0", angle_offsets[0]);
+	nh_global.getParamCached("/pb_config/lasers/offset_1", angle_offsets[1]);
+	nh_global.getParamCached("/pb_config/lasers/offset_2", angle_offsets[2]);
+	nh_global.getParamCached("/pb_config/lasers/offset_3", angle_offsets[3]);
 }
-
 
 #endif
